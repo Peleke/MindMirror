@@ -28,13 +28,18 @@ def build_graph_from_documents(
 
     logging.info("Converting documents to graph documents...")
     graph_documents = transformer.convert_to_graph_documents(documents)
-    
-    logging.info("Initializing NetworkxEntityGraph...")
+
+    # In older versions, one would use graph.add_graph_documents(graph_documents).
+    # This method is deprecated. We now manually construct the graph.
     graph = NetworkxEntityGraph()
+    for doc in graph_documents:
+        for node in doc.nodes:
+            # The node object has 'id' and 'type' attributes
+            graph._graph.add_node(node.id, type=node.type)
+        for rel in doc.relationships:
+            # The relationship object has 'source', 'target', and 'type' attributes
+            graph._graph.add_edge(rel.source.id, rel.target.id, relation=rel.type)
     
-    logging.info("Adding graph documents to NetworkX graph...")
-    graph.add_graph_documents(graph_documents)
-    
-    logging.info(f"Graph created with {len(graph.nodes)} nodes and {len(graph.edges)} edges.")
+    logging.info(f"Graph created with {len(graph._graph.nodes())} nodes and {len(graph._graph.edges())} edges.")
     
     return graph
