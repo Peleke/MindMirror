@@ -44,6 +44,39 @@ graph TD
     style H fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
+## 🚀 Getting Started: One-Command Demo
+
+This project is fully containerized with Docker, allowing you to launch the entire application stack—the GraphQL API and the Streamlit UI—with a single command.
+
+**Prerequisites:**
+*   Docker and Docker Compose
+
+**Instructions:**
+
+1.  **Clone the Repository**
+    ```bash
+    git clone <your-repo-url>
+    cd librarian-ai
+    ```
+
+2.  **Set Your API Key**
+    Create a `.env` file in the root of the project and add your OpenAI API key:
+    ```
+    OPENAI_API_KEY=your_key_here
+    ```
+
+3.  **Launch the Application**
+    ```bash
+    docker-compose up --build
+    ```
+    This command will:
+    *   Build the Docker image for the application.
+    *   Start the API service, which will first build the knowledge base from the documents in `/pdfs`.
+    *   Start the Streamlit UI service.
+
+4.  **Access the Coach**
+    Once the build is complete, open your web browser and navigate to **http://localhost:8501** to start interacting with your AI Coach.
+
 ## 🛠️ Core Features
 
 -   **RAG-based Chatbot**: Engage in conversations with your documents via a chatbot that uses embedded context.

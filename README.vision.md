@@ -22,10 +22,14 @@ This plan is broken into distinct, demo-able milestones. Each milestone delivers
     *   [ ] **Task 1.1 (Data):** Create subdirectories in `/pdfs` for different "traditions" (e.g., `/pdfs/canon-paleo`, `/pdfs/canon-keto`). Pre-load with 1-2 documents each.
     *   [ ] **Task 1.2 (Engine):** Modify `build_knowledge_base` in `src/data_processing.py` to be parameterized, building stores into tradition-specific subdirectories (e.g., `data/paleo/vectorstore`).
     *   [ ] **Task 1.3 (Engine):** Modify the `CoachingEngine` to be initialized with a specific `tradition`, loading from the correct data path.
+      - CONSTRAINT: Abstract the `Tradition` here; we want this to be "injectable"/fetchable from a database.
     *   [ ] **Task 1.4 (API):** Update the `ask` query to take a `tradition` argument, which will require a mechanism to dynamically load the correct engine instance (or re-initialize it). A simple dictionary mapping traditions to engine instances would suffice for the PoC.
+      - CONSTRAINT: Similar to above; ensure an interface abstraction.
     *   [ ] **Task 1.5 (API):** Create `saveJournalEntry` and `getJournalEntries` mutations (takes `userId` and `text`). For the PoC, this can save to a simple `journal_entries.json` file.
+      - CONSTRAINT: Similar to above. Let's create `repository` layers to handle data writes; we'll then wrap these in passthrough services, which we'll use in the resolvers.
     *   [ ] **Task 1.6 (UI):** Add a dropdown in the Streamlit sidebar to select the active "Tradition." All subsequent `ask` calls from the UI will use this selection.
     *   [ ] **Task 1.7 (UI):** Add a "My Journal" section to the UI with a text area and a "Save Entry" button. Display past entries for the current user below the text area.
+      - CONSTRAINT: similar; repo pattern should make it easy to use local files for this for now but easily swap for a DB
 
 ### ✅ **Milestone 2: The Goal-Oriented Coach**
 *   **Goal:** Make the AI aware of the user's specific objectives and enable basic, goal-oriented recommendations.
