@@ -4,7 +4,11 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
-from config import EMBEDDING_PROVIDER, OLLAMA_EMBEDDING_MODEL
+from config import (
+    EMBEDDING_PROVIDER, 
+    OLLAMA_EMBEDDING_MODEL,
+    OLLAMA_BASE_URL
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -14,7 +18,10 @@ def get_embedding_model():
     Returns the embedding model based on the provider.
     """
     if EMBEDDING_PROVIDER == "ollama":
-        return OllamaEmbeddings(model=OLLAMA_EMBEDDING_MODEL)
+        return OllamaEmbeddings(
+            model=OLLAMA_EMBEDDING_MODEL, 
+            base_url=OLLAMA_BASE_URL
+        )
     else:
         return OpenAIEmbeddings()
 

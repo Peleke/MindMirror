@@ -2,16 +2,114 @@ graph [
   directed 1
   node [
     id 0
+    label "Stone"
+    type "Object"
+  ]
+  node [
+    id 1
+    label "Barbell"
+    type "Object"
+  ]
+  node [
+    id 2
+    label "Sun-Stared Almonds"
+    type "Food"
+  ]
+  node [
+    id 3
+    label "Reverse-Osmosis Ice Chips"
+    type "Food"
+  ]
+  node [
+    id 4
+    label "Big Broccoli"
+    type "Organization"
+  ]
+  node [
+    id 5
+    label "Pineal Gland"
+    type "Organ"
+  ]
+  node [
+    id 6
     label "Fish"
     type "Entity"
   ]
   node [
-    id 1
+    id 7
     label "Butt"
+    type "Entity"
+  ]
+  node [
+    id 8
+    label "Runner"
+    type "Person"
+  ]
+  node [
+    id 9
+    label "Pancreas"
+    type "Organ"
+  ]
+  node [
+    id 10
+    label "Pavement"
+    type "Location"
+  ]
+  node [
+    id 11
+    label "Foot"
+    type "Body part"
+  ]
+  node [
+    id 12
+    label "Footfall"
+  ]
+  node [
+    id 13
+    label "Answer"
+  ]
+  node [
+    id 14
+    label "Gradient"
   ]
   edge [
     source 0
     target 1
-    relation "NOUN_ASSOCIATION"
+    relation "INDIFFERENT_TO"
+  ]
+  edge [
+    source 1
+    target 0
+    relation "LIFTS"
+  ]
+  edge [
+    source 2
+    target 3
+    relation "CONSUMED_BY"
+  ]
+  edge [
+    source 4
+    target 5
+    relation "ASSOCIATED_WITH"
+  ]
+  edge [
+    source 6
+    target 7
+    relation "BENEFIT"
+  ]
+  edge [
+    source 8
+    target 12
+    relation "ASKING"
+  ]
+  edge [
+    source 8
+    target 14
+    relation "RELATED"
+  ]
+  edge [
+    source 10
+    target 13
+    relation "RECEIVED"
   ]
 ]

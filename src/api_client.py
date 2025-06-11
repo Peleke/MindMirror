@@ -1,7 +1,9 @@
 import aiohttp
 import json
+import os
 
-API_URL = "http://localhost:8000/graphql"
+API_HOST = os.getenv("API_HOST", "localhost")
+API_URL = f"http://{API_HOST}:8000/graphql"
 
 async def run_graphql_query(query: str, variables: dict = None):
     """
