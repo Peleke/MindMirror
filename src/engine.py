@@ -27,7 +27,7 @@ class SimpleGraphRetriever(BaseRetriever):
     ) -> List[Document]:
         # Serialize all triplets into a single string
         triplets = ""
-        for source, target, data in self.graph.graph.edges(data=True):
+        for source, target, data in self.graph._graph.edges(data=True):
             relation = data.get("relation", "related to")
             triplets += f"{source} -[{relation}]-> {target}\n"
         
