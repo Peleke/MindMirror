@@ -69,30 +69,30 @@ graph TD
 
 ---
 
-## 3. Phase 1: Implementation Plan & TDD Roadmap
+## 3. Phase 1: Implementation Plan & TDD Roadmap (✅ Complete)
 
-This plan is designed to be executed in a test-driven development (TDD) fashion.
+This phase established the core architectural foundation.
 
 ### ✅ **Milestone 1: Encapsulate Core Logic into a Reusable Engine**
-*   [ ] **Task 1.1:** Create a new `src/engine.py` file.
-*   [ ] **Task 1.2:** Implement a `CoachingEngine` class within it.
-*   [ ] **Task 1.3:** Move the core logic from `app.py`'s `get_retriever` and `get_rag_chain` functions into methods within the `CoachingEngine` class (e.g., `__init__`, `load_and_process`, `get_retriever`).
-*   [ ] **Task 1.4:** Create a new test file `tests/test_engine.py`.
-*   [ ] **Task 1.5 (TDD):** Write tests to confirm the `CoachingEngine` can be initialized, can load documents, and can return a valid RAG chain, all while mocking the LLM/embedding calls.
+*   [x] **Task 1.1:** Create a new `src/engine.py` file.
+*   [x] **Task 1.2:** Implement a `CoachingEngine` class within it.
+*   [x] **Task 1.3:** Move the core logic from `app.py`'s `get_retriever` and `get_rag_chain` functions into methods within the `CoachingEngine` class.
+*   [x] **Task 1.4:** Create a new test file `tests/test_engine.py`.
+*   [x] **Task 1.5 (TDD):** Write tests to confirm the `CoachingEngine` can be initialized, can load documents, and can return a valid RAG chain.
 
 ### ✅ **Milestone 2: Expose the Engine via a Decoupled API**
-*   [ ] **Task 2.1:** Create a new `api.py` at the root of the project.
-*   [ ] **Task 2.2:** Implement a Strawberry GraphQL server in `api.py`.
-*   [ ] **Task 2.3:** On startup, initialize a global instance of the `CoachingEngine`.
-*   [ ] **Task 2.4 (TDD):** Implement a `ask` query that takes a user query, calls the engine's RAG chain, and returns the response. Write integration tests for this query.
-*   [ ] **Task 2.5 (TDD):** Implement a `generateReview` mutation that simulates grabbing user data and calling the engine with a structured prompt. Write integration tests.
-*   [ ] **Task 2.6:** Implement an `uploadDocument` mutation that saves a file to the `pdfs` directory and triggers the engine to reload its knowledge base.
+*   [x] **Task 2.1:** Create a new `api.py` at the root of the project.
+*   [x] **Task 2.2:** Implement a Strawberry GraphQL server in `api.py`.
+*   [x] **Task 2.3:** On startup, initialize a global instance of the `CoachingEngine`.
+*   [x] **Task 2.4 (TDD):** Implement a `ask` query that takes a user query, calls the engine's RAG chain, and returns the response.
+*   [x] **Task 2.5 (TDD):** Implement a `generateReview` mutation that simulates grabbing user data and calling the engine with a structured prompt.
+*   [x] **Task 2.6:** Implement an `uploadDocument` mutation that saves a file to the `pdfs` directory and triggers the engine to reload its knowledge base.
 
 ### ✅ **Milestone 3: Adapt the Streamlit UI to be a Pure API Client**
-*   [ ] **Task 3.1:** Refactor `app.py` to remove all direct calls to the backend logic.
-*   [ ] **Task 3.2:** All functionality (chat, file uploads) in `app.py` will now make GraphQL requests to the local Strawberry server.
-*   [ ] **Task 3.3:** Implement the "Generate My Bi-Weekly Review" button and the guided journal UI components.
-*   [ ] **Task 3.4:** Ensure the UI correctly handles the loading states while waiting for API responses.
+*   [x] **Task 3.1:** Refactor `app.py` to remove all direct calls to the backend logic.
+*   [x] **Task 3.2:** All functionality (chat, file uploads) in `app.py` now make GraphQL requests to the local Strawberry server.
+*   [x] **Task 3.3:** Implement the "Generate My Bi-Weekly Review" button and the guided journal UI components.
+*   [x] **Task 3.4:** Ensure the UI correctly handles the loading states while waiting for API responses.
 
 ### ✅ **Milestone 4: Finalize PoC for Demo**
 *   [ ] **Task 4.1:** Pre-load the `./pdfs` directory with 2-3 canonical nutrition/fitness texts.
@@ -101,14 +101,10 @@ This plan is designed to be executed in a test-driven development (TDD) fashion.
 
 ---
 
-## 4. Phase 2: The Sovereign Causal Scientist (The Future Vision)
+## 4. Phase 2: The Cyborg Coach (The Vision)
 
 **Goal:** To evolve from a personalized dashboard into a personal science platform where users can prove causation in their own lives, fine-tune a truly personal AI, and maintain complete ownership over their data and models.
 
-### Key Evolutionary Steps
-1.  **Integrate Hard Data Streams:** Connect to official APIs for Apple HealthKit, Oura, and Whoop to pull in objective data (sleep, HRV) to use as ground truth for analysis.
-2.  **Build the Causal Inference Engine:** Introduce a new microservice that uses libraries like `DoWhy` to run statistical A/B tests on a user's behalf, allowing them to test hypotheses like "Does magnesium improve my deep sleep?"
-3.  **Fine-Tune User-Specific Models:** Use the rich, user-specific data generated from these experiments to fine-tune a small, efficient LLM for each user, creating a hyper-personalized AI that is trained on *their* life.
-4.  **Establish Data & Model Sovereignty:** Leverage Web3 technologies to allow users to take true ownership of their fine-tuned models, giving them control and portability.
+The detailed, multi-milestone plan for this next major phase of development is outlined in the vision document:
 
-This phased approach allows us to deliver immediate, demonstrable value while building towards a powerful, defensible, and category-defining platform. 
+### ➡️ **[Read the Full Plan: README.vision.md](./README.vision.md)** 

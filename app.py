@@ -1,58 +1,101 @@
 import streamlit as st
 import os
-from src.engine import CoachingEngine
-from config import PDF_DIR
+import asyncio
+import base64
+from src.api_client import run_graphql_query
 
-@st.cache_resource
-def get_engine():
-    """
-    Initializes and returns the CoachingEngine.
-    This is cached to avoid re-initializing the engine on every app rerun.
-    """
-    return CoachingEngine()
+API_URL = "http://localhost:8000/graphql"
+
+# --- GraphQL Queries and Mutations ---
+ASK_MUTATION = """
+    mutation Ask($query: String!) {
+        ask(query: $query)
+    }
+"""
+
+ASK_QUERY = """
+    query Ask($query: String!) {
+      ask(query: $query)
+    }
+"""
+
+GENERATE_REVIEW_MUTATION = """
+    mutation GenerateReview($userId: String!) {
+      generateReview(userId: $userId) {
+        keySuccess
+        improvementArea
+        journalPrompt
+      }
+    }
+"""
+
+UPLOAD_DOCUMENT_MUTATION = """
+    mutation UploadDocument($fileName: String!, $content: Base64!) {
+      uploadDocument(fileName: $fileName, content: $content)
+    }
+"""
+
 
 def main():
     """
-    Main function to run the Streamlit UI.
+    Main function to run the Streamlit UI as a pure API client.
     """
-    st.title("📚 Librarian AI")
-
-    # Get the coaching engine
-    engine = get_engine()
+    st.title("🧠 AI Coaching Platform")
 
     with st.sidebar:
         st.header("Upload Documents")
         uploaded_files = st.file_uploader(
-            "Upload new PDF files to the knowledge base.",
-            type="pdf",
+            "Upload new PDF or TXT files to the knowledge base.",
+            type=["pdf", "txt"],
             accept_multiple_files=True,
         )
         if uploaded_files:
-            file_names = [f.name for f in uploaded_files]
-            with st.spinner(f"Processing {', '.join(file_names)}..."):
-                # Ensure the PDF directory exists
-                os.makedirs(PDF_DIR, exist_ok=True)
-
-                for uploaded_file in uploaded_files:
-                    # Save the file to the PDF directory
-                    file_path = os.path.join(PDF_DIR, uploaded_file.name)
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                
-                # Clear the engine's cache and reload
-                engine.reload()
-                # Clear the Streamlit cache to reflect changes
-                st.cache_resource.clear()
-
-            st.success(f"✅ Successfully added {len(uploaded_files)} file(s) to the knowledge base!")
+            for uploaded_file in uploaded_files:
+                with st.spinner(f"Uploading {uploaded_file.name}..."):
+                    file_content = uploaded_file.getvalue()
+                    encoded_content = base64.b64encode(file_content).decode("utf-8")
+                    variables = {
+                        "fileName": uploaded_file.name,
+                        "content": encoded_content
+                    }
+                    result = asyncio.run(run_graphql_query(UPLOAD_DOCUMENT_MUTATION, variables))
+                    if "errors" in result:
+                        st.error(f"Failed to upload {uploaded_file.name}: {result['errors'][0]['message']}")
+                    else:
+                        st.success(f"✅ Successfully uploaded {uploaded_file.name}!")
             st.rerun()
+
+        st.header("Actions")
+        if st.button("Generate My Bi-Weekly Review"):
+            with st.spinner("Generating your performance review..."):
+                variables = {"userId": "demo-user-123"} # Static user ID for demo
+                result = asyncio.run(run_graphql_query(GENERATE_REVIEW_MUTATION, variables))
+
+                if "errors" in result:
+                    st.error(f"Failed to generate review: {result['errors'][0]['message']}")
+                else:
+                    review = result['data']['generateReview']
+                    st.session_state.review = review
+
+    # Display the performance review if it exists in the session state
+    if "review" in st.session_state:
+        st.subheader("Your Bi-Weekly Performance Review")
+        review = st.session_state.review
+        st.success(f"**Key Success:** {review['keySuccess']}")
+        st.warning(f"**Area for Improvement:** {review['improvementArea']}")
+        st.info(f"**Journal Prompt:** {review['journalPrompt']}")
+        st.markdown("---") # Visual separator
+
+
+    # --- Chat Interface ---
+    st.subheader("Conversational AI Coach")
 
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "Hello! I am Librarian AI. How can I help you today?"
+                "content": "Hello! I am your AI Coach. Ask me anything about your documents or your performance."
             }
         ]
 
@@ -71,7 +114,14 @@ def main():
         # Generate and display assistant response
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = engine.ask(prompt)
+                variables = {"query": prompt}
+                result = asyncio.run(run_graphql_query(ASK_QUERY, variables))
+                
+                if "errors" in result:
+                    response = f"Sorry, there was an error: {result['errors'][0]['message']}"
+                else:
+                    response = result['data']['ask']
+                
                 st.markdown(response)
                 # Add assistant response to chat history
                 st.session_state.messages.append({"role": "assistant", "content": response})
