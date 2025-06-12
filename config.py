@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 # Only load the .env file if we're not running in a Docker container
@@ -10,12 +11,12 @@ PDF_DIR = os.getenv("PDF_DIR", "pdfs")
 DATA_DIR = os.getenv("DATA_DIR", "data")
 VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vectorstore")
 GRAPH_STORE_PATH = os.path.join(DATA_DIR, "graph_store.json")
-DOCS_CACHE_PATH = os.path.join(DATA_DIR, "docs_cache.json")
+DOCS_CACHE_PATH = "./data/docs_cache.json"
 
 
 # --- LLM ---
 # Set the provider to "openai" or "ollama"
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai") 
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
 
 # OpenAI settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -31,4 +32,8 @@ EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "openai")
 
 # --- Text Splitting ---
 CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 150 
+CHUNK_OVERLAP = 150
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql+asyncpg://user:password@localhost:5432/cyborg_coach"
+)

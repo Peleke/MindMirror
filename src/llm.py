@@ -1,14 +1,11 @@
-from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
-from langchain_core.language_models import BaseChatModel
 from typing import Any
 
-from config import (
-    LLM_PROVIDER,
-    OPENAI_MODEL,
-    OLLAMA_BASE_URL,
-    OLLAMA_CHAT_MODEL,
-)
+from langchain_core.language_models import BaseChatModel
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+
+from config import (LLM_PROVIDER, OLLAMA_BASE_URL, OLLAMA_CHAT_MODEL,
+                    OPENAI_MODEL)
 
 
 def get_llm(provider: str = LLM_PROVIDER, **kwargs: Any) -> BaseChatModel:
@@ -27,4 +24,4 @@ def get_llm(provider: str = LLM_PROVIDER, **kwargs: Any) -> BaseChatModel:
             del kwargs["model"]
         return ChatOpenAI(**kwargs)
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}") 
+        raise ValueError(f"Unsupported LLM provider: {provider}")

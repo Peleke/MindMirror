@@ -1,9 +1,12 @@
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from langchain_core.documents import Document
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.loading import _load_file, load_from_directory, chunk_documents, load_from_url
+import pytest
+from langchain_core.documents import Document
+
+from src.loading import (_load_file, chunk_documents, load_from_directory,
+                         load_from_url)
+
 
 @pytest.fixture
 def mock_loader():
@@ -11,10 +14,11 @@ def mock_loader():
     loader_instance = MagicMock()
     dummy_doc = Document(page_content="This is a test document.")
     loader_instance.load.return_value = [dummy_doc]
-    
+
     # The loader class is instantiated, so we return the instance
     loader_class = MagicMock(return_value=loader_instance)
     return loader_class, loader_instance
+
 
 def test_load_file_pdf_success(mock_loader):
     """
@@ -23,16 +27,17 @@ def test_load_file_pdf_success(mock_loader):
     # Arrange
     mock_loader_class, mock_loader_instance = mock_loader
     file_path = Path("dummy/test.pdf")
-    
+
     with patch.dict("src.loading.LOADER_MAPPING", {".pdf": mock_loader_class}):
         # Act
         documents = _load_file(file_path)
-        
+
         # Assert
         mock_loader_class.assert_called_once_with(str(file_path))
         mock_loader_instance.load.assert_called_once()
         assert len(documents) == 1
         assert documents[0].page_content == "This is a test document."
+
 
 def test_load_file_txt_success(mock_loader):
     """
@@ -41,15 +46,16 @@ def test_load_file_txt_success(mock_loader):
     # Arrange
     mock_loader_class, mock_loader_instance = mock_loader
     file_path = Path("dummy/notes.txt")
-    
+
     with patch.dict("src.loading.LOADER_MAPPING", {".txt": mock_loader_class}):
         # Act
         documents = _load_file(file_path)
-        
+
         # Assert
         mock_loader_class.assert_called_once_with(str(file_path))
         mock_loader_instance.load.assert_called_once()
         assert len(documents) == 1
+
 
 def test_load_file_unsupported():
     """
@@ -58,6 +64,7 @@ def test_load_file_unsupported():
     file_path = Path("dummy/archive.zip")
     documents = _load_file(file_path)
     assert documents == []
+
 
 @patch("src.loading._load_file")
 def test_load_from_directory(mock_load_file, tmp_path):
@@ -76,6 +83,7 @@ def test_load_from_directory(mock_load_file, tmp_path):
 
     assert mock_load_file.call_count == 3
     assert len(documents) == 3
+
 
 @pytest.mark.asyncio
 @patch("aiohttp.ClientSession.get")
@@ -106,6 +114,7 @@ async def test_load_from_url_success(mock_get, tmp_path):
         assert target_path.exists()
         assert documents[0].page_content == "content"
 
+
 def test_chunk_documents():
     """
     Tests that chunk_documents correctly splits a list of documents.
@@ -113,12 +122,12 @@ def test_chunk_documents():
     # Arrange
     docs = [
         Document(page_content="This is a long sentence. " * 500),
-        Document(page_content="This is another long sentence. " * 500)
+        Document(page_content="This is another long sentence. " * 500),
     ]
-    
+
     # Act
     chunked_docs = chunk_documents(docs)
-    
+
     # Assert
     assert len(chunked_docs) > len(docs)
     assert len(chunked_docs[0].page_content) < len(docs[0].page_content)

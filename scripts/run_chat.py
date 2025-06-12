@@ -1,21 +1,25 @@
-import sys
 import os
+import sys
 
 # Add the project root to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import logging
+
+import networkx as nx
 from langchain.retrievers import MergerRetriever
 from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
-import networkx as nx
 
-from src.loading import load_from_directory, chunk_documents
+from config import GRAPH_STORE_PATH, PDF_DIR, VECTOR_STORE_DIR
+from src.chain import create_rag_chain
 from src.embedding import create_vector_store, load_vector_store
 from src.graph import build_graph_from_documents
-from src.chain import create_rag_chain
-from config import PDF_DIR, VECTOR_STORE_DIR, GRAPH_STORE_PATH
+from src.loading import chunk_documents, load_from_directory
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def main():
     """
@@ -25,9 +29,11 @@ def main():
     logging.info(f"Loading documents from {PDF_DIR}...")
     docs = load_from_directory(PDF_DIR)
     if not docs:
-        logging.error("No documents found. Please add some PDFs to the 'pdfs' directory.")
+        logging.error(
+            "No documents found. Please add some PDFs to the 'pdfs' directory."
+        )
         return
-        
+
     chunks = chunk_documents(docs)
 
     # --- 2. Create or load the knowledge base ---
@@ -54,7 +60,7 @@ def main():
     graph_retriever = graph.as_retriever()
 
     retriever = MergerRetriever(retrievers=[vector_retriever, graph_retriever])
-    
+
     rag_chain = create_rag_chain(retrievers=[retriever])
 
     # --- 4. Start the chat loop ---
@@ -66,17 +72,18 @@ def main():
                 break
             if not query.strip():
                 continue
-                
+
             logging.info(f"Invoking RAG chain with query: '{query}'")
             result = rag_chain.invoke(query)
             print("\n", result, "\n")
-            
+
         except KeyboardInterrupt:
             print("\nExiting...")
             break
         except Exception as e:
             logging.error(f"An error occurred: {e}")
             print("\nSorry, an error occurred. Please try again.\n")
+
 
 if __name__ == "__main__":
     main()

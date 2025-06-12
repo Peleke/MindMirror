@@ -1,18 +1,19 @@
 import os
+from typing import List
+
 import networkx as nx
 from langchain.retrievers.merger_retriever import MergerRetriever
 from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
-from langchain_core.runnables.base import Runnable
-from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
-from typing import List
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.runnables.base import Runnable
 
+from config import DATA_DIR, GRAPH_STORE_PATH, PDF_DIR, VECTOR_STORE_DIR
 from src.chain import create_rag_chain
-from src.embedding import load_vector_store, create_vector_store
+from src.embedding import create_vector_store, load_vector_store
 from src.graph import build_graph_from_documents
-from src.loading import load_from_directory, chunk_documents
-from config import VECTOR_STORE_DIR, GRAPH_STORE_PATH, PDF_DIR
+from src.loading import chunk_documents, load_from_directory
 
 
 class SimpleGraphRetriever(BaseRetriever):
@@ -20,6 +21,7 @@ class SimpleGraphRetriever(BaseRetriever):
     A simple custom retriever for a NetworkX graph.
     It retrieves all triplets and returns them as a single document.
     """
+
     graph: NetworkxEntityGraph
 
     def _get_relevant_documents(
@@ -30,10 +32,10 @@ class SimpleGraphRetriever(BaseRetriever):
         for source, target, data in self.graph._graph.edges(data=True):
             relation = data.get("relation", "related to")
             triplets += f"{source} -[{relation}]-> {target}\n"
-        
+
         if not triplets:
             return []
-            
+
         return [Document(page_content=triplets)]
 
 
@@ -45,13 +47,16 @@ class CoachingEngine:
 
     def __init__(
         self,
-        pdf_dir: str = PDF_DIR,
-        vector_store_dir: str = VECTOR_STORE_DIR,
-        graph_store_path: str = GRAPH_STORE_PATH,
+        tradition: str = "canon-default",
+        data_dir: str = DATA_DIR,
     ):
-        self.pdf_dir = pdf_dir
-        self.vector_store_dir = vector_store_dir
-        self.graph_store_path = graph_store_path
+        self.tradition = tradition
+        self.data_dir = data_dir
+
+        tradition_data_dir = os.path.join(self.data_dir, self.tradition)
+        self.vector_store_dir = os.path.join(tradition_data_dir, "vectorstore")
+        self.graph_store_path = os.path.join(tradition_data_dir, "graph_store.json")
+
         self.retriever = None
         self.rag_chain = None
         self._initialize()
@@ -107,4 +112,25 @@ class CoachingEngine:
     def reload(self):
         """Forces a re-initialization of the engine and its data sources."""
         print("Reloading CoachingEngine...")
-        self._initialize() 
+        self._initialize()
+
+
+# --- Engine Cache ---
+# A simple cache to hold engine instances for different traditions.
+# This avoids re-initializing the engine for every request.
+engine_cache = {}
+
+
+def get_engine_for_tradition(tradition: str) -> CoachingEngine:
+    """
+    Retrieves or creates a CoachingEngine instance for a given tradition.
+    """
+    if tradition not in engine_cache:
+        print(f"Engine for tradition '{tradition}' not in cache. Initializing...")
+        try:
+            engine_cache[tradition] = CoachingEngine(tradition=tradition)
+            print(f"Engine for '{tradition}' initialized and cached.")
+        except FileNotFoundError:
+            print(f"ERROR: Knowledge base for tradition '{tradition}' not found.")
+            return None  # Or raise a specific GraphQL error
+    return engine_cache[tradition]

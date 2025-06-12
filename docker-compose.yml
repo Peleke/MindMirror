@@ -1,34 +1,77 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cyborg_coach_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-cyborg_coach}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: cyborg_coach_api
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cyborg_coach}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - API_PORT=8000
+      - UVICORN_RELOAD=false
+      - LOG_LEVEL=debug
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_CHAT_MODEL=llama3.2
+      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+      - LLM_PROVIDER=ollama
+      - EMBEDDING_PROVIDER=ollama
+      - I_AM_IN_A_DOCKER_CONTAINER=1
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - .:/app
-    env_file:
-      - .env
-    environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - I_AM_IN_A_DOCKER_CONTAINER=1
-    command: >
-      sh -c "poetry run python scripts/build_knowledge_base.py &&
-             poetry run uvicorn api:app --host 0.0.0.0 --port 8000"
+      - ./pdfs:/app/pdfs
+      - api_data:/app/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/graphql"]
-      interval: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
       timeout: 10s
       retries: 10
+      start_period: 60s
 
   ui:
-    build: .
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: cyborg_coach_ui
     environment:
       - API_HOST=api
+      - API_PORT=8000
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
       - I_AM_IN_A_DOCKER_CONTAINER=1
-    command: poetry run streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  api_data:
+ 

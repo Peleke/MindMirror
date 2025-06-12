@@ -1,32 +1,31 @@
 import logging
 from typing import List
-from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
-from langchain_ollama import OllamaEmbeddings
-from config import (
-    EMBEDDING_PROVIDER, 
-    OLLAMA_EMBEDDING_MODEL,
-    OLLAMA_BASE_URL
-)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
+from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+from config import EMBEDDING_PROVIDER, OLLAMA_BASE_URL, OLLAMA_EMBEDDING_MODEL
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def get_embedding_model():
     """
     Returns the embedding model based on the provider.
     """
     if EMBEDDING_PROVIDER == "ollama":
-        return OllamaEmbeddings(
-            model=OLLAMA_EMBEDDING_MODEL, 
-            base_url=OLLAMA_BASE_URL
-        )
+        return OllamaEmbeddings(model=OLLAMA_EMBEDDING_MODEL, base_url=OLLAMA_BASE_URL)
     else:
         return OpenAIEmbeddings()
 
+
 def create_vector_store(
-    documents: List[Document], 
+    documents: List[Document],
     db_path: str,
     batch_size: int = 32,
     progress_callback: callable = None,
@@ -45,7 +44,7 @@ def create_vector_store(
     """
     logger.info("Creating embeddings...")
     embeddings = get_embedding_model()
-    
+
     if not documents:
         raise ValueError("No documents provided to create a vector store.")
 
@@ -60,30 +59,31 @@ def create_vector_store(
 
     # Add subsequent batches
     for i in range(batch_size, len(documents), batch_size):
-        batch = documents[i:i+batch_size]
+        batch = documents[i : i + batch_size]
         texts = [doc.page_content for doc in batch]
         metadatas = [doc.metadata for doc in batch]
-        
+
         logger.info(f"Embedding batch from document {i} to {i+len(batch)}...")
         batch_embeddings = embeddings.embed_documents(texts)
-        
+
         text_embedding_pairs = list(zip(texts, batch_embeddings))
-        
+
         logger.info(f"Adding batch to vector store...")
         vectorstore.add_embeddings(text_embedding_pairs, metadatas=metadatas)
 
         if progress_callback:
             progress_callback(i + len(batch))
-    
+
     logger.info(f"Saving vector store to {db_path}...")
     vectorstore.save_local(folder_path=db_path)
-    
+
     return vectorstore
+
 
 def load_vector_store(db_path: str) -> FAISS:
     """
     Loads a FAISS vector store from a local path.
-    
+
     Args:
         db_path (str): The path to the FAISS index.
 
@@ -93,9 +93,9 @@ def load_vector_store(db_path: str) -> FAISS:
     logger.info(f"Loading vector store from {db_path}...")
     embeddings = get_embedding_model()
     vectorstore = FAISS.load_local(
-        folder_path=db_path, 
-        embeddings=embeddings, 
-        allow_dangerous_deserialization=True # Required for FAISS
+        folder_path=db_path,
+        embeddings=embeddings,
+        allow_dangerous_deserialization=True,  # Required for FAISS
     )
     logger.info("Vector store loaded successfully.")
     return vectorstore

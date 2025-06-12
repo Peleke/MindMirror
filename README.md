@@ -1,57 +1,63 @@
-# 📚 Librarian AI — Your Personal AI-Powered Library Agent
+# 🏋️‍♂️ Cyborg Coach — Your AI-Powered Performance Companion
 
-Librarian AI is an intelligent agent that transforms your private document corpus—starting with a massive PDF book collection—into a fully navigable, queryable digital librarian. It's built with LangChain and Graph RAG to support both deep semantic understanding and structural knowledge across your documents.
+Cyborg Coach (evolved from Librarian AI) is an intelligent agent that combines journaling, meal suggestions, and performance reviews into a comprehensive coaching system. Built with FastAPI, GraphQL, and LangChain, it provides personalized guidance based on your goals, activities, and reflections.
 
 ## 🔭 Vision
 
-Information shouldn't be trapped in static documents. Librarian AI turns passive books into active agents that:
+Your personal development shouldn't exist in silos. Cyborg Coach connects:
 
--   **Answer questions with citations**: Get answers grounded in your source material.
--   **Understand relationships**: Uncover connections between concepts, people, and ideas across your library.
--   **Generate new content**: Create summaries, quizzes, articles, and learning materials on demand.
--   **Scale with you**: From a personal library to an entire organization's knowledge base.
+-   **Reflective Journaling**: Structured gratitude, reflection, and freeform entries
+-   **Intelligent Meal Suggestions**: Based on your goals, recent workouts, and preferences  
+-   **Performance Reviews**: AI-generated insights from your activity and journal history
+-   **Document-Based Coaching**: RAG-powered advice from your uploaded knowledge base
 
-Think: ChatGPT meets your personal library—with memory and superpowers.
+Think: A personal coach that remembers everything and learns from your patterns.
 
 ## 🧠 Architecture
 
-The system follows a multi-stage pipeline from raw documents to an interactive chat application.
+The system follows a multi-layer architecture from data ingestion to interactive applications.
 
 ```mermaid
 graph TD
-    subgraph "1. Data Ingestion & Processing"
-        A[📚 PDF Books] --> B{LangChain PDF Loader};
-        B --> C{Text Splitter};
-        C --> D[📄 Chunked Documents];
+    subgraph "Frontend Layer"
+        A[🖥️ Streamlit UI] --> B[📱 Mobile App];
+        B --> C[🌐 Web Dashboard];
     end
 
-    subgraph "2. Knowledge Extraction"
-        D --> E{Embedding Model};
-        E --> F[💾 Vector Store (FAISS)];
-        D --> G{LLM for Graph Extraction};
-        G --> H[🕸️ Knowledge Graph (NetworkX)];
+    subgraph "API Gateway"
+        D[🚪 Auth Gateway] --> E[🔑 JWT + User ID];
+        E --> F[📊 GraphQL API];
     end
 
-    subgraph "3. Retrieval & Generation"
-        I[🧑‍💻 User Query] --> J{Graph-RAG Retriever};
-        F --> J;
-        H --> J;
-        J --> K{LLM};
-        K --> L[💬 Answer with Citations];
+    subgraph "Service Layer"
+        F --> G[📝 Journal Service];
+        F --> H[🍽️ Suggestion Service];
+        F --> I[📈 Review Service];
+        G --> J[🗄️ PostgreSQL];
+        H --> K[🤖 RAG Engine];
+        I --> K;
+    end
+
+    subgraph "Data & AI"
+        K --> L[📚 Vector Store];
+        K --> M[🕸️ Knowledge Graph];
+        L --> N[📄 PDF Documents];
+        M --> N;
     end
 
     style F fill:#f9f,stroke:#333,stroke-width:2px
-    style H fill:#ccf,stroke:#333,stroke-width:2px
+    style J fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
-## 🚀 Getting Started: One-Command Demo
+## 🚀 Getting Started: Production Setup
 
-This project is fully containerized with Docker, allowing you to launch the entire application stack—the GraphQL API and the Streamlit UI—with a single command.
+This project is designed for a microservices architecture with proper authentication and database infrastructure.
 
 **Prerequisites:**
 *   Docker and Docker Compose
+*   OpenAI API Key
 
-**Instructions:**
+**Quick Start:**
 
 1.  **Clone the Repository**
     ```bash
@@ -59,129 +65,118 @@ This project is fully containerized with Docker, allowing you to launch the enti
     cd librarian-ai
     ```
 
-2.  **Set Your API Key**
-    Create a `.env` file in the root of the project and add your OpenAI API key:
-    ```
+2.  **Set Environment Variables**
+    Create a `.env` file:
+    ```env
     OPENAI_API_KEY=your_key_here
+    DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/cyborg_coach
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=postgres
+    POSTGRES_DB=cyborg_coach
     ```
 
-3.  **Launch the Application**
+3.  **Launch the Stack**
     ```bash
     docker-compose up --build
     ```
-    This command will:
-    *   Build the Docker image for the application.
-    *   Start the API service, which will first build the knowledge base from the documents in `/pdfs`.
-    *   Start the Streamlit UI service.
 
-4.  **Access the Coach**
-    Once the build is complete, open your web browser and navigate to **http://localhost:8501** to start interacting with your AI Coach.
+4.  **Access the Applications**
+    - **GraphQL API**: http://localhost:8000/graphql
+    - **Streamlit UI**: http://localhost:8501 (TODO)
+    - **Documentation**: http://localhost:8000/docs
 
 ## 🛠️ Core Features
 
--   **RAG-based Chatbot**: Engage in conversations with your documents via a chatbot that uses embedded context.
--   **Graph-Enhanced Retrieval**: Detect and navigate complex relationships (e.g., *who invented what*, *what concepts are related*).
--   **LLM-Generated Citations**: Get citations with source filenames and page numbers for every answer.
--   **Extensible Agent Framework**: Add tools to generate flashcards, write summaries, or even quiz you on the material.
+-   **✅ GraphQL API**: Full CRUD operations for journal entries with type-safe schema
+-   **✅ Structured Journaling**: Gratitude, reflection, and freeform entry types
+-   **✅ Meal Suggestions**: AI-powered recommendations based on goals and activity
+-   **✅ Performance Reviews**: Bi-weekly insights from integrated data sources
+-   **✅ RAG Integration**: Document-based coaching advice with citations
+-   **🟡 Authentication**: Gateway-based JWT + user ID system (in progress)
+-   **🟡 Streamlit UI**: Interactive frontend (in progress)
+-   **🟡 Production Docker**: Full stack deployment (in progress)
 
 ## 🧪 Project Status
 
-| Component         | Status      |
-| ----------------- | ----------- |
-| PDF Loader        | ✅ Done      |
-| Text Chunking     | ✅ Done      |
-| Vector Store      | ✅ Done      |
-| Graph Store       | ✅ Done      |
-| Chatbot (CLI)     | ✅ Done      |
-| Streamlit UI      | ✅ Done      |
-| Multi-agent tools | 🟡 TODO      |
+| Component         | Status      | Notes |
+| ----------------- | ----------- | ----- |
+| GraphQL API       | ✅ Done      | Full schema with unions, mutations |
+| Journal Service   | ✅ Done      | CRUD with validation constraints |
+| Suggestion Service| ✅ Done      | Meal recommendations + reviews |
+| RAG Engine        | ✅ Done      | Document-based Q&A with citations |
+| Test Suite        | ✅ Done      | 17 passing tests with Docker DB |
+| Authentication    | 🟡 In Progress | Gateway-based JWT system |
+| Streamlit UI      | 🟡 TODO      | Interactive frontend |
+| Production Setup  | 🟡 TODO      | Docker-compose with real DB |
 
 ## 🧰 Tech Stack
 
 | Layer           | Technology                   |
 | --------------- | ---------------------------- |
-| LLM             | OpenAI / Anthropic           |
-| RAG Framework   | LangChain, LangGraph         |
-| Graph Store     | NetworkX (local), Neo4j (scalable) |
-| Vector DB       | FAISS (local), Chroma (scalable) |
-| PDF Parser      | PyMuPDF                      |
-| UI              | CLI, Streamlit    |
-| Infrastructure  | Local-first, designed for cloud |
+| **API**         | FastAPI + Strawberry GraphQL |
+| **Database**    | PostgreSQL + SQLAlchemy Async |
+| **AI/RAG**      | LangChain + OpenAI |
+| **Frontend**    | Streamlit (planned: React) |
+| **Auth**        | Gateway JWT + User Headers |
+| **Infrastructure** | Docker + Docker Compose |
+| **Testing**     | Pytest + AsyncIO + Docker |
 
-## 🧱 How it Works: Dev Flow
+## 🔧 Development Flow
 
-1.  **Clone the Repo**: Get the project structure on your local machine.
-2.  **Install Dependencies**: Run `poetry install`.
-3.  **Add Documents**: Drop your PDFs into the `/pdfs` directory.
-4.  **Set Environment**: Create a `.env` file and add your `OPENAI_API_KEY`.
-5.  **Run the App**: Launch the Streamlit UI with `poetry run streamlit run app.py`. The app will handle data ingestion on the first run.
-6.  **Chat**: Start asking questions!
+1.  **Clone & Setup**: `poetry install` for dependencies
+2.  **Environment**: Copy `.env.example` and add your API keys
+3.  **Database**: `docker-compose up postgres` for local DB
+4.  **Run API**: `poetry run uvicorn api:app --reload`
+5.  **Run Tests**: `poetry run pytest`
+6.  **GraphQL Playground**: Visit http://localhost:8000/graphql
 
-## 🗂️ Project Scaffold
+## 📊 API Examples
 
-Here's the full project structure. You can use this to set up your workspace.
-
-```
-librarian-ai/
-├── pdfs/                      # Drop your PDFs here
-├── data/
-│   ├── vectorstore/           # Persisted vector DB
-│   ├── graph_store.json       # Persisted graph data
-│   └── docs_cache.json        # Cache for parsed docs
-├── src/
-│   ├── __init__.py
-│   ├── loading.py             # Loads and chunks PDFs
-│   ├── embedding.py           # Embeds docs to vector store
-│   ├── graph.py               # Extracts and builds knowledge graph
-│   └── chain.py               # RAG chain and chatbot logic
-├── scripts/
-│   ├── run_ingestion.py       # Script to run the full data pipeline
-│   └── run_chat.py            # Script to start the chatbot
-├── .env                       # Secrets (e.g., OPENAI_API_KEY)
-├── config.py                  # Paths, model config, etc.
-├── poetry.lock                # Poetry lock file
-├── pyproject.toml             # Python dependencies
-└── README.md
+**Create a Journal Entry:**
+```graphql
+mutation CreateReflection($input: ReflectionEntryInput!) {
+  createReflectionJournalEntry(input: $input) {
+    id
+    userId
+    payload {
+      wins
+      improvements
+    }
+  }
+}
 ```
 
-## 📄 pyproject.toml dependencies
-
-```txt
-langchain
-langgraph
-langchain-experimental
-openai
-tiktoken
-faiss-cpu
-PyMuPDF
-networkx
-python-dotenv
-streamlit
+**Get Meal Suggestion:**
+```graphql
+query GetMealSuggestion($tradition: String!, $mealType: String!) {
+  mealSuggestion(tradition: $tradition, mealType: $mealType)
+}
 ```
 
-## 🔧 config.py
+## 🔐 Authentication Architecture
 
-```python
-import os
-from dotenv import load_dotenv
+The system is designed to work with a gateway-based auth system:
 
-load_dotenv()
-
-PDF_DIR = "./pdfs"
-VECTOR_STORE_DIR = "./data/vectorstore"
-GRAPH_STORE_PATH = "./data/graph_store.json"
-DOCS_CACHE_PATH = "./data/docs_cache.json"
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+```
+[Client] → [Auth Gateway] → [Cyborg Coach API]
+           ↓
+         - Validates JWT
+         - Adds x-internal-id header
+         - Forwards to service
 ```
 
-📈 Scaling & Revenue Potential
-This foundation unlocks:
+The service receives:
+- `request.extensions.jwt` (parsed by gateway)
+- `x-internal-id` header (business logic user ID)
 
-Internal enterprise knowledge assistants
+## 📈 Next Steps
 
-Custom book/course tutors
+1. **🎯 Streamlit Frontend**: Interactive UI for journaling and suggestions
+2. **🐳 Production Docker**: Full stack with PostgreSQL container
+3. **🔑 Auth Integration**: Proper JWT + user ID handling
+4. **📱 Mobile-First**: Responsive design for daily use
+5. **🚀 Deployment**: Cloud hosting with CI/CD
 
-B2C learning assistants from proprietary content
+---
 
-Generative tools for authors, publishers, and coaches
+**Vision**: Transform scattered personal development practices into a unified, AI-enhanced coaching experience.

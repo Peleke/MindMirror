@@ -1,70 +1,111 @@
-# 🧠 The Cyborg Coach: A Roadmap for Hyper-Personalized Performance
+# 🧠 Cyborg Coach: Vision & Roadmap
 
-## 1. The Vision: From AI Coach to Digital Twin
+## 1. The Vision: Your Generative Performance Engine
 
-The current PoC is an *AI Coach*. It's powerful, but it's still external. The next evolution is to create a **Cyborg Coach**—a symbiotic system that fuses trusted, external wisdom with a user's own internal, subjective experience.
+The Cyborg Coach is a symbiotic system that fuses trusted, external wisdom with a user's own internal, subjective experience. It is not merely a tool, but a digital twin of the user's performance journey.
 
-This system won't just answer questions; it will become a digital twin of the user's performance journey. It will understand their goals, learn their preferences from their history, process their reflections from their journal, and synthesize it all with world-class knowledge bases (`Traditions`).
-
-The ultimate goal is to create a generative performance engine. A user shouldn't just ask "What should I eat?"; they should be able to ask, "Generate a 7-day meal plan, in the style of my coach's notes, that helps me get conditioned for combat sports, avoids shellfish, and costs less than $15 a day." This is a generative, goal-oriented, and hyper-personalized system.
+The ultimate goal is to create a **generative performance engine**. A user shouldn't just ask "What should I eat?"; they should be able to state a complex, multi-faceted goal in natural language and have the system generate a complete, actionable plan.
 
 ---
 
-## 2. Phased Implementation Plan
+## 2. Personas We Serve
 
-This plan is broken into distinct, demo-able milestones. Each milestone delivers a tangible leap in user value and gets us closer to the full vision.
+We are building for individuals who are proactive about their well-being but face common, complex challenges. Our target personas include:
 
-### ✅ **Milestone 1: The Curated Canon & The Journal**
-*   **Goal:** Establish the foundation of user-specific knowledge and subjective experience capture.
-*   **Demo Target:** A user can select a "Tradition" (e.g., "Stoic Fitness", "Paleo Performance") which grounds the AI's personality and advice. They can write and save a journal entry, which is then visible in their history.
+*   **The Overwhelmed Beginner:** Knows they need to make a change but is paralyzed by information overload and a fear of getting it wrong. They need clear guidance, a low barrier to entry, and a plan that feels achievable.
+    *   *"I've been running and lifting some weights for a while but don't really know what to do next. I like yoga a lot. Can you make me a 6-week program for getting started with strength? I'm scared of gyms though."*
 
-*   **TDD Roadmap:**
-    *   [ ] **Task 1.1 (Data):** Create subdirectories in `/pdfs` for different "traditions" (e.g., `/pdfs/canon-paleo`, `/pdfs/canon-keto`). Pre-load with 1-2 documents each.
-    *   [ ] **Task 1.2 (Engine):** Modify `build_knowledge_base` in `src/data_processing.py` to be parameterized, building stores into tradition-specific subdirectories (e.g., `data/paleo/vectorstore`).
-    *   [ ] **Task 1.3 (Engine):** Modify the `CoachingEngine` to be initialized with a specific `tradition`, loading from the correct data path.
-      - CONSTRAINT: Abstract the `Tradition` here; we want this to be "injectable"/fetchable from a database.
-    *   [ ] **Task 1.4 (API):** Update the `ask` query to take a `tradition` argument, which will require a mechanism to dynamically load the correct engine instance (or re-initialize it). A simple dictionary mapping traditions to engine instances would suffice for the PoC.
-      - CONSTRAINT: Similar to above; ensure an interface abstraction.
-    *   [ ] **Task 1.5 (API):** Create `saveJournalEntry` and `getJournalEntries` mutations (takes `userId` and `text`). For the PoC, this can save to a simple `journal_entries.json` file.
-      - CONSTRAINT: Similar to above. Let's create `repository` layers to handle data writes; we'll then wrap these in passthrough services, which we'll use in the resolvers.
-    *   [ ] **Task 1.6 (UI):** Add a dropdown in the Streamlit sidebar to select the active "Tradition." All subsequent `ask` calls from the UI will use this selection.
-    *   [ ] **Task 1.7 (UI):** Add a "My Journal" section to the UI with a text area and a "Save Entry" button. Display past entries for the current user below the text area.
-      - CONSTRAINT: similar; repo pattern should make it easy to use local files for this for now but easily swap for a DB
+*   **The Life-Constrained Optimizer:** Already has an established routine and goals but needs to adapt them to the messy reality of life—travel, stress, lack of equipment, or fluctuating energy levels.
+    *   *"I'm going on vacation for two weeks with no equipment. I'd like to keep working out to the same goals; can you update my plans?"*
 
-### ✅ **Milestone 2: The Goal-Oriented Coach**
-*   **Goal:** Make the AI aware of the user's specific objectives and enable basic, goal-oriented recommendations.
-*   **Demo Target:** A user can define a simple goal profile (e.g., "gain muscle," "3500 calories/day"). They can then ask "What should I eat for dinner?" and get a reasonable, context-aware suggestion based on their goal and trusted "Tradition."
+*   **The Holistic Explorer:** Views their body and mind as a single system and is keen to experiment with different philosophies (e.g., Ayurveda, Stoicism, Paleo) to see how they impact mood, energy, and performance.
+    *   *"I'm having trouble sleeping; I'm pretty sure it's my eating. Can you give me an Ayurvedic diet and adjust my yoga flows? I've been having lots of kapha energy."*
 
-*   **TDD Roadmap:**
-    *   [ ] **Task 2.1 (API):** Define a `UserProfile` GraphQL type (goals, calorie targets, macros, free-text objective).
-    *   [ ] **Task 2.2 (API):** Create `saveUserProfile` and `getUserProfile` mutations/queries. Store this in a `user_profiles.json` file for the PoC.
-    *   [ ] **Task 2.3 (API):** Create a `getMealSuggestion` query. This query will orchestrate the magic:
-        *   It takes `userId` and `meal_type` (e.g., "dinner").
-        *   It fetches the user's profile.
-        *   It constructs a detailed, structured prompt for the RAG chain (e.g., "Based on the context, suggest a dinner for a user whose goal is to 'gain muscle'...").
-        *   It calls the appropriate engine's `ask` method with the detailed prompt.
-    *   [ ] **Task 2.4 (UI):** Create a "My Profile" section in the Streamlit app where a user can input and save their goals.
-    *   [ ] **Task 2.5 (UI):** Add a "What Should I Eat?" button/feature that triggers the new `getMealSuggestion` query and displays the structured recommendation.
-
-### ✅ **Milestone 3: The Integrated Cyborg (Connecting External Data)**
-*   **Goal:** Begin the true synthesis by integrating external, objective data with the user's subjective journal and trusted knowledge.
-*   **Demo Target:** The "What should I eat?" recommendation now cross-references the user's (mocked) food history, actively avoiding disliked foods and suggesting favorites. The AI can now answer questions like, "Based on my journal, what should I eat for better energy?"
-
-*   **TDD Roadmap:**
-    *   [ ] **Task 3.1 (Engine):** The journal entries for a user should be included as part of the context for the RAG chain. This may involve creating a simple retriever for the user's journal entries and adding it to the `MergerRetriever`.
-    *   [ ] **Task 3.2 (API):** Create a mocked "Meals Service" client in a new `src/external/meals_client.py`. It will have a function like `get_user_nutritional_history(user_id)` that returns a hardcoded list of favorite and disliked foods.
-    *   [ ] **Task 3.3 (API):** Update the `getMealSuggestion` query logic to call the new `meals_client`.
-    *   [ ] **Task 3.4 (API):** Augment the RAG prompt for `getMealSuggestion` to include this new context (e.g., "...The user's favorite foods are 'steak' and 'eggs'. They dislike 'broccoli'.").
-    *   [ ] **Task 3.5 (TDD):** Write an integration test for the `getMealSuggestion` query that mocks the `meals_client` and confirms the prompt includes the nutritional history.
+*   **The Habit Builder:** Feels "off track" and needs help building foundational habits to regain a sense of control and well-being, starting with small, atomic actions.
+    *   *"I'm a fucking wreck lately. Give me 4 habits to build that will help me with sleep and eating a reasonable diet."*
 
 ---
-## 3. Packaging the Demo
 
-Before beginning the next phase, we must package the current work for a clean, impressive demo.
+## 3. The Architecture: A Federated Agentic System
 
-*   **Goal:** A one-command launch that brings up the UI and API, ready for interaction.
+To serve these needs, we are building a distributed system of specialized microservices, orchestrated by a central **Agent Service**.
+
+### Core Domain Services
+
+These are standard, "dumb" CRUD services that manage a specific domain of data. They expose their functionality via a federated GraphQL schema.
+
+*   **Users:** The source of truth for user identity. Maps auth provider IDs to internal IDs and manages service access/subscriptions.
+*   **Practices:** Manages workout templates, programs (sequences of workouts), and user enrollments. Includes a local RBAC system for coaches and clients.
+*   **Meals:** Tracks food items, recipes, meal logs, and user-specific nutritional goals.
+*   **Journaling:** (To be extracted from the current monolith) Manages structured (Gratitude, Reflection) and unstructured journal entries.
+*   **Movements (The "Brain"):** A data-only service with a graph-native representation of exercises, their relationships (progressions, regressions, variants), and contraindications.
+*   **Future Services:** `Sleep`, `Menstrual Tracking`, `Causal AI/Experiments`.
+
+### The Agent Service (The "Heart")
+
+This is the only service with direct access to LLMs. It consumes the federated GraphQL API of the other services to execute complex, multi-step plans. Its workflow is:
+1.  Receive a natural language command from the user.
+2.  **Intent Router:** Classify the command. Is it a simple RAG query or a complex action?
+3.  **LangGraph Planner:** If it's an action, create a multi-step plan using a "Tool Belt" of available functions.
+4.  **Tool Execution:** Execute the plan by calling the necessary GraphQL queries/mutations on the federated gateway.
+5.  **Synthesize Response:** Formulate a human-readable summary of the actions taken.
+
+---
+
+## 4. Phased Implementation Plan
+
+### ✅ Milestone 1: The Curated Canon & The Journal
+*   **Status:** COMPLETE
+*   **Outcome:** A functional monolith PoC where a user can select a knowledge base ("Tradition") and interact with a basic RAG and Journaling system.
+
+### ✅ Milestone 2: The Aware Synthesist
+*   **Status:** COMPLETE
+*   **Outcome:** The PoC can synthesize data from mocked external services to provide contextual meal suggestions and bi-weekly performance reviews. Structured journaling (Gratitude, Reflection) is implemented.
+
+### 🟡 Milestone 3: The Production-Ready Foundation
+*   **Status:** IN PROGRESS
+*   **Goal:** Harden the PoC by migrating critical services to a robust, database-backed foundation, preparing for the distributed architecture.
 *   **TDD Roadmap:**
-    *   [ ] **Task 1:** Pre-load the `./pdfs` directory with 2-3 canonical nutrition/fitness texts for a compelling default "Tradition."
-    *   [ ] **Task 2:** Create a `docker-compose.yml` file to run the API server and the Streamlit UI as separate services.
-    *   [ ] **Task 3:** Add a `build` step in the `docker-compose.yml` for the API service that runs the `scripts/build_knowledge_base.py` script, ensuring the data is ready before the server starts.
-    *   [ ] **Task 4:** Update the main `README.md` with simple, clear instructions: `git clone ...`, `docker-compose up`, and a link to the Streamlit UI. 
+    *   **Task 3.1 (Database):** Introduce SQLAlchemy. Migrate the `JournalRepository` from a JSON file to a PostgreSQL database.
+    *   **Task 3.2 (Services):** Formally define the `JournalService` and `PracticeService` boundaries within the monolith. Begin building out the `PracticeRepository` with SQLAlchemy models.
+    *   **Task 3.3 (Containerization):** Finalize `docker-compose.yml` for a one-command launch of the application and its database. Ensure data persistence across restarts.
+
+### 🤖 Milestone 4: The Distributed Agent
+*   **Status:** TODO
+*   **Goal:** Refactor the monolith into the target federated microservices architecture.
+*   **TDD Roadmap:**
+    *   **Task 4.1 (Contracts):** Define the full GraphQL schemas for `Journals`, `Practices`, and `Users`.
+    *   **Task 4.2 (Federation):** Introduce a Hive GraphQL Gateway. Decompose the monolith and stand up the `JournalService` and `PracticeService` as independent microservices federated under the gateway.
+    *   **Task 4.3 (Agent Extraction):** Create the new `Agent Service`. Lift and shift the LLM-based logic (currently in `SuggestionService`) into this new service.
+    *   **Task 4.4 (Tooling):** Implement the agent's Tool Belt. The tools will not call Python services directly but will instead make GraphQL calls to the Hive Gateway, completing the decoupling.
+
+# Cyborg Coach Vision: Milestone 2 & 3
+
+This document outlines the product vision for the next phases of the Cyborg Coach, building upon the foundational RAG and API architecture.
+
+## Milestone 2: The Aware Synthesist (In Progress)
+
+**Goal:** Make the coach's advice contextual to the user's immediate goals and history. The coach moves from being a passive Q&A agent to a proactive, aware partner.
+
+### Features
+
+1.  **Reactive Meal Suggestions (`getMealSuggestion`) - ✅ COMPLETE**
+    *   **User Story:** As a user, when I'm wondering what to eat, I can ask the coach for a suggestion that aligns with my calorie/protein goals and my last workout.
+    *   **Implementation:** An API endpoint that takes user context (goals, history) and uses the RAG engine to generate a specific, tradition-aligned meal suggestion.
+
+2.  **Reflective Performance Reviews (`generateReview`) - ✅ COMPLETE**
+    *   **User Story:** As a user, every two weeks, I want the coach to analyze my workout, meal, and journal history to give me a summary of what I did well, where I can improve, and what to focus on next.
+    *   **Implementation:** An API endpoint that synthesizes data from multiple (mocked) client services and the user's journal, feeding it into a comprehensive prompt for the RAG engine to generate a structured review.
+
+3.  **Structured Journaling (`createGratitudeJournalEntry`, `createReflectionJournalEntry`) - 🟡 TODO**
+    *   **User Story (Morning):** As a user, at the start of my day, I want the coach to prompt me to list things I'm grateful for and excited about, set a focus, and state an affirmation, so I can begin my day with intention.
+    *   **User Story (Evening):** As a user, at the end of my day, I want the coach to prompt me to list my wins and identify areas for improvement, so I can close my day with reflection.
+    *   **Implementation:** The application will feature distinct "Gratitude" and "Reflection" journaling modes. These will be structured forms presented to the user daily. The data will be stored with a specific type, distinguishing it from regular free-form journal entries, and will be incorporated into the bi-weekly performance reviews to provide deeper insights into the user's mindset and progress.
+
+## Milestone 3: The Proactive Companion
+
+**Goal:** Enable the coach to initiate interactions, manage long-term memory, and perform actions on the user's behalf.
+
+*   **Proactive Nudges:** The coach will send notifications (e.g., "You haven't logged a workout in 3 days, how about a short one today?") based on user patterns.
+*   **Long-Term Memory & Evolution:** The coach will remember key conversations, user preferences, and evolving goals over months, not just days.
+*   **Agentic Actions:** The coach will be able to perform actions like "add this suggested meal to my cronometer" or "schedule a 30-min workout on my calendar." 

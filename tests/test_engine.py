@@ -1,8 +1,11 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import networkx as nx
-from src.engine import CoachingEngine, SimpleGraphRetriever
+import pytest
 from langchain_core.retrievers import BaseRetriever
+
+from src.engine import CoachingEngine, SimpleGraphRetriever
+
 
 @patch("src.engine.create_rag_chain")
 @patch("src.engine.load_vector_store")
@@ -34,7 +37,7 @@ def test_coaching_engine_initialization(
     mock_vector_store = MagicMock()
     mock_vector_store.as_retriever.return_value = MagicMock(spec=BaseRetriever)
     mock_load_vector_store.return_value = mock_vector_store
-    
+
     # Mock the graph reading
     mock_read_gml.return_value = nx.DiGraph()
 
@@ -47,4 +50,4 @@ def test_coaching_engine_initialization(
     assert engine.rag_chain is not None
     mock_load_vector_store.assert_called_once()
     mock_read_gml.assert_called_once()
-    mock_create_rag_chain.assert_called_once() 
+    mock_create_rag_chain.assert_called_once()

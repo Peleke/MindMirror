@@ -1,0 +1,66 @@
+# First stage: Build stage with Poetry
+FROM python:3.11-slim AS builder
+
+# Allow statements and log messages to immediately appear in the logs
+ENV PYTHONUNBUFFERED=True
+
+# Set work directory
+WORKDIR /tmp
+
+# Install Poetry
+RUN pip install poetry poetry-plugin-export
+
+# Copy only the necessary files for dependency installation
+COPY ./pyproject.toml ./poetry.lock* /tmp/
+
+# Allow setting a build argument for PROD/DEV builds
+ARG PROD=0
+
+# Install dependencies based on the PROD flag
+RUN if [ "$PROD" = "1" ]; then \
+      poetry export -f requirements.txt --output requirements.txt --without-hashes; \
+    else \
+      poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
+    fi
+
+# Second stage: Production/Runtime stage
+FROM python:3.11-slim
+
+# Set the working directory to /app
+ENV APP_HOME=/app
+WORKDIR $APP_HOME
+ENV PYTHONPATH=/app
+
+# Create a non-root user and group for security
+RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
+
+# Install curl (useful for healthchecks, etc.) and other essential packages
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements.txt from the builder stage
+COPY --from=builder /tmp/requirements.txt .
+
+# Install runtime dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application source code
+COPY . .
+
+# Create directories for uploads and vector stores
+RUN mkdir -p /app/pdfs /app/vector_stores
+
+# Change ownership of the app directory to the non-root user
+RUN chown -R appuser:appuser $APP_HOME
+
+# Switch to the non-root user
+USER appuser
+
+# Expose the port the app runs on
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Command to run the server
+CMD ["python", "-m", "src.web.server"] 
