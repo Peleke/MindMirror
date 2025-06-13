@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -36,6 +37,9 @@ from src.services.journal_service import JournalService
 from src.services.suggestion_service import SuggestionService
 from src.services.tradition_service import TraditionService
 from src.uow import UnitOfWork, get_uow
+from src.web.hooks import router as hooks_router
+
+logger = logging.getLogger(__name__)
 
 # --- App Lifespan Management ---
 
@@ -186,6 +190,49 @@ class Query:
             )
             return MealSuggestion(suggestion=suggestion_text)
 
+    @strawberry.field
+    async def semantic_search(
+        self, 
+        info: Info[GraphQLContext, None], 
+        query: str,
+        tradition: str = "canon-default",
+        include_personal: bool = True,
+        include_knowledge: bool = True,
+        entry_types: Optional[List[str]] = None,
+        limit: int = 10
+    ) -> List[str]:
+        """Performs semantic search across knowledge base and personal journal entries."""
+        from src.vector_stores.qdrant_client import get_qdrant_client
+        from src.embedding import get_embedding
+        
+        current_user = info.context["current_user"]
+        
+        try:
+            # Generate embedding for the search query
+            query_embedding = await get_embedding(query)
+            if not query_embedding:
+                return []
+            
+            # Get Qdrant client and perform hybrid search
+            qdrant_client = get_qdrant_client()
+            search_results = await qdrant_client.hybrid_search(
+                query=query,
+                user_id=str(current_user.id),
+                tradition=tradition,
+                query_embedding=query_embedding,
+                include_personal=include_personal,
+                include_knowledge=include_knowledge,
+                entry_types=entry_types,
+                limit=limit
+            )
+            
+            # Return the text content from search results
+            return [result.text for result in search_results]
+            
+        except Exception as e:
+            logger.error(f"Semantic search failed: {e}")
+            return []
+
 
 @strawberry.type
 class Mutation:
@@ -238,152 +285,186 @@ class Mutation:
 
             # Improved parsing that can handle various formats
             try:
-                lines = [
-                    line.strip() for line in review_text.split("\n") if line.strip()
-                ]
+                # Clean up the response text
+                cleaned_text = review_text.strip()
+                
+                # Initialize default values
+                key_success = "Your progress shows positive momentum - keep building on your current habits."
+                improvement_area = "Focus on consistency in your daily practices to maximize long-term growth."
+                journal_prompt = "What one small change could you make this week to move closer to your goals?"
 
-                # Try to extract structured data from various formats
-                key_success = "Unable to identify key success."
-                improvement_area = "Unable to identify improvement area."
-                journal_prompt = "Reflect on your recent progress and set an intention for the week ahead."
-
-                # Parse the response looking for the sections
-                current_section = None
-                section_content = []
-
-                for line in lines:
-                    lower_line = line.lower()
-
-                    # Check if this line is a section header
-                    if any(
-                        keyword in lower_line
-                        for keyword in ["**key success", "key success:", "**success"]
-                    ):
-                        if current_section and section_content:
+                # Strategy 1: Look for bold markdown headers (most specific)
+                import re
+                
+                # Patterns to match the sections with various formatting
+                patterns = {
+                    'key_success': [
+                        r'\*\*Key Success:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Key Success:?\s*(.+?)(?=\n(?:Area|Journal|\*\*)|$)',
+                        r'\*\*Success:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Success:?\s*(.+?)(?=\n(?:Area|Journal|\*\*)|$)'
+                    ],
+                    'improvement_area': [
+                        r'\*\*Area for Improvement:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Area for Improvement:?\s*(.+?)(?=\n(?:Journal|\*\*)|$)',
+                        r'\*\*Improvement:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Improvement:?\s*(.+?)(?=\n(?:Journal|\*\*)|$)'
+                    ],
+                    'journal_prompt': [
+                        r'\*\*Journal Prompt:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Journal Prompt:?\s*(.+?)(?=\n|\Z)',
+                        r'\*\*Prompt:?\*\*\s*(.+?)(?=\*\*|\n\n|\Z)',
+                        r'Prompt:?\s*(.+?)(?=\n|\Z)'
+                    ]
+                }
+                
+                # Try to extract each section using regex patterns
+                for section, section_patterns in patterns.items():
+                    for pattern in section_patterns:
+                        match = re.search(pattern, cleaned_text, re.IGNORECASE | re.DOTALL)
+                        if match:
+                            extracted_text = match.group(1).strip()
+                            # Clean up the extracted text
+                            extracted_text = re.sub(r'\*+', '', extracted_text)  # Remove asterisks
+                            extracted_text = extracted_text.replace('\n', ' ')  # Replace newlines with spaces
+                            extracted_text = re.sub(r'\s+', ' ', extracted_text)  # Normalize whitespace
+                            
+                            if len(extracted_text) > 10:  # Only use if it's substantial
+                                if section == 'key_success':
+                                    key_success = extracted_text
+                                elif section == 'improvement_area':
+                                    improvement_area = extracted_text
+                                elif section == 'journal_prompt':
+                                    journal_prompt = extracted_text
+                                break  # Found a match for this section, stop trying patterns
+                
+                # Strategy 2: If regex failed, try line-by-line parsing
+                if (key_success == "Your progress shows positive momentum - keep building on your current habits." or 
+                    improvement_area == "Focus on consistency in your daily practices to maximize long-term growth." or 
+                    journal_prompt == "What one small change could you make this week to move closer to your goals?"):
+                    
+                    lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
+                    
+                    current_section = None
+                    section_content = []
+                    
+                    for line in lines:
+                        line_lower = line.lower()
+                        
+                        # Check for section headers
+                        if any(keyword in line_lower for keyword in ['key success', 'success:']):
+                            # Save previous section if any
+                            if current_section and section_content:
+                                content = ' '.join(section_content).strip()
+                                content = re.sub(r'\*+', '', content)
+                                if len(content) > 10:
+                                    if current_section == 'key_success':
+                                        key_success = content
+                                    elif current_section == 'improvement_area':
+                                        improvement_area = content
+                                    elif current_section == 'journal_prompt':
+                                        journal_prompt = content
+                            
+                            current_section = 'key_success'
+                            section_content = []
+                            # Extract content after colon if present
+                            if ':' in line:
+                                after_colon = line.split(':', 1)[1].strip()
+                                after_colon = re.sub(r'\*+', '', after_colon)
+                                if after_colon:
+                                    section_content.append(after_colon)
+                                    
+                        elif any(keyword in line_lower for keyword in ['area for improvement', 'improvement:']):
                             # Save previous section
-                            content = " ".join(section_content).strip()
-                            if current_section == "key_success":
-                                key_success = content
-                            elif current_section == "improvement":
-                                improvement_area = content
-                            elif current_section == "journal":
-                                journal_prompt = content
-                        current_section = "key_success"
-                        section_content = []
-                        # Extract content after the colon if present
-                        if ":" in line:
-                            content_after_colon = line.split(":", 1)[1].strip()
-                            if content_after_colon:
-                                section_content.append(content_after_colon)
-                    elif any(
-                        keyword in lower_line
-                        for keyword in [
-                            "**area for improvement",
-                            "area for improvement:",
-                            "improvement:",
-                        ]
-                    ):
-                        if current_section and section_content:
+                            if current_section and section_content:
+                                content = ' '.join(section_content).strip()
+                                content = re.sub(r'\*+', '', content)
+                                if len(content) > 10:
+                                    if current_section == 'key_success':
+                                        key_success = content
+                                    elif current_section == 'improvement_area':
+                                        improvement_area = content
+                                    elif current_section == 'journal_prompt':
+                                        journal_prompt = content
+                            
+                            current_section = 'improvement_area'
+                            section_content = []
+                            if ':' in line:
+                                after_colon = line.split(':', 1)[1].strip()
+                                after_colon = re.sub(r'\*+', '', after_colon)
+                                if after_colon:
+                                    section_content.append(after_colon)
+                                    
+                        elif any(keyword in line_lower for keyword in ['journal prompt', 'prompt:']):
                             # Save previous section
-                            content = " ".join(section_content).strip()
-                            if current_section == "key_success":
+                            if current_section and section_content:
+                                content = ' '.join(section_content).strip()
+                                content = re.sub(r'\*+', '', content)
+                                if len(content) > 10:
+                                    if current_section == 'key_success':
+                                        key_success = content
+                                    elif current_section == 'improvement_area':
+                                        improvement_area = content
+                                    elif current_section == 'journal_prompt':
+                                        journal_prompt = content
+                            
+                            current_section = 'journal_prompt'
+                            section_content = []
+                            if ':' in line:
+                                after_colon = line.split(':', 1)[1].strip()
+                                after_colon = re.sub(r'\*+', '', after_colon)
+                                if after_colon:
+                                    section_content.append(after_colon)
+                                    
+                        else:
+                            # This is content for the current section
+                            if current_section and line and not line.startswith('#'):
+                                cleaned_line = re.sub(r'\*+', '', line)
+                                if cleaned_line.strip():
+                                    section_content.append(cleaned_line.strip())
+                    
+                    # Don't forget the last section
+                    if current_section and section_content:
+                        content = ' '.join(section_content).strip()
+                        content = re.sub(r'\*+', '', content)
+                        if len(content) > 10:
+                            if current_section == 'key_success':
                                 key_success = content
-                            elif current_section == "improvement":
+                            elif current_section == 'improvement_area':
                                 improvement_area = content
-                            elif current_section == "journal":
+                            elif current_section == 'journal_prompt':
                                 journal_prompt = content
-                        current_section = "improvement"
-                        section_content = []
-                        # Extract content after the colon if present
-                        if ":" in line:
-                            content_after_colon = line.split(":", 1)[1].strip()
-                            if content_after_colon:
-                                section_content.append(content_after_colon)
-                    elif any(
-                        keyword in lower_line
-                        for keyword in [
-                            "**journal prompt",
-                            "journal prompt:",
-                            "**prompt",
-                        ]
-                    ):
-                        if current_section and section_content:
-                            # Save previous section
-                            content = " ".join(section_content).strip()
-                            if current_section == "key_success":
-                                key_success = content
-                            elif current_section == "improvement":
-                                improvement_area = content
-                            elif current_section == "journal":
-                                journal_prompt = content
-                        current_section = "journal"
-                        section_content = []
-                        # Extract content after the colon if present
-                        if ":" in line:
-                            content_after_colon = line.split(":", 1)[1].strip()
-                            if content_after_colon:
-                                section_content.append(content_after_colon)
-                    else:
-                        # This is content for the current section
-                        if current_section and line and not line.startswith("**"):
-                            section_content.append(line)
 
-                # Don't forget to save the last section
-                if current_section and section_content:
-                    content = " ".join(section_content).strip()
-                    if current_section == "key_success":
-                        key_success = content
-                    elif current_section == "improvement":
-                        improvement_area = content
-                    elif current_section == "journal":
-                        journal_prompt = content
+                # Strategy 3: Last resort - use the first few lines if structured parsing failed
+                if (key_success == "Your progress shows positive momentum - keep building on your current habits." and
+                    len(lines) >= 3):
+                    
+                    # Simple fallback: assume first 3 non-empty lines are the sections
+                    try:
+                        meaningful_lines = [line for line in lines if len(line) > 20]  # Filter out short lines
+                        if len(meaningful_lines) >= 3:
+                            key_success = re.sub(r'\*+', '', meaningful_lines[0]).strip()
+                            improvement_area = re.sub(r'\*+', '', meaningful_lines[1]).strip()
+                            journal_prompt = re.sub(r'\*+', '', meaningful_lines[2]).strip()
+                            
+                            # Remove section labels if they were included
+                            key_success = re.sub(r'^(Key Success|Success):\s*', '', key_success, flags=re.IGNORECASE)
+                            improvement_area = re.sub(r'^(Area for Improvement|Improvement):\s*', '', improvement_area, flags=re.IGNORECASE)
+                            journal_prompt = re.sub(r'^(Journal Prompt|Prompt):\s*', '', journal_prompt, flags=re.IGNORECASE)
+                    except Exception:
+                        pass  # Keep the defaults
 
-                # Clean up the extracted content (remove markdown formatting)
-                key_success = key_success.replace("**", "").strip()
-                improvement_area = improvement_area.replace("**", "").strip()
-                journal_prompt = journal_prompt.replace("**", "").strip()
+                # Final cleanup
+                key_success = key_success[:300] if len(key_success) > 300 else key_success
+                improvement_area = improvement_area[:300] if len(improvement_area) > 300 else improvement_area
+                journal_prompt = journal_prompt[:200] if len(journal_prompt) > 200 else journal_prompt
 
-                # Debug output to see what was parsed
-                print("=== DEBUG: Parsed Sections ===")
+                # Debug output
+                print("=== DEBUG: Final Parsed Sections ===")
                 print(f"Key Success: {repr(key_success)}")
                 print(f"Improvement Area: {repr(improvement_area)}")
                 print(f"Journal Prompt: {repr(journal_prompt)}")
-                print("=== END PARSED DEBUG ===")
-
-                # If we still couldn't parse properly, try a fallback approach
-                if key_success == "Unable to identify key success." and len(lines) >= 3:
-                    # Try the original rigid parsing as fallback
-                    try:
-                        key_success = (
-                            lines[0].split(":", 1)[1].strip()
-                            if ":" in lines[0]
-                            else lines[0]
-                        )
-                        improvement_area = (
-                            lines[1].split(":", 1)[1].strip()
-                            if ":" in lines[1]
-                            else lines[1]
-                        )
-                        journal_prompt = (
-                            lines[2].split(":", 1)[1].strip()
-                            if ":" in lines[2]
-                            else lines[2]
-                        )
-                        print("Used fallback parsing")
-                    except Exception as fallback_error:
-                        # If all else fails, just use the raw text as context
-                        print(f"Fallback parsing failed: {fallback_error}")
-                        key_success = (
-                            "Review generated - see full response for details."
-                        )
-                        improvement_area = (
-                            review_text[:200] + "..."
-                            if len(review_text) > 200
-                            else review_text
-                        )
-                        journal_prompt = (
-                            "Reflect on the insights shared in your review."
-                        )
+                print("=== END FINAL DEBUG ===")
 
                 return PerformanceReview(
                     key_success=key_success,
@@ -392,15 +473,15 @@ class Mutation:
                 )
 
             except Exception as parsing_error:
-                print(
-                    f"ERROR during parsing: {type(parsing_error).__name__}: {parsing_error}"
-                )
-                print(f"Raw review text length: {len(review_text)}")
-                # Fallback for when parsing completely fails
+                print(f"ERROR during parsing: {type(parsing_error).__name__}: {parsing_error}")
+                import traceback
+                traceback.print_exc()
+                
+                # Ultimate fallback with meaningful defaults
                 return PerformanceReview(
-                    key_success="Review generated successfully - check logs for details.",
-                    improvement_area="See raw response for improvement suggestions.",
-                    journal_prompt="Reflect on your recent progress and set intentions for the week ahead.",
+                    key_success="Your recent activities show positive engagement with your health journey.",
+                    improvement_area="Consider focusing on consistency in your daily practices for better long-term results.",
+                    journal_prompt="What is one habit you could improve this week to better support your goals?",
                 )
 
         except Exception as outer_error:
@@ -430,6 +511,20 @@ class Mutation:
             new_entry = await service.create_freeform_entry(
                 current_user=current_user, content=input.content
             )
+            
+            # Queue indexing task after successful creation
+            try:
+                from src.tasks import queue_journal_entry_indexing
+                queue_journal_entry_indexing(
+                    entry_id=str(new_entry.id),
+                    user_id=str(current_user.id),
+                    tradition="canon-default"  # Default tradition
+                )
+                logger.info(f"Queued indexing for freeform entry {new_entry.id}")
+            except Exception as e:
+                logger.error(f"Failed to queue indexing for entry {new_entry.id}: {e}")
+                # Don't fail the mutation if indexing fails
+            
             return FreeformJournalEntry(
                 id=str(new_entry.id),
                 user_id=str(new_entry.user_id),
@@ -462,6 +557,20 @@ class Mutation:
             new_entry = await service.create_gratitude_entry(
                 current_user=current_user, payload=payload
             )
+            
+            # Queue indexing task after successful creation
+            try:
+                from src.tasks import queue_journal_entry_indexing
+                queue_journal_entry_indexing(
+                    entry_id=str(new_entry.id),
+                    user_id=str(current_user.id),
+                    tradition="canon-default"  # Default tradition
+                )
+                logger.info(f"Queued indexing for gratitude entry {new_entry.id}")
+            except Exception as e:
+                logger.error(f"Failed to queue indexing for entry {new_entry.id}: {e}")
+                # Don't fail the mutation if indexing fails
+            
             graphql_payload = GratitudePayloadType(**new_entry.payload.model_dump())
             return GratitudeJournalEntry(
                 id=str(new_entry.id),
@@ -493,6 +602,20 @@ class Mutation:
             new_entry = await service.create_reflection_entry(
                 current_user=current_user, payload=payload
             )
+            
+            # Queue indexing task after successful creation
+            try:
+                from src.tasks import queue_journal_entry_indexing
+                queue_journal_entry_indexing(
+                    entry_id=str(new_entry.id),
+                    user_id=str(current_user.id),
+                    tradition="canon-default"  # Default tradition
+                )
+                logger.info(f"Queued indexing for reflection entry {new_entry.id}")
+            except Exception as e:
+                logger.error(f"Failed to queue indexing for entry {new_entry.id}: {e}")
+                # Don't fail the mutation if indexing fails
+            
             graphql_payload = ReflectionPayloadType(**new_entry.payload.model_dump())
             return ReflectionJournalEntry(
                 id=str(new_entry.id),
@@ -573,6 +696,7 @@ async def health_check():
 
 
 app.include_router(graphql_app, prefix="/graphql")
+app.include_router(hooks_router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

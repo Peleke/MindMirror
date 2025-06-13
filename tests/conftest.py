@@ -35,28 +35,60 @@ TEST_SCHEMA = "journal"
 TEST_ECHO = os.getenv("TEST_ECHO", "False").lower() == "true"
 TEST_USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"  # A consistent test UUID
 
+# Qdrant and Redis test configuration
+TEST_QDRANT_PORT = 6334  # Different from production port 6333
+TEST_REDIS_PORT = 6380   # Different from production port 6379
+TEST_QDRANT_URL = f"http://localhost:{TEST_QDRANT_PORT}"
+TEST_REDIS_URL = f"redis://localhost:{TEST_REDIS_PORT}/0"
+
 # Set environment variables for the application's config to pick up during tests
 # This is crucial for when the application code reads the DATABASE_URL
 os.environ["DATABASE_URL"] = (
     f"postgresql+{TEST_DRIVER}://{TEST_USER}:{TEST_PASSWORD}@{TEST_HOST}:{TEST_POSTGRES_PORT}/{TEST_DB}"
 )
 os.environ["TESTING"] = "True"
+os.environ["QDRANT_URL"] = TEST_QDRANT_URL
+os.environ["REDIS_URL"] = TEST_REDIS_URL
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
 @pytest.fixture(scope="session")
-def docker_compose_up_down():
+def docker_services():
     """
-    Manages a Docker container for the test database.
-    'session' scope ensures it starts once and tears down after all tests.
+    Manages Docker containers for test services (PostgreSQL, Qdrant, Redis).
+    Session scope ensures they start once and tear down after all tests.
     """
     import docker
 
     client = None
-    container = None
-    container_name = "cyborg_coach_test_db"
+    containers = {}
+    container_configs = {
+        "postgres": {
+            "name": "cyborg_coach_test_db",
+            "image": "postgres:13",
+            "environment": {
+                "POSTGRES_USER": TEST_USER,
+                "POSTGRES_PASSWORD": TEST_PASSWORD,
+                "POSTGRES_DB": TEST_DB,
+            },
+            "ports": {"5432/tcp": TEST_POSTGRES_PORT},
+            "ready_log": "database system is ready to accept connections"
+        },
+        "qdrant": {
+            "name": "cyborg_coach_test_qdrant",
+            "image": "qdrant/qdrant:latest",
+            "ports": {"6333/tcp": TEST_QDRANT_PORT},
+            "ready_log": "Qdrant gRPC listening on"
+        },
+        "redis": {
+            "name": "cyborg_coach_test_redis", 
+            "image": "redis:7-alpine",
+            "ports": {"6379/tcp": TEST_REDIS_PORT},
+            "ready_log": "Ready to accept connections"
+        }
+    }
 
     try:
         # Connect to Docker
@@ -71,51 +103,60 @@ def docker_compose_up_down():
             pytest.skip("Docker not available", allow_module_level=True)
             return
 
-        # Start the container
-        logging.info(f"Starting new {container_name} container.")
-        container = client.containers.run(
-            image="postgres:13",
-            name=container_name,
-            environment={
-                "POSTGRES_USER": TEST_USER,
-                "POSTGRES_PASSWORD": TEST_PASSWORD,
-                "POSTGRES_DB": TEST_DB,
-            },
-            ports={"5432/tcp": TEST_POSTGRES_PORT},
-            detach=True,
-            remove=True,  # Ensure container is removed on stop
-        )
+        # Start all containers
+        for service_name, config in container_configs.items():
+            logging.info(f"Starting {service_name} container: {config['name']}")
+            
+            container = client.containers.run(
+                image=config["image"],
+                name=config["name"],
+                environment=config.get("environment", {}),
+                ports=config["ports"],
+                detach=True,
+                remove=True,  # Ensure container is removed on stop
+            )
+            containers[service_name] = container
 
-        # Wait for the database to be ready
-        logging.info(f"Waiting for {container_name} to be ready...")
-        max_retries = 20
-        retry_delay = 2
-        for i in range(max_retries):
-            time.sleep(retry_delay)
-            container.reload()
-            if container.status != "running":
-                pytest.fail(f"{container_name} container exited unexpectedly.")
+            # Wait for the service to be ready
+            logging.info(f"Waiting for {service_name} to be ready...")
+            max_retries = 30
+            retry_delay = 2
+            
+            for i in range(max_retries):
+                time.sleep(retry_delay)
+                container.reload()
+                
+                if container.status != "running":
+                    pytest.fail(f"{service_name} container exited unexpectedly.")
 
-            logs = container.logs().decode("utf-8")
-            if "database system is ready to accept connections" in logs:
-                logging.info(f"PostgreSQL in {container_name} is ready.")
-                break
-            if i == max_retries - 1:
-                logging.error(
-                    f"Container {container_name} did not become ready. Logs:\n{logs}"
-                )
-                pytest.fail(
-                    f"Test DB container ({container_name}) did not become ready."
-                )
+                logs = container.logs().decode("utf-8")
+                if config["ready_log"] in logs:
+                    logging.info(f"{service_name} is ready.")
+                    break
+                    
+                if i == max_retries - 1:
+                    logging.error(f"{service_name} did not become ready. Logs:\n{logs}")
+                    pytest.fail(f"{service_name} container did not become ready.")
 
-        yield
+        yield containers
 
     finally:
-        if container:
-            logging.info(f"Stopping {container_name} container.")
-            container.stop()
+        # Stop all containers
+        for service_name, container in containers.items():
+            if container:
+                logging.info(f"Stopping {service_name} container.")
+                container.stop()
         if client:
             client.close()
+
+
+@pytest.fixture(scope="session") 
+def docker_compose_up_down(docker_services):
+    """
+    Backward compatibility fixture for existing tests.
+    Maps to the new docker_services fixture.
+    """
+    yield docker_services["postgres"]
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -147,6 +188,14 @@ async def create_tables(engine: AsyncEngine):
 
 
 @pytest_asyncio.fixture(scope="function")
+async def user() -> CurrentUser:
+    """Provides a test user object consistent with the one used in client auth."""
+    return CurrentUser(
+        id=UUID(TEST_USER_ID), roles=[UserRole(role="user", domain="coaching")]
+    )
+
+
+@pytest_asyncio.fixture(scope="function")
 async def test_session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """
     Provides a test-specific SQLAlchemy async_sessionmaker.
@@ -155,8 +204,27 @@ async def test_session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSes
 
 
 @pytest_asyncio.fixture(scope="function")
+async def session(
+    test_session_maker: async_sessionmaker[AsyncSession], create_tables
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provides an isolated database session for a single test.
+    Manages transaction rollback on error.
+    """
+    async with test_session_maker() as session_instance:
+        try:
+            yield session_instance
+            await session_instance.commit()
+        except Exception:
+            await session_instance.rollback()
+            raise
+        finally:
+            await session_instance.close()
+
+
+@pytest_asyncio.fixture(scope="function")
 async def uow(
-    test_session_maker: async_sessionmaker[AsyncSession],
+    test_session_maker: async_sessionmaker[AsyncSession], create_tables
 ) -> AsyncGenerator[UnitOfWork, None]:
     """Provides a UnitOfWork instance configured with a test-specific session factory.
 
@@ -290,3 +358,85 @@ async def seed_db(uow: UnitOfWork, create_tables) -> AsyncGenerator[dict, None]:
         "freeform_entry": freeform_entry,
         "other_user_entry": other_user_entry,
     }
+
+
+@pytest_asyncio.fixture(scope="function")
+async def qdrant_client(docker_services):
+    """
+    Provides a test Qdrant client connected to the test container.
+    Function scope to ensure clean state per test.
+    """
+    from src.vector_stores.qdrant_client import QdrantClient
+    
+    # Wait a moment for Qdrant to be fully ready
+    await asyncio.sleep(1)
+    
+    client = QdrantClient(qdrant_url=TEST_QDRANT_URL)
+    
+    # Verify connection
+    health = await client.health_check()
+    if not health:
+        pytest.fail("Qdrant test container is not healthy")
+    
+    yield client
+    
+    # Cleanup: Delete all test collections
+    try:
+        collections = client.get_client().get_collections()
+        for collection in collections.collections:
+            if "test" in collection.name.lower():
+                await client.delete_collection(collection.name)
+                logging.info(f"Cleaned up test collection: {collection.name}")
+    except Exception as e:
+        logging.warning(f"Error cleaning up Qdrant collections: {e}")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def redis_client(docker_services):
+    """
+    Provides a test Redis client connected to the test container.
+    Function scope to ensure clean state per test.
+    """
+    import redis.asyncio as redis
+    
+    client = redis.from_url(TEST_REDIS_URL)
+    
+    # Verify connection
+    try:
+        await client.ping()
+    except Exception as e:
+        pytest.fail(f"Redis test container is not accessible: {e}")
+    
+    yield client
+    
+    # Cleanup: Flush test database
+    try:
+        await client.flushdb()
+        logging.info("Cleaned up Redis test database")
+    except Exception as e:
+        logging.warning(f"Error cleaning up Redis: {e}")
+    finally:
+        await client.close()
+
+
+@pytest_asyncio.fixture(scope="function") 
+async def celery_app(redis_client):
+    """
+    Provides a test Celery app configured for testing.
+    Uses the test Redis instance as broker and result backend.
+    """
+    from src.tasks import create_celery_app
+    
+    # Override Celery configuration for testing
+    test_config = {
+        'broker_url': TEST_REDIS_URL,
+        'result_backend': TEST_REDIS_URL,
+        'task_always_eager': True,  # Execute tasks synchronously in tests
+        'task_eager_propagates': True,  # Propagate exceptions in eager mode
+        'task_store_eager_result': True,  # Store results even in eager mode
+    }
+    
+    app = create_celery_app()
+    app.conf.update(test_config)
+    
+    yield app

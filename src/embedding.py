@@ -24,6 +24,22 @@ def get_embedding_model():
         return OpenAIEmbeddings()
 
 
+async def get_embedding(text: str) -> List[float]:
+    """
+    Generates an embedding for a single piece of text.
+    """
+    embedding_model = get_embedding_model()
+    return await embedding_model.aembed_query(text)
+
+
+async def get_embeddings(texts: List[str]) -> List[List[float]]:
+    """
+    Generates embeddings for a list of texts in a batch.
+    """
+    embedding_model = get_embedding_model()
+    return await embedding_model.aembed_documents(texts)
+
+
 def create_vector_store(
     documents: List[Document],
     db_path: str,

@@ -79,7 +79,7 @@ class SuggestionService:
         self, current_user: CurrentUser, tradition: str
     ) -> str:
         """
-        Generates a bi-weekly performance review by synthesizing user history.
+        Generates a bi-weekly performance review by synthesizing user history with semantic context.
         """
         if not self._engine:
             raise ValueError("CoachingEngine is not initialized.")
@@ -98,14 +98,80 @@ class SuggestionService:
             str(current_user.id), start_date, end_date
         )
 
-        # 2. Build the prompt
+        # 2. NEW: Use semantic search to get relevant insights from past entries and knowledge
+        semantic_context = ""
+        try:
+            from src.vector_stores.qdrant_client import get_qdrant_client
+            from src.embedding import get_embedding
+            
+            # Generate search queries based on recent patterns
+            search_queries = []
+            
+            # Search based on workout patterns
+            if workout_logs:
+                search_queries.append("workout performance improvement consistency")
+                search_queries.append("exercise recovery energy levels")
+            
+            # Search based on journal patterns
+            if journal_entries:
+                # Analyze journal content for themes
+                gratitude_entries = [e for e in journal_entries if e.entry_type == "GRATITUDE"]
+                reflection_entries = [e for e in journal_entries if e.entry_type == "REFLECTION"]
+                
+                if gratitude_entries:
+                    search_queries.append("gratitude mindset positive psychology wellbeing")
+                if reflection_entries:
+                    search_queries.append("self reflection personal growth development")
+            
+            # Add general review-related searches
+            search_queries.extend([
+                "progress tracking goals achievement",
+                "habit formation consistency motivation",
+                "performance review self assessment"
+            ])
+            
+            # Perform semantic searches
+            qdrant_client = get_qdrant_client()
+            semantic_insights = []
+            
+            for query in search_queries[:3]:  # Limit to 3 searches to avoid overwhelming
+                try:
+                    query_embedding = await get_embedding(query)
+                    if query_embedding:
+                        search_results = await qdrant_client.hybrid_search(
+                            query=query,
+                            user_id=str(current_user.id),
+                            tradition=tradition,
+                            query_embedding=query_embedding,
+                            include_personal=True,
+                            include_knowledge=True,
+                            limit=3
+                        )
+                        
+                        # Add relevant insights
+                        for result in search_results:
+                            if result.score > 0.7:  # Only high-relevance results
+                                source_type = "knowledge" if not result.is_personal_content() else "personal"
+                                semantic_insights.append(f"[{source_type}] {result.text[:200]}...")
+                except Exception as e:
+                    print(f"Semantic search failed for query '{query}': {e}")
+                    continue
+            
+            if semantic_insights:
+                semantic_context = "\n--- Relevant Insights ---\n" + "\n".join(semantic_insights[:5])  # Limit to 5 insights
+                
+        except Exception as e:
+            print(f"Failed to get semantic context: {e}")
+            semantic_context = ""
+
+        # 3. Build the enhanced prompt
         prompt_parts = [
             "Please generate a concise bi-weekly performance review for a user based on the following data from the last 14 days.",
             "",
-            "IMPORTANT: Please format your response with these exact sections:",
-            "Key Success: [one key achievement or positive trend]",
-            "Area for Improvement: [one main area to focus on improving]",
-            "Journal Prompt: [a specific, actionable question for reflection]",
+            "IMPORTANT: Please format your response with these exact sections (use these exact labels):",
+            "**Key Success:** [one key achievement or positive trend]",
+            "**Area for Improvement:** [one main area to focus on improving]", 
+            "**Journal Prompt:** [a specific, actionable question for reflection]",
             "",
             "Data from the last 14 days:",
             "",
@@ -147,15 +213,20 @@ class SuggestionService:
         else:
             prompt_parts.append("No journal entries recorded.")
 
+        # Add semantic context if available
+        if semantic_context:
+            prompt_parts.append(semantic_context)
+
         prompt_parts.append("\n--- End of Data ---")
         prompt_parts.append("")
         prompt_parts.append(
-            "Based on this data and the principles of the provided knowledge base, generate the review using the exact format specified above."
+            "Based on this data and the principles of the provided knowledge base, generate the review using the exact format specified above. "
+            "Start each section with the exact bold labels shown (including asterisks). Keep each section concise (1-2 sentences)."
         )
 
         prompt = "\n".join(prompt_parts)
 
-        # 3. Call the RAG chain with timeout
+        # 4. Call the RAG chain with timeout
         try:
             return await asyncio.wait_for(
                 asyncio.to_thread(self._engine.ask, prompt),

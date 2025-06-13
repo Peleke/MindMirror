@@ -1,0 +1,10 @@
+# Function dependencies, for example:
+#
+# pandas>=1.0.0,!=1.2.0
+# google-cloud-storage==2.1.0
+
+# Used to run the function
+functions-framework==3.*
+
+# Used to make HTTP requests to the webhook
+requests==2.* 
