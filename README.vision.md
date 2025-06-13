@@ -52,6 +52,85 @@ This is the only service with direct access to LLMs. It consumes the federated G
 
 ---
 
+### **Agent Kernel Implementation Plan**
+
+This section outlines the concrete architectural blueprint for the `agent_kernel/` package. The kernel is designed as a **stateful computation graph**, where each user request initiates a traversal through the graph. This provides modularity, observability, and the ability to handle complex, branching logic.
+
+#### **1. Foundational Directory Structure**
+```
+agent_kernel/
+├── __init__.py           # Exposes the main `handle_request` entry point.
+├── state.py              # Defines the central `AgentState` model.
+├── graph.py              # Constructs and compiles the main computation graph.
+├── registry.py           # Houses the `ToolRegistry` and `IntentRegistry`.
+│
+├── nodes/                # Directory for all graph nodes (processing functions).
+│   ├── 1_route_intent.py   # Node to determine user's intent.
+│   ├── 2_create_plan.py    # Node to generate a multi-step plan.
+│   ├── 3_execute_tools.py  # Node to invoke tools from the toolbelt.
+│   └── 4_format_response.py# Node to synthesize the final answer.
+│
+├── tools/                # The "Toolbelt": implementations of specific tools.
+│   ├── _protocol.py        # Defines the `Tool` interface protocol.
+│   ├── journal_tool.py     # Tool for journal entry creation/search.
+│   └── knowledge_tool.py   # Tool for RAG against tradition knowledge.
+│
+└── intents/              # Definitions and recognizers for user intents.
+    ├── _protocol.py        # Defines the `Intent` interface.
+    ├── journal_intent.py
+    └── question_intent.py
+```
+
+#### **2. Core Data Structure: `AgentState`**
+The `AgentState` is the single object that flows through the graph, accumulating information at each step.
+
+**(File: `agent_kernel/state.py`)**
+```python
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+
+class PlanStep(BaseModel):
+    tool_name: str
+    tool_input: Dict[str, Any]
+    result: Optional[str] = None
+    error: Optional[str] = None
+
+class AgentState(BaseModel):
+    raw_prompt: str
+    user_id: str
+    intent: Optional[str] = None
+    plan: List[PlanStep] = []
+    scratchpad: str = ""
+    final_response: Optional[str] = None
+```
+
+#### **3. The "Toolbelt": A Protocol-Driven Registry**
+Tools are the discrete capabilities of the agent. They adhere to a strict protocol and are managed by a central registry, forming a "supergraph" of actions.
+
+**(File: `agent_kernel/tools/_protocol.py`)**
+```python
+from typing import Protocol, Dict, Any
+
+class Tool(Protocol):
+    name: str
+    description: str # For the LLM planner to understand the tool's purpose.
+    
+    def execute(self, user_id: str, **kwargs) -> Any:
+        ...
+```
+The `ToolRegistry` in `agent_kernel/registry.py` will dynamically discover and load all available `Tool` implementations, making them available to the graph.
+
+#### **4. The Graph: Nodes and Conditional Edges**
+The agent's logic is defined in the computation graph (`agent_kernel/graph.py`), likely using a library like LangGraph.
+
+-   **Nodes:** Functions in `agent_kernel/nodes/` that accept `AgentState` and return a dictionary with updated fields.
+    -   **`route_intent`**: Classifies the `raw_prompt` into a registered `Intent`.
+    -   **`create_plan`**: Generates a `List[PlanStep]` based on the intent.
+    -   **`execute_tools`**: Invokes tools from the `ToolRegistry` according to the plan.
+-   **Edges:** Define the control flow. For example, after `execute_tools`, an edge can check if the plan is complete. If yes, proceed to `format_response`; if a tool failed, it could loop back to `create_plan` to re-plan.
+
+---
+
 ## 4. Phased Implementation Plan
 
 ### ✅ Milestone 1: The Curated Canon & The Journal
@@ -60,52 +139,101 @@ This is the only service with direct access to LLMs. It consumes the federated G
 
 ### ✅ Milestone 2: The Aware Synthesist
 *   **Status:** COMPLETE
-*   **Outcome:** The PoC can synthesize data from mocked external services to provide contextual meal suggestions and bi-weekly performance reviews. Structured journaling (Gratitude, Reflection) is implemented.
+*   **Outcome:** The PoC can synthesize data from mocked external services to provide contextual meal suggestions and bi-weekly performance reviews. Structured journaling (Gratitude, Reflection) is implemented and fully functional with proper database persistence.
 
-### 🟡 Milestone 3: The Production-Ready Foundation
-*   **Status:** IN PROGRESS
-*   **Goal:** Harden the PoC by migrating critical services to a robust, database-backed foundation, preparing for the distributed architecture.
-*   **TDD Roadmap:**
-    *   **Task 3.1 (Database):** Introduce SQLAlchemy. Migrate the `JournalRepository` from a JSON file to a PostgreSQL database.
-    *   **Task 3.2 (Services):** Formally define the `JournalService` and `PracticeService` boundaries within the monolith. Begin building out the `PracticeRepository` with SQLAlchemy models.
-    *   **Task 3.3 (Containerization):** Finalize `docker-compose.yml` for a one-command launch of the application and its database. Ensure data persistence across restarts.
+### ✅ Milestone 3: The Production-Ready Foundation
+*   **Status:** COMPLETE ✨
+*   **Outcome:** The PoC has been hardened with a robust, database-backed foundation, containerization, and a comprehensive local development environment.
 
-### 🤖 Milestone 4: The Distributed Agent
-*   **Status:** TODO
-*   **Goal:** Refactor the monolith into the target federated microservices architecture.
-*   **TDD Roadmap:**
-    *   **Task 4.1 (Contracts):** Define the full GraphQL schemas for `Journals`, `Practices`, and `Users`.
-    *   **Task 4.2 (Federation):** Introduce a Hive GraphQL Gateway. Decompose the monolith and stand up the `JournalService` and `PracticeService` as independent microservices federated under the gateway.
-    *   **Task 4.3 (Agent Extraction):** Create the new `Agent Service`. Lift and shift the LLM-based logic (currently in `SuggestionService`) into this new service.
-    *   **Task 4.4 (Tooling):** Implement the agent's Tool Belt. The tools will not call Python services directly but will instead make GraphQL calls to the Hive Gateway, completing the decoupling.
+### ✅ Milestone 4: The Hybrid Intelligence Engine
+*   **Status:** COMPLETE ✨
+*   **Outcome:** A stable, production-ready application with a hybrid search system combining curated knowledge with real-time user journal entries. The system includes an out-of-band ingestion pipeline for "tradition" knowledge bases.
+*   **Key Systems:**
+    *   **✅ Vector Store:** Qdrant is fully integrated for all vector search.
+    *   **✅ Real-time Indexing:** Journal entries are automatically indexed via a Celery-based task queue.
+    *   **✅ Hybrid Search:** GraphQL API exposes a `semanticSearch` query for combined knowledge and journal retrieval.
+    *   **✅ GCS Ingestion Pipeline:** A secure webhook, Celery task, and emulated GCS client are in place for out-of-band document processing.
+    *   **✅ Containerized Environment:** The entire system (API, database, vector store, task queue) is managed via `docker-compose` for reliable, one-command startup.
 
-# Cyborg Coach Vision: Milestone 2 & 3
+---
 
-This document outlines the product vision for the next phases of the Cyborg Coach, building upon the foundational RAG and API architecture.
+## 5. Next Evolution: The AutoGen-Powered Agent Kernel
 
-## Milestone 2: The Aware Synthesist (In Progress)
+The next evolution of the Agent Service moves beyond a single planner to a collaborative **society of agents**, orchestrated by a framework like Microsoft's AutoGen. This allows for parallelized, specialized data retrieval and complex, stateful conversations. This architecture provides the foundation for true generative performance engineering.
 
-**Goal:** Make the coach's advice contextual to the user's immediate goals and history. The coach moves from being a passive Q&A agent to a proactive, aware partner.
+The core workflow is as follows:
 
-### Features
+```
+User Query ──> [Intent Filter] ──> [Query Decomposer] ──> [Multi-Agent Swarm] ──> [Synthesizer] ──> Final Response
+```
 
-1.  **Reactive Meal Suggestions (`getMealSuggestion`) - ✅ COMPLETE**
-    *   **User Story:** As a user, when I'm wondering what to eat, I can ask the coach for a suggestion that aligns with my calorie/protein goals and my last workout.
-    *   **Implementation:** An API endpoint that takes user context (goals, history) and uses the RAG engine to generate a specific, tradition-aligned meal suggestion.
+### Phase 1: Intent Filtering & Query Decomposition
 
-2.  **Reflective Performance Reviews (`generateReview`) - ✅ COMPLETE**
-    *   **User Story:** As a user, every two weeks, I want the coach to analyze my workout, meal, and journal history to give me a summary of what I did well, where I can improve, and what to focus on next.
-    *   **Implementation:** An API endpoint that synthesizes data from multiple (mocked) client services and the user's journal, feeding it into a comprehensive prompt for the RAG engine to generate a structured review.
+-   **Intent Filter:** A lightweight router that first classifies the user's request. Is it a simple Q&A, a complex data retrieval task, or an action-oriented command? The output determines which master agent (or "GroupChatManager" in AutoGen terms) will handle the request.
+-   **Query Decomposer Agent:** For complex queries, this specialized agent's sole job is to break down the user's natural language request into a set of parallelizable sub-queries.
+    -   **Example:** "What Stoic advice relates to the anxiety I mentioned in my journal this week?"
+    -   **Decomposed Sub-Queries:**
+        1.  "Retrieve journal entries from the last 7 days tagged with 'anxiety'."
+        2.  "Perform a semantic search in the 'stoic-canon' knowledge base for concepts related to 'anxiety'."
 
-3.  **Structured Journaling (`createGratitudeJournalEntry`, `createReflectionJournalEntry`) - 🟡 TODO**
-    *   **User Story (Morning):** As a user, at the start of my day, I want the coach to prompt me to list things I'm grateful for and excited about, set a focus, and state an affirmation, so I can begin my day with intention.
-    *   **User Story (Evening):** As a user, at the end of my day, I want the coach to prompt me to list my wins and identify areas for improvement, so I can close my day with reflection.
-    *   **Implementation:** The application will feature distinct "Gratitude" and "Reflection" journaling modes. These will be structured forms presented to the user daily. The data will be stored with a specific type, distinguishing it from regular free-form journal entries, and will be incorporated into the bi-weekly performance reviews to provide deeper insights into the user's mindset and progress.
+### Phase 2: The Multi-Agent Swarm
 
-## Milestone 3: The Proactive Companion
+This is a "GroupChat" of specialist agents, each an expert in a specific domain corresponding to our microservices. They receive the sub-queries and work in parallel.
 
-**Goal:** Enable the coach to initiate interactions, manage long-term memory, and perform actions on the user's behalf.
+-   **Specialist Agents:**
+    -   `JournalAgent`: An expert on the Journaling service. It knows how to query for entries by date, mood, and content.
+    -   `KnowledgeAgent`: An expert at performing advanced RAG against the Qdrant knowledge collections.
+    -   `PracticeAgent`: An expert on the Practices service, capable of finding and modifying workout programs.
+-   **Strategic Refinement:** Each agent can apply its own sub-strategies to its query. For instance, the `KnowledgeAgent` could use a "step-back" prompting technique to generalize a user's specific query into a broader, more fundamental question, leading to more relevant high-level concepts from the knowledge base.
 
-*   **Proactive Nudges:** The coach will send notifications (e.g., "You haven't logged a workout in 3 days, how about a short one today?") based on user patterns.
-*   **Long-Term Memory & Evolution:** The coach will remember key conversations, user preferences, and evolving goals over months, not just days.
-*   **Agentic Actions:** The coach will be able to perform actions like "add this suggested meal to my cronometer" or "schedule a 30-min workout on my calendar." 
+### The "Magic" `@tool` Decorator
+
+To make the agent swarm extensible, we introduce a powerful decorator. This is the key to velocity.
+
+-   **Concept:** Any existing function in our codebase (e.g., a GraphQL resolver, a service-layer function) can be instantly converted into a tool for the agents.
+-   **Implementation Sketch:**
+    ```python
+    # In a central tool registry
+    from agent_kernel.registry import tool
+
+    # In the journaling service code
+    @tool
+    def get_journal_entries_by_date(user_id: str, start_date: date, end_date: date) -> List[JournalEntry]:
+        """Fetches all journal entries for a user between two dates."""
+        # ... existing implementation ...
+    ```
+-   **How it Works:** The `@tool` decorator uses Python's introspection capabilities to automatically:
+    1.  Read the function name (`get_journal_entries_by_date`).
+    2.  Read the docstring for its `description`.
+    3.  Analyze the type-hinted signature to build a structured schema (e.g., an OpenAI Function-Calling JSON schema).
+    4.  Register this fully-defined tool in a central registry, making it immediately available to the planning agents.
+
+### Phase 3: Synthesis
+
+A final `SynthesizerAgent` (or the initial GroupChatManager) is responsible for collecting the structured outputs from all the specialist agents and weaving them into a single, coherent, and insightful response for the user.
+
+---
+
+## The Knowledge Store: Evolving to a Graph RAG System
+
+This is a critical architectural decision. Sticking with Postgres + Qdrant is viable, but introducing a Knowledge Graph like Memgraph unlocks a new paradigm.
+
+| Aspect | Current Stack (Postgres + Qdrant) | Future Stack (Postgres + Qdrant + Memgraph) |
+| :--- | :--- | :--- |
+| **Core Strength** | **Best-of-breed services.** Each DB is optimized for its purpose: relational integrity (Postgres) and vector search speed (Qdrant). | **Explicit Relationships.** The graph makes the connections *between* data points a first-class citizen. |
+| **How it Works** | Connections are **inferred at query time**. We find a journal entry in Postgres, then use its text to find similar vectors in Qdrant. | Connections are **stored and directly queryable**. `(User)-[:WROTE]->(Journal)-[:MENTIONS]->(Concept)` |
+| **Example Query** | "Find stoic advice for anxiety." <br/> *Requires two separate queries orchestrated by application logic.* | "Find `(Advice)` nodes connected to the `(Stoic)` tradition that are also connected to the `(Concept)` 'anxiety', which was mentioned in a `(Journal)` entry you wrote last week." <br/> *This is a single, elegant graph query.* |
+| **Pros** | - Simpler stack to manage <br/> - Clear separation of concerns <br/> - Mature and highly scalable components | - Unlocks deep, multi-hop queries <br/> - A natural "brain" for an agent to traverse <br/> - Enables powerful analytics and recommendations |
+| **Cons** | - Complex queries require app-level orchestration <br/> - Relationships are not explicit or persistent | - Adds another database to deploy and manage <br/> - Requires a data synchronization pipeline (e.g., CDC) to keep the graph up-to-date with Postgres. |
+
+### Recommendation: A Phased Evolution
+
+The current Postgres + Qdrant stack is the **perfect foundation**. The next revolutionary step is not to *replace* it, but to **augment it with Memgraph as a synthesizing layer**.
+
+1.  **Continue with the Current Stack:** It is robust and solves the immediate problems of storage and retrieval.
+2.  **Introduce Memgraph as a Projection:** In a future milestone, we'll build a pipeline (e.g., using Celery tasks or a Change-Data-Capture tool like Debezium) that **projects** data from our source-of-truth services (Postgres) into Memgraph.
+    -   A new `User` in Postgres creates a `(User)` node in Memgraph.
+    -   A new `JournalEntry` creates a `(Journal)` node and a `[:WROTE]` edge.
+    -   An NLP process extracts key concepts from the journal entry, creating `(Concept)` nodes and `[:MENTIONS]` edges.
+
+This approach gives us the best of both worlds: the reliability of our current stack and the profound analytical power of a Knowledge Graph, providing the perfect foundation for the highly intelligent, multi-agent system we've envisioned.
