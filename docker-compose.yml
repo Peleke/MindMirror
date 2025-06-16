@@ -1,177 +1,128 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: cyborg_coach_db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-cyborg_coach}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  api:
+  # --- Backend Services ---
+  agent_service:
     build:
       context: .
-      dockerfile: Dockerfile.api
-    container_name: cyborg_coach_api
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cyborg_coach}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - API_PORT=8000
-      - UVICORN_RELOAD=false
-      - LOG_LEVEL=debug
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_CHAT_MODEL=llama3.2
-      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-      - LLM_PROVIDER=ollama
-      - EMBEDDING_PROVIDER=ollama
-      - I_AM_IN_A_DOCKER_CONTAINER=1
-      - REDIS_URL=redis://redis:6379/0
-      - QDRANT_URL=http://qdrant:6333
-      - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY}
-      - USE_GCS_EMULATOR=${USE_GCS_EMULATOR:-true}
-      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-local_gcs_bucket}
-    ports:
-      - "8000:8000"
-    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      qdrant:
-        condition: service_started
+      dockerfile: Dockerfile.agent
+    container_name: agent_service
+    env_file: .env
     volumes:
-      - ./pdfs:/app/pdfs
-      - ./local_gcs_bucket:/app/local_gcs_bucket
-      - api_data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+      - ./src/agent_service:/app/agent_service
+      - ./src/shared:/app/shared
+      - ./ingestion:/app/ingestion
+      - local_gcs_bucket:/app/local_gcs_bucket
+    command: uvicorn agent_service.web.app:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
+      - qdrant
+      - redis
+    ports:
+      - "8000:8000" # Expose for direct access during dev
+
+  journal_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.journal
+    container_name: journal_service
+    env_file: .env
+    volumes:
+      - ./src/journal_service:/app/journal_service
+      - ./src/shared:/app/shared
+      - ./src/agent_service:/app/agent_service # Temporary, for task queue import
+    command: uvicorn journal_service.web.app:app --host 0.0.0.0 --port 8001 --reload
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8001:8001" # Expose for direct access during dev
 
   ui:
     build:
       context: .
       dockerfile: Dockerfile.ui
-    container_name: cyborg_coach_ui
-    environment:
-      - API_HOST=api
-      - API_PORT=8000
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-      - I_AM_IN_A_DOCKER_CONTAINER=1
-    ports:
-      - "8501:8501"
+    container_name: ui
+    env_file: .env
+    volumes:
+      - ./src:/app/src
+      - ./shared:/app/shared
     depends_on:
-      api:
-        condition: service_healthy
+      - agent_service
+      - journal_service
+    ports:
+      - "8501:8501" # Streamlit default port
+
+  # --- Workers ---
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent # Uses the same image as agent service
+    container_name: celery_worker
+    command: celery -A agent_service.celery_app.celery_app worker -l info -Q indexing,maintenance
+    env_file: .env
+    volumes:
+      - ./src/agent_service:/app/agent_service
+      - ./src/shared:/app/shared
+      - ./ingestion:/app/ingestion
+      - local_gcs_bucket:/app/local_gcs_bucket
+    depends_on:
+      - redis
+      - postgres
+      - qdrant
+
+  celery_flower:
+    image: mher/flower:2.0
+    container_name: celery_flower
+    environment:
+      - CELERY_BROKER_URL=${REDIS_URL}
+    env_file: .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+  # --- Databases & Infrastructure ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
-      interval: 15s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
       retries: 5
-      start_period: 30s
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    # The official qdrant image is distroless and has no shell,
+    # so we can't use a command-based healthcheck.
+    # We rely on service_started condition.
 
   redis:
     image: redis:7-alpine
-    container_name: cyborg_coach_redis
+    container_name: redis
     ports:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 3s
-      retries: 5
-
-  qdrant:
-    build:
-      context: .
-      dockerfile: Dockerfile.qdrant
-    container_name: cyborg_coach_qdrant
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/livez"]
-      interval: 1s
-      timeout: 10s
-      retries: 5
-      start_period: 10s
-
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: cyborg_coach_celery
-    command: celery -A src.celery_app.celery_app worker -l info -Q indexing,default,maintenance,monitoring
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-    environment:
-      - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cyborg_coach}
-      - REDIS_URL=redis://redis:6379/0
-      - QDRANT_URL=http://qdrant:6333
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - OLLAMA_CHAT_MODEL=llama3.2
-      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-      - LLM_PROVIDER=ollama
-      - EMBEDDING_PROVIDER=ollama
-      - I_AM_IN_A_DOCKER_CONTAINER=1
-      - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY}
-      - USE_GCS_EMULATOR=${USE_GCS_EMULATOR:-true}
-      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-local_gcs_bucket}
-    volumes:
-      - ./pdfs:/app/pdfs
-      - ./local_gcs_bucket:/app/local_gcs_bucket
-      - api_data:/app/data
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A src.celery_app.celery_app inspect ping -d celery@$${HOSTNAME}"]
-      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 20s
-
-  flower:  # Celery monitoring UI
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: cyborg_coach_flower
-    command: celery -A src.celery_app.celery_app flower --port=5555
-    ports:
-      - "5555:5555"
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_URL=redis://redis:6379/0
-      - I_AM_IN_A_DOCKER_CONTAINER=1
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
 
 volumes:
   postgres_data:
-  api_data:
   qdrant_data:
+  local_gcs_bucket:
  
