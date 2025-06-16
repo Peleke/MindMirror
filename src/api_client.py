@@ -4,8 +4,19 @@ import re
 
 import aiohttp
 
+
+def _is_docker_environment() -> bool:
+    """Check if running inside Docker container."""
+    return (
+        os.path.exists("/.dockerenv")
+        or os.getenv("DOCKER_CONTAINER") == "true"
+        or os.getenv("IN_DOCKER") == "true"
+        or os.getenv("I_AM_IN_A_DOCKER_CONTAINER") is not None
+    )
+
+
 # Detect if we're running in Docker and set appropriate service endpoints
-if os.getenv("I_AM_IN_A_DOCKER_CONTAINER"):
+if _is_docker_environment():
     AGENT_SERVICE_URL = "http://agent_service:8000/graphql"
     JOURNAL_SERVICE_URL = "http://journal_service:8001/graphql"
 else:

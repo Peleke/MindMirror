@@ -18,6 +18,7 @@ from agent_service.clients.users_client import UsersClient
 from agent_service.database import get_session
 from agent_service.embedding import get_embedding
 from agent_service.engine import get_engine_for_tradition
+from agent_service.qdrant_engine import get_qdrant_engine_for_tradition
 from agent_service.services.suggestion_service import SuggestionService
 from agent_service.services.tradition_repository import TraditionRepository
 from agent_service.services.tradition_service import TraditionService
@@ -54,7 +55,7 @@ class Query:
     @strawberry.field
     def ask(self, query: str, tradition: str = "canon-default") -> str:
         """Answers a question using the underlying RAG chain for a specific tradition."""
-        engine = get_engine_for_tradition(tradition)
+        engine = get_qdrant_engine_for_tradition(tradition)
         if not engine:
             return f"Sorry, the knowledge base for the tradition '{tradition}' has not been built."
         return engine.ask(query)

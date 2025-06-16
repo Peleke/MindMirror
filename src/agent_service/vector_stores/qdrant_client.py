@@ -1,9 +1,9 @@
 import logging
 import os
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
 from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
@@ -29,19 +29,28 @@ class SearchResult:
 class QdrantClient:
     """Production-ready Qdrant client for vector operations."""
 
-    def __init__(self, qdrant_url: Optional[str] = None):
-        self.client = None
-        self.qdrant_url = qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
-        self._initialize_client()
+    def __init__(self, url: str = None):
+        """Initialize Qdrant client."""
+        if url:
+            self.url = url
+        else:
+            # Auto-detect environment
+            self.url = os.getenv("QDRANT_URL", "http://qdrant:6333")
 
-    def _initialize_client(self):
-        """Initialize the Qdrant client with environment configuration."""
-        try:
-            self.client = QdrantClientBase(url=self.qdrant_url)
-            logger.info(f"Qdrant client initialized with URL: {self.qdrant_url}")
-        except Exception as e:
-            logger.error(f"Failed to initialize Qdrant client: {e}")
-            raise
+        # For local development, try localhost if qdrant hostname fails
+        if "qdrant:" in self.url and not self._is_docker_environment():
+            self.url = self.url.replace("qdrant:", "localhost:")
+
+        logger.info(f"Qdrant client initialized with URL: {self.url}")
+        self.client = QdrantClientBase(url=self.url)
+
+    def _is_docker_environment(self) -> bool:
+        """Check if running inside Docker container."""
+        return (
+            os.path.exists("/.dockerenv")
+            or os.getenv("DOCKER_CONTAINER") == "true"
+            or os.getenv("IN_DOCKER") == "true"
+        )
 
     async def health_check(self) -> bool:
         """Check if Qdrant is healthy and reachable."""
@@ -92,7 +101,7 @@ class QdrantClient:
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
-                    size=384, distance=Distance.COSINE  # nomic-embed-text dimension
+                    size=768, distance=Distance.COSINE  # nomic-embed-text dimension
                 ),
             )
 
@@ -159,7 +168,7 @@ class QdrantClient:
         metadata: Dict[str, Any],
     ) -> str:
         """Index a document with its embedding and metadata."""
-        point_id = str(uuid4())
+        point_id = str(uuid.uuid4())
 
         try:
             # Create point with embedding and metadata
@@ -393,7 +402,7 @@ class QdrantClient:
         if not points:
             return []
 
-        operation_info = await self.client.upsert(
+        operation_info = self.client.upsert(
             collection_name=collection_name, wait=True, points=points
         )
         logger.info(
@@ -401,6 +410,59 @@ class QdrantClient:
         )
 
         return [point.id for point in points]
+
+    def search_knowledge_base(
+        self,
+        tradition: str,
+        query_embedding: List[float],
+        limit: int = 10,
+    ) -> List[SearchResult]:
+        """
+        Synchronous search in knowledge base only.
+        Used by retriever in sync contexts.
+        """
+        try:
+            collection_name = self.get_knowledge_collection_name(tradition)
+            metadata_filter = {"source_type": "pdf"}
+
+            # Build filter if metadata filtering is requested
+            search_filter = None
+            if metadata_filter:
+                conditions = []
+                for key, value in metadata_filter.items():
+                    conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
+                    )
+                search_filter = Filter(must=conditions)
+
+            # Perform search
+            search_results = self.client.search(
+                collection_name=collection_name,
+                query_vector=query_embedding,
+                query_filter=search_filter,
+                limit=limit,
+                with_payload=True,
+            )
+
+            # Convert to SearchResult objects
+            results = []
+            for hit in search_results:
+                payload = hit.payload or {}
+                text = payload.pop("text", "")
+
+                result = SearchResult(text=text, score=hit.score, metadata=payload)
+                results.append(result)
+
+            logger.debug(
+                f"Found {len(results)} results in knowledge base for tradition {tradition}"
+            )
+            return results
+
+        except Exception as e:
+            logger.error(
+                f"Failed to search knowledge base for tradition {tradition}: {e}"
+            )
+            return []
 
 
 # Global client instance
