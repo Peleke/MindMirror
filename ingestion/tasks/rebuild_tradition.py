@@ -2,9 +2,9 @@ import logging
 import json
 from datetime import datetime
 
-from src.celery_app import celery_app
-from src.vector_stores.qdrant_client import get_qdrant_client
-from src.embedding import get_embedding
+from agent_service.celery_app import celery_app
+from agent_service.vector_stores.qdrant_client import get_qdrant_client
+from agent_service.embedding import get_embedding
 from ingestion.utils.gcs_client import get_gcs_client
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
