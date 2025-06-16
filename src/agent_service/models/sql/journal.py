@@ -29,6 +29,7 @@ class JournalEntryModel(BaseModel):
     """
     A Pydantic model representing a journal entry fetched from the database.
     """
+
     id: UUID
     user_id: str
     entry_type: str
@@ -38,4 +39,4 @@ class JournalEntryModel(BaseModel):
 
     class Config:
         orm_mode = True
-        from_attributes = True 
+        from_attributes = True

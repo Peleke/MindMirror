@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.documents import Document
 
-from agent_service.loading import (_load_file, chunk_documents, load_from_directory,
-                         load_from_url)
+from agent_service.loading import (_load_file, chunk_documents,
+                                   load_from_directory, load_from_url)
 
 
 @pytest.fixture
@@ -28,7 +28,9 @@ def test_load_file_pdf_success(mock_loader):
     mock_loader_class, mock_loader_instance = mock_loader
     file_path = Path("dummy/test.pdf")
 
-    with patch.dict("agent_service.loading.LOADER_MAPPING", {".pdf": mock_loader_class}):
+    with patch.dict(
+        "agent_service.loading.LOADER_MAPPING", {".pdf": mock_loader_class}
+    ):
         # Act
         documents = _load_file(file_path)
 
@@ -47,7 +49,9 @@ def test_load_file_txt_success(mock_loader):
     mock_loader_class, mock_loader_instance = mock_loader
     file_path = Path("dummy/notes.txt")
 
-    with patch.dict("agent_service.loading.LOADER_MAPPING", {".txt": mock_loader_class}):
+    with patch.dict(
+        "agent_service.loading.LOADER_MAPPING", {".txt": mock_loader_class}
+    ):
         # Act
         documents = _load_file(file_path)
 
@@ -102,7 +106,9 @@ async def test_load_from_url_success(mock_get, tmp_path):
 
     dummy_doc = Document(page_content="content")
 
-    with patch("agent_service.loading._load_file", return_value=[dummy_doc]) as mock_load_file:
+    with patch(
+        "agent_service.loading._load_file", return_value=[dummy_doc]
+    ) as mock_load_file:
         url = "http://example.com/test.pdf"
         target_path = tmp_path / "test.pdf"
 

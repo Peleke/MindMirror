@@ -6,11 +6,10 @@ from pathlib import Path
 from typing import Callable, Dict, List
 
 import aiohttp
+from config import CHUNK_OVERLAP, CHUNK_SIZE
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyMuPDFLoader, TextLoader
 from langchain_core.documents import Document
-
-from config import CHUNK_OVERLAP, CHUNK_SIZE
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

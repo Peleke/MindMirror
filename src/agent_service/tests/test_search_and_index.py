@@ -1,37 +1,41 @@
-import pytest
-from uuid import uuid4
-from unittest.mock import patch, MagicMock, AsyncMock
+import sys
+import types
 from contextlib import asynccontextmanager
-import sys, types
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
+import pytest
+
+from agent_service.journal_indexer import (JournalIndexer,
+                                           index_journal_entry_by_id)
 from agent_service.models.journal import JournalEntry
-from agent_service.journal_indexer import index_journal_entry_by_id, JournalIndexer
 from agent_service.models.sql.journal import JournalEntryModel
+from agent_service.tasks import queue_journal_entry_indexing
 from celery_app import celery_app
 
 
 @pytest.mark.asyncio
-@patch.object(celery_app, "send_task", new_callable=MagicMock)
+@patch("agent_service.tasks.current_app.send_task", new_callable=MagicMock)
 async def test_journal_entry_creation_triggers_indexing(mock_send_task, client, user):
     """
     Given a new journal entry is created,
     when the appropriate hook is called,
     it verifies that an indexing task *would* be queued via Celery.
-    
+
     Note: This test does not execute the task, only checks if it's sent.
     """
     entry_id = str(uuid4())
-    user_id = str(user.id)
+    test_user = await user
+    user_id = str(test_user.id)
     tradition = "canon-default"
-    
+
     # Simulate a webhook or API call that triggers indexing
-    index_journal_entry_by_id(entry_id, user_id, tradition)
+    queue_journal_entry_indexing(entry_id, user_id, tradition)
 
     # Assert that a task was sent to Celery
     mock_send_task.assert_called_once_with(
-        "index_journal_entry_task",
-        args=(entry_id, user_id, tradition),
-        kwargs={}
+        "agent_service.tasks.index_journal_entry_task",
+        args=[entry_id, user_id, tradition],
     )
 
 
@@ -51,7 +55,8 @@ async def test_semantic_search_finds_indexed_journal_entry(
     """
     # 1. Arrange: Prepare mock data and patch return values
     entry_id = str(uuid4())
-    user_id = str(user.id)
+    test_user = await user
+    user_id = str(test_user.id)
     unique_content = "The quick brown fox jumps over the lazy dog."
 
     # Mock the Journal Service client call to return a journal entry dictionary
@@ -83,4 +88,4 @@ async def test_semantic_search_finds_indexed_journal_entry(
     assert called_user_id == user_id
 
     # This test no longer needs to perform a real search, as we are unit-testing the indexing pipeline.
-    # A separate test would cover the search functionality, mocking the retriever. 
+    # A separate test would cover the search functionality, mocking the retriever.

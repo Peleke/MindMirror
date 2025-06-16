@@ -8,15 +8,12 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from shared.auth import get_current_user, CurrentUser, UserRole
-from agent_service.web.app import app
+from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
+                           RedisTestBackend, RedisTestBroker)
+from shared.auth import CurrentUser, UserRole, get_current_user
+
 from agent_service.vector_stores.qdrant_client import QdrantClient
-from pytest_celery import (
-    CeleryBrokerCluster,
-    CeleryBackendCluster,
-    RedisTestBroker,
-    RedisTestBackend,
-)
+from agent_service.web.app import app
 
 # Test configuration for agent service
 TEST_QDRANT_PORT = 6334  # Different from production port 6333
@@ -52,19 +49,32 @@ def celery_app(celery_config):
     Creates a Celery app for testing with proper configuration.
     """
     from agent_service.celery_app import create_celery_app
-    
+
     app = create_celery_app()
     app.conf.update(celery_config)
-    
+
     # Apply task routes for testing
     app.conf.task_routes = {
-        'agent_service.tasks.index_journal_entry_task': {'priority': 5, 'routing_key': 'indexing'},
-        'agent_service.tasks.batch_index_journal_entries_task': {'priority': 3, 'routing_key': 'indexing'},
-        'agent_service.tasks.health_check_task': {'priority': 7, 'routing_key': 'monitoring'},
-        'agent_service.tasks.reindex_user_entries_task': {'priority': 2, 'routing_key': 'maintenance'},
+        "agent_service.tasks.index_journal_entry_task": {
+            "priority": 5,
+            "routing_key": "indexing",
+        },
+        "agent_service.tasks.batch_index_journal_entries_task": {
+            "priority": 3,
+            "routing_key": "indexing",
+        },
+        "agent_service.tasks.health_check_task": {
+            "priority": 7,
+            "routing_key": "monitoring",
+        },
+        "agent_service.tasks.reindex_user_entries_task": {
+            "priority": 2,
+            "routing_key": "maintenance",
+        },
     }
-    
+
     return app
+
 
 @pytest.fixture(scope="session")
 def docker_services():
@@ -82,7 +92,7 @@ def docker_services():
             "name": "agent_service_test_qdrant",
             "image": "qdrant/qdrant:latest",
             "ports": {"6333/tcp": TEST_QDRANT_PORT},
-            "ready_log": "Qdrant gRPC listening on"
+            "ready_log": "Qdrant gRPC listening on",
         },
     }
 
@@ -102,7 +112,7 @@ def docker_services():
         # Start all containers
         for service_name, config in container_configs.items():
             logging.info(f"Starting {service_name} container: {config['name']}")
-            
+
             container = client.containers.run(
                 image=config["image"],
                 name=config["name"],
@@ -117,11 +127,11 @@ def docker_services():
             logging.info(f"Waiting for {service_name} to be ready...")
             max_retries = 30
             retry_delay = 2
-            
+
             for i in range(max_retries):
                 time.sleep(retry_delay)
                 container.reload()
-                
+
                 if container.status != "running":
                     pytest.fail(f"{service_name} container exited unexpectedly.")
 
@@ -129,7 +139,7 @@ def docker_services():
                 if config["ready_log"] in logs:
                     logging.info(f"{service_name} is ready.")
                     break
-                    
+
                 if i == max_retries - 1:
                     logging.error(f"{service_name} did not become ready. Logs:\n{logs}")
                     pytest.fail(f"{service_name} container did not become ready.")
@@ -153,16 +163,16 @@ async def qdrant_client(docker_services):
     """
     # Wait a moment for Qdrant to be fully ready
     await asyncio.sleep(1)
-    
+
     client = QdrantClient(qdrant_url=TEST_QDRANT_URL)
-    
+
     # Verify connection
     health = await client.health_check()
     if not health:
         pytest.fail("Could not connect to test Qdrant instance")
-    
+
     yield client
-    
+
     # Cleanup: delete any test collections
     try:
         # Access the underlying client to get the list of collections
@@ -181,12 +191,14 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an HTTP client for testing the agent service API.
     """
+    from shared.auth import CurrentUser, UserRole, get_current_user
+
     from agent_service.web.app import app
-    from shared.auth import get_current_user, CurrentUser, UserRole
 
     async def override_get_current_user() -> CurrentUser:
         return CurrentUser(
-            id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"), roles=[UserRole(role="user", domain="coaching")]
+            id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+            roles=[UserRole(role="user", domain="coaching")],
         )
 
     # Apply overrides
@@ -206,5 +218,6 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 async def user() -> CurrentUser:
     """Provides a test user object consistent with the one used in client auth."""
     return CurrentUser(
-        id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"), roles=[UserRole(role="user", domain="coaching")]
-    ) 
+        id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+        roles=[UserRole(role="user", domain="coaching")],
+    )

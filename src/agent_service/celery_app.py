@@ -1,5 +1,7 @@
 import os
+
 from celery import Celery
+
 
 def create_celery_app() -> Celery:
     """
@@ -16,16 +18,17 @@ def create_celery_app() -> Celery:
         include=[
             "agent_service.tasks",
             "ingestion.tasks.rebuild_tradition",
-        ]
+        ],
     )
 
     celery_app.conf.update(
         task_track_started=True,
         broker_connection_retry_on_startup=True,
     )
-    
+
     return celery_app
+
 
 # Instantiate the app for the application to use.
 # In a test environment, pytest-celery will manage the app instance.
-celery_app = create_celery_app() 
+celery_app = create_celery_app()

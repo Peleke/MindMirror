@@ -1,16 +1,15 @@
 import asyncio
 from datetime import date, datetime, timedelta
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID
-from unittest.mock import patch
 
 import pytest
-
 from shared.auth import CurrentUser
+
 from agent_service.clients.models import MealLog, PracticeInstance, UserGoals
 from agent_service.engine import get_engine_for_tradition
 from agent_service.models.journal import (GratitudePayload, JournalEntry,
-                                ReflectionPayload)
+                                          ReflectionPayload)
 from agent_service.services.suggestion_service import SuggestionService
 
 # Mark all tests in this file as asyncio

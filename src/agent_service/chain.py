@@ -46,4 +46,4 @@ Question: {question}
 
     logging.info("RAG chain created successfully.")
 
-    return rag_chain 
+    return rag_chain

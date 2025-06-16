@@ -6,32 +6,33 @@ from unittest.mock import AsyncMock, patch
 
 import strawberry
 import uvicorn
+from config import DATA_DIR
 from fastapi import Depends, FastAPI
+from shared.auth import CurrentUser, get_current_user
+from shared.data_models import UserRole
 from strawberry.fastapi import GraphQLRouter
 from strawberry.types import Info
 
-from config import DATA_DIR
-from shared.auth import CurrentUser, get_current_user
-from shared.data_models import UserRole
-
 # Imports relative to agent_service
-from agent_service.api.types.suggestion_types import MealSuggestion, PerformanceReview
+from agent_service.api.types.suggestion_types import (MealSuggestion,
+                                                      PerformanceReview)
 from agent_service.clients.history_client import HistoryClient
 from agent_service.clients.users_client import UsersClient
 from agent_service.database import get_session
+from agent_service.embedding import get_embedding
 from agent_service.engine import get_engine_for_tradition
-from agent_service.services.tradition_repository import TraditionRepository
 from agent_service.services.suggestion_service import SuggestionService
+from agent_service.services.tradition_repository import TraditionRepository
 from agent_service.services.tradition_service import TraditionService
 from agent_service.uow import UnitOfWork, get_uow
-from agent_service.web.hooks import router as hooks_router
 from agent_service.vector_stores.qdrant_client import get_qdrant_client
-from agent_service.embedding import get_embedding
+from agent_service.web.hooks import router as hooks_router
 
 logger = logging.getLogger(__name__)
 
 # --- App Lifespan Management ---
 mock_users_service_client = AsyncMock()
+
 
 # --- Context Management for GraphQL ---
 async def get_context(
@@ -44,7 +45,9 @@ async def get_context(
     ]
     return {"uow": uow, "current_user": current_user}
 
+
 GraphQLContext = dict
+
 
 @strawberry.type
 class Query:
@@ -81,16 +84,16 @@ class Query:
         include_personal: bool = True,
         include_knowledge: bool = True,
         entry_types: Optional[List[str]] = None,
-        limit: int = 10
+        limit: int = 10,
     ) -> List[str]:
         """Performs semantic search across knowledge base and personal journal entries."""
         current_user = info.context["current_user"]
-        
+
         try:
             query_embedding = await get_embedding(query)
             if not query_embedding:
                 return []
-            
+
             qdrant_client = get_qdrant_client()
             search_results = await qdrant_client.hybrid_search(
                 query=query,
@@ -100,14 +103,15 @@ class Query:
                 include_personal=include_personal,
                 include_knowledge=include_knowledge,
                 entry_types=entry_types,
-                limit=limit
+                limit=limit,
             )
-            
+
             return [result.text for result in search_results]
-            
+
         except Exception as e:
             logger.error(f"Semantic search failed: {e}")
             return []
+
 
 @strawberry.type
 class Mutation:
@@ -134,16 +138,21 @@ class Mutation:
         """
         # This functionality will be moved to the ingestion service pipeline
         # and triggered by a webhook, not a direct GraphQL mutation.
-        raise NotImplementedError("Document upload is now handled by the GCS ingestion pipeline.")
+        raise NotImplementedError(
+            "Document upload is now handled by the GCS ingestion pipeline."
+        )
+
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 graphql_app = GraphQLRouter(schema, graphiql=True, context_getter=get_context)
 
 app = FastAPI()
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "agent-service"}
+
 
 app.include_router(graphql_app, prefix="/graphql")
 app.include_router(hooks_router)

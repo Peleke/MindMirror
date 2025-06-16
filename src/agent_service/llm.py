@@ -1,11 +1,10 @@
 from typing import Any
 
+from config import (LLM_PROVIDER, OLLAMA_BASE_URL, OLLAMA_CHAT_MODEL,
+                    OPENAI_MODEL)
 from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
-
-from config import (LLM_PROVIDER, OLLAMA_BASE_URL, OLLAMA_CHAT_MODEL,
-                    OPENAI_MODEL)
 
 
 def get_llm(provider: str = LLM_PROVIDER, **kwargs: Any) -> BaseChatModel:

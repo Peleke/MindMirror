@@ -21,4 +21,4 @@ class JournalClient:
             f"MOCK JournalClient: Fetching entries for user {user_id} from {start_date} to {end_date}"
         )
         # Return an empty list by default for the mock
-        return [] 
+        return []

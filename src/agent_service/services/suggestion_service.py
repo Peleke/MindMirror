@@ -2,9 +2,10 @@ import asyncio
 from datetime import datetime, timedelta
 
 from shared.auth import CurrentUser
+
 from agent_service.clients.history_client import HistoryClient
-from agent_service.clients.users_client import UsersClient
 from agent_service.clients.journal_client import JournalClient
+from agent_service.clients.users_client import UsersClient
 from agent_service.engine import CoachingEngine
 
 
@@ -101,40 +102,51 @@ class SuggestionService:
         # 2. NEW: Use semantic search to get relevant insights from past entries and knowledge
         semantic_context = ""
         try:
-            from agent_service.vector_stores.qdrant_client import get_qdrant_client
             from agent_service.embedding import get_embedding
-            
+            from agent_service.vector_stores.qdrant_client import \
+                get_qdrant_client
+
             # Generate search queries based on recent patterns
             search_queries = []
-            
+
             # Search based on workout patterns
             if workout_logs:
                 search_queries.append("workout performance improvement consistency")
                 search_queries.append("exercise recovery energy levels")
-            
+
             # Search based on journal patterns
             if journal_entries:
                 # Analyze journal content for themes
-                gratitude_entries = [e for e in journal_entries if e.entry_type == "GRATITUDE"]
-                reflection_entries = [e for e in journal_entries if e.entry_type == "REFLECTION"]
-                
+                gratitude_entries = [
+                    e for e in journal_entries if e.entry_type == "GRATITUDE"
+                ]
+                reflection_entries = [
+                    e for e in journal_entries if e.entry_type == "REFLECTION"
+                ]
+
                 if gratitude_entries:
-                    search_queries.append("gratitude mindset positive psychology wellbeing")
+                    search_queries.append(
+                        "gratitude mindset positive psychology wellbeing"
+                    )
                 if reflection_entries:
                     search_queries.append("self reflection personal growth development")
-            
+
             # Add general review-related searches
-            search_queries.extend([
-                "progress tracking goals achievement",
-                "habit formation consistency motivation",
-                "performance review self assessment"
-            ])
-            
+            search_queries.extend(
+                [
+                    "progress tracking goals achievement",
+                    "habit formation consistency motivation",
+                    "performance review self assessment",
+                ]
+            )
+
             # Perform semantic searches
             qdrant_client = get_qdrant_client()
             semantic_insights = []
-            
-            for query in search_queries[:3]:  # Limit to 3 searches to avoid overwhelming
+
+            for query in search_queries[
+                :3
+            ]:  # Limit to 3 searches to avoid overwhelming
                 try:
                     query_embedding = await get_embedding(query)
                     if query_embedding:
@@ -145,21 +157,29 @@ class SuggestionService:
                             query_embedding=query_embedding,
                             include_personal=True,
                             include_knowledge=True,
-                            limit=3
+                            limit=3,
                         )
-                        
+
                         # Add relevant insights
                         for result in search_results:
                             if result.score > 0.7:  # Only high-relevance results
-                                source_type = "knowledge" if not result.is_personal_content() else "personal"
-                                semantic_insights.append(f"[{source_type}] {result.text[:200]}...")
+                                source_type = (
+                                    "knowledge"
+                                    if not result.is_personal_content()
+                                    else "personal"
+                                )
+                                semantic_insights.append(
+                                    f"[{source_type}] {result.text[:200]}..."
+                                )
                 except Exception as e:
                     print(f"Semantic search failed for query '{query}': {e}")
                     continue
-            
+
             if semantic_insights:
-                semantic_context = "\n--- Relevant Insights ---\n" + "\n".join(semantic_insights[:5])  # Limit to 5 insights
-                
+                semantic_context = "\n--- Relevant Insights ---\n" + "\n".join(
+                    semantic_insights[:5]
+                )  # Limit to 5 insights
+
         except Exception as e:
             print(f"Failed to get semantic context: {e}")
             semantic_context = ""
@@ -170,7 +190,7 @@ class SuggestionService:
             "",
             "IMPORTANT: Please format your response with these exact sections (use these exact labels):",
             "**Key Success:** [one key achievement or positive trend]",
-            "**Area for Improvement:** [one main area to focus on improving]", 
+            "**Area for Improvement:** [one main area to focus on improving]",
             "**Journal Prompt:** [a specific, actionable question for reflection]",
             "",
             "Data from the last 14 days:",

@@ -1,10 +1,9 @@
 from typing import AsyncGenerator
 
+from config import DATABASE_URL
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 from sqlalchemy.sql import text
-
-from config import DATABASE_URL
 
 # Create async engine
 engine = create_async_engine(
@@ -19,6 +18,7 @@ async_session_maker = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """

@@ -1,11 +1,13 @@
 import logging
 import os
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 # Dependency to verify the secret header
 async def verify_secret(x_reindex_secret: str = Header(...)):
@@ -15,8 +17,9 @@ async def verify_secret(x_reindex_secret: str = Header(...)):
         logger.warning("Invalid or missing re-indexing secret.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing secret key"
+            detail="Invalid or missing secret key",
         )
+
 
 @router.post(
     "/triggers/reindex-tradition",
@@ -28,7 +31,7 @@ async def trigger_reindex(tradition: str):
     """
     Secure endpoint to trigger a Celery task that rebuilds the knowledge base
     for a specific tradition from its source (e.g., GCS bucket).
-    
+
     This is intended to be called by an automated process, like a Cloud Function.
     """
     logger.info(f"Received re-indexing request for tradition: {tradition}")
@@ -43,5 +46,5 @@ async def trigger_reindex(tradition: str):
         logger.error(f"Failed to queue re-indexing task for {tradition}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to queue re-indexing task"
-        ) 
+            detail="Failed to queue re-indexing task",
+        )

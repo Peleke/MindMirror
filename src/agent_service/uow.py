@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker as AsyncSessionMakerType
 
 # Import the existing async_session_maker from database.py
-from agent_service.database import async_session_maker as global_async_session_maker
+from agent_service.database import \
+    async_session_maker as global_async_session_maker
 
 logger = logging.getLogger(__name__)
 
