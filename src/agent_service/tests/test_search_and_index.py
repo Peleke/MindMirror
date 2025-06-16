@@ -11,7 +11,7 @@ from agent_service.journal_indexer import (JournalIndexer,
 from agent_service.models.journal import JournalEntry
 from agent_service.models.sql.journal import JournalEntryModel
 from agent_service.tasks import queue_journal_entry_indexing
-from celery_app import celery_app
+from agent_service.celery_app import celery_app
 
 
 @pytest.mark.asyncio

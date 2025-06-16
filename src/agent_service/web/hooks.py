@@ -3,7 +3,7 @@ import os
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from celery_app import celery_app
+from agent_service.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
