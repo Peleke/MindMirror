@@ -3,53 +3,65 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from shared.clients import create_journal_client, AuthContext
 from agent_service.embedding import get_embedding
 from agent_service.vector_stores.qdrant_client import get_qdrant_client
+
+logger = logging.getLogger(__name__)
 
 
 class JournalServiceClient:
     """
-    A placeholder client to interact with the Journal Service.
-    In a real implementation, this would use httpx or gRPC to make network requests.
+    Real client to interact with the Journal Service using HTTP.
+    
+    This replaces the previous mock implementation with actual network calls.
     """
+
+    def __init__(self, base_url: str = "http://journal-service:8001"):
+        self._http_client = create_journal_client(base_url=base_url)
 
     async def get_entry_by_id(
         self, entry_id: str, user_id: str
     ) -> Optional[Dict[str, Any]]:
         """Fetches a single journal entry by its ID from the journal service."""
-        logger.warning(
-            f"Using mock JournalServiceClient for entry {entry_id}. NOT FOR PRODUCTION."
-        )
-        return {
-            "id": entry_id,
-            "user_id": user_id,
-            "created_at": datetime.utcnow().isoformat(),
-            "entry_type": "FREEFORM",
-            "payload": "This is a mock entry from the placeholder client.",
-        }
+        async with self._http_client as client:
+            user_uuid = UUID(user_id)
+            
+            # Get all entries and find the specific one
+            # Note: In a production system, the journal service would have a get-by-id endpoint
+            shared_entries = await client.list_entries_for_user(user_id=user_uuid)
+            
+            for entry in shared_entries:
+                if entry.id == entry_id:
+                    return {
+                        "id": entry.id,
+                        "user_id": entry.user_id,
+                        "created_at": entry.created_at.isoformat(),
+                        "entry_type": entry.entry_type,
+                        "payload": entry.payload,
+                    }
+            
+            # Entry not found
+            logger.warning(f"Journal entry {entry_id} not found for user {user_id}")
+            return None
 
     async def get_all_entries_by_user(self, user_id: str) -> List[Dict[str, Any]]:
         """Fetches all journal entries for a user from the journal service."""
-        logger.warning(
-            f"Using mock JournalServiceClient for user {user_id}. NOT FOR PRODUCTION."
-        )
-        return [
-            {
-                "id": str(UUID(int=1)),
-                "user_id": user_id,
-                "created_at": datetime.utcnow().isoformat(),
-                "entry_type": "GRATITUDE",
-                "payload": {
-                    "grateful_for": ["mock data", "working code"],
-                    "excited_about": ["the future"],
-                    "focus": "refactoring",
-                    "affirmation": "I am a good programmer.",
-                },
-            }
-        ]
-
-
-logger = logging.getLogger(__name__)
+        async with self._http_client as client:
+            user_uuid = UUID(user_id)
+            shared_entries = await client.list_entries_for_user(user_id=user_uuid)
+            
+            # Convert to the expected dictionary format
+            return [
+                {
+                    "id": entry.id,
+                    "user_id": entry.user_id,
+                    "created_at": entry.created_at.isoformat(),
+                    "entry_type": entry.entry_type,
+                    "payload": entry.payload,
+                }
+                for entry in shared_entries
+            ]
 
 
 class JournalIndexer:
