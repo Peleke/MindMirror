@@ -1,12 +1,11 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from shared.auth import CurrentUser
-
 from agent_service.clients.history_client import HistoryClient
 from agent_service.clients.journal_client import JournalClient
 from agent_service.clients.users_client import UsersClient
 from agent_service.engine import CoachingEngine
+from shared.auth import CurrentUser
 
 
 class SuggestionService:

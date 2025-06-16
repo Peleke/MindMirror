@@ -6,10 +6,13 @@ from uuid import UUID
 
 import strawberry
 import uvicorn
+from fastapi import Depends, FastAPI
+from strawberry.fastapi import GraphQLRouter
+from strawberry.types import Info
+
 # Import the task queueing function from the agent service
 # This is a temporary dependency until we have a proper event bus
 from agent_service.tasks import queue_journal_entry_indexing
-from fastapi import Depends, FastAPI
 # Imports relative to journal_service
 from journal_service.api.types.journal_types import (FreeformEntryInput,
                                                      FreeformJournalEntry,
@@ -27,8 +30,6 @@ from journal_service.service import JournalService
 from journal_service.uow import UnitOfWork, get_uow
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
-from strawberry.fastapi import GraphQLRouter
-from strawberry.types import Info
 
 logger = logging.getLogger(__name__)
 

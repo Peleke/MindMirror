@@ -2,7 +2,6 @@ import os
 from typing import List
 
 import networkx as nx
-from config import DATA_DIR, GRAPH_STORE_PATH, PDF_DIR, VECTOR_STORE_DIR
 from langchain.retrievers.merger_retriever import MergerRetriever
 from langchain_community.graphs.networkx_graph import NetworkxEntityGraph
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
@@ -14,6 +13,7 @@ from agent_service.chain import create_rag_chain
 from agent_service.embedding import create_vector_store, load_vector_store
 from agent_service.graph import build_graph_from_documents
 from agent_service.loading import chunk_documents, load_from_directory
+from config import DATA_DIR, GRAPH_STORE_PATH, PDF_DIR, VECTOR_STORE_DIR
 
 
 class SimpleGraphRetriever(BaseRetriever):

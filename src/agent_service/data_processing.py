@@ -2,6 +2,7 @@ import logging
 import os
 
 import networkx as nx
+
 from config import DATA_DIR, GRAPH_STORE_PATH, PDF_DIR, VECTOR_STORE_DIR
 from src.embedding import create_vector_store
 from src.graph import build_graph_from_documents

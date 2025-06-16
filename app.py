@@ -134,8 +134,15 @@ def main():
                 traditions = ["canon-default"]  # fallback
             else:
                 traditions = traditions_result["data"]["listTraditions"]
+                # Ensure traditions is not empty or None
+                if not traditions:
+                    traditions = ["canon-default"]
         except Exception as e:
             st.error(f"Network error loading traditions: {str(e)}")
+            traditions = ["canon-default"]
+
+        # Ensure traditions is a list and not empty
+        if not isinstance(traditions, list) or len(traditions) == 0:
             traditions = ["canon-default"]
 
         # Set default if session state is not initialized

@@ -1,10 +1,11 @@
 from typing import AsyncGenerator
 
-from config import DATABASE_URL
-from journal_service.models.sql.base import Base
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 from sqlalchemy.sql import text
+
+from config import DATABASE_URL
+from journal_service.models.sql.base import Base
 
 # Create async engine
 engine = create_async_engine(

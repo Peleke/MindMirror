@@ -6,12 +6,12 @@ from uuid import uuid4
 
 import pytest
 
+from agent_service.celery_app import celery_app
 from agent_service.journal_indexer import (JournalIndexer,
                                            index_journal_entry_by_id)
 from agent_service.models.journal import JournalEntry
 from agent_service.models.sql.journal import JournalEntryModel
 from agent_service.tasks import queue_journal_entry_indexing
-from agent_service.celery_app import celery_app
 
 
 @pytest.mark.asyncio

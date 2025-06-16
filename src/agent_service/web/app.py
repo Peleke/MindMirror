@@ -6,10 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import strawberry
 import uvicorn
-from config import DATA_DIR
 from fastapi import Depends, FastAPI
-from shared.auth import CurrentUser, get_current_user
-from shared.data_models import UserRole
 from strawberry.fastapi import GraphQLRouter
 from strawberry.types import Info
 
@@ -27,6 +24,9 @@ from agent_service.services.tradition_service import TraditionService
 from agent_service.uow import UnitOfWork, get_uow
 from agent_service.vector_stores.qdrant_client import get_qdrant_client
 from agent_service.web.hooks import router as hooks_router
+from config import DATA_DIR
+from shared.auth import CurrentUser, get_current_user
+from shared.data_models import UserRole
 
 logger = logging.getLogger(__name__)
 

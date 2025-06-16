@@ -10,15 +10,16 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
+                                    async_sessionmaker, create_async_engine)
+
 from journal_service.models.sql.base import Base
 from journal_service.models.sql.journal import JournalEntryModel
 from journal_service.uow import UnitOfWork, get_uow
 from journal_service.web.app import app
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
-                                    async_sessionmaker, create_async_engine)
 
 # Test configuration
 TEST_DRIVER = "asyncpg"

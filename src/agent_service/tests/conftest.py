@@ -10,10 +10,10 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
                            RedisTestBackend, RedisTestBroker)
-from shared.auth import CurrentUser, UserRole, get_current_user
 
 from agent_service.vector_stores.qdrant_client import QdrantClient
 from agent_service.web.app import app
+from shared.auth import CurrentUser, UserRole, get_current_user
 
 # Test configuration for agent service
 TEST_QDRANT_PORT = 6334  # Different from production port 6333
@@ -191,9 +191,8 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an HTTP client for testing the agent service API.
     """
-    from shared.auth import CurrentUser, UserRole, get_current_user
-
     from agent_service.web.app import app
+    from shared.auth import CurrentUser, UserRole, get_current_user
 
     async def override_get_current_user() -> CurrentUser:
         return CurrentUser(

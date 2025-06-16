@@ -1,7 +1,9 @@
 from typing import AsyncGenerator
 
-from journal_service.repository import JournalRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from journal_service.database import async_session_maker
+from journal_service.repository import JournalRepository
 
 
 class UnitOfWork:
@@ -42,10 +44,11 @@ class UnitOfWork:
 async def get_uow() -> AsyncGenerator[UnitOfWork, None]:
     """
     Dependency injection function to provide UnitOfWork instances.
-    This would be overridden in tests.
+    Creates a database session and returns a UnitOfWork instance.
     """
-    # This is a placeholder - in the real implementation, this would
-    # create a database session and return a UnitOfWork instance
-    raise NotImplementedError(
-        "get_uow should be implemented with actual database session"
-    )
+    async with async_session_maker() as session:
+        uow = UnitOfWork(session)
+        try:
+            yield uow
+        finally:
+            await session.close()

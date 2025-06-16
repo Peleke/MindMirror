@@ -4,13 +4,13 @@ from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID
 
 import pytest
-from shared.auth import CurrentUser
 
 from agent_service.clients.models import MealLog, PracticeInstance, UserGoals
 from agent_service.engine import get_engine_for_tradition
 from agent_service.models.journal import (GratitudePayload, JournalEntry,
                                           ReflectionPayload)
 from agent_service.services.suggestion_service import SuggestionService
+from shared.auth import CurrentUser
 
 # Mark all tests in this file as asyncio
 pytestmark = pytest.mark.asyncio

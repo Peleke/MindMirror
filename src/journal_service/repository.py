@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from journal_service.models import JournalEntry as PydanticJournalEntry
-from journal_service.models.sql.journal import JournalEntryModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from journal_service.models import JournalEntry as PydanticJournalEntry
+from journal_service.models.sql.journal import JournalEntryModel
 
 
 class JournalRepository:

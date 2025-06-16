@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from shared.clients import create_journal_client, AuthContext
 from agent_service.embedding import get_embedding
 from agent_service.vector_stores.qdrant_client import get_qdrant_client
+from shared.clients import AuthContext, create_journal_client
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class JournalServiceClient:
     """
     Real client to interact with the Journal Service using HTTP.
-    
+
     This replaces the previous mock implementation with actual network calls.
     """
 
@@ -26,11 +26,11 @@ class JournalServiceClient:
         """Fetches a single journal entry by its ID from the journal service."""
         async with self._http_client as client:
             user_uuid = UUID(user_id)
-            
+
             # Get all entries and find the specific one
             # Note: In a production system, the journal service would have a get-by-id endpoint
             shared_entries = await client.list_entries_for_user(user_id=user_uuid)
-            
+
             for entry in shared_entries:
                 if entry.id == entry_id:
                     return {
@@ -40,7 +40,7 @@ class JournalServiceClient:
                         "entry_type": entry.entry_type,
                         "payload": entry.payload,
                     }
-            
+
             # Entry not found
             logger.warning(f"Journal entry {entry_id} not found for user {user_id}")
             return None
@@ -50,7 +50,7 @@ class JournalServiceClient:
         async with self._http_client as client:
             user_uuid = UUID(user_id)
             shared_entries = await client.list_entries_for_user(user_id=user_uuid)
-            
+
             # Convert to the expected dictionary format
             return [
                 {

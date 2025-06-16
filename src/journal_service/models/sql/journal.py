@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
 
-from journal_service.models import JournalEntry as PydanticJournalEntry
-from journal_service.models.sql.base import Base
 from sqlalchemy import DateTime, Enum, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
+from journal_service.models import JournalEntry as PydanticJournalEntry
+from journal_service.models.sql.base import Base
 
 
 class JournalEntryModel(Base):
