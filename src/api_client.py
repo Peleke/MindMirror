@@ -1,6 +1,5 @@
 import json
 import os
-import re
 
 import aiohttp
 
@@ -15,81 +14,19 @@ def _is_docker_environment() -> bool:
     )
 
 
-# Detect if we're running in Docker and set appropriate service endpoints
+# Use Hive Gateway for all GraphQL operations
 if _is_docker_environment():
-    AGENT_SERVICE_URL = "http://agent_service:8000/graphql"
-    JOURNAL_SERVICE_URL = "http://journal_service:8001/graphql"
+    # In Docker, gateway service will be accessible via service name
+    GATEWAY_URL = "http://gateway:4000/graphql"
 else:
-    AGENT_SERVICE_URL = "http://localhost:8000/graphql"
-    JOURNAL_SERVICE_URL = "http://localhost:8001/graphql"
+    # In local development, gateway runs on localhost
+    GATEWAY_URL = "http://localhost:4000/graphql"
 
 # Demo user ID that matches our test fixtures
 DEMO_USER_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
-print(f"API Client configured for:")
-print(f"  Agent Service: {AGENT_SERVICE_URL}")
-print(f"  Journal Service: {JOURNAL_SERVICE_URL}")
-
-# Define which operations belong to which service
-AGENT_SERVICE_OPERATIONS = {
-    # Queries
-    "ask",
-    "listTraditions",
-    "getMealSuggestion",
-    # Mutations
-    "uploadDocument",
-    "generateReview",
-}
-
-JOURNAL_SERVICE_OPERATIONS = {
-    # Queries
-    "journalEntries",
-    "journalEntryExistsToday",
-    # Mutations
-    "createFreeformJournalEntry",
-    "createGratitudeJournalEntry",
-    "createReflectionJournalEntry",
-    "deleteJournalEntry",
-}
-
-
-def determine_service_endpoint(query: str) -> str:
-    """
-    Determine which service endpoint to use based on the GraphQL operation.
-
-    Args:
-        query: The GraphQL query string
-
-    Returns:
-        The appropriate service URL
-    """
-    # Extract operation names from the query using regex
-    # Look for both query/mutation definitions and field names
-    operation_pattern = (
-        r"(?:query|mutation|subscription)\s+\w*\s*(?:\([^)]*\))?\s*\{[^{]*?(\w+)"
-    )
-    field_pattern = r"\{\s*(\w+)"
-
-    # Try to find operation names
-    operation_matches = re.findall(operation_pattern, query, re.IGNORECASE | re.DOTALL)
-    field_matches = re.findall(field_pattern, query)
-
-    # Combine all potential operation names
-    potential_operations = operation_matches + field_matches
-
-    # Check which service this operation belongs to
-    for op in potential_operations:
-        if op in AGENT_SERVICE_OPERATIONS:
-            return AGENT_SERVICE_URL
-        elif op in JOURNAL_SERVICE_OPERATIONS:
-            return JOURNAL_SERVICE_URL
-
-    # Default to agent service if we can't determine
-    print(
-        f"Warning: Could not determine service for query, defaulting to agent service"
-    )
-    print(f"Query: {query[:100]}...")
-    return AGENT_SERVICE_URL
+print(f"API Client configured to use Hive Gateway:")
+print(f"  Gateway URL: {GATEWAY_URL}")
 
 
 async def run_graphql_query(
@@ -97,7 +34,7 @@ async def run_graphql_query(
 ):
     """
     Asynchronously runs a GraphQL query or mutation with authentication.
-    Routes the request to the appropriate service based on the operation.
+    All requests are routed through the Hive Gateway.
 
     Args:
         query: The GraphQL query string.
@@ -108,9 +45,6 @@ async def run_graphql_query(
     Returns:
         The JSON response from the API.
     """
-    # Determine which service to call
-    service_url = determine_service_endpoint(query)
-
     payload = {"query": query}
     if variables:
         payload["variables"] = variables
@@ -133,18 +67,23 @@ async def run_graphql_query(
 
     headers["x-internal-id"] = user_id
 
+    # Debug logging to verify headers are being sent
+    print(f"🔍 DEBUG: Sending request to {GATEWAY_URL}")
+    print(f"🔍 DEBUG: Headers being sent: {headers}")
+    print(f"🔍 DEBUG: Payload: {payload}")
+
     try:
         timeout = aiohttp.ClientTimeout(total=30)  # 30 second timeout
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
-                service_url, json=payload, headers=headers
+                GATEWAY_URL, json=payload, headers=headers
             ) as response:
                 if response.status == 200:
                     return await response.json()
                 else:
                     error_text = await response.text()
                     print(f"API Error: {response.status} - {error_text}")
-                    print(f"Service URL: {service_url}")
+                    print(f"Gateway URL: {GATEWAY_URL}")
                     return {
                         "errors": [
                             {
@@ -154,15 +93,15 @@ async def run_graphql_query(
                     }
     except aiohttp.ClientError as e:
         print(f"Network Error: {e}")
-        print(f"Service URL: {service_url}")
+        print(f"Gateway URL: {GATEWAY_URL}")
         return {
             "errors": [
                 {
-                    "message": f"Network error: Could not connect to API at {service_url}. Error: {str(e)}"
+                    "message": f"Network error: Could not connect to Gateway at {GATEWAY_URL}. Error: {str(e)}"
                 }
             ]
         }
     except Exception as e:
         print(f"Unexpected Error: {e}")
-        print(f"Service URL: {service_url}")
+        print(f"Gateway URL: {GATEWAY_URL}")
         return {"errors": [{"message": f"Unexpected error: {str(e)}"}]}

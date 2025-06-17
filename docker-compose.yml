@@ -12,12 +12,20 @@ services:
       - ./ingestion:/app/ingestion
       - local_gcs_bucket:/app/local_gcs_bucket
     command: uvicorn agent_service.web.app:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - mindmirror-network
     depends_on:
       - postgres
       - qdrant
       - redis
     ports:
       - "8000:8000" # Expose for direct access during dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
 
   journal_service:
     build:
@@ -30,11 +38,20 @@ services:
       - ./src/shared:/app/shared
       - ./src/agent_service:/app/agent_service # Temporary, for task queue import
     command: uvicorn journal_service.web.app:app --host 0.0.0.0 --port 8001 --reload
+    networks:
+      - mindmirror-network
     depends_on:
       - postgres
       - redis
     ports:
       - "8001:8001" # Expose for direct access during dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+      
 
   ui:
     build:
@@ -45,6 +62,8 @@ services:
     volumes:
       - ./src:/app/src
       - ./shared:/app/shared
+    networks:
+      - mindmirror-network
     depends_on:
       - agent_service
       - journal_service
@@ -64,6 +83,8 @@ services:
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
       - local_gcs_bucket:/app/local_gcs_bucket
+    networks:
+      - mindmirror-network
     depends_on:
       - redis
       - postgres
@@ -75,6 +96,8 @@ services:
     environment:
       - CELERY_BROKER_URL=${REDIS_URL}
     env_file: .env
+    networks:
+      - mindmirror-network
     ports:
       - "5555:5555"
     depends_on:
@@ -92,6 +115,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -104,6 +129,8 @@ services:
     ports:
       - "6333:6333"
       - "6334:6334"
+    networks:
+      - mindmirror-network
     volumes:
       - qdrant_data:/qdrant/storage
     # The official qdrant image is distroless and has no shell,
@@ -115,14 +142,59 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    networks:
+      - mindmirror-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  mesh-compose:
+    build:
+      context: ./mesh
+      dockerfile: Dockerfile.mesh-compose
+    command: ["bash", "-c", "npx mesh-compose -o build/supergraph.graphql"]
+    volumes:
+      - ./mesh/build:/app/build
+    networks:
+      - mindmirror-network
+    depends_on:
+      journal_service:
+        condition: service_healthy
+      agent_service:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./mesh
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    env_file:
+      - .env
+    volumes:
+      - ./mesh/gateway.config.ts:/app/gateway.config.ts
+      - ./mesh/build:/app/build
+    networks:
+      - mindmirror-network
+    depends_on:
+      mesh-compose:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/healthcheck"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
 
 volumes:
   postgres_data:
   qdrant_data:
   local_gcs_bucket:
- 
+
+networks:
+  mindmirror-network:
+    driver: bridge

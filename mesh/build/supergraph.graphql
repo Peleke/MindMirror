@@ -1,0 +1,201 @@
+schema
+    @link(url: "https://specs.apollo.dev/link/v1.0")
+    @link(url: "https://specs.apollo.dev/join/v0.3", for: EXECUTION)
+    
+    
+    
+    
+    
+    
+    
+  {
+    query: Query
+    mutation: Mutation
+    
+  }
+
+  
+    directive @join__enumValue(graph: join__Graph!) repeatable on ENUM_VALUE
+
+    directive @join__graph(name: String!, url: String!) on ENUM_VALUE
+
+    
+      directive @join__field(
+        graph: join__Graph
+        requires: join__FieldSet
+        provides: join__FieldSet
+        type: String
+        external: Boolean
+        override: String
+        usedOverridden: Boolean
+        
+        
+      ) repeatable on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+    
+    
+
+    directive @join__implements(
+      graph: join__Graph!
+      interface: String!
+    ) repeatable on OBJECT | INTERFACE
+
+    directive @join__type(
+      graph: join__Graph!
+      key: join__FieldSet
+      extension: Boolean! = false
+      resolvable: Boolean! = true
+      isInterfaceObject: Boolean! = false
+    ) repeatable on OBJECT | INTERFACE | UNION | ENUM | INPUT_OBJECT | SCALAR
+
+    directive @join__unionMember(
+      graph: join__Graph!
+      member: String!
+    ) repeatable on UNION
+
+    scalar join__FieldSet
+    
+  
+  
+  directive @link(
+    url: String
+    as: String
+    for: link__Purpose
+    import: [link__Import]
+  ) repeatable on SCHEMA
+
+  scalar link__Import
+
+  enum link__Purpose {
+    """
+    `SECURITY` features provide metadata necessary to securely resolve fields.
+    """
+    SECURITY
+
+    """
+    `EXECUTION` features provide metadata necessary for operation execution.
+    """
+    EXECUTION
+  }
+
+  
+  
+  
+  
+  
+  
+  
+enum join__Graph {
+  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
+  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
+}
+
+"""
+Represents binary data as Base64-encoded strings, using the standard alphabet.
+"""
+scalar Base64 @join__type(graph: AGENT) 
+
+scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
+
+"""
+Date with time (isoformat)
+"""
+scalar DateTime @join__type(graph: JOURNAL) 
+
+type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
+  ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
+  listTraditions: [String!]! @join__field(graph: AGENT) 
+  getMealSuggestion(mealType: String!, tradition: String!) : MealSuggestion! @join__field(graph: AGENT) 
+  semanticSearch(
+    query: String!
+    tradition: String! = "canon-default"
+    includePersonal: Boolean! = true
+    includeKnowledge: Boolean! = true
+    entryTypes: [String!] = null
+    limit: Int! = 10
+  ): [String!]! @join__field(graph: AGENT) 
+  journalEntries: [JournalEntryType!]! @join__field(graph: JOURNAL) 
+  journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
+}
+
+type MealSuggestion @join__type(graph: AGENT)  {
+  suggestion: String!
+}
+
+type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
+  generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
+  uploadDocument(fileName: String!, content: Base64!, tradition: String! = "canon-default") : Boolean! @join__field(graph: AGENT) 
+  createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
+  createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
+  createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
+  deleteJournalEntry(entryId: String!) : Boolean! @join__field(graph: JOURNAL) 
+}
+
+type PerformanceReview @join__type(graph: AGENT)  {
+  keySuccess: String!
+  improvementArea: String!
+  journalPrompt: String!
+}
+
+type FreeformJournalEntry @join__type(graph: JOURNAL)  {
+  id: String!
+  userId: String!
+  entryType: String!
+  payload: String!
+  createdAt: DateTime!
+  modifiedAt: DateTime
+}
+
+type GratitudeJournalEntry @join__type(graph: JOURNAL)  {
+  id: String!
+  userId: String!
+  entryType: String!
+  payload: GratitudePayloadType!
+  createdAt: DateTime!
+  modifiedAt: DateTime
+}
+
+type GratitudePayloadType @join__type(graph: JOURNAL)  {
+  gratefulFor: [String!]!
+  excitedAbout: [String!]!
+  focus: String!
+  affirmation: String!
+  mood: String
+}
+
+type ReflectionJournalEntry @join__type(graph: JOURNAL)  {
+  id: String!
+  userId: String!
+  entryType: String!
+  payload: ReflectionPayloadType!
+  createdAt: DateTime!
+  modifiedAt: DateTime
+}
+
+type ReflectionPayloadType @join__type(graph: JOURNAL)  {
+  wins: [String!]!
+  improvements: [String!]!
+  mood: String
+}
+
+"""
+A journal entry, which can be freeform, gratitude, or reflection.
+"""
+union JournalEntryType @join__type(graph: JOURNAL)  @join__unionMember(graph: JOURNAL, member: "FreeformJournalEntry")  @join__unionMember(graph: JOURNAL, member: "GratitudeJournalEntry")  @join__unionMember(graph: JOURNAL, member: "ReflectionJournalEntry")  = FreeformJournalEntry | GratitudeJournalEntry | ReflectionJournalEntry
+
+input FreeformEntryInput @join__type(graph: JOURNAL)  {
+  content: String!
+}
+
+input GratitudeEntryInput @join__type(graph: JOURNAL)  {
+  gratefulFor: [String!]!
+  excitedAbout: [String!]!
+  focus: String!
+  affirmation: String!
+  mood: String = null
+}
+
+input ReflectionEntryInput @join__type(graph: JOURNAL)  {
+  wins: [String!]!
+  improvements: [String!]!
+  mood: String = null
+}

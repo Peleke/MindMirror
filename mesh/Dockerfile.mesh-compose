@@ -1,0 +1,17 @@
+# run mesh-compose within Docker to allow direct reference to service names in `mesh.config.ts`
+FROM node:20-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl wget
+
+# Install Mesh CLI tools
+COPY package.json yarn.lock ./
+RUN yarn install
+
+# Bring in your mesh config
+COPY . /app
+
+# Command to run mesh-compose
+CMD ["npx", "mesh-compose", "-o", "supergraph.graphql"]
+
