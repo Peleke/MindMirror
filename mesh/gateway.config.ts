@@ -1,5 +1,7 @@
 import {
   defineConfig,
+  extractFromHeader,
+  createInlineSigningKeyProvider,
 } from '@graphql-hive/gateway';
 
 // If you plan to use .env files for local development with Node, you might need to import and configure dotenv:
@@ -13,6 +15,32 @@ export const gatewayConfig = defineConfig({
    * the supergraph file is in 'mesh/build/supergraph.graphql'.
    */
   supergraph: './build/supergraph.graphql',
+
+  /**
+   * JWT Authentication and Authorization.
+   */
+  jwt: {
+    forward: {
+      payload: true,
+      token: false,
+      extensionsFieldName: 'jwt',
+    },  
+    tokenLookupLocations: [
+      extractFromHeader({ name: 'authorization', prefix: 'Bearer' }),
+    ],
+    signingKeyProviders: [
+      createInlineSigningKeyProvider(process.env.SUPABASE_JWT_SECRET as string),
+    ],
+    tokenVerification: {
+      issuer: ['https://gaitofyakycvpwqfoevq.supabase.co/auth/v1'],
+      audience: ['authenticated'],
+      algorithms: ['HS256'],  // Supabase uses HS256
+    },
+    reject: {
+      missingToken: true,
+      invalidToken: true,
+    },
+  },
 
   /** Header propagation configuration. */
   propagateHeaders: {
