@@ -1,4 +1,90 @@
+'use client';
+
+import React, { useState } from 'react';
 import { ArrowRight, Star, Brain, MessageSquare, Zap, Shield, Code, Sparkles } from 'lucide-react';
+
+const EmailCaptureForm = ({ size = 'default', className = '' }: { size?: 'default' | 'large', className?: string }) => {
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      setIsSubmitted(true);
+      setEmail('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className={`text-center ${className}`}>
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">Welcome to MindMirror! Check your email.</span>
+        </div>
+      </div>
+    );
+  }
+
+  const inputClass = size === 'large' 
+    ? 'px-6 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200 flex-1'
+    : 'px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200 flex-1';
+  
+  const buttonClass = size === 'large'
+    ? 'px-8 py-4 text-lg bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed'
+    : 'px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed';
+
+  return (
+    <div className={className}>
+      <form onSubmit={handleSubmit} className="flex gap-3 max-w-md mx-auto">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          required
+          disabled={isSubmitting}
+          className={inputClass}
+        />
+        <button
+          type="submit"
+          disabled={isSubmitting || !email}
+          className={buttonClass}
+        >
+          {isSubmitting ? 'Joining...' : 'Join waitlist'}
+        </button>
+      </form>
+      {error && (
+        <p className="text-red-600 text-sm mt-2 text-center">{error}</p>
+      )}
+    </div>
+  );
+};
 
 export default function LandingPage() {
   return (
@@ -53,21 +139,7 @@ export default function LandingPage() {
 
             {/* Primary CTA */}
             <div id="early-access" className="mb-8">
-              <form className="max-w-md mx-auto flex gap-3">
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  className="flex-1 px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-3 text-base font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-colors flex items-center"
-                >
-                  Get Early Access
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-              </form>
+              <EmailCaptureForm size="large" className="max-w-md mx-auto" />
             </div>
 
             <p className="text-sm text-gray-500">
@@ -280,20 +352,7 @@ export default function LandingPage() {
               Join our waitlist and we'll notify you when early access opens.
             </p>
 
-            <form className="max-w-md mx-auto flex gap-3 mb-6">
-              <input
-                type="email"
-                placeholder="you@example.com"
-                required
-                className="flex-1 px-4 py-3 text-base text-gray-900 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 text-base font-medium text-gray-900 bg-white rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-white transition-colors"
-              >
-                Get Access
-              </button>
-            </form>
+            <EmailCaptureForm size="large" className="max-w-md mx-auto" />
 
             <p className="text-sm text-gray-400">
               No spam. Just thoughtful updates as we build the future of reflection.
