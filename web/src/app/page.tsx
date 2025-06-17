@@ -17,12 +17,27 @@ const EmailCaptureForm = ({ size = 'large', className = '' }: { size?: 'default'
     setError('');
 
     try {
-      // For now, just simulate success - will connect to real API later
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the existing landing page API endpoint
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email,
+          source: 'homepage_newsletter' 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to subscribe');
+      }
+
       setIsSubmitted(true);
       setEmail('');
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -33,7 +48,7 @@ const EmailCaptureForm = ({ size = 'large', className = '' }: { size?: 'default'
       <div className={cn('text-center', className)}>
         <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 rounded-2xl border border-green-200/50 shadow-sm">
           <Check className="w-5 h-5" />
-          <span className="font-semibold">You're in! Check your email for next steps.</span>
+          <span className="font-semibold">Thanks! You're subscribed to our newsletter.</span>
         </div>
       </div>
     );
@@ -67,11 +82,11 @@ const EmailCaptureForm = ({ size = 'large', className = '' }: { size?: 'default'
           {isSubmitting ? (
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Joining...
+              Subscribing...
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              Get Started
+              Subscribe
               <ArrowRight className="w-5 h-5" />
             </div>
           )}
@@ -203,11 +218,17 @@ export default function HomePage() {
 
           {/* Primary CTA */}
           <div className="mb-6">
-            <EmailCaptureForm className="max-w-lg mx-auto" />
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 focus:ring-4 focus:ring-blue-500/20 outline-none"
+            >
+              Get Started Free
+              <ArrowRight className="w-6 h-6" />
+            </Link>
           </div>
 
           <p className="text-sm text-gray-500 mb-16">
-            Join 2,847 deep thinkers • Early access launching soon
+            Join 2,847 deep thinkers • No credit card required
           </p>
 
           {/* Social Proof Preview */}
@@ -289,15 +310,15 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-12 text-white shadow-2xl">
             <h2 className="text-4xl sm:text-5xl font-bold mb-6">
-              Ready to think deeper?
+              Stay in the loop
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join the waitlist for early access to MindMirror. 
-              The first 1,000 users get lifetime priority support.
+              Get insights on deep thinking, journaling techniques, and be the first to know 
+              when MindMirror launches new features.
             </p>
             <EmailCaptureForm size="large" className="mb-6" />
             <p className="text-gray-400 text-sm">
-              No spam, no BS. Just updates when we're ready to blow your mind.
+              Weekly insights, no spam. Unsubscribe anytime.
             </p>
           </div>
         </div>

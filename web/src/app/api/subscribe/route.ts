@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email, source = 'landing_page' } = await request.json();
 
     if (!email) {
       return NextResponse.json(
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     if (existingSubscriber) {
       return NextResponse.json(
-        { message: 'You are already subscribed to MindMirror early access' },
+        { message: 'You are already subscribed to MindMirror updates' },
         { status: 200 }
       );
     }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       .insert([
         {
           email: email.toLowerCase(),
-          source: 'landing_page',
+          source: source,
           status: 'active'
         }
       ])
@@ -113,11 +113,11 @@ export async function POST(request: NextRequest) {
         ]);
     }
 
-    console.log(`New MindMirror signup saved: ${email} (ID: ${newSubscriber.id})`);
+    console.log(`New MindMirror signup saved: ${email} (ID: ${newSubscriber.id}, Source: ${source})`);
 
     return NextResponse.json(
       { 
-        message: 'Successfully subscribed to MindMirror early access',
+        message: 'Successfully subscribed to MindMirror updates',
         subscriberId: newSubscriber.id,
         emailId: emailData?.id 
       },
