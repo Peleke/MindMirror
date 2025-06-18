@@ -84,6 +84,18 @@ make demo
 - 🗂️ **Vector Database** - Qdrant for semantic search
 - ⚡ **Task Queue** - Celery workers for background processing
 
+### 🚀 Deployment Modes
+
+The application supports two deployment modes:
+
+- **Demo Mode** (`NEXT_PUBLIC_APP_MODE=demo`): Full application functionality available locally via `make demo`
+- **Production Mode** (default): Only the `/landing` page is accessible - all other routes redirect to landing
+
+This allows you to:
+- ✅ Demo the complete platform locally with full features
+- ✅ Deploy only the landing page to production for marketing/early access
+- ✅ Easily transition to full deployment by changing environment variable
+
 </details>
 
 

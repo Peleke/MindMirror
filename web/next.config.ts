@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
   
   // Disable telemetry
   telemetry: false,
+  
+  // Pass through environment variables
+  env: {
+    NEXT_PUBLIC_APP_MODE: process.env.NEXT_PUBLIC_APP_MODE || 'production',
+  },
 };
 
 export default nextConfig;

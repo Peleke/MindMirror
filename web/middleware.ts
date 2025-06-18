@@ -1,77 +1,33 @@
-// NOTE: This lives in the wrong place; middleware is non-functional right now, so this is essentially archived
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+export function middleware(request: NextRequest) {
+  // Allow everything in demo mode (local development)
+  if (process.env.NEXT_PUBLIC_APP_MODE === 'demo') {
+    return NextResponse.next()
+  }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
+  // In production, only allow landing page and essential assets
+  const allowedPaths = [
+    '/landing',
+    '/_next',
+    '/favicon.ico',
+    '/api/health', // Keep health endpoint for monitoring
+    // Add any other static assets you need
+    '/images',
+    '/icons'
+  ]
 
-  // Check if user is authenticated
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Check if current path is allowed
+  if (!allowedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+    // Redirect everything else to landing page
+    return NextResponse.redirect(new URL('/landing', request.url))
+  }
 
-  // Protect admin routes
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user) {
-      // Redirect to login if not authenticated
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
-    }
-
-    // Check if user is an admin (you'll need to implement this check)
-    // For now, we'll just check if the user exists
-    // In a real app, you'd check the admin_users table
+  // Add X-Robots-Tag header to prevent indexing non-landing routes in production
+  const response = NextResponse.next()
+  if (!request.nextUrl.pathname.startsWith('/landing')) {
+    response.headers.set('X-Robots-Tag', 'noindex')
   }
 
   return response
@@ -81,11 +37,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 } 
