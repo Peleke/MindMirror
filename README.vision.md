@@ -158,6 +158,16 @@ graph TB
     *   **✅ CLI Tools:** Production-ready command-line interface for knowledge base management.
     *   **✅ Real-time Search:** Instant availability of indexed documents for semantic search.
 
+### ✅ Milestone 4.9: Complete Containerization & Production Readiness
+*   **Status:** COMPLETE ✨
+*   **Outcome:** Full Docker containerization with Next.js as primary frontend interface.
+*   **Technical Achievements:**
+    *   **✅ Next.js Dockerization:** Multi-stage Docker build with standalone output for optimal performance.
+    *   **✅ Make Demo System:** One-command deployment with `make demo` for instant experience.
+    *   **✅ Health Monitoring:** Container health endpoints and comprehensive logging.
+    *   **✅ Documentation Consolidation:** Investor-grade README with collapsed technical sections.
+    *   **✅ Production Architecture:** Complete cloud deployment strategy with cost analysis.
+
 ---
 
 ## 5. 🚧 Known Issues & Technical Debt
@@ -199,42 +209,74 @@ graph TB
 
 ---
 
-## 6. 🚀 Next Evolution: The AutoGen-Powered Agent Kernel
+## 6. 🔮 Next Phase: The LangGraph-Powered Agent Kernel
 
-The next major evolution focuses on building a sophisticated agentic system using LangGraph for deterministic workflows and AutoGen for complex orchestration.
+The next evolution of MindMirror is to build a robust agentic kernel. After careful consideration, the development will proceed in two distinct phases:
 
-### Phase 1: LangGraph Foundation (In Progress)
+1.  **Phase 1 (Next Milestone):** Use **LangGraph** to build the foundational, stateful workflows for core business domains. This is for creating reliable, testable, and deterministic "subroutines" that handle complex but well-defined tasks (e.g., "summarize my journal entries for the last two weeks" or "build me a workout for tomorrow").
+2.  **Phase 2 (Future Vision):** Layer **AutoGen** on top as a master orchestrator for handling complex, open-ended user requests that require decomposing the problem into multiple steps that the underlying LangGraph workflows can solve.
 
-**Objective:** Build reliable, testable workflows for core business domains using LangGraph's stateful computation graphs.
+### Core Concept: Dynamic Tool Discovery via GraphQL Introspection
 
-#### Core Concept: Dynamic Tool Discovery via GraphQL Introspection
+The key to decoupling the agent from the tools remains the same. We will use the GraphQL Gateway as a dynamic tool registry.
 
-1.  **Schema as Tool Registry:** Any `Query` or `Mutation` in the federated schema can become an agent tool.
-2.  **`@agentTool` Directive:** Custom GraphQL directive to explicitly mark fields available to agents.
-3.  **Introspection on Startup:** Agent service queries gateway to discover available tools dynamically.
-4.  **Runtime Tool Generation:** Python functions generated in memory for each discovered GraphQL operation.
+1.  **Schema as a Tool-Manifest:** Any `Query` or `Mutation` in the federated schema can be a tool. The GraphQL `description` field is used as an LLM-friendly prompt explaining what the tool does and when it should be used.
+2.  **The `@agentTool` Directive:** A custom directive (`@agentTool`) will be added to the Gateway to explicitly mark which schema fields are available to the agent, providing fine-grained, declarative control from within each microservice.
+3.  **Introspection on Startup:** When the `AgentService` boots, it runs a GraphQL introspection query against the Gateway to fetch all fields marked with `@agentTool`.
+4.  **Dynamic Tool Generation:** For each discovered field, the service generates a corresponding Python function in memory. This function is pre-configured to execute a GraphQL call against the Gateway.
 
-#### LangGraph Implementation Architecture
+### Integration with LangGraph: A Stateful Flowchart
 
-*   **State Object:** Central Pydantic model tracking user input, execution plan, tool results, and final response.
-*   **Node Functions:** 
-    *   `plan_step`: Analyzes user input and determines next tool to execute
-    *   `execute_tool`: Calls dynamically generated GraphQL functions
-    *   `synthesize_response`: Generates final user-facing answer
-*   **Conditional Edges:** Route execution flow based on state (continue planning, execute tools, or finish)
+This dynamic toolset will be wielded by an agent defined as a state machine or "flowchart" using LangGraph.
 
-### Phase 2: AutoGen Orchestrator (Future)
+*   **The State Object:** A central Pydantic model will define the `State` of the graph, containing things like the original user input, a list of steps to take, tool results, and the final response. This object is passed between all nodes.
+*   **The Nodes:** Each node in the graph is a function that performs a specific task:
+    *   **`plan_step`:** Takes the user input and the current state to decide which tool to call next.
+    *   **`execute_tool`:** Calls the chosen tool (one of the dynamically generated GraphQL functions) and populates its result into the state object.
+    *   **`synthesize_response`:** Generates the final user-facing answer once the plan is complete.
+*   **The Edges:** Conditional edges connect the nodes, routing the flow of control based on the current state (e.g., looping to execute more tools or proceeding to the final response).
 
-**Objective:** Layer AutoGen on top of LangGraph workflows for complex, multi-domain requests.
+### TDD-Based Implementation Plan
 
-The AutoGen "CEO" agent will decompose complex requests like:
-> *"Plan me a workout and nutrition program based on my goals, the fact I'm trying to go vegetarian, and am training for a marathon but happen to have a right shoulder impingement."*
+This architecture will be built using a Test-Driven Development approach.
 
-Instead of calling GraphQL tools directly, AutoGen will orchestrate pre-built LangGraph workflows, providing emergent conversational intelligence while maintaining the reliability of deterministic core processes.
+1.  **[TEST] Step 1: Build the Agent's Front Door & Intent Router:**
+    *   **Implement:** Create a new `/chat` HTTP endpoint in the `AgentService`. This will be the primary entry point for all agentic interactions.
+    *   **Implement:** This endpoint will invoke a new LangGraph graph. The entry point node for this graph will be an **Intent Router**.
+    *   **Test:** The router's job is to classify the user's raw input. Write unit tests to ensure that given a user query, the router correctly classifies it into categories like `simple_rag_query`, `journal_summary_request`, or `complex_planning_request`.
+    *   **Assert:** The graph should branch to different, simple handler nodes based on the router's output.
+
+2.  **[TEST] Step 2: Test GraphQL Introspection & Tool Generation:**
+    *   Write unit tests to verify that the system can correctly query a mock GraphQL schema, filter for `@agentTool` fields, and generate callable Python functions that produce the correct GraphQL query strings.
+
+3.  **[TEST] Step 3: Test LangGraph State & Nodes:**
+    *   Write unit tests for each individual node in the graph. For the `plan_step` node, mock an LLM call and assert it produces the correct plan. For the `execute_tool` node, assert that it correctly calls the dynamic tool function with the right arguments from the state.
+
+4.  **[TEST] Step 4: Test LangGraph Conditional Edges:**
+    *   Write unit tests to verify the routing logic. Given a specific `State` (e.g., one where the plan is complete), assert that the graph correctly routes to the `synthesize_response` node.
+
+5.  **[TEST] Step 5: Test Full Graph Flow (Integration):**
+    *   Write an integration test that compiles the full LangGraph graph.
+    *   Initiate the graph with a user prompt that requires tool use. Mock the LLM calls and the GraphQL client.
+    *   Assert that the graph transitions through the correct sequence of nodes and that the final state contains the expected response.
 
 ---
 
-## 7. 🎯 Immediate Roadmap (Next 3 Months)
+## 7. 🧠 Future Vision: The AutoGen Orchestrator
+
+Once the foundational LangGraph workflows for core domains are built and tested, we will introduce **AutoGen** as a higher-level "CEO" agent.
+
+This agent will be responsible for tackling complex, multi-domain user requests like:
+
+> *"Plan me a workout and nutrition program based on my goals, the fact I'm trying to go vegetarian, and am training for a marathon but happen to have a right shoulder impingement."*
+
+To solve this, the AutoGen orchestrator won't call the GraphQL tools directly. Instead, its "tools" will be the pre-built, reliable **LangGraph graphs**. It will decompose the user's request and invoke the `GraphRAG` graph, the `WorkoutPlanner` graph, and the `Nutrition` graph in sequence, synthesizing their outputs into a single, comprehensive plan.
+
+This two-layer architecture provides the best of both worlds: the deterministic reliability of LangGraph for core processes and the emergent, conversational intelligence of AutoGen for high-level orchestration.
+
+---
+
+## 8. 🎯 Immediate Roadmap (Next 3 Months)
 
 ### Sprint 1: Complete Demo Environment
 - [ ] **Create `make demo` command** - Single command to launch entire stack
@@ -255,7 +297,7 @@ Instead of calling GraphQL tools directly, AutoGen will orchestrate pre-built La
 
 ---
 
-## 8. 🔮 Long-Term Vision: The Knowledge Graph Evolution
+## 9. 🔮 Long-Term Vision: The Knowledge Graph Evolution
 
 ### Current Stack Evolution
 Moving from the current **Postgres + Qdrant** foundation to **Postgres + Qdrant + Knowledge Graph** for deeper relationship modeling.
@@ -273,7 +315,7 @@ Moving from the current **Postgres + Qdrant** foundation to **Postgres + Qdrant 
 
 ---
 
-## 9. 📊 Success Metrics & Project Health
+## 10. 📊 Success Metrics & Project Health
 
 ### Technical Metrics
 - **✅ Service Uptime:** 99%+ availability across all microservices
@@ -295,7 +337,7 @@ Moving from the current **Postgres + Qdrant** foundation to **Postgres + Qdrant 
 
 ---
 
-## 10. 🛠 Development Environment & Contribution Guide
+## 11. 🛠 Development Environment & Contribution Guide
 
 ### Quick Start for Developers
 
