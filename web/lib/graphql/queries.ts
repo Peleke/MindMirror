@@ -15,21 +15,42 @@ export const JOURNAL_ENTRY_EXISTS_TODAY = gql`
 `
 
 export const GET_JOURNAL_ENTRIES = gql`
-  query GetJournalEntries($limit: Int, $offset: Int) {
-    journalEntries(limit: $limit, offset: $offset) {
-      id
-      type
-      content
-      createdAt
-      metadata
+  query GetJournalEntries {
+    journalEntries {
+      __typename
+      ... on GratitudeJournalEntry {
+        id
+        createdAt
+        payload {
+          gratefulFor
+          excitedAbout
+          focus
+          affirmation
+          mood
+        }
+      }
+      ... on ReflectionJournalEntry {
+        id
+        createdAt
+        payload {
+          wins
+          improvements
+          mood
+        }
+      }
+      ... on FreeformJournalEntry {
+        id
+        createdAt
+        content: payload
+      }
     }
   }
 `
 
-// Chat-related queries
+// Chat-related mutations
 export const ASK_QUERY = gql`
-  query Ask($query: String!, $tradition: String!) {
-    ask(query: $query, tradition: $tradition) {
+  mutation Ask($input: AskInput!) {
+    ask(input: $input) {
       response
       timestamp
     }
