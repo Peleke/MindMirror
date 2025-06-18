@@ -7,6 +7,7 @@ import { useTradition } from '../../../lib/tradition-context'
 import { apolloConfig } from '../../../lib/apollo-client'
 import { Brain, Loader2, CheckCircle, Globe, Server, Book, Heart, Lightbulb } from 'lucide-react'
 import { ConnectionTest } from '../../components/dashboard/ConnectionTest'
+import { InsightsSection } from '../../components/dashboard/InsightsSection'
 
 export default function DashboardPage() {
   const { user, session, loading } = useAuth()
@@ -77,6 +78,8 @@ export default function DashboardPage() {
           </Link>
       </div>
       
+      <InsightsSection />
+
       {/* Tradition Info */}
       <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100 mb-8">
         <div className="flex items-center gap-3 mb-4">
