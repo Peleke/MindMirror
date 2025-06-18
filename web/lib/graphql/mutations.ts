@@ -45,7 +45,6 @@ export const GENERATE_REVIEW = gql`
       keySuccess
       improvementArea
       journalPrompt
-      generatedAt
     }
   }
 ` 

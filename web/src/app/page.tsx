@@ -180,12 +180,20 @@ export default function HomePage() {
               MindMirror
             </span>
           </div>
-          <Link
-            href="/signup"
-            className="px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            Sign Up
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-6 py-3 text-gray-700 hover:text-gray-900 font-semibold transition-colors duration-200"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/signup"
+              className="px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              Sign Up
+            </Link>
+          </div>
             </div>
       </header>
 

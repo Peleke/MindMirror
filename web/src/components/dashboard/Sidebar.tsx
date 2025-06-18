@@ -16,7 +16,9 @@ import {
   ChevronRight,
   LayoutDashboard,
   FileText,
-  Utensils
+  Utensils,
+  FileUp,
+  MessageSquare
 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 
@@ -88,7 +90,9 @@ const navigationItems = [
         name: 'Document Upload',
         href: '/dashboard/uploads',
         icon: Upload,
-        description: 'Upload PDFs and text files'
+        description: 'Upload PDFs and text files',
+        disabled: true,
+        badge: 'Soon'
       },
       {
         name: 'Bi-Weekly Review',
@@ -172,25 +176,35 @@ export function Sidebar({ className }: SidebarProps) {
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={item.disabled ? '#' : item.href}
                       className={cn(
                         'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors relative group',
-                        isActive
+                        isActive && !item.disabled
                           ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                          : 'text-gray-700',
+                        !item.disabled && 'hover:bg-gray-50 hover:text-gray-900',
+                        item.disabled && 'opacity-50 cursor-not-allowed'
                       )}
                       title={isCollapsed ? item.name : undefined}
+                      onClick={(e) => item.disabled && e.preventDefault()}
                     >
                       <Icon className={cn(
                         'w-5 h-5 flex-shrink-0',
-                        isActive ? 'text-blue-600' : 'text-gray-500'
+                        isActive && !item.disabled ? 'text-blue-600' : 'text-gray-500'
                       )} />
                       {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium">{item.name}</div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {item.description}
+                        <div className="flex-1 min-w-0 flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {item.description}
+                            </div>
                           </div>
+                          {item.badge && (
+                            <span className="bg-gray-200 text-gray-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
                         </div>
                       )}
                       
@@ -210,4 +224,42 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
     </div>
   )
+}
+
+function NavItem({ href, icon: Icon, label, disabled = false, children }: { href: string; icon: any; label: string; disabled?: boolean; children?: React.ReactNode }) {
+  const pathname = usePathname()
+  const isActive = pathname === href
+
+  const linkClasses = cn(
+    "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all",
+    isActive && "bg-gray-100 text-gray-900 font-semibold",
+    !disabled && "hover:bg-gray-100 hover:text-gray-900",
+    disabled && "cursor-not-allowed opacity-50"
+  );
+
+  const linkContent = (
+    <>
+      <Icon className="h-4 w-4" />
+      <span className="flex-1">{label}</span>
+      {children}
+    </>
+  );
+
+  if (disabled) {
+    return (
+      <li>
+        <span className={linkClasses}>
+          {linkContent}
+        </span>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link href={href} className={linkClasses}>
+        {linkContent}
+      </Link>
+    </li>
+  );
 } 

@@ -1,8 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { gql, useQuery } from '@apollo/client'
-import { Loader2, Lightbulb } from 'lucide-react'
+import { Loader2, Lightbulb, AlertTriangle } from 'lucide-react'
 
 const SUMMARIZE_JOURNALS_QUERY = gql`
     query SummarizeJournals {
@@ -13,13 +13,32 @@ const SUMMARIZE_JOURNALS_QUERY = gql`
     }
 `
 
-const dummyInsight = "Based on your recent entries, you've shown a consistent focus on improving your morning routine. You mentioned feeling more energetic on days you wake up early and read. However, you've also noted challenges with staying consistent over the weekend. Perhaps setting a smaller, more achievable weekend goal could help maintain momentum."
-
 export function InsightsSection() {
-    const { data, loading, error } = useQuery(SUMMARIZE_JOURNALS_QUERY)
+    const { data, loading, error, refetch } = useQuery(SUMMARIZE_JOURNALS_QUERY, {
+        fetchPolicy: 'network-only', // Ensures fresh data on each load
+        notifyOnNetworkStatusChange: true,
+    })
+    const [timedOut, setTimedOut] = useState(false)
+
+    useEffect(() => {
+        if (loading) {
+            setTimedOut(false); // Reset timeout on new request
+            const timer = setTimeout(() => {
+                setTimedOut(true);
+            }, 20000); // 20 seconds
+
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
+
+
+    const handleRetry = () => {
+        setTimedOut(false)
+        refetch()
+    }
 
     const renderContent = () => {
-        if (loading) {
+        if (loading && !timedOut) {
             return (
                 <div className="flex items-center gap-2 text-gray-500">
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -28,26 +47,42 @@ export function InsightsSection() {
             )
         }
 
-        if (error) {
-            // Per instructions, show dummy data on error
+        if (error || timedOut) {
+            const errorMessage = timedOut 
+                ? "The request timed out. The AI may be busy or unavailable."
+                : error?.message || "An unknown error occurred."
+
             return (
-                <p className="text-sm text-gray-700 italic">
-                    {dummyInsight}
-                </p>
+                <div className="flex flex-col items-center text-center gap-3 text-red-700">
+                    <AlertTriangle className="w-8 h-8" />
+                    <div>
+                        <p className="font-semibold">Failed to generate insight.</p>
+                        <p className="text-xs mb-4">{errorMessage}</p>
+                        <button
+                            onClick={handleRetry}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                </div>
             )
         }
 
-        if (data) {
+        if (data?.summarizeJournals?.summary) {
             return (
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 italic">
                     {data.summarizeJournals.summary}
                 </p>
             )
         }
 
-        return null
+        return (
+            <p className="text-sm text-gray-500">
+                No insights available yet. Write a few journal entries to get started.
+            </p>
+        )
     }
-
 
     return (
         <div className="bg-gradient-to-br from-green-50 to-cyan-50 rounded-2xl p-6 border border-green-100 mb-8">
@@ -60,9 +95,7 @@ export function InsightsSection() {
                     <p className="text-sm text-gray-500">A summary of your recent journal entries.</p>
                 </div>
             </div>
-            <div className="text-sm text-gray-600 space-y-2">
-                {renderContent()}
-            </div>
+            <div className="text-sm text-gray-600 space-y-2">{renderContent()}</div>
         </div>
     )
 } 

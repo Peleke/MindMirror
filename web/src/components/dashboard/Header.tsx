@@ -5,6 +5,7 @@ import { useTradition } from '../../../lib/tradition-context'
 import { LogOut, User, Globe, Server } from 'lucide-react'
 import { TraditionSelector } from './TraditionSelector'
 import { apolloConfig } from '../../../lib/apollo-client'
+import { useRouter } from 'next/navigation'
 
 interface HeaderProps {
   className?: string
@@ -13,10 +14,12 @@ interface HeaderProps {
 export function Header({ className }: HeaderProps) {
   const { user, signOut } = useAuth()
   const { selectedTradition } = useTradition()
+  const router = useRouter()
 
   const handleSignOut = async () => {
     try {
       await signOut()
+      router.push('/')
     } catch (error) {
       console.error('Error signing out:', error)
     }
