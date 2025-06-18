@@ -2,21 +2,29 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Allow everything in demo mode (local development)
-  if (process.env.NEXT_PUBLIC_APP_MODE === 'demo') {
+  const appMode = process.env.NEXT_PUBLIC_APP_MODE || 'production'
+  
+  // Only allow full access in demo mode
+  if (appMode === 'demo') {
     return NextResponse.next()
   }
 
-  // In production, only allow landing page and essential assets
+  // In production mode, restrict to landing page only
   const allowedPaths = [
     '/landing',
     '/_next',
     '/favicon.ico',
     '/api/health', // Keep health endpoint for monitoring
+    '/api/subscribe', // Allow subscribe API for landing page
     // Add any other static assets you need
     '/images',
     '/icons'
   ]
+
+  // Special handling for root path - redirect to landing
+  if (request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/landing', request.url))
+  }
 
   // Check if current path is allowed
   if (!allowedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
@@ -36,12 +44,11 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * Match all request paths except for:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 } 
