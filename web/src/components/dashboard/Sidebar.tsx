@@ -14,7 +14,7 @@ import {
   Settings, 
   ChevronLeft,
   ChevronRight,
-  User,
+  LayoutDashboard,
   FileText,
   Utensils
 } from 'lucide-react'
@@ -25,6 +25,17 @@ interface SidebarProps {
 }
 
 const navigationItems = [
+  {
+    title: 'Home',
+    items: [
+      {
+        name: 'Dashboard',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        description: 'Your central hub'
+      }
+    ]
+  },
   {
     title: 'Daily Routine',
     items: [
@@ -68,12 +79,6 @@ const navigationItems = [
         icon: MessageCircle,
         description: 'Talk with your AI companion'
       },
-      {
-        name: 'Meal Suggestions',
-        href: '/dashboard/meals',
-        icon: Utensils,
-        description: 'Get personalized meal ideas'
-      }
     ]
   },
   {
@@ -118,16 +123,23 @@ export function Sidebar({ className }: SidebarProps) {
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        {!isCollapsed && (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-              MindMirror
-            </span>
-          </div>
-        )}
+        <Link href="/dashboard" className="flex items-center gap-3" title="Go to Dashboard">
+          {!isCollapsed && (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                  <Brain className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  MindMirror
+                </span>
+              </div>
+          )}
+           {isCollapsed && (
+             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+               <Brain className="w-5 h-5 text-white" />
+             </div>
+           )}
+        </Link>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"

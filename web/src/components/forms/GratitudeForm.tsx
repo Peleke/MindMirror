@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { CREATE_GRATITUDE_JOURNAL_ENTRY } from '../../../lib/graphql/mutations'
-import { JOURNAL_ENTRY_EXISTS_TODAY } from '../../../lib/graphql/queries'
+import { JOURNAL_ENTRY_EXISTS_TODAY, GET_JOURNAL_ENTRIES } from '../../../lib/graphql/queries'
 import { useTradition } from '../../../lib/tradition-context'
 import { Heart, Loader2, CheckCircle, Smile, Meh, Frown, Target, Sparkles } from 'lucide-react'
 
@@ -34,6 +34,7 @@ export function GratitudeForm() {
 
   // Create gratitude entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_GRATITUDE_JOURNAL_ENTRY, {
+    refetchQueries: [{ query: GET_JOURNAL_ENTRIES }],
     onCompleted: () => {
       setIsSubmitted(true)
       setSubmitError(null)
