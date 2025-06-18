@@ -90,21 +90,22 @@ enum join__Graph {
 }
 
 """
+Date with time (isoformat)
+"""
+scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
+
+"""
 Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
 
 scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
 
-"""
-Date with time (isoformat)
-"""
-scalar DateTime @join__type(graph: JOURNAL) 
-
 type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
   getMealSuggestion(mealType: String!, tradition: String!) : MealSuggestion! @join__field(graph: AGENT) 
+  summarizeJournals: JournalSummary! @join__field(graph: AGENT) 
   semanticSearch(
     query: String!
     tradition: String! = "canon-default"
@@ -119,6 +120,11 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
 
 type MealSuggestion @join__type(graph: AGENT)  {
   suggestion: String!
+}
+
+type JournalSummary @join__type(graph: AGENT)  {
+  summary: String!
+  generatedAt: DateTime!
 }
 
 type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
