@@ -36,7 +36,9 @@ An open-source, AI-powered personal performance platform that transforms your jo
 
 ## 🚀 Experience MindMirror
 
-**The fastest way to experience MindMirror is with our demo environment:**
+<details>
+<summary><strong>🚀 The fastest way to experience MindMirror is with our demo environment:
+</strong></summary>
 
 ### Prerequisites
 Before you begin, make sure you have:
@@ -81,6 +83,9 @@ make demo
 - 🔗 **Hive Gateway** - Federated GraphQL API layer
 - 🗂️ **Vector Database** - Qdrant for semantic search
 - ⚡ **Task Queue** - Celery workers for background processing
+
+</details>
+
 
 ## ✨ Core Features (What's Working Today)
 
@@ -147,6 +152,21 @@ graph TB
     style H fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     style I fill:#f1f8e9,stroke:#33691e,stroke-width:2px
 ```
+
+## 🔧 Tech Stack
+
+| Layer          | Technology                                                     |
+| -------------- | -------------------------------------------------------------- |
+| **Frontend**   | Next.js 14, React, TailwindCSS, Apollo Client                |
+| **API Gateway**| Hive (GraphQL Federation), Custom Directives                  |
+| **Backend**    | FastAPI, Strawberry GraphQL, Python 3.11+                    |
+| **Database**   | PostgreSQL, SQLAlchemy (Async)                                |
+| **Vector Store**| Qdrant                                                        |
+| **Task Queue** | Celery, Redis                                                  |
+| **AI/RAG**     | LangChain, OpenAI / Ollama                                     |
+| **Infra**      | Docker, Docker Compose                                         |
+| **Testing**    | Pytest, Jest, React Testing Library                           |
+
 
 ## 🌍 Live Deployment: Enterprise-Grade Cloud Architecture
 
@@ -254,21 +274,7 @@ graph LR
 
 **Total Estimated Infrastructure Cost:** $2,850/month @ 10K active users (~$0.29 per user/month)
 
-This architecture supports **linear scaling to 1M+ users** with automatic infrastructure provisioning and cost management. The combination of serverless services (Cloud Run, Pub/Sub) with managed databases ensures we only pay for actual usage while maintaining enterprise-grade reliability.
-
-## 🔧 Tech Stack
-
-| Layer          | Technology                                                     |
-| -------------- | -------------------------------------------------------------- |
-| **Frontend**   | Next.js 14, React, TailwindCSS, Apollo Client                |
-| **API Gateway**| Hive (GraphQL Federation), Custom Directives                  |
-| **Backend**    | FastAPI, Strawberry GraphQL, Python 3.11+                    |
-| **Database**   | PostgreSQL, SQLAlchemy (Async)                                |
-| **Vector Store**| Qdrant                                                        |
-| **Task Queue** | Celery, Redis                                                  |
-| **AI/RAG**     | LangChain, OpenAI / Ollama                                     |
-| **Infra**      | Docker, Docker Compose                                         |
-| **Testing**    | Pytest, Jest, React Testing Library                           |
+This architecture supports **linear scaling to 1M+ users** with automatic infrastructure provisioning and cost management.
 
 ---
 This project is under active development. For a more detailed breakdown of the long-term vision and architectural planning, see `README.vision.md`.
