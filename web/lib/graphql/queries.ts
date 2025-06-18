@@ -47,13 +47,10 @@ export const GET_JOURNAL_ENTRIES = gql`
   }
 `
 
-// Chat-related mutations
+// Chat-related query
 export const ASK_QUERY = gql`
-  mutation Ask($input: AskInput!) {
-    ask(input: $input) {
-      response
-      timestamp
-    }
+  query Ask($query: String!, $tradition: String!) {
+    ask(query: $query, tradition: $tradition)
   }
 `
 

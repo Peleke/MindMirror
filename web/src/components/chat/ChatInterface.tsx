@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useMutation } from '@apollo/client'
+import { useLazyQuery } from '@apollo/client'
 import { ASK_QUERY } from '../../../lib/graphql/queries'
 import { useTradition } from '../../../lib/tradition-context'
 import { useAuth } from '../../../lib/auth-context'
@@ -26,22 +26,19 @@ export function ChatInterface() {
     }
   ])
   const [inputValue, setInputValue] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Ask query mutation
-  const [askQuery, { loading }] = useMutation(ASK_QUERY, {
+  const [askQuery, { loading, error }] = useLazyQuery(ASK_QUERY, {
     onCompleted: (data) => {
-      if (data?.ask?.response) {
+      if (data?.ask) {
         const newMessage: Message = {
           id: Date.now().toString(),
-          content: data.ask.response,
+          content: data.ask,
           role: 'assistant',
           timestamp: new Date()
         }
         setMessages(prev => [...prev, newMessage])
-        setIsTyping(false)
       }
     },
     onError: (error) => {
@@ -53,14 +50,13 @@ export function ChatInterface() {
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
-      setIsTyping(false)
     }
   })
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
+  }, [messages])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -73,34 +69,35 @@ export function ChatInterface() {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || loading) return
 
-    // Add user message
+    const userMessageContent = inputValue.trim()
+
+    // Add user message to UI
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue.trim(),
+      content: userMessageContent,
       role: 'user',
       timestamp: new Date()
     }
-    setMessages(prev => [...prev, userMessage])
+    
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
     setInputValue('')
-    setIsTyping(true)
+
+    // Construct the query with conversation history
+    const conversationHistory = updatedMessages.slice(-6).map(m => `${m.role}: ${m.content}`).join('\\n')
+    const queryWithHistory = `CONVERSATION HISTORY:\n${conversationHistory}\n\nCURRENT QUERY: ${userMessageContent}`
 
     // Send to AI
     try {
       await askQuery({
         variables: {
-          input: {
-            query: userMessage.content,
-            tradition: selectedTradition,
-            conversationHistory: messages.slice(-5).map(m => ({
-              role: m.role,
-              content: m.content
-            }))
-          }
+          query: queryWithHistory,
+          tradition: selectedTradition,
         }
       })
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setIsTyping(false)
+    } catch (err) {
+      // onError hook will handle UI
+      console.error('Error sending message:', err)
     }
   }
 
@@ -164,8 +161,7 @@ export function ChatInterface() {
           </div>
         ))}
 
-        {/* Typing Indicator */}
-        {isTyping && (
+        {loading && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-white" />
