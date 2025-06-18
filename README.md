@@ -2,12 +2,12 @@
 
 An open-source, AI-powered personal performance platform that transforms your journal entries and curated knowledge into personalized, evidence-based coaching. Built with a modern, distributed microservices architecture and designed to be the "brain" that connects what you *know* with what you *do*.
 
-**Intelligent journaling meets AI coaching in a production-ready microservices architecture**
+## 🚀 Why This Matters: Technical Innovation That Drives Business Value
 
 <details>
-<summary><strong>🚀 Enterprise-Grade Technical Architecture & Market Opportunity</strong></summary>
+<summary><strong>🚀 Enterprise-Grade AI Architecture with Consumer-First Experience
+</strong></summary>
 
-**Enterprise-Grade AI Architecture with Consumer-First Experience:**
 - **🧠 Hybrid RAG at Scale:** Production-ready retrieval-augmented generation combining personal data (journals) with curated knowledge bases, powered by Qdrant vector search and advanced semantic ranking
 - **⚡ Real-Time Intelligence Pipeline:** Celery-orchestrated background processing automatically indexes every user interaction, making personal insights available for semantic search within seconds  
 - **🌐 GraphQL Federation Mastery:** Hive-powered microservices architecture enabling independent scaling, deployment, and development cycles while maintaining type safety across the entire stack
@@ -33,8 +33,6 @@ An open-source, AI-powered personal performance platform that transforms your jo
 - **⚡ Technical Execution Velocity:** Modern stack enables 10x faster feature development compared to legacy wellness platforms
 
 </details>
-
-## 🚀 Why This Matters: Technical Innovation That Drives Business Value
 
 ## 🚀 Experience MindMirror
 
