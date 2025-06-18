@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
 
     // Send welcome email
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'MindMirror <mindmirror@peleke.me>',
+      from: 'MindMirror <onboarding@resend.dev>',
       to: [email],
       subject: 'Welcome to MindMirror - Your self-aware journaling journey begins 🧠',
       html: emailHtml,
-      replyTo: 'mindmirror@peleke.33mail.com',
+      // replyTo: 'mindmirror@peleke.33mail.com',
     });
 
     if (emailError) {
