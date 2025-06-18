@@ -22,7 +22,7 @@ class JournalClient:
     expected interface and data models.
     """
 
-    def __init__(self, base_url: str = "http://journal-service:8001"):
+    def __init__(self, base_url: str = "http://journal_service:8001"):
         self._http_client = create_journal_client(base_url=base_url)
 
     async def list_by_user_for_period(

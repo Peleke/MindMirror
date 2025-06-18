@@ -38,13 +38,21 @@ logger = logging.getLogger(__name__)
 mock_users_service_client = AsyncMock()
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This is a placeholder for any future startup/shutdown logic
+    # for the agent service.
+    with patch("shared.auth.users_service_client", new=mock_users_service_client):
+        yield
+
+
 # --- Context Management for GraphQL ---
 async def get_context(
     uow: UnitOfWork = Depends(get_uow),
     current_user: CurrentUser = Depends(get_current_user),
 ):
+    # In a real scenario, roles might be used for permissions within this service
     mock_users_service_client.get_user_roles.return_value = [
-        UserRole(role="coach", domain="coaching"),
         UserRole(role="user", domain="coaching"),
     ]
     return {"uow": uow, "current_user": current_user}
@@ -86,7 +94,10 @@ class Query:
         """
         Generates a summary of the user's journal entries from the last 3 days.
         """
-        current_user = info.context["current_user"]
+        current_user = info.context.get("current_user")
+        if not current_user:
+            raise Exception("Authentication required. Please log in to generate a summary.")
+
         journal_client = JournalClient()
         llm_service = LLMService()
 
@@ -167,7 +178,10 @@ class Mutation:
         """
         Generates a bi-weekly performance review for the authenticated user.
         """
-        current_user = info.context["current_user"]
+        current_user = info.context.get("current_user")
+        if not current_user:
+            raise Exception("Authentication required. Please log in to generate a review.")
+
         qdrant_client = get_qdrant_client()
         llm_service = LLMService()
 
@@ -230,7 +244,7 @@ class Mutation:
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 graphql_app = GraphQLRouter(schema, graphiql=True, context_getter=get_context)
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/health")

@@ -242,7 +242,8 @@ class QdrantClient:
         limit: int = 20,
     ) -> List[SearchResult]:
         """Search for personal journal entries within a specific date range."""
-        collection_name = self._get_personal_collection_name(tradition, user_id)
+        # Get or create personal collection for user's data
+        collection_name = await self.get_or_create_personal_collection(tradition, user_id)
 
         # Build a filter for the date range
         date_filter = Filter(

@@ -17,7 +17,7 @@ class JournalServiceClient:
     This replaces the previous mock implementation with actual network calls.
     """
 
-    def __init__(self, base_url: str = "http://journal-service:8001"):
+    def __init__(self, base_url: str = "http://journal_service:8001"):
         self._http_client = create_journal_client(base_url=base_url)
 
     async def get_entry_by_id(
