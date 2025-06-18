@@ -17,9 +17,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Disable telemetry
-  telemetry: false,
-  
   // Pass through environment variables
   env: {
     NEXT_PUBLIC_APP_MODE: process.env.NEXT_PUBLIC_APP_MODE || 'production',

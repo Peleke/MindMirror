@@ -56,6 +56,11 @@ Before you begin, make sure you have:
 3. **Enable Email Authentication** in Authentication → Settings
 4. **Configure email templates** (optional) for a branded signup experience
 
+#### Resend Setup (for Landing Page)
+1. **Create a Resend account** at [resend.com](https://resend.com)
+2. **Get your API key** from API Keys section:
+   - `RESEND_API_KEY` - Your Resend API key for sending welcome emails
+
 ### Quick Start
 ```bash
 # 1. Clone the repository
