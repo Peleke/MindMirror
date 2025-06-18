@@ -2,10 +2,10 @@
 
 An open-source, AI-powered personal performance platform that transforms your journal entries and curated knowledge into personalized, evidence-based coaching. Built with a modern, distributed microservices architecture and designed to be the "brain" that connects what you *know* with what you *do*.
 
-## 🚀 Why This Matters: Technical Innovation That Drives Business Value
+## Why This Matters: Technical Innovation That Drives Business Value
 
 <details>
-<summary><strong>🚀 Enterprise-Grade AI Architecture with Consumer-First Experience
+<summary><strong>Enterprise-Grade AI Architecture with Consumer-First Experience
 </strong></summary>
 
 - **🧠 Hybrid RAG at Scale:** Production-ready retrieval-augmented generation combining personal data (journals) with curated knowledge bases, powered by Qdrant vector search and advanced semantic ranking
@@ -233,6 +233,70 @@ monitoring:
     - Infrastructure health and auto-scaling triggers
 ```
 
+These services have been ommitted from the provided Docker Compose file for simplicity's sake. However, MindMirror serves as a component of a much larger platform, and the development observability stack for that larger system is provided below.
+
+```yaml
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector/config.yaml
+    command:
+      - "--config=/etc/otel-collector/config.yaml"
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "13133:13133"
+    networks:
+      - mindmirror-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/config.yaml
+    networks:
+      - mindmirror-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      loki:
+        condition: service_started
+    networks:
+      - mindmirror-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["-config.file=/etc/promtail/config.yml"]
+    depends_on:
+      - loki
+    networks:
+      - mindmirror-network
+```
+
+In production, we'd use the Grafana Cloud ecosystem.
+
 ### Deployment Pipeline Architecture
 
 **GitHub Actions → OpenTofu → Multi-Environment Promotion:**
@@ -250,27 +314,6 @@ graph LR
     H --> I[Health Checks]
     I --> J[Traffic Migration]
 ```
-
-**Zero-Downtime Deployment Strategy:**
-- **Blue/Green Deployments:** Instant rollback capability with traffic switching
-- **Database Migrations:** Forward-compatible schema changes with automated rollback
-- **Feature Flags:** LaunchDarkly integration for gradual feature rollouts
-- **Health Checks:** Deep health monitoring including database connectivity, LLM availability
-
-### Enterprise Security & Compliance
-
-- **End-to-End Encryption:** TLS 1.3 in transit, AES-256 at rest
-- **Identity Management:** Supabase Auth with SAML/OIDC for enterprise SSO
-- **API Security:** Rate limiting, DDoS protection, WAF integration
-- **Data Residency:** Configurable deployment regions for GDPR/SOC2 compliance
-- **Audit Logging:** Immutable audit trails for all user data access
-
-### Cost Optimization & Auto-Scaling
-
-- **Intelligent Scaling:** Cloud Run services scale to zero during low usage
-- **LLM Cost Management:** Request batching, response caching, intelligent routing between OpenAI/Ollama based on query complexity
-- **Database Optimization:** Read replicas for geography-based routing, connection pooling with PgBouncer
-- **Vector Search Efficiency:** Qdrant clustering with automatic index optimization
 
 **Total Estimated Infrastructure Cost:** $2,850/month @ 10K active users (~$0.29 per user/month)
 
