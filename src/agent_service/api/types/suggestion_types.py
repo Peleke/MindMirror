@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 
 import strawberry
 
@@ -22,3 +23,13 @@ class PerformanceReview:
     key_success: str
     improvement_area: str
     journal_prompt: str
+
+
+@strawberry.type
+class JournalSummary:
+    """
+    GraphQL type for an AI-generated summary of recent journal entries.
+    """
+
+    summary: str
+    generated_at: datetime

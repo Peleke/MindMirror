@@ -164,7 +164,7 @@ async def qdrant_client(docker_services):
     # Wait a moment for Qdrant to be fully ready
     await asyncio.sleep(1)
 
-    client = QdrantClient(qdrant_url=TEST_QDRANT_URL)
+    client = QdrantClient(url=TEST_QDRANT_URL)
 
     # Verify connection
     health = await client.health_check()

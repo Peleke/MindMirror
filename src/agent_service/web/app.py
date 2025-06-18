@@ -3,6 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from unittest.mock import AsyncMock, patch
+from datetime import datetime, timedelta, timezone
 
 import strawberry
 import uvicorn
@@ -12,13 +13,15 @@ from strawberry.types import Info
 
 # Imports relative to agent_service
 from agent_service.api.types.suggestion_types import (MealSuggestion,
-                                                      PerformanceReview)
+                                                      PerformanceReview, JournalSummary)
 from agent_service.clients.history_client import HistoryClient
+from agent_service.clients.journal_client import JournalClient
 from agent_service.clients.users_client import UsersClient
 from agent_service.database import get_session
 from agent_service.embedding import get_embedding
 from agent_service.engine import get_engine_for_tradition
 from agent_service.qdrant_engine import get_qdrant_engine_for_tradition
+from agent_service.services.llm_service import LLMService
 from agent_service.services.suggestion_service import SuggestionService
 from agent_service.services.tradition_repository import TraditionRepository
 from agent_service.services.tradition_service import TraditionService
@@ -77,6 +80,47 @@ class Query:
         raise NotImplementedError("Journal service communication not yet implemented.")
 
     @strawberry.field
+    async def summarize_journals(
+        self, info: Info[GraphQLContext, None]
+    ) -> JournalSummary:
+        """
+        Generates a summary of the user's journal entries from the last 3 days.
+        """
+        current_user = info.context["current_user"]
+        journal_client = JournalClient()
+        llm_service = LLMService()
+
+        try:
+            # 1. Fetch journal entries from the last 3 days
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(days=3)
+
+            entries = await journal_client.list_by_user_for_period(
+                user_id=str(current_user.id),
+                start_date=start_date,
+                end_date=end_date,
+            )
+            
+            # Convert model instances to dictionaries for the LLM service
+            entry_dicts = [entry.model_dump() for entry in entries]
+
+            # 2. Generate summary using the LLM service
+            summary_text = await llm_service.get_journal_summary(entry_dicts)
+
+            # 3. Return the summary in the specified GraphQL type
+            return JournalSummary(
+                summary=summary_text,
+                generated_at=datetime.now(timezone.utc)
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to summarize journals for user {current_user.id}: {e}")
+            return JournalSummary(
+                summary="An error occurred while generating your summary. Please try again later.",
+                generated_at=datetime.now(timezone.utc),
+            )
+
+    @strawberry.field
     async def semantic_search(
         self,
         info: Info[GraphQLContext, None],
@@ -123,9 +167,48 @@ class Mutation:
         """
         Generates a bi-weekly performance review for the authenticated user.
         """
-        # This will be refactored to call the journal service via its API
-        # instead of accessing its repository directly. For now, it's disabled.
-        raise NotImplementedError("Journal service communication not yet implemented.")
+        current_user = info.context["current_user"]
+        qdrant_client = get_qdrant_client()
+        llm_service = LLMService()
+
+        try:
+            # 1. Define date range for the last 14 days
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(days=14)
+
+            # 2. Use a general query to find relevant entries via semantic search
+            search_query = "A review of my personal growth, successes, challenges, and areas for improvement."
+            query_embedding = await get_embedding(search_query)
+
+            if not query_embedding:
+                raise ValueError("Failed to generate embedding for search query.")
+
+            # 3. Fetch relevant journal entries from Qdrant within the date range
+            search_results = await qdrant_client.search_personal_documents_by_date(
+                user_id=str(current_user.id),
+                tradition=tradition,
+                query_embedding=query_embedding,
+                start_date=start_date,
+                end_date=end_date,
+                limit=25,  # Fetch a good number of entries for context
+            )
+            
+            # Convert search results to dictionaries for the LLM service
+            entry_dicts = [result.__dict__ for result in search_results]
+
+            # 4. Generate the structured review using the LLM service
+            review = await llm_service.generate_performance_review(entry_dicts)
+            return review
+
+        except Exception as e:
+            logger.error(
+                f"Failed to generate performance review for user {current_user.id}: {e}"
+            )
+            return PerformanceReview(
+                key_success="An error occurred while generating your review.",
+                improvement_area="We could not process your journal entries at this time.",
+                journal_prompt="Please try again later. How are you feeling right now?",
+            )
 
     @strawberry.mutation
     def upload_document(

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -83,7 +83,7 @@ class TestQdrantClient:
         async for client in qdrant_client:
             # Index a knowledge document (PDF)
             text = "This is wisdom from a PDF document about stoic philosophy."
-            embedding = [0.1] * 384  # Mock embedding
+            embedding = [0.1] * 768  # Mock embedding
             metadata = {
                 "source_id": "stoic_guide.pdf",
                 "page": 42,
@@ -115,7 +115,7 @@ class TestQdrantClient:
         async for client in qdrant_client:
             # Index a personal document (journal entry)
             text = "Today I reflected on my progress and felt grateful for my health."
-            embedding = [0.2] * 384  # Mock embedding
+            embedding = [0.2] * 768  # Mock embedding
             metadata = {
                 "source_id": "journal_entry_123",
                 "timestamp": datetime.utcnow().isoformat(),
@@ -152,7 +152,7 @@ class TestQdrantClient:
 
         async for client in qdrant_client:
             # Index multiple documents with different types
-            embedding = [0.3] * 384
+            embedding = [0.3] * 768
 
             # Index a gratitude entry
             await client.index_personal_document(
@@ -228,7 +228,7 @@ class TestQdrantClient:
             assert user2_id in collection2
 
             # Index document for user1
-            embedding = [0.1] * 384
+            embedding = [0.1] * 768
             await client.index_personal_document(
                 tradition=tradition,
                 user_id=user1_id,
@@ -248,11 +248,59 @@ class TestQdrantClient:
 
             assert len(results) == 0
 
-    async def test_hybrid_search(self, qdrant_client: QdrantClient):
-        """Test hybrid search across knowledge and personal collections."""
+    async def test_search_personal_documents_by_date(self, qdrant_client: QdrantClient):
+        """Test searching personal documents within a specific date range."""
         tradition = "test_tradition"
         user_id = str(uuid4())
-        embedding = [0.4] * 384
+        embedding = [0.4] * 768  # Assuming nomic-embed-text dimension
+
+        async for client in qdrant_client:
+            # Index documents with different timestamps
+            now = datetime.now(timezone.utc)
+            two_days_ago = now - timedelta(days=2)
+            five_days_ago = now - timedelta(days=5)
+
+            # Document from 2 days ago (should be found)
+            await client.index_personal_document(
+                tradition=tradition,
+                user_id=user_id,
+                text="Entry from two days ago.",
+                embedding=embedding,
+                metadata={"created_at": two_days_ago.timestamp()},
+            )
+
+            # Document from 5 days ago (should NOT be found)
+            await client.index_personal_document(
+                tradition=tradition,
+                user_id=user_id,
+                text="Entry from five days ago.",
+                embedding=embedding,
+                metadata={"created_at": five_days_ago.timestamp()},
+            )
+
+            # Define search range for the last 3 days
+            search_start_date = now - timedelta(days=3)
+            search_end_date = now
+
+            # Perform date-filtered search
+            results = await client.search_personal_documents_by_date(
+                user_id=user_id,
+                tradition=tradition,
+                query_embedding=embedding,
+                start_date=search_start_date,
+                end_date=search_end_date,
+                limit=10,
+            )
+
+            assert len(results) == 1
+            assert results[0].text == "Entry from two days ago."
+            assert results[0].metadata["created_at"] > search_start_date.timestamp()
+
+    async def test_hybrid_search(self, qdrant_client: QdrantClient):
+        """Test hybrid search across both knowledge and personal collections."""
+        tradition = "test_tradition"
+        user_id = str(uuid4())
+        embedding = [0.4] * 768
 
         async for client in qdrant_client:
             # Index knowledge document (PDF)

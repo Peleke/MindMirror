@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
 from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
-                                  PointStruct, SearchRequest, VectorParams)
+                                  PointStruct, SearchRequest, VectorParams, Range)
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +230,71 @@ class QdrantClient:
 
         except Exception as e:
             logger.error(f"Failed to search in collection {collection_name}: {e}")
+            return []
+
+    async def search_personal_documents_by_date(
+        self,
+        user_id: str,
+        tradition: str,
+        query_embedding: List[float],
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 20,
+    ) -> List[SearchResult]:
+        """Search for personal journal entries within a specific date range."""
+        collection_name = self._get_personal_collection_name(tradition, user_id)
+
+        # Build a filter for the date range
+        date_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="created_at",
+                    range=Range(
+                        gte=start_date.timestamp(),
+                        lte=end_date.timestamp(),
+                    ),
+                )
+            ]
+        )
+
+        try:
+            # Perform search with the date filter
+            search_results = self.client.search(
+                collection_name=collection_name,
+                query_vector=query_embedding,
+                query_filter=date_filter,
+                limit=limit,
+                with_payload=True,
+            )
+
+            # Convert to SearchResult objects
+            results = []
+            for hit in search_results:
+                payload = hit.payload or {}
+                text = payload.pop("text", "")
+                result = SearchResult(text=text, score=hit.score, metadata=payload)
+                results.append(result)
+
+            logger.debug(
+                f"Found {len(results)} personal documents for user {user_id} in date range"
+            )
+            return results
+
+        except ResponseHandlingException as e:
+            # This can happen if the collection doesn't exist yet for the user
+            if e.status_code == 404:
+                logger.warning(
+                    f"Personal collection '{collection_name}' not found for user {user_id}. Returning empty list."
+                )
+                return []
+            logger.error(
+                f"Error searching personal collection {collection_name}: {e}"
+            )
+            return []
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while searching personal collection {collection_name}: {e}"
+            )
             return []
 
     async def hybrid_search(
