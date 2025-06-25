@@ -9,6 +9,8 @@ import * as dotenv from 'dotenv';
 dotenv.config(); // This would typically be done at the entry point of your application
  
 export const gatewayConfig = defineConfig({
+  host: '0.0.0.0',
+  port: 4000,
   /**
    * Supergraph configuration.
    * Assuming the gateway service runs from the 'mesh' directory and
@@ -34,7 +36,7 @@ export const gatewayConfig = defineConfig({
     tokenVerification: {
       issuer: ['https://gaitofyakycvpwqfoevq.supabase.co/auth/v1'],
       audience: ['authenticated'],
-      algorithms: ['HS256'],  // Supabase uses HS256
+      algorithms: ['HS256'],  // Supabase uses HS257
     },
     reject: {
       missingToken: true,
@@ -75,4 +77,6 @@ export const gatewayConfig = defineConfig({
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-id'],
   },
+  /** Logging configuration */
+  logging: 'debug',
 });

@@ -8,7 +8,7 @@ const isDocker = process.env.NODE_ENV === 'production' || process.env.DOCKER_ENV
 
 // Gateway URL based on environment
 const GATEWAY_URL = isDocker 
-  ? 'http://hive-gateway:4000/graphql' // Docker internal network
+  ? 'http://localhost:4000/graphql' // Docker internal network
   : 'http://localhost:4000/graphql'    // Local development
 
 // HTTP Link for GraphQL endpoint
