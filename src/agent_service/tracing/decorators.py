@@ -40,10 +40,8 @@ def trace_function(
             trace_name = name or f"{func.__module__}.{func.__name__}"
             
             try:
-                client = langsmith.Client()
-                
-                # Start the trace
-                with client.trace(
+                # Use LangSmith's tracing API directly
+                with langsmith.trace(
                     name=trace_name,
                     tags=tags or [],
                     metadata=metadata or {},
@@ -65,8 +63,7 @@ def trace_function(
                 
                 # Add error metadata if we have a trace
                 try:
-                    client = langsmith.Client()
-                    with client.trace(
+                    with langsmith.trace(
                         name=trace_name,
                         tags=tags or [],
                         metadata=metadata or {},
@@ -185,9 +182,7 @@ def trace_runnable(
         
         def invoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
             try:
-                client = langsmith.Client()
-                
-                with client.trace(
+                with langsmith.trace(
                     name=trace_name,
                     tags=runnable_tags,
                     metadata={
@@ -210,9 +205,7 @@ def trace_runnable(
         
         async def ainvoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
             try:
-                client = langsmith.Client()
-                
-                with client.trace(
+                with langsmith.trace(
                     name=f"{trace_name}.async",
                     tags=runnable_tags + ["async"],
                     metadata={
