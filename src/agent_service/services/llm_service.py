@@ -7,14 +7,16 @@ and rendering system with LangChain for better integration with LangGraph workfl
 
 import logging
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
+from langchain_core.language_models import BaseLanguageModel
 
 from agent_service.api.types.suggestion_types import PerformanceReview
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.factory import PromptServiceFactory, get_prompt_service
+from agent_service.llms.provider_manager import ProviderManager, get_provider_manager
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +27,26 @@ class LLMService:
     
     This service provides LLM functionality using the new prompt storage
     and rendering system with LangChain for better integration with LangGraph workflows.
+    
+    Now integrates with the new provider system for enhanced LLM management and fallbacks.
     """
 
-    def __init__(self, prompt_service: PromptService = None, llm=None):
+    def __init__(
+        self, 
+        prompt_service: Optional[PromptService] = None, 
+        llm: Optional[BaseLanguageModel] = None,
+        provider_manager: Optional[ProviderManager] = None
+    ):
         """
         Initialize the LLM service.
         
         Args:
             prompt_service: Optional prompt service instance. If not provided,
                           creates a default service based on environment configuration.
-            llm: Optional LangChain LLM instance. If not provided, will be created per request.
+            llm: DEPRECATED - Optional LangChain LLM instance. If not provided, will be created per request.
+                 Use provider_manager for better LLM management.
+            provider_manager: Optional provider manager instance. If not provided,
+                            uses the global provider manager.
         """
         if prompt_service is None:
             # Use the configurable factory to create prompt service
@@ -44,8 +56,51 @@ class LLMService:
             self.prompt_service = prompt_service
             logger.info("Created LLM service with provided prompt service")
         
-        # Store the LLM instance (will be configured per request if not provided)
+        # DEPRECATED: Store the LLM instance (will be configured per request if not provided)
+        # This is kept for backward compatibility but should be replaced with provider_manager
         self.llm = llm
+        
+        # NEW: Provider manager for enhanced LLM management
+        if provider_manager is None:
+            self.provider_manager = get_provider_manager()
+            logger.info("Created LLM service with global provider manager")
+        else:
+            self.provider_manager = provider_manager
+            logger.info("Created LLM service with provided provider manager")
+    
+    def _get_llm_for_task(self, task_name: str, metadata: Dict[str, Any]) -> BaseLanguageModel:
+        """
+        Get an LLM instance configured for a specific task.
+        
+        Args:
+            task_name: Name of the task (e.g., "journal_summary", "performance_review")
+            metadata: Prompt metadata containing LLM configuration
+            
+        Returns:
+            Configured LLM instance
+        """
+        try:
+            # Try to create LLM using provider manager with fallback
+            config = {
+                "model": metadata.get("model", "gpt-4o"),
+                "temperature": metadata.get("temperature", 0.7),
+                "max_tokens": metadata.get("max_tokens", 1000),
+                "streaming": metadata.get("streaming", False)
+            }
+            
+            # Use provider manager to create LLM with fallback
+            return self.provider_manager.create_model_with_fallback(config)
+            
+        except Exception as e:
+            logger.warning(f"Failed to create LLM with provider manager: {e}")
+            
+            # DEPRECATED: Fallback to direct ChatOpenAI creation
+            logger.warning("Falling back to direct ChatOpenAI creation (DEPRECATED)")
+            return ChatOpenAI(
+                model=metadata.get("model", "gpt-4o"),
+                temperature=metadata.get("temperature", 0.7),
+                max_tokens=metadata.get("max_tokens", 1000),
+            )
     
     async def get_journal_summary(self, journal_entries: List[Dict[str, Any]]) -> str:
         """
@@ -76,17 +131,12 @@ class LLMService:
             prompt_info = self.prompt_service.get_prompt("journal_summary")
             metadata = prompt_info.metadata
             
-            # Use stored LLM or create new one with prompt metadata
-            if self.llm is None:
-                self.llm = ChatOpenAI(
-                    model=metadata.get("model", "gpt-4o"),
-                    temperature=metadata.get("temperature", 0.7),
-                    max_tokens=metadata.get("max_tokens", 250),
-                )
+            # Get LLM using new provider system
+            llm = self._get_llm_for_task("journal_summary", metadata)
             
             # Create the message and invoke the LLM
             message = HumanMessage(content=rendered_prompt)
-            response = await self.llm.ainvoke([message])
+            response = await llm.ainvoke([message])
             
             return response.content
             
@@ -129,17 +179,12 @@ class LLMService:
             prompt_info = self.prompt_service.get_prompt("performance_review")
             metadata = prompt_info.metadata
             
-            # Use stored LLM or create new one with prompt metadata
-            if self.llm is None:
-                self.llm = ChatOpenAI(
-                    model=metadata.get("model", "gpt-4o"),
-                    temperature=metadata.get("temperature", 0.5),
-                    max_tokens=metadata.get("max_tokens", 500),
-                )
+            # Get LLM using new provider system
+            llm = self._get_llm_for_task("performance_review", metadata)
             
             # Create the message and invoke the LLM
             message = HumanMessage(content=rendered_prompt)
-            response = self.llm.invoke([message])
+            response = llm.invoke([message])
             
             # Parse the structured response
             return self._parse_performance_review_response(response.content)
@@ -217,6 +262,81 @@ class LLMService:
                 journal_prompt="What would you like to focus on in your next journal entry?"
             )
     
+    # NEW: Provider-aware methods
+    
+    def get_llm(self, task: str, provider: Optional[str] = None, overrides: Optional[Dict[str, Any]] = None) -> BaseLanguageModel:
+        """
+        Get an LLM instance for a specific task with optional provider and overrides.
+        
+        Args:
+            task: Name of the task (e.g., "journal_summary", "performance_review")
+            provider: Optional provider name to use (e.g., "openai", "ollama", "gemini")
+            overrides: Optional configuration overrides
+            
+        Returns:
+            Configured LLM instance
+        """
+        try:
+            # Get prompt metadata for the task
+            prompt_info = self.prompt_service.get_prompt(task)
+            metadata = prompt_info.metadata
+            
+            # Start with metadata configuration
+            config = {
+                "model": metadata.get("model", "gpt-4o"),
+                "temperature": metadata.get("temperature", 0.7),
+                "max_tokens": metadata.get("max_tokens", 1000),
+                "streaming": metadata.get("streaming", False)
+            }
+            
+            # Apply overrides if provided
+            if overrides:
+                config.update(overrides)
+            
+            # Use specific provider if requested
+            if provider:
+                config["provider"] = provider
+                return self.provider_manager.create_model(config)
+            else:
+                # Use provider manager with fallback
+                return self.provider_manager.create_model_with_fallback(config)
+                
+        except Exception as e:
+            logger.error(f"Error getting LLM for task '{task}': {e}")
+            raise
+    
+    def get_provider_status(self, provider_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get status of LLM providers.
+        
+        Args:
+            provider_name: Optional provider name to check
+            
+        Returns:
+            Provider status information
+        """
+        return self.provider_manager.get_provider_status(provider_name)
+    
+    def get_available_providers(self) -> List[str]:
+        """
+        Get list of available LLM providers.
+        
+        Returns:
+            List of available provider names
+        """
+        return self.provider_manager.list_available_providers()
+    
+    def get_working_providers(self) -> List[str]:
+        """
+        Get list of working LLM providers.
+        
+        Returns:
+            List of working provider names
+        """
+        return self.provider_manager.get_working_providers()
+    
+    # DEPRECATED: Legacy methods for backward compatibility
+    
     def get_prompt_service(self) -> PromptService:
         """Get the underlying prompt service."""
         return self.prompt_service
@@ -242,11 +362,17 @@ class LLMService:
                 except Exception:
                     missing_prompts.append(prompt_name)
             
+            # Check provider status
+            provider_status = self.get_provider_status()
+            working_providers = self.get_working_providers()
+            
             return {
-                "status": "healthy" if not missing_prompts else "degraded",
+                "status": "healthy" if not missing_prompts and working_providers else "degraded",
                 "prompt_service": prompt_health,
                 "missing_prompts": missing_prompts,
-                "llm_configured": self.llm is not None
+                "provider_status": provider_status,
+                "working_providers": working_providers,
+                "llm_configured": self.llm is not None  # DEPRECATED
             }
             
         except Exception as e:
