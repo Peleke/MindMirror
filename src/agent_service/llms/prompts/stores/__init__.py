@@ -8,6 +8,7 @@ from .protocol import PromptStore
 from .memory import InMemoryPromptStore
 from .local import LocalPromptStore
 from .gcs import GCSPromptStore
+from .yaml import YAMLPromptStore
 from .loaders import StorageLoader, LocalStorageLoader, GCSStorageLoader
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     'InMemoryPromptStore',
     'LocalPromptStore',
     'GCSPromptStore',
+    'YAMLPromptStore',
     'StorageLoader',
     'LocalStorageLoader',
     'GCSStorageLoader'

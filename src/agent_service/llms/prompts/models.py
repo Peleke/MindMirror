@@ -20,6 +20,7 @@ class StoreType(Enum):
     LOCAL = "local"
     GCS = "gcs"
     MEMORY = "memory"
+    YAML = "yaml"
     FIRESTORE = "firestore"
 
 
