@@ -1,0 +1,47 @@
+content: 'Analyze the following journal entries from the past two weeks to generate
+  a performance review.
+
+  The user is focused on self-improvement. Your task is to identify one key success
+  and one primary area for improvement.
+
+  Based on this analysis, create a new, targeted journaling prompt to help them reflect
+  further.
+
+
+  Journal Entries:
+
+  {{ content_block }}
+
+
+  Based on these entries, provide the following in a structured format:
+
+  1.  **Key Success**: A specific, positive achievement or consistent behavior.
+
+  2.  **Improvement Area**: A constructive, actionable area where the user can focus
+  their efforts.
+
+  3.  **Journal Prompt**: A new, open-ended question that encourages reflection on
+  the improvement area.
+
+
+  Please format your response as follows:
+
+  SUCCESS: [Your identified key success here]
+
+  IMPROVEMENT: [Your identified improvement area here]
+
+  PROMPT: [Your generated journal prompt here]'
+created_at: '2025-06-26T00:25:15.879073'
+metadata:
+  category: journal
+  description: Generate a structured performance review from journal entries
+  max_tokens: 500
+  model: gpt-4o
+  output_format: structured
+  temperature: 0.5
+  type: review
+name: performance_review
+updated_at: '2025-06-26T00:25:15.879084'
+variables:
+- content_block
+version: '1.0'

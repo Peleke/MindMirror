@@ -33,10 +33,11 @@ services:
     env_file: .env
     environment:
       # Prompt Storage Configuration
-      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-local}
-      - PROMPT_STORAGE_LOCAL_PATH=${PROMPT_STORAGE_LOCAL_PATH:-/app/storage/prompts}
-      - PROMPT_STORAGE_GCS_BUCKET=${PROMPT_STORAGE_GCS_BUCKET}
-      - PROMPT_STORAGE_GCS_CREDENTIALS=${PROMPT_STORAGE_GCS_CREDENTIALS}
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-yaml}
+      - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
+      - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
+      - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
@@ -114,10 +115,11 @@ services:
     env_file: .env
     environment:
       # Prompt Storage Configuration (same as agent_service)
-      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-local}
-      - PROMPT_STORAGE_LOCAL_PATH=${PROMPT_STORAGE_LOCAL_PATH:-/app/storage/prompts}
-      - PROMPT_STORAGE_GCS_BUCKET=${PROMPT_STORAGE_GCS_BUCKET}
-      - PROMPT_STORAGE_GCS_CREDENTIALS=${PROMPT_STORAGE_GCS_CREDENTIALS}
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-yaml}
+      - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
+      - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
+      - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
@@ -146,19 +148,44 @@ services:
 
   # --- GCS Emulator (Development Only) ---
   gcs-emulator:
-    image: fsouza/fake-gcs-server
-    container_name: gcs_emulator
-    command: ["-scheme", "http", "-port", "4443"]
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    container_name: gcs-emulator
     ports:
       - "4443:4443"
     environment:
       - STORAGE_EMULATOR_HOST=0.0.0.0:4443
-    volumes:
-      - ./local_gcs_bucket:/storage
+    command: >
+      gcloud beta emulators storage start
+      --host-port=0.0.0.0:4443
+      --project=local-project
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - mindmirror-network
-    profiles:
-      - development
+
+  # Local GCS bucket for development
+  local_gcs_bucket:
+    image: alpine:latest
+    container_name: local_gcs_bucket
+    volumes:
+      - ./local_gcs_bucket:/data
+    command: >
+      sh -c "
+        mkdir -p /data/prompts &&
+        echo 'Local GCS bucket initialized' > /data/README.md &&
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: ["CMD", "test", "-d", "/data/prompts"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mindmirror-network
 
   # --- Databases & Infrastructure ---
   postgres:
@@ -252,6 +279,10 @@ volumes:
   postgres_data:
   qdrant_data:
   local_gcs_bucket:
+  prompts_data:
+    driver: local
+  gcs_emulator_data:
+    driver: local
 
 networks:
   mindmirror-network:
