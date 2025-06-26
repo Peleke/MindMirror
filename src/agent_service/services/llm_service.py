@@ -47,7 +47,7 @@ class LLMService:
         # Store the LLM instance (will be configured per request if not provided)
         self.llm = llm
     
-    def get_journal_summary(self, journal_entries: List[Dict[str, Any]]) -> str:
+    async def get_journal_summary(self, journal_entries: List[Dict[str, Any]]) -> str:
         """
         Generates a concise summary from a list of journal entries.
 
@@ -86,7 +86,7 @@ class LLMService:
             
             # Create the message and invoke the LLM
             message = HumanMessage(content=rendered_prompt)
-            response = self.llm.invoke([message])
+            response = await self.llm.ainvoke([message])
             
             return response.content
             

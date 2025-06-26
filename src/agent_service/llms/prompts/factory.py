@@ -120,7 +120,7 @@ class PromptServiceFactory:
     @staticmethod
     def _create_yaml_service() -> PromptService:
         """Create a YAML-based prompt service."""
-        store_path = os.getenv("PROMPT_STORE_PATH", "./prompts")
+        store_path = os.getenv("YAML_STORAGE_PATH", "./prompts")
         
         # Ensure the path exists
         Path(store_path).mkdir(parents=True, exist_ok=True)
@@ -184,14 +184,14 @@ class PromptServiceFactory:
     @staticmethod
     def _create_local_service() -> PromptService:
         """Create a local filesystem prompt service."""
-        store_path = os.getenv("PROMPT_STORE_PATH", "./prompts")
+        store_path = os.getenv("YAML_STORAGE_PATH", "./prompts")
         
         # Ensure the path exists
         Path(store_path).mkdir(parents=True, exist_ok=True)
         
         config = PromptConfig(
             store_type=StoreType.LOCAL,
-            local_path=store_path,
+            store_path=store_path,
             enable_caching=True,
             cache_size=100,
             cache_ttl=3600
