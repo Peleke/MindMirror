@@ -34,7 +34,7 @@ This document outlines a comprehensive, test-driven refactoring plan to transfor
 
 ## 🧪 TDD-First Refactoring Strategy
 
-### Phase 1: Foundation & Infrastructure (Week 1) ✅ **IN PROGRESS**
+### Phase 1: Foundation & Infrastructure ✅ **COMPLETED**
 
 #### ✅ Completed
 - [x] **LangSmith Tracing Infrastructure**
@@ -50,107 +50,116 @@ This document outlines a comprehensive, test-driven refactoring plan to transfor
   - `src/agent_service/llms/factory.py` - Centralized LLM management
   - `src/agent_service/agents/nodes/rag_node.py` - First LangGraph node
   - `src/agent_service/tests/test_rag_node.py` - RAG node tests
+  - `src/agent_service/tests/test_llm_factory.py` - LLM factory tests
 
-#### 🔄 In Progress
-- [ ] **LLM Factory Tests**
-  - `src/agent_service/tests/test_llm_factory.py`
-- [ ] **Prompt Template Externalization**
-  - `src/agent_service/llms/prompts/` directory
-  - Jinja2 template files
-
-#### 📋 Next Steps
-1. **Complete LLM Factory Testing**
-2. **Externalize All Prompts**
-3. **Create Retriever Factory**
-4. **Build Journal Processing Nodes**
+#### 🎯 Phase 1 Success Metrics
+- **Test Coverage**: 95%+ for all new components
+- **Performance**: <2s response time for RAG queries
+- **Modularity**: All components independently testable
+- **Tracing**: Full observability for all operations
 
 ---
 
-### Phase 2: Modular Chain Architecture (Week 2)
+### Phase 2: Prompt System Refactoring 🔄 **IN PROGRESS**
 
 #### 🎯 Objectives
-- Refactor existing RAG chains into modular components
-- Create journal processing chains
-- Implement tool registry with GraphQL introspection
+- Refactor monolithic `PromptRegistry` into modular, production-ready system
+- Support persistent storage (GCS for prod, local files for dev/testing)
+- Maintain 100% backward compatibility
+- Enable YAML-based prompt definitions with versioning
 
 #### 📋 Tasks
 
-##### 2.1 RAG Chain Refactoring
-- [ ] **Test**: `test_rag_chain.py` - Test modular RAG chain components
-- [ ] **Implementation**: `src/agent_service/chains/rag_chain.py` - Pure RAG chain
-- [ ] **Test**: `test_retriever_factory.py` - Test retriever composition
+##### 2.1 Core Abstractions & Interfaces (Days 1-2) 🔄 **IN PROGRESS**
+- [x] **Test**: `test_prompt_store_interface.py` - Test storage interface contracts
+- [ ] **Implementation**: `src/agent_service/llms/prompts/stores/__init__.py` - Define `PromptStore` protocol
+- [ ] **Test**: `test_prompt_service_interface.py` - Test service interface contracts
+- [ ] **Implementation**: `src/agent_service/llms/prompts/service.py` - Define `PromptService` interface
+- [ ] **Test**: `test_prompt_models.py` - Test enhanced `PromptInfo` and related models
+- [ ] **Implementation**: `src/agent_service/llms/prompts/models.py` - Enhanced data models with versioning
+- [ ] **Test**: `test_prompt_config.py` - Test configuration loading and validation
+- [ ] **Implementation**: `src/agent_service/llms/prompts/config.py` - Configuration management
+
+##### 2.2 Storage Layer Implementation (Days 3-4)
+- [ ] **Test**: `test_local_prompt_store.py` - Test local file-based storage
+- [ ] **Implementation**: `src/agent_service/llms/prompts/stores/local.py` - Local file store
+- [ ] **Test**: `test_yaml_prompt_loading.py` - Test YAML prompt file format
+- [ ] **Implementation**: `src/agent_service/llms/prompts/formats/yaml.py` - YAML prompt loader
+- [ ] **Test**: `test_inmemory_prompt_store.py` - Test in-memory storage
+- [ ] **Implementation**: `src/agent_service/llms/prompts/stores/memory.py` - In-memory store
+- [ ] **Test**: `test_gcs_prompt_store.py` - Test GCS storage with mocks
+- [ ] **Implementation**: `src/agent_service/llms/prompts/stores/gcs.py` - GCS store
+
+##### 2.3 Service Layer & Registry Refactoring (Days 5-6)
+- [ ] **Test**: `test_prompt_service.py` - Test service orchestration
+- [ ] **Implementation**: `src/agent_service/llms/prompts/service.py` - Service implementation
+- [ ] **Test**: `test_prompt_service_caching.py` - Test caching behavior
+- [ ] **Implementation**: Add caching layer to service
+- [ ] **Test**: `test_prompt_registry_refactored.py` - Test refactored registry
+- [ ] **Implementation**: Refactor `PromptRegistry` to focus on rendering only
+- [ ] **Test**: `test_prompt_registry_compatibility.py` - Ensure backward compatibility
+
+##### 2.4 Migration & Integration (Days 7-8)
+- [ ] **Test**: `test_migration_compatibility.py` - Test migration from old to new system
+- [ ] **Implementation**: `src/agent_service/llms/prompts/migration.py` - Migration utilities
+- [ ] **Test**: `test_existing_api_compatibility.py` - Ensure existing API still works
+- [ ] **Test**: `test_prompt_config_integration.py` - Test config-driven store selection
+- [ ] **Implementation**: Integrate configuration with service initialization
+- [ ] **Test**: `test_prompt_performance.py` - Performance benchmarks
+- [ ] **Implementation**: Optimize caching and storage operations
+
+#### 🏗️ New Architecture
+```python
+# New Prompt System Architecture
+PromptService (High-level interface)
+├── PromptStore (Storage abstraction)
+│   ├── LocalPromptStore (dev/testing)
+│   ├── GCSPromptStore (production)
+│   └── InMemoryPromptStore (fallback)
+├── PromptRegistry (Rendering + cache)
+└── PromptLoader (Template engine abstraction)
+```
+
+#### 🎯 Phase 2 Success Metrics
+- **Test Coverage**: 95%+ for all new components
+- **Performance**: <100ms prompt retrieval (cached)
+- **Storage**: Support for 10k+ prompts without degradation
+- **Migration**: Zero downtime during transition
+- **Backward Compatibility**: 100% API compatibility maintained
+
+---
+
+### Phase 3: Retriever Factory & Journal Processing (Week 2)
+
+#### 🎯 Objectives
+- Create modular retriever factory
+- Build journal processing nodes
+- Integrate with new prompt system
+- Maintain 100% test coverage
+
+#### 📋 Tasks
+
+##### 3.1 Retriever Factory (Days 1-3)
+- [ ] **Test**: `test_retriever_factory.py` - Test retriever factory methods
 - [ ] **Implementation**: `src/agent_service/retrievers/factory.py` - Retriever factory
+- [ ] **Test**: `test_qdrant_retriever.py` - Test Qdrant retriever wrapper
+- [ ] **Implementation**: `src/agent_service/retrievers/qdrant_retriever.py` - Qdrant adapter
+- [ ] **Test**: `test_hybrid_search.py` - Test hybrid search functionality
+- [ ] **Implementation**: `src/agent_service/retrievers/hybrid_search.py` - Hybrid search
 
-##### 2.2 Journal Processing Chains
-- [ ] **Test**: `test_journal_summary_chain.py` - Test journal summarization
-- [ ] **Implementation**: `src/agent_service/chains/journal_summary_chain.py`
-- [ ] **Test**: `test_performance_review_chain.py` - Test performance review generation
-- [ ] **Implementation**: `src/agent_service/chains/performance_review_chain.py`
-
-##### 2.3 Tool Registry & Introspection
-- [ ] **Test**: `test_tool_registry.py` - Test tool registration and discovery
-- [ ] **Implementation**: `src/agent_service/tools/registry.py` - Tool registry
-- [ ] **Test**: `test_tool_schema.py` - Test GraphQL schema generation from tools
-- [ ] **Implementation**: `src/agent_service/tools/schema.py` - GraphQL schema generation
-
-#### 🏗️ Architecture Changes
-```python
-# Before: Monolithic engine
-engine = CoachingEngine(tradition="canon-default")
-response = engine.ask("What is my purpose?")
-
-# After: Modular chains
-rag_chain = RAGChain(retriever=qdrant_retriever)
-summary_chain = JournalSummaryChain(llm=coaching_llm)
-response = rag_chain.invoke({"query": "What is my purpose?"})
-```
+##### 3.2 Journal Processing Nodes (Days 4-7)
+- [ ] **Test**: `test_journal_summary_node.py` - Test journal summarization node
+- [ ] **Implementation**: `src/agent_service/agents/nodes/journal_summary_node.py`
+- [ ] **Test**: `test_journal_analysis_node.py` - Test journal analysis node
+- [ ] **Implementation**: `src/agent_service/agents/nodes/journal_analysis_node.py`
+- [ ] **Test**: `test_performance_review_node.py` - Test performance review node
+- [ ] **Implementation**: `src/agent_service/agents/nodes/performance_review_node.py`
+- [ ] **Test**: `test_journal_workflow.py` - Test complete journal workflow
+- [ ] **Implementation**: `src/agent_service/agents/workflows/journal_workflow.py`
 
 ---
 
-### Phase 3: LangGraph Agent Implementation (Week 3)
-
-#### 🎯 Objectives
-- Build LangGraph-based agents with state management
-- Create agent orchestration layer
-- Implement agent service interface
-
-#### 📋 Tasks
-
-##### 3.1 Core Agent Nodes
-- [ ] **Test**: `test_agent_nodes.py` - Test individual agent nodes
-- [ ] **Implementation**: `src/agent_service/agents/nodes/`
-  - `summarize_node.py` - Journal summarization node
-  - `review_node.py` - Performance review node
-  - `router_node.py` - Intent routing node
-
-##### 3.2 Agent Graphs
-- [ ] **Test**: `test_coach_agent.py` - Test complete coach agent graph
-- [ ] **Implementation**: `src/agent_service/agents/coach_agent.py` - Main coach agent
-- [ ] **Test**: `test_agent_workflows.py` - Test different workflow patterns
-- [ ] **Implementation**: `src/agent_service/agents/workflows.py` - Workflow definitions
-
-##### 3.3 Agent Service Layer
-- [ ] **Test**: `test_agent_service.py` - Test agent service interface
-- [ ] **Implementation**: `src/agent_service/services/agent_service.py` - Agent orchestration
-- [ ] **Test**: `test_agent_cache.py` - Test agent instance caching
-- [ ] **Implementation**: `src/agent_service/services/agent_cache.py` - Agent caching
-
-#### 🏗️ Architecture Changes
-```python
-# Before: Direct service calls
-llm_service = LLMService()
-summary = await llm_service.get_journal_summary(entries)
-
-# After: LangGraph workflow
-coach_agent = CoachAgent()
-state = AgentStateFactory.create_journal_state(user_id, tradition, entries)
-result = await coach_agent.ainvoke(state)
-summary = result["summary"]
-```
-
----
-
-### Phase 4: Service Decomposition (Week 4)
+### Phase 4: Service Decomposition (Week 3)
 
 #### 🎯 Objectives
 - Refactor existing engines into modular components
@@ -178,21 +187,9 @@ summary = result["summary"]
 - [ ] **Test**: `test_api_integration.py` - Test end-to-end API integration
 - [ ] **Implementation**: `src/agent_service/web/app.py` - Updated FastAPI app
 
-#### 🏗️ Architecture Changes
-```python
-# Before: Monolithic service
-suggestion_service = SuggestionService(engine, clients...)
-meal = await suggestion_service.get_meal_suggestion(user, tradition, "breakfast")
-
-# After: Modular services
-coaching_service = CoachingService()
-knowledge_service = KnowledgeService()
-meal = await coaching_service.get_meal_suggestion(user, tradition, "breakfast")
-```
-
 ---
 
-### Phase 5: Memgraph Integration & Multi-Agent (Week 5)
+### Phase 5: Memgraph Integration & Multi-Agent (Week 4)
 
 #### 🎯 Objectives
 - Integrate Memgraph for advanced graph operations
@@ -219,22 +216,6 @@ meal = await coaching_service.get_meal_suggestion(user, tradition, "breakfast")
 - [ ] **Test**: `test_tool_execution.py` - Test tool execution and monitoring
 - [ ] **Implementation**: `src/agent_service/tools/execution.py` - Tool execution engine
 
-#### 🏗️ Architecture Changes
-```python
-# Before: Single agent approach
-engine = QdrantCoachingEngine(tradition="canon-default")
-response = engine.ask("What should I eat?")
-
-# After: Multi-agent orchestration
-orchestrator = AgentOrchestrator()
-workflow = orchestrator.create_workflow([
-    "nutrition_agent",
-    "coaching_agent", 
-    "knowledge_agent"
-])
-result = await workflow.execute(user_query)
-```
-
 ---
 
 ## 🧪 Testing Strategy
@@ -256,6 +237,12 @@ result = await workflow.execute(user_query)
 - **Mocks**: External service dependencies
 - **Docker**: Isolated test environments
 - **Factories**: Test object creation
+
+### Test Refactoring Strategy
+- **Parallel Development**: New tests alongside existing ones
+- **Gradual Migration**: Replace old tests as components are refactored
+- **Compatibility Testing**: Ensure new components work with existing tests
+- **Performance Regression**: Monitor test execution time
 
 ---
 
@@ -292,7 +279,7 @@ result = await workflow.execute(user_query)
 
 ### Technical Metrics
 - **Test Coverage**: >95% unit test coverage
-- **Response Time**: <2s for RAG queries
+- **Response Time**: <2s for RAG queries, <100ms for prompt retrieval
 - **Error Rate**: <1% for core operations
 - **Memory Usage**: <512MB per agent instance
 
@@ -332,24 +319,23 @@ result = await workflow.execute(user_query)
 
 ## 📅 Implementation Timeline
 
-### Week 1: Foundation ✅ **IN PROGRESS**
+### Week 1: Foundation ✅ **COMPLETED**
 - [x] LangSmith tracing infrastructure
 - [x] State management system
 - [x] First LangGraph node (RAG)
-- [ ] LLM factory completion
-- [ ] Prompt externalization
+- [x] LLM factory completion
+- [x] Comprehensive test coverage
 
-### Week 2: Modular Chains
-- [ ] RAG chain refactoring
-- [ ] Journal processing chains
-- [ ] Tool registry implementation
-- [ ] Retriever factory
+### Week 2: Prompt System Refactoring 🔄 **IN PROGRESS**
+- [ ] Core abstractions & interfaces (Days 1-2)
+- [ ] Storage layer implementation (Days 3-4)
+- [ ] Service layer & registry refactoring (Days 5-6)
+- [ ] Migration & integration (Days 7-8)
 
-### Week 3: LangGraph Agents
-- [ ] Core agent nodes
-- [ ] Agent graphs
-- [ ] Agent service layer
-- [ ] Workflow orchestration
+### Week 3: Retriever Factory & Journal Processing
+- [ ] Retriever factory (Days 1-3)
+- [ ] Journal processing nodes (Days 4-7)
+- [ ] Integration testing
 
 ### Week 4: Service Decomposition
 - [ ] Engine refactoring
@@ -367,32 +353,31 @@ result = await workflow.execute(user_query)
 
 ## 🎯 Next Immediate Actions
 
-### This Week (Phase 1 Completion)
-1. **Complete LLM Factory Tests**
+### This Week (Phase 2 Completion)
+1. **Complete Core Abstractions**
    ```bash
-   pytest src/agent_service/tests/test_llm_factory.py -v
+   # Create interface definitions and tests
+   mkdir -p src/agent_service/llms/prompts/stores
+   touch src/agent_service/llms/prompts/stores/__init__.py
    ```
 
-2. **Externalize Prompts**
+2. **Implement Storage Layer**
    ```bash
-   mkdir -p src/agent_service/llms/prompts
-   # Create Jinja2 templates for all prompts
+   # Create storage implementations
+   touch src/agent_service/llms/prompts/stores/local.py
+   touch src/agent_service/llms/prompts/stores/gcs.py
    ```
 
-3. **Create Retriever Factory**
+3. **Refactor Service Layer**
    ```bash
-   # Implement retriever composition and factory pattern
+   # Update service and registry
+   touch src/agent_service/llms/prompts/service.py
    ```
 
-4. **Build Journal Summary Node**
-   ```bash
-   # Create LangGraph node for journal summarization
-   ```
-
-### Next Week (Phase 2 Start)
-1. **RAG Chain Refactoring**
-2. **Journal Processing Chains**
-3. **Tool Registry Implementation**
+### Next Week (Phase 3 Start)
+1. **Retriever Factory Implementation**
+2. **Journal Processing Nodes**
+3. **Integration Testing**
 
 ---
 
