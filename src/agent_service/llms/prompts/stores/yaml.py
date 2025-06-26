@@ -253,8 +253,9 @@ class YAMLPromptStore(PromptStore):
             
             return {
                 "status": "healthy",
+                "storage_type": "yaml",
                 "base_path": str(self.base_path),
-                "yaml_file_count": len(yaml_files),
+                "file_count": len(yaml_files),
                 "writable": True
             }
             

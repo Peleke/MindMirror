@@ -7,7 +7,7 @@ prompts in Google Cloud Storage using the storage abstraction layer.
 
 import yaml
 import re
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime
 
 from ..models import PromptInfo, PromptStats
@@ -376,4 +376,34 @@ class GCSPromptStore(PromptStore):
         
         # Sort versions and return the latest
         sorted_versions = sorted(versions, key=self._version_key)
-        return sorted_versions[-1] 
+        return sorted_versions[-1]
+    
+    def health_check(self) -> Dict[str, Any]:
+        """
+        Perform a health check on the GCS store.
+        
+        Returns:
+            Health status dictionary
+        """
+        try:
+            # Test connectivity by listing files
+            files = self.loader.list_files("prompts/")
+            
+            # Get bucket info
+            bucket_name = self.loader.bucket_name
+            
+            return {
+                "status": "healthy",
+                "storage_type": "gcs",
+                "bucket_name": bucket_name,
+                "file_count": len(files),
+                "connected": True
+            }
+            
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "storage_type": "gcs",
+                "error": str(e),
+                "connected": False
+            } 
