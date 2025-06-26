@@ -1,224 +1,212 @@
 """
-Prompt factory implementation.
+Prompt service factory with configurable storage backends.
 
-This module provides the PromptFactory class that creates
-stores and services based on configuration.
+This module provides a factory for creating prompt services with different
+storage backends based on environment configuration.
 """
 
 import os
-from typing import Dict, Any, Optional
-from copy import deepcopy
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
 
 from .models import PromptConfig, StoreType
 from .service import PromptService
-from .stores.memory import InMemoryPromptStore
-from .exceptions import PromptConfigError
+from .stores import (
+    InMemoryPromptStore,
+    YAMLPromptStore,
+    GCSPromptStore,
+    LocalPromptStore
+)
+from .stores.gcs import StorageLoader
+
+logger = logging.getLogger(__name__)
 
 
-class PromptFactory:
+class PromptServiceFactory:
     """
-    Factory for creating prompt stores and services.
+    Factory for creating prompt services with configurable storage backends.
     
-    This factory provides methods to create stores and services
-    based on configuration, environment variables, or dictionaries.
+    Supports environment-based configuration with dependency injection.
     """
     
-    # Default environment variable prefix
-    DEFAULT_ENV_PREFIX = "PROMPT_"
-    
-    # Environment variable mappings
-    ENV_MAPPINGS = {
-        'store_type': 'STORE_TYPE',
-        'store_path': 'STORE_PATH',
-        'gcs_bucket': 'GCS_BUCKET',
-        'gcs_prefix': 'GCS_PREFIX',
-        'firestore_collection': 'FIRESTORE_COLLECTION',
-        'cache_size': 'CACHE_SIZE',
-        'cache_ttl': 'CACHE_TTL',
-        'enable_validation': 'ENABLE_VALIDATION',
-        'enable_caching': 'ENABLE_CACHING'
-    }
-    
-    @classmethod
-    def create_store(cls, config: PromptConfig):
-        """Create a store based on configuration."""
-        if not isinstance(config, PromptConfig):
-            raise PromptConfigError("config must be a PromptConfig object")
+    @staticmethod
+    def create_from_environment() -> PromptService:
+        """
+        Create a prompt service based on environment variables.
         
-        if config.store_type == StoreType.MEMORY:
-            return InMemoryPromptStore()
-        elif config.store_type == StoreType.LOCAL:
-            raise NotImplementedError("Local store not implemented yet")
-        elif config.store_type == StoreType.GCS:
-            raise NotImplementedError("GCS store not implemented yet")
-        elif config.store_type == StoreType.FIRESTORE:
-            raise NotImplementedError("Firestore not implemented yet")
+        Environment Variables:
+        - PROMPT_STORE_TYPE: Storage type (yaml, gcs, memory, local)
+        - PROMPT_STORE_PATH: Path for local/YAML storage
+        - GCS_BUCKET_NAME: GCS bucket name
+        - GCS_EMULATOR_HOST: GCS emulator host (for local testing)
+        - GCS_CREDENTIALS_FILE: Path to GCS credentials file
+        
+        Returns:
+            Configured PromptService instance
+        """
+        store_type = os.getenv("PROMPT_STORE_TYPE", "").lower()
+        
+        # Default to GCS in production (Docker), YAML in development
+        if not store_type:
+            if os.getenv("ENVIRONMENT", "").lower() in ["production", "prod"]:
+                store_type = "gcs"
+            else:
+                store_type = "yaml"
+        
+        logger.info(f"Creating prompt service with store type: {store_type}")
+        
+        if store_type == "yaml":
+            return PromptServiceFactory._create_yaml_service()
+        elif store_type == "gcs":
+            return PromptServiceFactory._create_gcs_service()
+        elif store_type == "memory":
+            return PromptServiceFactory._create_memory_service()
+        elif store_type == "local":
+            return PromptServiceFactory._create_local_service()
         else:
-            raise PromptConfigError(f"Unknown store type: {config.store_type}")
+            logger.warning(f"Unknown store type '{store_type}', falling back to memory")
+            return PromptServiceFactory._create_memory_service()
     
-    @classmethod
-    def create_service(cls, config: PromptConfig) -> PromptService:
-        """Create a service based on configuration."""
-        if not isinstance(config, PromptConfig):
-            raise PromptConfigError("config must be a PromptConfig object")
+    @staticmethod
+    def _create_yaml_service() -> PromptService:
+        """Create a YAML-based prompt service."""
+        store_path = os.getenv("PROMPT_STORE_PATH", "./prompts")
         
-        store = cls.create_store(config)
-        return PromptService(store=store, config=config)
-    
-    @classmethod
-    def create_service_with_store(cls, store, config: PromptConfig) -> PromptService:
-        """Create a service with a custom store."""
-        if not isinstance(config, PromptConfig):
-            raise PromptConfigError("config must be a PromptConfig object")
+        # Ensure the path exists
+        Path(store_path).mkdir(parents=True, exist_ok=True)
         
-        return PromptService(store=store, config=config)
-    
-    @classmethod
-    def create_service_from_dict(cls, config_dict: Dict[str, Any]) -> PromptService:
-        """Create a service from dictionary configuration."""
-        if not isinstance(config_dict, dict):
-            raise PromptConfigError("config_dict must be a dictionary")
-        
-        try:
-            config = PromptConfig.from_dict(config_dict)
-            return cls.create_service(config)
-        except Exception as e:
-            raise PromptConfigError(f"Failed to create service from dict: {str(e)}")
-    
-    @classmethod
-    def create_service_from_env(cls, prefix: Optional[str] = None) -> PromptService:
-        """Create a service from environment variables."""
-        if prefix is None:
-            prefix = cls.DEFAULT_ENV_PREFIX
-        
-        config_dict = {}
-        
-        # Map environment variables to config
-        for config_key, env_suffix in cls.ENV_MAPPINGS.items():
-            env_key = f"{prefix}{env_suffix}"
-            if env_key in os.environ:
-                value = os.environ[env_key]
-                
-                # Convert string values to appropriate types
-                if config_key in ['cache_size', 'cache_ttl']:
-                    try:
-                        config_dict[config_key] = int(value)
-                    except ValueError:
-                        raise PromptConfigError(f"Invalid integer value for {config_key}: {value}")
-                elif config_key in ['enable_validation', 'enable_caching']:
-                    config_dict[config_key] = value.lower() in ['true', '1', 'yes', 'on']
-                else:
-                    config_dict[config_key] = value
-        
-        # Use default config if no environment variables set
-        if not config_dict:
-            config = cls.get_default_config()
-        else:
-            try:
-                config = PromptConfig.from_dict(config_dict)
-            except Exception as e:
-                raise PromptConfigError(f"Failed to create config from environment: {str(e)}")
-        
-        return cls.create_service(config)
-    
-    @classmethod
-    def create_service_with_override(cls, base_config: PromptConfig, 
-                                   override_config: PromptConfig) -> PromptService:
-        """Create a service with override configuration."""
-        if not isinstance(base_config, PromptConfig):
-            raise PromptConfigError("base_config must be a PromptConfig object")
-        if not isinstance(override_config, PromptConfig):
-            raise PromptConfigError("override_config must be a PromptConfig object")
-        
-        # Merge configurations (override takes precedence)
-        merged_dict = base_config.to_dict()
-        override_dict = override_config.to_dict()
-        
-        for key, value in override_dict.items():
-            if value is not None:  # Only override non-None values
-                merged_dict[key] = value
-        
-        try:
-            merged_config = PromptConfig.from_dict(merged_dict)
-            return cls.create_service(merged_config)
-        except Exception as e:
-            raise PromptConfigError(f"Failed to merge configurations: {str(e)}")
-    
-    @classmethod
-    def get_default_config(cls) -> PromptConfig:
-        """Get default configuration."""
-        return PromptConfig(
-            store_type=StoreType.MEMORY,
-            cache_size=1000,
-            cache_ttl=3600,
-            enable_validation=True,
-            enable_caching=True
+        config = PromptConfig(
+            store_type=StoreType.YAML,
+            store_path=store_path,
+            enable_caching=True,
+            cache_size=100,
+            cache_ttl=3600
         )
-    
-    @classmethod
-    def validate_config(cls, config: PromptConfig) -> None:
-        """Validate configuration."""
-        if not isinstance(config, PromptConfig):
-            raise PromptConfigError("config must be a PromptConfig object")
         
-        # Additional validation can be added here
-        if config.store_type not in StoreType:
-            raise PromptConfigError(f"Invalid store type: {config.store_type}")
-    
-    @classmethod
-    def get_supported_store_types(cls) -> list:
-        """Get list of supported store types."""
-        return [StoreType.MEMORY]  # Only memory is implemented for now
-    
-    @classmethod
-    def get_store_requirements(cls, store_type: StoreType) -> Dict[str, str]:
-        """Get requirements for a specific store type."""
-        requirements = {
-            StoreType.MEMORY: {},
-            StoreType.LOCAL: {"store_path": "Path to local directory"},
-            StoreType.GCS: {"gcs_bucket": "GCS bucket name"},
-            StoreType.FIRESTORE: {"firestore_collection": "Firestore collection name"}
-        }
+        store = YAMLPromptStore(store_path)
+        logger.info(f"Created YAML prompt service at {store_path}")
         
-        return requirements.get(store_type, {})
+        return PromptService(store=store, config=config)
     
-    @classmethod
-    def create_test_service(cls) -> PromptService:
-        """Create a service suitable for testing."""
+    @staticmethod
+    def _create_gcs_service() -> PromptService:
+        """Create a GCS-based prompt service."""
+        bucket_name = os.getenv("GCS_BUCKET_NAME", "local_gcs_bucket")
+        emulator_host = os.getenv("GCS_EMULATOR_HOST", "localhost:4443")
+        credentials_file = os.getenv("GCS_CREDENTIALS_FILE")
+        
+        # Create storage loader
+        loader = StorageLoader(
+            bucket_name=bucket_name,
+            emulator_host=emulator_host,
+            credentials_file=credentials_file
+        )
+        
+        config = PromptConfig(
+            store_type=StoreType.GCS,
+            gcs_bucket=bucket_name,
+            gcs_credentials=credentials_file,
+            enable_caching=True,
+            cache_size=100,
+            cache_ttl=3600
+        )
+        
+        store = GCSPromptStore(loader)
+        logger.info(f"Created GCS prompt service with bucket {bucket_name}")
+        
+        return PromptService(store=store, config=config)
+    
+    @staticmethod
+    def _create_memory_service() -> PromptService:
+        """Create an in-memory prompt service."""
         config = PromptConfig(
             store_type=StoreType.MEMORY,
-            cache_size=100,
-            cache_ttl=300,
-            enable_validation=True,
-            enable_caching=True
+            enable_caching=False,  # No need for caching in memory
+            cache_size=0,
+            cache_ttl=0
         )
         
-        return cls.create_service(config)
+        store = InMemoryPromptStore()
+        logger.info("Created in-memory prompt service")
+        
+        return PromptService(store=store, config=config)
     
-    @classmethod
-    def create_production_service(cls, store_type: StoreType = StoreType.MEMORY,
-                                **kwargs) -> PromptService:
-        """Create a service suitable for production."""
+    @staticmethod
+    def _create_local_service() -> PromptService:
+        """Create a local filesystem prompt service."""
+        store_path = os.getenv("PROMPT_STORE_PATH", "./prompts")
+        
+        # Ensure the path exists
+        Path(store_path).mkdir(parents=True, exist_ok=True)
+        
+        config = PromptConfig(
+            store_type=StoreType.LOCAL,
+            local_path=store_path,
+            enable_caching=True,
+            cache_size=100,
+            cache_ttl=3600
+        )
+        
+        store = LocalPromptStore(store_path)
+        logger.info(f"Created local prompt service at {store_path}")
+        
+        return PromptService(store=store, config=config)
+    
+    @staticmethod
+    def create_with_store(store_type: StoreType, **kwargs) -> PromptService:
+        """
+        Create a prompt service with a specific store type.
+        
+        Args:
+            store_type: The type of store to use
+            **kwargs: Additional configuration parameters
+            
+        Returns:
+            Configured PromptService instance
+        """
+        if store_type == StoreType.YAML:
+            store_path = kwargs.get("store_path", "./prompts")
+            store = YAMLPromptStore(store_path)
+        elif store_type == StoreType.GCS:
+            bucket_name = kwargs.get("bucket_name", "local_gcs_bucket")
+            emulator_host = kwargs.get("emulator_host", "localhost:4443")
+            credentials_file = kwargs.get("credentials_file")
+            
+            loader = StorageLoader(
+                bucket_name=bucket_name,
+                emulator_host=emulator_host,
+                credentials_file=credentials_file
+            )
+            store = GCSPromptStore(loader)
+        elif store_type == StoreType.MEMORY:
+            store = InMemoryPromptStore()
+        elif store_type == StoreType.LOCAL:
+            store_path = kwargs.get("store_path", "./prompts")
+            store = LocalPromptStore(store_path)
+        else:
+            raise ValueError(f"Unsupported store type: {store_type}")
+        
         config = PromptConfig(
             store_type=store_type,
-            cache_size=kwargs.get('cache_size', 10000),
-            cache_ttl=kwargs.get('cache_ttl', 7200),
-            enable_validation=kwargs.get('enable_validation', True),
-            enable_caching=kwargs.get('enable_caching', True),
-            **{k: v for k, v in kwargs.items() if k not in ['cache_size', 'cache_ttl', 'enable_validation', 'enable_caching']}
+            enable_caching=kwargs.get("enable_caching", True),
+            cache_size=kwargs.get("cache_size", 100),
+            cache_ttl=kwargs.get("cache_ttl", 3600),
+            **{k: v for k, v in kwargs.items() if k not in ["enable_caching", "cache_size", "cache_ttl"]}
         )
         
-        return cls.create_service(config)
+        return PromptService(store=store, config=config)
+
+
+# Convenience function for dependency injection
+def get_prompt_service() -> PromptService:
+    """
+    Get a configured prompt service for dependency injection.
     
-    @classmethod
-    def create_development_service(cls) -> PromptService:
-        """Create a service suitable for development."""
-        config = PromptConfig(
-            store_type=StoreType.MEMORY,
-            cache_size=500,
-            cache_ttl=1800,
-            enable_validation=True,
-            enable_caching=True
-        )
-        
-        return cls.create_service(config) 
+    This function can be used in FastAPI dependency injection or
+    other DI frameworks.
+    
+    Returns:
+        Configured PromptService instance
+    """
+    return PromptServiceFactory.create_from_environment() 
