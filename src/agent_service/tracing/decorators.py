@@ -1,229 +1,288 @@
 """
-Tracing decorators for automatic observability of agent operations.
+Tracing decorators for monitoring and debugging.
 
-This module provides decorators that automatically trace function calls,
-LangChain operations, and agent workflows for debugging and evaluation.
+This module provides decorators for tracing function execution,
+performance monitoring, and error tracking.
 """
 
 import functools
 import logging
-from typing import Any, Callable, Dict, Optional, TypeVar, cast
-
-import langsmith
-from langchain_core.runnables import Runnable
-from langsmith import Client
+import time
+from typing import Any, Callable, Dict, List, Optional, Union
+import uuid
 
 logger = logging.getLogger(__name__)
 
-F = TypeVar('F', bound=Callable[..., Any])
-
 
 def trace_function(
-    name: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Callable[[F], F]:
-    """
-    Decorator to trace function execution with LangSmith.
-    
-    Args:
-        name: Custom name for the trace (defaults to function name)
-        tags: Tags to associate with the trace
-        metadata: Additional metadata for the trace
-    
-    Returns:
-        Decorated function with tracing
-    """
-    def decorator(func: F) -> F:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_name = name or f"{func.__module__}.{func.__name__}"
-            
-            try:
-                # Use LangSmith's tracing API directly
-                with langsmith.trace(
-                    name=trace_name,
-                    tags=tags or [],
-                    metadata=metadata or {},
-                ) as trace:
-                    # Execute the function
-                    result = func(*args, **kwargs)
-                    
-                    # Add result metadata
-                    trace.add_metadata({
-                        "result_type": type(result).__name__,
-                        "success": True,
-                    })
-                    
-                    return result
-                    
-            except Exception as e:
-                # Log the error and re-raise
-                logger.error(f"Error in traced function {trace_name}: {e}")
-                
-                # Add error metadata if we have a trace
-                try:
-                    with langsmith.trace(
-                        name=trace_name,
-                        tags=tags or [],
-                        metadata=metadata or {},
-                    ) as trace:
-                        trace.add_metadata({
-                            "error": str(e),
-                            "error_type": type(e).__name__,
-                            "success": False,
-                        })
-                except Exception:
-                    # If tracing fails, just log and continue
-                    pass
-                
-                raise
-        
-        return cast(F, wrapper)
-    
-    return decorator
-
-
-def trace_langchain_operation(
     operation_name: str,
-    tags: Optional[list[str]] = None,
-) -> Callable[[F], F]:
+    tags: Optional[List[str]] = None,
+    capture_args: bool = True,
+    capture_result: bool = False,
+    log_level: str = "INFO"
+):
     """
-    Decorator specifically for LangChain operations.
+    Decorator to trace function execution with timing and metadata.
     
     Args:
-        operation_name: Name of the LangChain operation
-        tags: Tags to associate with the trace
-    
-    Returns:
-        Decorated function with LangChain-specific tracing
+        operation_name: Name of the operation being traced
+        tags: List of tags to associate with the trace
+        capture_args: Whether to capture function arguments
+        capture_result: Whether to capture function result
+        log_level: Logging level for trace messages
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Add LangChain-specific tags
-            langchain_tags = ["langchain", operation_name]
-            if tags:
-                langchain_tags.extend(tags)
+        def wrapper(*args, **kwargs):
+            trace_id = str(uuid.uuid4())
+            start_time = time.time()
             
-            return trace_function(
-                name=f"langchain.{operation_name}",
-                tags=langchain_tags,
-                metadata={
-                    "operation": operation_name,
-                    "module": func.__module__,
-                }
-            )(func)(*args, **kwargs)
+            # Prepare trace metadata
+            trace_data = {
+                "trace_id": trace_id,
+                "operation": operation_name,
+                "function": f"{func.__module__}.{func.__name__}",
+                "tags": tags or [],
+                "start_time": start_time,
+            }
+            
+            if capture_args:
+                trace_data["args"] = str(args)
+                trace_data["kwargs"] = str(kwargs)
+            
+            # Log start of execution
+            log_message = f"TRACE_START [{trace_id}] {operation_name}"
+            if tags:
+                log_message += f" [tags: {', '.join(tags)}]"
+            
+            getattr(logger, log_level.lower())(log_message)
+            
+            try:
+                # Execute the function
+                result = func(*args, **kwargs)
+                
+                # Calculate execution time
+                execution_time = time.time() - start_time
+                trace_data["execution_time"] = execution_time
+                trace_data["status"] = "success"
+                
+                if capture_result:
+                    trace_data["result"] = str(result)
+                
+                # Log successful completion
+                log_message = f"TRACE_SUCCESS [{trace_id}] {operation_name} completed in {execution_time:.3f}s"
+                getattr(logger, log_level.lower())(log_message)
+                
+                return result
+                
+            except Exception as e:
+                # Calculate execution time
+                execution_time = time.time() - start_time
+                trace_data["execution_time"] = execution_time
+                trace_data["status"] = "error"
+                trace_data["error"] = str(e)
+                trace_data["error_type"] = type(e).__name__
+                
+                # Log error
+                log_message = f"TRACE_ERROR [{trace_id}] {operation_name} failed after {execution_time:.3f}s: {e}"
+                getattr(logger, log_level.lower())(log_message)
+                
+                raise
         
-        return cast(F, wrapper)
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            trace_id = str(uuid.uuid4())
+            start_time = time.time()
+            
+            # Prepare trace metadata
+            trace_data = {
+                "trace_id": trace_id,
+                "operation": operation_name,
+                "function": f"{func.__module__}.{func.__name__}",
+                "tags": tags or [],
+                "start_time": start_time,
+                "async": True,
+            }
+            
+            if capture_args:
+                trace_data["args"] = str(args)
+                trace_data["kwargs"] = str(kwargs)
+            
+            # Log start of execution
+            log_message = f"TRACE_START [{trace_id}] {operation_name} (async)"
+            if tags:
+                log_message += f" [tags: {', '.join(tags)}]"
+            
+            getattr(logger, log_level.lower())(log_message)
+            
+            try:
+                # Execute the async function
+                result = await func(*args, **kwargs)
+                
+                # Calculate execution time
+                execution_time = time.time() - start_time
+                trace_data["execution_time"] = execution_time
+                trace_data["status"] = "success"
+                
+                if capture_result:
+                    trace_data["result"] = str(result)
+                
+                # Log successful completion
+                log_message = f"TRACE_SUCCESS [{trace_id}] {operation_name} (async) completed in {execution_time:.3f}s"
+                getattr(logger, log_level.lower())(log_message)
+                
+                return result
+                
+            except Exception as e:
+                # Calculate execution time
+                execution_time = time.time() - start_time
+                trace_data["execution_time"] = execution_time
+                trace_data["status"] = "error"
+                trace_data["error"] = str(e)
+                trace_data["error_type"] = type(e).__name__
+                
+                # Log error
+                log_message = f"TRACE_ERROR [{trace_id}] {operation_name} (async) failed after {execution_time:.3f}s: {e}"
+                getattr(logger, log_level.lower())(log_message)
+                
+                raise
+        
+        # Return appropriate wrapper based on function type
+        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
+            return async_wrapper
+        else:
+            return wrapper
     
     return decorator
 
 
-def trace_agent_workflow(
-    workflow_name: str,
-    tags: Optional[list[str]] = None,
-) -> Callable[[F], F]:
+def trace_performance(threshold_ms: float = 1000.0):
     """
-    Decorator for agent workflow tracing.
+    Decorator to trace function performance and warn on slow execution.
     
     Args:
-        workflow_name: Name of the agent workflow
-        tags: Tags to associate with the trace
-    
-    Returns:
-        Decorated function with agent workflow tracing
+        threshold_ms: Threshold in milliseconds to trigger performance warning
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Add agent-specific tags
-            agent_tags = ["agent", "workflow", workflow_name]
-            if tags:
-                agent_tags.extend(tags)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
             
-            return trace_function(
-                name=f"agent.{workflow_name}",
-                tags=agent_tags,
-                metadata={
-                    "workflow": workflow_name,
-                    "module": func.__module__,
-                }
-            )(func)(*args, **kwargs)
+            try:
+                result = func(*args, **kwargs)
+                
+                execution_time_ms = (time.time() - start_time) * 1000
+                
+                if execution_time_ms > threshold_ms:
+                    logger.warning(
+                        f"PERFORMANCE_WARNING: {func.__name__} took {execution_time_ms:.2f}ms "
+                        f"(threshold: {threshold_ms:.2f}ms)"
+                    )
+                else:
+                    logger.debug(
+                        f"PERFORMANCE_OK: {func.__name__} took {execution_time_ms:.2f}ms"
+                    )
+                
+                return result
+                
+            except Exception as e:
+                execution_time_ms = (time.time() - start_time) * 1000
+                logger.error(
+                    f"PERFORMANCE_ERROR: {func.__name__} failed after {execution_time_ms:.2f}ms: {e}"
+                )
+                raise
         
-        return cast(F, wrapper)
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            start_time = time.time()
+            
+            try:
+                result = await func(*args, **kwargs)
+                
+                execution_time_ms = (time.time() - start_time) * 1000
+                
+                if execution_time_ms > threshold_ms:
+                    logger.warning(
+                        f"PERFORMANCE_WARNING: {func.__name__} (async) took {execution_time_ms:.2f}ms "
+                        f"(threshold: {threshold_ms:.2f}ms)"
+                    )
+                else:
+                    logger.debug(
+                        f"PERFORMANCE_OK: {func.__name__} (async) took {execution_time_ms:.2f}ms"
+                    )
+                
+                return result
+                
+            except Exception as e:
+                execution_time_ms = (time.time() - start_time) * 1000
+                logger.error(
+                    f"PERFORMANCE_ERROR: {func.__name__} (async) failed after {execution_time_ms:.2f}ms: {e}"
+                )
+                raise
+        
+        # Return appropriate wrapper based on function type
+        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
+            return async_wrapper
+        else:
+            return wrapper
     
     return decorator
 
 
-def trace_runnable(
-    runnable: Runnable,
-    name: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-) -> Runnable:
+def trace_errors(
+    reraise: bool = True,
+    log_full_traceback: bool = True,
+    error_types: Optional[List[type]] = None
+):
     """
-    Wrap a LangChain Runnable with tracing.
+    Decorator to trace and handle errors with detailed logging.
     
     Args:
-        runnable: The Runnable to wrap
-        name: Custom name for the trace
-        tags: Tags to associate with the trace
-    
-    Returns:
-        Traced Runnable
+        reraise: Whether to re-raise the exception after logging
+        log_full_traceback: Whether to log the full traceback
+        error_types: List of exception types to catch (None for all)
     """
-    trace_name = name or f"runnable.{runnable.__class__.__name__}"
-    runnable_tags = tags or ["runnable"]
-    
-    # Create a traced version of the runnable
-    class TracedRunnable(Runnable):
-        def __init__(self, inner_runnable: Runnable):
-            self.inner_runnable = inner_runnable
-        
-        def invoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
             try:
-                with langsmith.trace(
-                    name=trace_name,
-                    tags=runnable_tags,
-                    metadata={
-                        "runnable_type": type(self.inner_runnable).__name__,
-                        "input_type": type(input_data).__name__,
-                    }
-                ) as trace:
-                    result = self.inner_runnable.invoke(input_data, config)
-                    
-                    trace.add_metadata({
-                        "result_type": type(result).__name__,
-                        "success": True,
-                    })
-                    
-                    return result
-                    
+                return func(*args, **kwargs)
             except Exception as e:
-                logger.error(f"Error in traced runnable {trace_name}: {e}")
-                raise
+                # Check if we should catch this error type
+                if error_types and not any(isinstance(e, error_type) for error_type in error_types):
+                    raise
+                
+                logger.error(f"ERROR in {func.__name__}: {e}")
+                
+                if log_full_traceback:
+                    import traceback
+                    logger.error(f"Full traceback:\n{traceback.format_exc()}")
+                
+                if reraise:
+                    raise
         
-        async def ainvoke(self, input_data: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
             try:
-                with langsmith.trace(
-                    name=f"{trace_name}.async",
-                    tags=runnable_tags + ["async"],
-                    metadata={
-                        "runnable_type": type(self.inner_runnable).__name__,
-                        "input_type": type(input_data).__name__,
-                    }
-                ) as trace:
-                    result = await self.inner_runnable.ainvoke(input_data, config)
-                    
-                    trace.add_metadata({
-                        "result_type": type(result).__name__,
-                        "success": True,
-                    })
-                    
-                    return result
-                    
+                return await func(*args, **kwargs)
             except Exception as e:
-                logger.error(f"Error in traced async runnable {trace_name}: {e}")
-                raise
+                # Check if we should catch this error type
+                if error_types and not any(isinstance(e, error_type) for error_type in error_types):
+                    raise
+                
+                logger.error(f"ERROR in {func.__name__} (async): {e}")
+                
+                if log_full_traceback:
+                    import traceback
+                    logger.error(f"Full traceback:\n{traceback.format_exc()}")
+                
+                if reraise:
+                    raise
+        
+        # Return appropriate wrapper based on function type
+        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
+            return async_wrapper
+        else:
+            return wrapper
     
-    return TracedRunnable(runnable) 
+    return decorator 

@@ -11,6 +11,12 @@ from typing import Optional
 import langsmith
 from langsmith import Client
 
+from .decorators import (
+    trace_function,
+    trace_performance,
+    trace_errors,
+)
+
 
 def setup_langsmith_tracing(
     api_key: Optional[str] = None,
@@ -70,4 +76,10 @@ try:
     _client = setup_langsmith_tracing()
 except ValueError:
     # Tracing not configured, but don't fail the import
-    _client = None 
+    _client = None
+
+__all__ = [
+    "trace_function",
+    "trace_performance", 
+    "trace_errors",
+] 

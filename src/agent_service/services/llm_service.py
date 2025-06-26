@@ -101,7 +101,7 @@ class LLMService:
                 temperature=metadata.get("temperature", 0.7),
                 max_tokens=metadata.get("max_tokens", 1000),
             )
-    
+
     async def get_journal_summary(self, journal_entries: List[Dict[str, Any]]) -> str:
         """
         Generates a concise summary from a list of journal entries.
@@ -143,7 +143,7 @@ class LLMService:
         except Exception as e:
             logger.error(f"Error generating journal summary: {e}")
             return f"Error generating summary: {str(e)}"
-    
+
     async def get_performance_review(
         self, journal_entries: List[Dict[str, Any]]
     ) -> PerformanceReview:
@@ -185,7 +185,7 @@ class LLMService:
             # Create the message and invoke the LLM
             message = HumanMessage(content=rendered_prompt)
             response = llm.invoke([message])
-            
+
             # Parse the structured response
             return self._parse_performance_review_response(response.content)
             
