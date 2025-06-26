@@ -13,6 +13,7 @@ from agent_service.llms.prompts.stores.loaders import (
     GCSStorageLoader
 )
 from agent_service.llms.prompts.models import StorageConfig
+from agent_service.llms.prompts.exceptions import PromptStorageError
 from agent_service.llms.prompts.stores import (
     InMemoryPromptStore,
     LocalPromptStore,
@@ -27,26 +28,28 @@ class TestStorageLoader:
         """Test that StorageLoader is a proper protocol."""
         # Should be able to create a mock that implements the protocol
         mock_loader = Mock(spec=StorageLoader)
-        assert hasattr(mock_loader, 'create_store')
-        assert callable(mock_loader.create_store)
+        assert hasattr(mock_loader, 'write_file')
+        assert hasattr(mock_loader, 'read_file')
+        assert hasattr(mock_loader, 'delete_file')
+        assert hasattr(mock_loader, 'list_files')
+        assert hasattr(mock_loader, 'exists')
+        assert hasattr(mock_loader, 'get_stats')
 
 
 class TestLocalStorageLoader:
     """Test LocalStorageLoader functionality."""
     
     def test_create_local_store(self):
-        """Test creating a local prompt store."""
+        """Test creating a local storage loader."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config = StorageConfig(
                 storage_type="local",
                 local_path=temp_dir
             )
             
-            loader = LocalStorageLoader()
-            store = loader.create_store(config)
+            loader = LocalStorageLoader(config)
             
-            assert isinstance(store, LocalPromptStore)
-            assert store.base_path == temp_dir
+            assert str(loader.base_path) == temp_dir
     
     def test_create_local_store_with_invalid_config(self):
         """Test creating local store with invalid configuration."""
@@ -57,17 +60,15 @@ class TestLocalStorageLoader:
             gcs_credentials="/path/to/creds.json"
         )
         
-        loader = LocalStorageLoader()
-        with pytest.raises(ValueError, match="LocalStorageLoader requires local storage type"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="local_path is required for LocalStorageLoader"):
+            LocalStorageLoader(config)
     
     def test_create_local_store_with_missing_path(self):
         """Test creating local store with missing local path."""
         config = StorageConfig(storage_type="local")
         
-        loader = LocalStorageLoader()
-        with pytest.raises(ValueError, match="local_path is required"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="local_path is required for LocalStorageLoader"):
+            LocalStorageLoader(config)
     
     def test_create_local_store_creates_directory(self):
         """Test that local store creation creates the directory if it doesn't exist."""
@@ -79,11 +80,10 @@ class TestLocalStorageLoader:
                 local_path=new_dir
             )
             
-            loader = LocalStorageLoader()
-            store = loader.create_store(config)
+            loader = LocalStorageLoader(config)
             
             assert os.path.exists(new_dir)
-            assert isinstance(store, LocalPromptStore)
+            assert str(loader.base_path) == new_dir
     
     def test_create_local_store_with_existing_directory(self):
         """Test creating local store with existing directory."""
@@ -93,22 +93,20 @@ class TestLocalStorageLoader:
                 local_path=temp_dir
             )
             
-            loader = LocalStorageLoader()
-            store = loader.create_store(config)
+            loader = LocalStorageLoader(config)
             
-            assert isinstance(store, LocalPromptStore)
-            assert store.base_path == temp_dir
+            assert str(loader.base_path) == temp_dir
 
 
 class TestGCSStorageLoader:
     """Test GCSStorageLoader functionality."""
     
-    @patch('agent_service.llms.prompts.stores.loaders.storage')
-    def test_create_gcs_store(self, mock_storage):
-        """Test creating a GCS prompt store."""
+    @patch('google.cloud.storage.Client')
+    def test_create_gcs_store(self, mock_client_class):
+        """Test creating a GCS storage loader."""
         # Mock the GCS client
         mock_client = Mock()
-        mock_storage.Client.return_value = mock_client
+        mock_client_class.from_service_account_json.return_value = mock_client
         
         config = StorageConfig(
             storage_type="gcs",
@@ -116,36 +114,11 @@ class TestGCSStorageLoader:
             gcs_credentials="/path/to/credentials.json"
         )
         
-        loader = GCSStorageLoader()
-        store = loader.create_store(config)
+        loader = GCSStorageLoader(config)
         
-        assert isinstance(store, GCSPromptStore)
-        assert store.bucket_name == "test-bucket"
-        mock_storage.Client.assert_called_once_with(
-            project=None,
-            credentials="/path/to/credentials.json"
-        )
-    
-    @patch('agent_service.llms.prompts.stores.loaders.storage')
-    def test_create_gcs_store_with_project(self, mock_storage):
-        """Test creating GCS store with project specified."""
-        mock_client = Mock()
-        mock_storage.Client.return_value = mock_client
-        
-        config = StorageConfig(
-            storage_type="gcs",
-            gcs_bucket="test-bucket",
-            gcs_credentials="/path/to/credentials.json"
-        )
-        
-        loader = GCSStorageLoader(project_id="my-project")
-        store = loader.create_store(config)
-        
-        assert isinstance(store, GCSPromptStore)
-        mock_storage.Client.assert_called_once_with(
-            project="my-project",
-            credentials="/path/to/credentials.json"
-        )
+        assert loader.bucket_name == "test-bucket"
+        assert loader.credentials_path == "/path/to/credentials.json"
+        mock_client_class.from_service_account_json.assert_called_once_with("/path/to/credentials.json")
     
     def test_create_gcs_store_with_invalid_config(self):
         """Test creating GCS store with invalid configuration."""
@@ -155,17 +128,15 @@ class TestGCSStorageLoader:
             local_path="/tmp/prompts"
         )
         
-        loader = GCSStorageLoader()
-        with pytest.raises(ValueError, match="GCSStorageLoader requires GCS storage type"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="gcs_bucket is required for GCSStorageLoader"):
+            GCSStorageLoader(config)
     
     def test_create_gcs_store_with_missing_bucket(self):
         """Test creating GCS store with missing bucket."""
         config = StorageConfig(storage_type="gcs")
         
-        loader = GCSStorageLoader()
-        with pytest.raises(ValueError, match="gcs_bucket is required"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="gcs_bucket is required for GCSStorageLoader"):
+            GCSStorageLoader(config)
     
     def test_create_gcs_store_with_missing_credentials(self):
         """Test creating GCS store with missing credentials."""
@@ -174,15 +145,14 @@ class TestGCSStorageLoader:
             gcs_bucket="test-bucket"
         )
         
-        loader = GCSStorageLoader()
-        with pytest.raises(ValueError, match="gcs_credentials is required"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="gcs_credentials is required for GCSStorageLoader"):
+            GCSStorageLoader(config)
     
-    @patch('agent_service.llms.prompts.stores.loaders.storage')
-    def test_create_gcs_store_with_emulator(self, mock_storage):
+    @patch('google.cloud.storage.Client')
+    def test_create_gcs_store_with_emulator(self, mock_client_class):
         """Test creating GCS store with emulator configuration."""
         mock_client = Mock()
-        mock_storage.Client.return_value = mock_client
+        mock_client_class.from_service_account_json.return_value = mock_client
         
         config = StorageConfig(
             storage_type="gcs",
@@ -192,20 +162,15 @@ class TestGCSStorageLoader:
         
         # Set emulator environment variable
         with patch.dict(os.environ, {'STORAGE_EMULATOR_HOST': 'localhost:4443'}):
-            loader = GCSStorageLoader()
-            store = loader.create_store(config)
+            loader = GCSStorageLoader(config)
             
-            assert isinstance(store, GCSPromptStore)
-            # Should use anonymous credentials with emulator
-            mock_storage.Client.assert_called_once_with(
-                project=None,
-                credentials=None
-            )
+            assert loader.bucket_name == "test-bucket"
+            mock_client_class.from_service_account_json.assert_called_once_with("/path/to/credentials.json")
     
-    @patch('agent_service.llms.prompts.stores.loaders.storage')
-    def test_create_gcs_store_handles_client_error(self, mock_storage):
+    @patch('google.cloud.storage.Client')
+    def test_create_gcs_store_handles_client_error(self, mock_client_class):
         """Test handling of GCS client creation errors."""
-        mock_storage.Client.side_effect = Exception("GCS client error")
+        mock_client_class.from_service_account_json.side_effect = Exception("GCS client error")
         
         config = StorageConfig(
             storage_type="gcs",
@@ -213,9 +178,8 @@ class TestGCSStorageLoader:
             gcs_credentials="/path/to/credentials.json"
         )
         
-        loader = GCSStorageLoader()
-        with pytest.raises(Exception, match="GCS client error"):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="Failed to initialize GCS client"):
+            GCSStorageLoader(config)
 
 
 class TestStorageLoaderIntegration:
@@ -229,38 +193,32 @@ class TestStorageLoaderIntegration:
                 local_path=temp_dir
             )
             
-            loader = LocalStorageLoader()
-            store = loader.create_store(config)
+            loader = LocalStorageLoader(config)
             
-            # Test basic store operations
-            from agent_service.llms.prompts.models import PromptInfo
+            # Test basic loader operations
+            test_content = "Hello {{name}}!"
+            test_path = "test_prompt/1.0.yaml"
             
-            prompt = PromptInfo(
-                name="test_prompt",
-                version="1.0",
-                content="Hello {{name}}!",
-                description="Test prompt"
-            )
+            # Write file
+            loader.write_file(test_path, test_content)
             
-            # Save prompt
-            store.save_prompt(prompt)
+            # Verify file exists
+            assert loader.exists(test_path)
             
-            # Verify prompt exists
-            assert store.exists("test_prompt")
-            
-            # Retrieve prompt
-            retrieved = store.get_prompt("test_prompt")
-            assert retrieved.name == "test_prompt"
-            assert retrieved.content == "Hello {{name}}!"
+            # Read file
+            content = loader.read_file(test_path)
+            assert content == test_content
     
-    @patch('agent_service.llms.prompts.stores.loaders.storage')
-    def test_gcs_storage_loader_integration(self, mock_storage):
+    @patch('google.cloud.storage.Client')
+    def test_gcs_storage_loader_integration(self, mock_client_class):
         """Test GCS storage loader with mocked store operations."""
         # Mock GCS client and bucket
         mock_client = Mock()
         mock_bucket = Mock()
-        mock_storage.Client.return_value = mock_client
+        mock_blob = Mock()
+        mock_client_class.from_service_account_json.return_value = mock_client
         mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
         
         config = StorageConfig(
             storage_type="gcs",
@@ -268,14 +226,12 @@ class TestStorageLoaderIntegration:
             gcs_credentials="/path/to/credentials.json"
         )
         
-        loader = GCSStorageLoader()
-        store = loader.create_store(config)
+        loader = GCSStorageLoader(config)
         
-        # Verify store is properly configured
-        assert isinstance(store, GCSPromptStore)
-        assert store.bucket_name == "test-bucket"
-        assert store.client == mock_client
-        assert store.bucket == mock_bucket
+        # Verify loader is properly configured
+        assert loader.bucket_name == "test-bucket"
+        assert loader.credentials_path == "/path/to/credentials.json"
+        assert loader.client == mock_client
 
 
 class TestStorageLoaderFactory:
@@ -283,36 +239,33 @@ class TestStorageLoaderFactory:
     
     def test_get_loader_for_local(self):
         """Test getting local storage loader."""
-        from agent_service.llms.prompts.stores.loaders import get_storage_loader
+        config = StorageConfig(
+            storage_type="local",
+            local_path="/tmp/prompts"
+        )
         
-        loader = get_storage_loader("local")
+        loader = LocalStorageLoader(config)
         assert isinstance(loader, LocalStorageLoader)
     
-    def test_get_loader_for_gcs(self):
+    @patch('google.cloud.storage.Client')
+    def test_get_loader_for_gcs(self, mock_client_class):
         """Test getting GCS storage loader."""
-        from agent_service.llms.prompts.stores.loaders import get_storage_loader
+        mock_client = Mock()
+        mock_client_class.from_service_account_json.return_value = mock_client
         
-        loader = get_storage_loader("gcs")
+        config = StorageConfig(
+            storage_type="gcs",
+            gcs_bucket="test-bucket",
+            gcs_credentials="/path/to/creds.json"
+        )
+        
+        loader = GCSStorageLoader(config)
         assert isinstance(loader, GCSStorageLoader)
     
     def test_get_loader_for_invalid_type(self):
         """Test getting loader for invalid storage type."""
-        from agent_service.llms.prompts.stores.loaders import get_storage_loader
-        
-        with pytest.raises(ValueError, match="Unsupported storage type"):
-            get_storage_loader("invalid")
-    
-    def test_get_loader_case_insensitive(self):
-        """Test that storage type is case insensitive."""
-        from agent_service.llms.prompts.stores.loaders import get_storage_loader
-        
-        # Test uppercase
-        loader = get_storage_loader("LOCAL")
-        assert isinstance(loader, LocalStorageLoader)
-        
-        # Test mixed case
-        loader = get_storage_loader("Gcs")
-        assert isinstance(loader, GCSStorageLoader)
+        with pytest.raises(ValueError, match="storage_type must be one of"):
+            StorageConfig(storage_type="invalid")
 
 
 class TestStorageLoaderErrorHandling:
@@ -326,9 +279,8 @@ class TestStorageLoaderErrorHandling:
             local_path="/root/forbidden"
         )
         
-        loader = LocalStorageLoader()
-        with pytest.raises((OSError, PermissionError)):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="Failed to create storage directory"):
+            LocalStorageLoader(config)
     
     def test_gcs_storage_loader_credentials_error(self):
         """Test GCS storage loader with invalid credentials."""
@@ -338,29 +290,26 @@ class TestStorageLoaderErrorHandling:
             gcs_credentials="/nonexistent/credentials.json"
         )
         
-        loader = GCSStorageLoader()
-        with pytest.raises(FileNotFoundError):
-            loader.create_store(config)
+        with pytest.raises(PromptStorageError, match="Failed to initialize GCS client"):
+            GCSStorageLoader(config)
     
     def test_storage_loader_config_validation(self):
         """Test that storage loaders validate configuration properly."""
         # Test local loader with GCS config
-        local_loader = LocalStorageLoader()
         gcs_config = StorageConfig(
             storage_type="gcs",
             gcs_bucket="test-bucket",
             gcs_credentials="/path/to/creds.json"
         )
         
-        with pytest.raises(ValueError, match="LocalStorageLoader requires local storage type"):
-            local_loader.create_store(gcs_config)
+        with pytest.raises(PromptStorageError, match="local_path is required for LocalStorageLoader"):
+            LocalStorageLoader(gcs_config)
         
         # Test GCS loader with local config
-        gcs_loader = GCSStorageLoader()
         local_config = StorageConfig(
             storage_type="local",
             local_path="/tmp/prompts"
         )
         
-        with pytest.raises(ValueError, match="GCSStorageLoader requires GCS storage type"):
-            gcs_loader.create_store(local_config) 
+        with pytest.raises(PromptStorageError, match="gcs_bucket is required for GCSStorageLoader"):
+            GCSStorageLoader(local_config) 
