@@ -31,11 +31,20 @@ services:
       dockerfile: Dockerfile.agent
     container_name: agent_service
     env_file: .env
+    environment:
+      # Prompt Storage Configuration
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-local}
+      - PROMPT_STORAGE_LOCAL_PATH=${PROMPT_STORAGE_LOCAL_PATH:-/app/storage/prompts}
+      - PROMPT_STORAGE_GCS_BUCKET=${PROMPT_STORAGE_GCS_BUCKET}
+      - PROMPT_STORAGE_GCS_CREDENTIALS=${PROMPT_STORAGE_GCS_CREDENTIALS}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
       - local_gcs_bucket:/app/local_gcs_bucket
+      - ./local_gcs_bucket:/app/storage:ro  # Mount local storage for development
+      # For production GCS, mount credentials:
+      # - ./credentials:/app/credentials:ro
     command: uvicorn agent_service.web.app:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - mindmirror-network
@@ -103,11 +112,18 @@ services:
     container_name: celery_worker
     command: celery -A agent_service.celery_app.celery_app worker -l info -Q indexing,maintenance
     env_file: .env
+    environment:
+      # Prompt Storage Configuration (same as agent_service)
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-local}
+      - PROMPT_STORAGE_LOCAL_PATH=${PROMPT_STORAGE_LOCAL_PATH:-/app/storage/prompts}
+      - PROMPT_STORAGE_GCS_BUCKET=${PROMPT_STORAGE_GCS_BUCKET}
+      - PROMPT_STORAGE_GCS_CREDENTIALS=${PROMPT_STORAGE_GCS_CREDENTIALS}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
       - local_gcs_bucket:/app/local_gcs_bucket
+      - ./local_gcs_bucket:/app/storage:ro  # Mount local storage for development
     networks:
       - mindmirror-network
     depends_on:
@@ -127,6 +143,22 @@ services:
       - "5555:5555"
     depends_on:
       - redis
+
+  # --- GCS Emulator (Development Only) ---
+  gcs-emulator:
+    image: fsouza/fake-gcs-server
+    container_name: gcs_emulator
+    command: ["-scheme", "http", "-port", "4443"]
+    ports:
+      - "4443:4443"
+    environment:
+      - STORAGE_EMULATOR_HOST=0.0.0.0:4443
+    volumes:
+      - ./local_gcs_bucket:/storage
+    networks:
+      - mindmirror-network
+    profiles:
+      - development
 
   # --- Databases & Infrastructure ---
   postgres:

@@ -1,350 +1,468 @@
 """
-Tests for prompt registry functionality.
+Tests for prompt registry.
 
-These tests verify that the prompt registry correctly manages prompt templates,
-handles versioning, validation, and provides proper error handling.
+These tests verify that the PromptRegistry correctly manages
+prompt registration, discovery, and metadata.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import Mock, patch
+from datetime import datetime, timedelta
 
-from agent_service.llms.prompts.registry import PromptRegistry, PromptNotFoundError, PromptValidationError
-from agent_service.llms.prompts.loader import PromptLoader, TemplateError
+from agent_service.llms.prompts.registry import PromptRegistry
+from agent_service.llms.prompts.models import PromptInfo, PromptSearchCriteria, StoreType, PromptConfig
+from agent_service.llms.prompts.service import PromptService
+from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
+from agent_service.llms.prompts.exceptions import PromptValidationError, PromptNotFoundError
 
 
 class TestPromptRegistry:
-    """Test prompt registry functionality."""
+    """Test PromptRegistry implementation."""
     
-    def test_prompt_registry_initialization(self):
-        """Test that prompt registry initializes correctly."""
-        registry = PromptRegistry()
-        assert registry.prompts == {}
-        assert registry.loader is not None
-        assert isinstance(registry.loader, PromptLoader)
+    @pytest.fixture
+    def service(self):
+        """Create a test service."""
+        store = InMemoryPromptStore()
+        config = PromptConfig(
+            store_type=StoreType.MEMORY,
+            cache_size=100,
+            cache_ttl=3600,
+            enable_validation=True,
+            enable_caching=True
+        )
+        return PromptService(store=store, config=config)
     
-    def test_prompt_registry_with_custom_loader(self):
-        """Test that prompt registry works with custom loader."""
-        mock_loader = Mock(spec=PromptLoader)
-        registry = PromptRegistry(loader=mock_loader)
-        assert registry.loader == mock_loader
+    @pytest.fixture
+    def registry(self, service):
+        """Create a test registry."""
+        return PromptRegistry(service=service)
     
-    def test_register_prompt_from_string(self):
-        """Test registering a prompt from string."""
-        registry = PromptRegistry()
-        
-        prompt_content = "Hello {{ name }}, how are you?"
-        registry.register_prompt("greeting", prompt_content)
-        
-        assert "greeting" in registry.prompts
-        assert registry.prompts["greeting"]["content"] == prompt_content
-        assert registry.prompts["greeting"]["version"] == "1.0"
+    @pytest.fixture
+    def sample_prompt(self):
+        """Create a sample prompt."""
+        return PromptInfo(
+            name="test_prompt",
+            version="1.0",
+            content="Hello {{name}}!",
+            metadata={"description": "A test prompt"},
+            variables=["name"],
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat()
+        )
     
-    def test_register_prompt_with_version(self):
-        """Test registering a prompt with custom version."""
-        registry = PromptRegistry()
-        
-        prompt_content = "Hello {{ name }}!"
-        registry.register_prompt("greeting", prompt_content, version="2.0")
-        
-        assert registry.prompts["greeting"]["version"] == "2.0"
+    def test_registry_initialization(self, registry):
+        """Test registry initialization."""
+        assert registry.service is not None
+        assert registry._metadata == {}
+        assert registry._tags == {}
+        assert registry._categories == {}
+        assert registry._aliases == {}
     
-    def test_register_prompt_with_metadata(self):
-        """Test registering a prompt with metadata."""
-        registry = PromptRegistry()
+    def test_register_prompt_basic(self, registry, sample_prompt):
+        """Test basic prompt registration."""
+        registry.register_prompt(sample_prompt)
         
-        prompt_content = "Hello {{ name }}!"
-        metadata = {"category": "greeting", "language": "en"}
-        registry.register_prompt("greeting", prompt_content, metadata=metadata)
-        
-        assert registry.prompts["greeting"]["metadata"] == metadata
+        # Verify prompt is saved
+        saved_prompt = registry.service.get_prompt("test_prompt", "1.0")
+        assert saved_prompt.name == "test_prompt"
+        assert saved_prompt.version == "1.0"
+        assert saved_prompt.content == "Hello {{name}}!"
     
-    def test_register_prompt_duplicate(self):
-        """Test that registering duplicate prompt raises error."""
-        registry = PromptRegistry()
+    def test_register_prompt_with_tags(self, registry, sample_prompt):
+        """Test prompt registration with tags."""
+        registry.register_prompt(
+            sample_prompt,
+            tags=["greeting", "test"],
+            category="examples"
+        )
         
-        prompt_content = "Hello {{ name }}!"
-        registry.register_prompt("greeting", prompt_content)
-        
-        with pytest.raises(ValueError, match="Prompt 'greeting' already registered"):
-            registry.register_prompt("greeting", "Different content")
+        # Verify metadata is stored
+        prompt_key = "test_prompt:1.0"
+        assert "greeting" in registry._tags[prompt_key]
+        assert "test" in registry._tags[prompt_key]
+        assert "examples" in registry._categories[prompt_key]
     
-    def test_register_prompt_override(self):
-        """Test that registering with override works."""
-        registry = PromptRegistry()
+    def test_register_prompt_with_aliases(self, registry, sample_prompt):
+        """Test prompt registration with aliases."""
+        registry.register_prompt(
+            sample_prompt,
+            aliases=["greeting_prompt", "hello_template"]
+        )
         
-        prompt_content = "Hello {{ name }}!"
-        registry.register_prompt("greeting", prompt_content)
-        
-        new_content = "Hi {{ name }}!"
-        registry.register_prompt("greeting", new_content, override=True)
-        
-        assert registry.prompts["greeting"]["content"] == new_content
+        # Verify aliases are stored
+        assert registry._aliases["greeting_prompt"] == "test_prompt:1.0"
+        assert registry._aliases["hello_template"] == "test_prompt:1.0"
     
-    def test_get_prompt(self):
-        """Test getting a registered prompt."""
-        registry = PromptRegistry()
+    def test_register_prompt_with_metadata(self, registry, sample_prompt):
+        """Test prompt registration with additional metadata."""
+        metadata = {"author": "test_user", "priority": "high"}
+        registry.register_prompt(sample_prompt, metadata=metadata)
         
-        prompt_content = "Hello {{ name }}!"
-        registry.register_prompt("greeting", prompt_content)
-        
-        prompt = registry.get_prompt("greeting")
-        
-        assert prompt["content"] == prompt_content
-        assert prompt["version"] == "1.0"
+        # Verify metadata is stored
+        prompt_key = "test_prompt:1.0"
+        assert registry._metadata[prompt_key]["author"] == "test_user"
+        assert registry._metadata[prompt_key]["priority"] == "high"
+        assert "registered_at" in registry._metadata[prompt_key]
     
-    def test_get_prompt_not_found(self):
-        """Test that getting non-existent prompt raises error."""
-        registry = PromptRegistry()
+    def test_register_prompt_duplicate_alias(self, registry, sample_prompt):
+        """Test that duplicate aliases raise an error."""
+        registry.register_prompt(sample_prompt, aliases=["test_alias"])
         
-        with pytest.raises(PromptNotFoundError, match="Prompt 'missing' not found"):
-            registry.get_prompt("missing")
+        # Try to register another prompt with the same alias
+        another_prompt = PromptInfo(
+            name="another_prompt",
+            version="1.0",
+            content="Another prompt",
+            metadata={},
+            variables=[],
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat()
+        )
+        
+        with pytest.raises(PromptValidationError):
+            registry.register_prompt(another_prompt, aliases=["test_alias"])
     
-    def test_render_prompt(self):
-        """Test rendering a prompt with variables."""
-        registry = PromptRegistry()
-        
-        prompt_content = "Hello {{ name }}! You have {{ count }} messages."
-        registry.register_prompt("greeting", prompt_content)
-        
-        result = registry.render_prompt("greeting", name="Alice", count=3)
-        
-        assert result == "Hello Alice! You have 3 messages."
+    def test_register_prompt_invalid_input(self, registry):
+        """Test that invalid input raises an error."""
+        with pytest.raises(PromptValidationError):
+            registry.register_prompt("not_a_prompt_info")
     
-    def test_render_prompt_with_invalid_template(self):
-        """Test that invalid template raises error."""
-        registry = PromptRegistry()
+    def test_get_prompt(self, registry, sample_prompt):
+        """Test getting a prompt."""
+        registry.register_prompt(sample_prompt)
         
-        invalid_content = "Hello {{ name }}, {% if %} invalid syntax"
-        registry.register_prompt("invalid", invalid_content)
-        
-        with pytest.raises(PromptValidationError, match="Invalid template syntax"):
-            registry.render_prompt("invalid", name="Alice")
+        retrieved_prompt = registry.get_prompt("test_prompt", "1.0")
+        assert retrieved_prompt.name == "test_prompt"
+        assert retrieved_prompt.version == "1.0"
     
-    def test_render_prompt_missing_variables(self):
-        """Test that missing variables are handled gracefully."""
-        registry = PromptRegistry()
+    def test_get_prompt_by_alias(self, registry, sample_prompt):
+        """Test getting a prompt by alias."""
+        registry.register_prompt(sample_prompt, aliases=["greeting"])
         
-        prompt_content = "Hello {{ name }}! You have {{ count }} messages."
-        registry.register_prompt("greeting", prompt_content)
-        
-        # Should handle missing variables gracefully
-        result = registry.render_prompt("greeting", name="Alice")
-        
-        assert "Hello Alice!" in result
-        assert "You have  messages." in result  # count is empty
+        retrieved_prompt = registry.get_prompt_by_alias("greeting")
+        assert retrieved_prompt.name == "test_prompt"
+        assert retrieved_prompt.version == "1.0"
     
-    def test_list_prompts(self):
-        """Test listing all registered prompts."""
-        registry = PromptRegistry()
-        
-        registry.register_prompt("greeting", "Hello {{ name }}!")
-        registry.register_prompt("farewell", "Goodbye {{ name }}!")
-        registry.register_prompt("welcome", "Welcome {{ name }}!")
-        
+    def test_get_prompt_by_alias_not_found(self, registry):
+        """Test getting a prompt by non-existent alias."""
+        with pytest.raises(PromptNotFoundError):
+            registry.get_prompt_by_alias("non_existent")
+    
+    def test_list_prompts_empty(self, registry):
+        """Test listing prompts when registry is empty."""
         prompts = registry.list_prompts()
-        
-        assert "greeting" in prompts
-        assert "farewell" in prompts
-        assert "welcome" in prompts
-        assert len(prompts) == 3
+        assert len(prompts) == 0
     
-    def test_get_prompt_info(self):
-        """Test getting detailed prompt information."""
-        registry = PromptRegistry()
+    def test_list_prompts_with_criteria(self, registry, sample_prompt):
+        """Test listing prompts with search criteria."""
+        registry.register_prompt(
+            sample_prompt,
+            tags=["greeting"],
+            category="examples"
+        )
         
-        prompt_content = "Hello {{ name }}!"
-        metadata = {"category": "greeting", "language": "en"}
-        registry.register_prompt("greeting", prompt_content, metadata=metadata)
+        # Test filtering by name pattern
+        criteria = PromptSearchCriteria(name_pattern=r"test.*")
+        prompts = registry.list_prompts(criteria)
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
         
-        info = registry.get_prompt_info("greeting")
+        # Test filtering by content pattern
+        criteria = PromptSearchCriteria(content_pattern=r"Hello.*")
+        prompts = registry.list_prompts(criteria)
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
         
-        assert info["name"] == "greeting"
-        assert info["content"] == prompt_content
-        assert info["version"] == "1.0"
-        assert info["metadata"] == metadata
-        assert "name" in info["variables"]
+        # Test filtering by non-matching criteria
+        criteria = PromptSearchCriteria(name_pattern=r"non_existent.*")
+        prompts = registry.list_prompts(criteria)
+        assert len(prompts) == 0
     
-    def test_validate_prompt(self):
-        """Test prompt validation."""
-        registry = PromptRegistry()
+    def test_search_prompts(self, registry, sample_prompt):
+        """Test searching prompts by text."""
+        registry.register_prompt(sample_prompt)
         
-        # Valid prompt
-        valid_content = "Hello {{ name }}!"
-        assert registry.validate_prompt(valid_content) is True
-        
-        # Invalid prompt
-        invalid_content = "Hello {{ name }}, {% if %} invalid"
-        assert registry.validate_prompt(invalid_content) is False
-    
-    def test_update_prompt(self):
-        """Test updating an existing prompt."""
-        registry = PromptRegistry()
-        
-        original_content = "Hello {{ name }}!"
-        registry.register_prompt("greeting", original_content)
-        
-        new_content = "Hi {{ name }}!"
-        registry.update_prompt("greeting", new_content)
-        
-        assert registry.prompts["greeting"]["content"] == new_content
-        assert registry.prompts["greeting"]["version"] == "1.1"
-    
-    def test_update_prompt_not_found(self):
-        """Test that updating non-existent prompt raises error."""
-        registry = PromptRegistry()
-        
-        with pytest.raises(PromptNotFoundError, match="Prompt 'missing' not found"):
-            registry.update_prompt("missing", "New content")
-    
-    def test_delete_prompt(self):
-        """Test deleting a prompt."""
-        registry = PromptRegistry()
-        
-        registry.register_prompt("greeting", "Hello {{ name }}!")
-        assert "greeting" in registry.prompts
-        
-        registry.delete_prompt("greeting")
-        assert "greeting" not in registry.prompts
-    
-    def test_delete_prompt_not_found(self):
-        """Test that deleting non-existent prompt raises error."""
-        registry = PromptRegistry()
-        
-        with pytest.raises(PromptNotFoundError, match="Prompt 'missing' not found"):
-            registry.delete_prompt("missing")
-    
-    def test_search_prompts(self):
-        """Test searching prompts by content or metadata."""
-        registry = PromptRegistry()
-        
-        registry.register_prompt("greeting", "Hello {{ name }}!", metadata={"category": "greeting"})
-        registry.register_prompt("farewell", "Goodbye {{ name }}!", metadata={"category": "farewell"})
-        registry.register_prompt("welcome", "Welcome {{ name }}!", metadata={"category": "greeting"})
+        # Search by name
+        results = registry.search_prompts("test_prompt")
+        assert len(results) == 1
+        assert results[0].name == "test_prompt"
         
         # Search by content
         results = registry.search_prompts("Hello")
         assert len(results) == 1
-        assert "greeting" in results
+        assert results[0].name == "test_prompt"
         
-        # Search by metadata
-        results = registry.search_prompts(metadata={"category": "greeting"})
-        assert len(results) == 2
-        assert "greeting" in results
-        assert "welcome" in results
-
-
-class TestPromptRegistryIntegration:
-    """Integration tests for prompt registry."""
+        # Search with no results
+        results = registry.search_prompts("non_existent")
+        assert len(results) == 0
     
-    def test_load_prompts_from_directory(self):
-        """Test loading prompts from directory."""
-        registry = PromptRegistry()
+    def test_search_prompts_custom_fields(self, registry, sample_prompt):
+        """Test searching prompts with custom fields."""
+        registry.register_prompt(sample_prompt)
         
-        # Mock directory structure
-        mock_templates = {
-            "greeting.j2": "Hello {{ name }}!",
-            "farewell.j2": "Goodbye {{ name }}!",
-            "welcome.j2": "Welcome {{ name }} to {{ service }}!"
+        # Search only in name field
+        results = registry.search_prompts("test", search_fields=["name"])
+        assert len(results) == 1
+        
+        # Search only in content field
+        results = registry.search_prompts("Hello", search_fields=["content"])
+        assert len(results) == 1
+    
+    def test_get_prompts_by_tag(self, registry, sample_prompt):
+        """Test getting prompts by tag."""
+        registry.register_prompt(sample_prompt, tags=["greeting", "test"])
+        
+        # Get prompts by tag
+        prompts = registry.get_prompts_by_tag("greeting")
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
+        
+        # Get prompts by another tag
+        prompts = registry.get_prompts_by_tag("test")
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
+        
+        # Get prompts by non-existent tag
+        prompts = registry.get_prompts_by_tag("non_existent")
+        assert len(prompts) == 0
+    
+    def test_get_prompts_by_category(self, registry, sample_prompt):
+        """Test getting prompts by category."""
+        registry.register_prompt(sample_prompt, category="examples")
+        
+        # Get prompts by category
+        prompts = registry.get_prompts_by_category("examples")
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
+        
+        # Get prompts by non-existent category
+        prompts = registry.get_prompts_by_category("non_existent")
+        assert len(prompts) == 0
+    
+    def test_get_prompt_metadata(self, registry, sample_prompt):
+        """Test getting prompt metadata."""
+        metadata = {"author": "test_user", "priority": "high"}
+        registry.register_prompt(sample_prompt, metadata=metadata)
+        
+        retrieved_metadata = registry.get_prompt_metadata("test_prompt", "1.0")
+        assert retrieved_metadata["author"] == "test_user"
+        assert retrieved_metadata["priority"] == "high"
+        assert "registered_at" in retrieved_metadata
+    
+    def test_update_prompt_metadata(self, registry, sample_prompt):
+        """Test updating prompt metadata."""
+        registry.register_prompt(sample_prompt)
+        
+        new_metadata = {"status": "active", "reviewed": True}
+        registry.update_prompt_metadata("test_prompt", new_metadata)
+        
+        retrieved_metadata = registry.get_prompt_metadata("test_prompt", "1.0")
+        assert retrieved_metadata["status"] == "active"
+        assert retrieved_metadata["reviewed"] is True
+    
+    def test_add_tags(self, registry, sample_prompt):
+        """Test adding tags to a prompt."""
+        registry.register_prompt(sample_prompt, tags=["initial"])
+        
+        registry.add_tags("test_prompt", ["new_tag", "another_tag"])
+        
+        prompt_key = "test_prompt:1.0"
+        assert "initial" in registry._tags[prompt_key]
+        assert "new_tag" in registry._tags[prompt_key]
+        assert "another_tag" in registry._tags[prompt_key]
+    
+    def test_remove_tags(self, registry, sample_prompt):
+        """Test removing tags from a prompt."""
+        registry.register_prompt(sample_prompt, tags=["tag1", "tag2", "tag3"])
+        
+        registry.remove_tags("test_prompt", ["tag1", "tag3"])
+        
+        prompt_key = "test_prompt:1.0"
+        assert "tag1" not in registry._tags[prompt_key]
+        assert "tag2" in registry._tags[prompt_key]
+        assert "tag3" not in registry._tags[prompt_key]
+    
+    def test_get_all_tags(self, registry, sample_prompt):
+        """Test getting all unique tags."""
+        registry.register_prompt(sample_prompt, tags=["tag1", "tag2"])
+        
+        another_prompt = PromptInfo(
+            name="another_prompt",
+            version="1.0",
+            content="Another prompt",
+            metadata={},
+            variables=[],
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat()
+        )
+        registry.register_prompt(another_prompt, tags=["tag2", "tag3"])
+        
+        all_tags = registry.get_all_tags()
+        assert "tag1" in all_tags
+        assert "tag2" in all_tags
+        assert "tag3" in all_tags
+        assert len(all_tags) == 3
+    
+    def test_get_all_categories(self, registry, sample_prompt):
+        """Test getting all unique categories."""
+        registry.register_prompt(sample_prompt, category="category1")
+        
+        another_prompt = PromptInfo(
+            name="another_prompt",
+            version="1.0",
+            content="Another prompt",
+            metadata={},
+            variables=[],
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat()
+        )
+        registry.register_prompt(another_prompt, category="category2")
+        
+        all_categories = registry.get_all_categories()
+        assert "category1" in all_categories
+        assert "category2" in all_categories
+        assert len(all_categories) == 2
+    
+    def test_get_prompt_aliases(self, registry, sample_prompt):
+        """Test getting aliases for a prompt."""
+        registry.register_prompt(sample_prompt, aliases=["alias1", "alias2"])
+        
+        aliases = registry.get_prompt_aliases("test_prompt", "1.0")
+        assert "alias1" in aliases
+        assert "alias2" in aliases
+        assert len(aliases) == 2
+    
+    def test_add_alias(self, registry, sample_prompt):
+        """Test adding an alias to a prompt."""
+        registry.register_prompt(sample_prompt)
+        
+        registry.add_alias("test_prompt", "new_alias")
+        
+        assert registry._aliases["new_alias"] == "test_prompt:1.0"
+    
+    def test_add_duplicate_alias(self, registry, sample_prompt):
+        """Test that adding duplicate alias raises an error."""
+        registry.register_prompt(sample_prompt, aliases=["existing_alias"])
+        
+        with pytest.raises(PromptValidationError):
+            registry.add_alias("test_prompt", "existing_alias")
+    
+    def test_remove_alias(self, registry, sample_prompt):
+        """Test removing an alias."""
+        registry.register_prompt(sample_prompt, aliases=["alias1", "alias2"])
+        
+        registry.remove_alias("alias1")
+        
+        assert "alias1" not in registry._aliases
+        assert "alias2" in registry._aliases
+    
+    def test_remove_nonexistent_alias(self, registry):
+        """Test removing a non-existent alias."""
+        with pytest.raises(PromptNotFoundError):
+            registry.remove_alias("non_existent")
+    
+    def test_unregister_prompt(self, registry, sample_prompt):
+        """Test unregistering a prompt."""
+        registry.register_prompt(
+            sample_prompt,
+            tags=["tag1"],
+            category="category1",
+            aliases=["alias1"],
+            metadata={"key": "value"}
+        )
+        
+        registry.unregister_prompt("test_prompt", "1.0")
+        
+        # Verify prompt is removed from service
+        with pytest.raises(PromptNotFoundError):
+            registry.service.get_prompt("test_prompt", "1.0")
+        
+        # Verify metadata is cleaned up
+        prompt_key = "test_prompt:1.0"
+        assert prompt_key not in registry._metadata
+        assert prompt_key not in registry._tags
+        assert prompt_key not in registry._categories
+        assert "alias1" not in registry._aliases
+    
+    def test_get_registry_stats(self, registry, sample_prompt):
+        """Test getting registry statistics."""
+        registry.register_prompt(sample_prompt, tags=["tag1"], category="cat1")
+        
+        stats = registry.get_registry_stats()
+        
+        assert stats["total_prompts"] == 1
+        assert stats["total_versions"] == 1
+        assert stats["total_tags"] == 1
+        assert stats["total_categories"] == 1
+        assert stats["total_aliases"] == 0
+        assert stats["unique_prompts"] == 1
+        assert stats["average_versions_per_prompt"] == 1.0
+    
+    def test_export_registry(self, registry, sample_prompt):
+        """Test exporting registry data."""
+        registry.register_prompt(
+            sample_prompt,
+            tags=["tag1"],
+            category="category1",
+            aliases=["alias1"],
+            metadata={"key": "value"}
+        )
+        
+        export_data = registry.export_registry()
+        
+        assert "prompts" in export_data
+        assert "metadata" in export_data
+        assert "tags" in export_data
+        assert "categories" in export_data
+        assert "aliases" in export_data
+        assert "exported_at" in export_data
+        
+        assert len(export_data["prompts"]) == 1
+        assert export_data["prompts"][0]["name"] == "test_prompt"
+    
+    def test_import_registry(self, registry, sample_prompt):
+        """Test importing registry data."""
+        # Create export data
+        export_data = {
+            "prompts": [sample_prompt.to_dict()],
+            "metadata": {"test_prompt:1.0": {"key": "value"}},
+            "tags": {"test_prompt:1.0": ["tag1", "tag2"]},
+            "categories": {"test_prompt:1.0": ["category1"]},
+            "aliases": {"alias1": "test_prompt:1.0"},
+            "exported_at": datetime.utcnow().isoformat()
         }
         
-        with patch.object(registry.loader, 'load_templates_from_directory') as mock_load:
-            mock_load.return_value = {
-                name.replace('.j2', ''): Mock() for name in mock_templates.keys()
-            }
-            
-            with patch.object(registry.loader, 'get_template') as mock_get_template:
-                def mock_template_side_effect(template_name):
-                    mock_template = Mock()
-                    mock_template.source = mock_templates[f"{template_name}.j2"]
-                    return mock_template
-                
-                mock_get_template.side_effect = mock_template_side_effect
-                
-                registry.load_prompts_from_directory("/tmp/prompts")
-                
-                assert "greeting" in registry.prompts
-                assert "farewell" in registry.prompts
-                assert "welcome" in registry.prompts
+        registry.import_registry(export_data)
+        
+        # Verify data is imported
+        assert len(registry.service.list_prompts()) == 1
+        assert registry._metadata["test_prompt:1.0"]["key"] == "value"
+        assert "tag1" in registry._tags["test_prompt:1.0"]
+        assert "category1" in registry._categories["test_prompt:1.0"]
+        assert registry._aliases["alias1"] == "test_prompt:1.0"
     
-    def test_prompt_versioning(self):
-        """Test prompt versioning functionality."""
-        registry = PromptRegistry()
+    def test_matches_criteria_complex(self, registry, sample_prompt):
+        """Test complex criteria matching."""
+        registry.register_prompt(
+            sample_prompt,
+            tags=["greeting", "test"],
+            category="examples"
+        )
         
-        # Register initial version
-        registry.register_prompt("greeting", "Hello {{ name }}!", version="1.0")
+        # Test multiple criteria
+        criteria = PromptSearchCriteria(
+            name_pattern=r"test.*",
+            content_pattern=r"Hello.*"
+        )
         
-        # Update to new version
-        registry.update_prompt("greeting", "Hi {{ name }}!", version="2.0")
+        prompts = registry.list_prompts(criteria)
+        assert len(prompts) == 1
+        assert prompts[0].name == "test_prompt"
         
-        # Check version history
-        assert registry.prompts["greeting"]["version"] == "2.0"
+        # Test non-matching criteria
+        criteria = PromptSearchCriteria(
+            name_pattern=r"non_existent.*"
+        )
         
-        # Get specific version (if implemented)
-        # This would require additional versioning functionality
-    
-    def test_prompt_categories(self):
-        """Test prompt categorization."""
-        registry = PromptRegistry()
-        
-        registry.register_prompt("greeting", "Hello {{ name }}!", metadata={"category": "greeting"})
-        registry.register_prompt("farewell", "Goodbye {{ name }}!", metadata={"category": "farewell"})
-        registry.register_prompt("welcome", "Welcome {{ name }}!", metadata={"category": "greeting"})
-        
-        greeting_prompts = registry.get_prompts_by_category("greeting")
-        assert len(greeting_prompts) == 2
-        assert "greeting" in greeting_prompts
-        assert "welcome" in greeting_prompts
-    
-    def test_prompt_export_import(self):
-        """Test prompt export and import functionality."""
-        registry = PromptRegistry()
-        
-        registry.register_prompt("greeting", "Hello {{ name }}!", metadata={"category": "greeting"})
-        registry.register_prompt("farewell", "Goodbye {{ name }}!", metadata={"category": "farewell"})
-        
-        # Export prompts
-        exported = registry.export_prompts()
-        
-        # Create new registry and import
-        new_registry = PromptRegistry()
-        new_registry.import_prompts(exported)
-        
-        assert "greeting" in new_registry.prompts
-        assert "farewell" in new_registry.prompts
-        assert new_registry.prompts["greeting"]["content"] == "Hello {{ name }}!"
-
-
-class TestPromptRegistryErrorHandling:
-    """Test error handling in prompt registry."""
-    
-    def test_register_invalid_prompt(self):
-        """Test that invalid prompt registration is handled."""
-        registry = PromptRegistry()
-        
-        invalid_content = "Hello {{ name }}, {% if %} invalid syntax"
-        
-        with pytest.raises(PromptValidationError, match="Invalid template syntax"):
-            registry.register_prompt("invalid", invalid_content, validate=True)
-    
-    def test_render_with_template_error(self):
-        """Test that template rendering errors are handled."""
-        registry = PromptRegistry()
-        
-        # Register a prompt that will cause rendering error
-        prompt_content = "Hello {{ name }}, you have {{ count }} messages."
-        registry.register_prompt("greeting", prompt_content)
-        
-        # This should handle the missing variable gracefully
-        result = registry.render_prompt("greeting", name="Alice")
-        assert "Hello Alice" in result
-    
-    def test_loader_error_propagation(self):
-        """Test that loader errors are properly propagated."""
-        registry = PromptRegistry()
-        
-        with patch.object(registry.loader, 'load_template_from_string') as mock_load:
-            mock_load.side_effect = TemplateError("Loader error")
-            
-            with pytest.raises(TemplateError, match="Loader error"):
-                registry.register_prompt("test", "Hello {{ name }}") 
+        prompts = registry.list_prompts(criteria)
+        assert len(prompts) == 0 

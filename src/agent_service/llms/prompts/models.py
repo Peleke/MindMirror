@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
+from pydantic import BaseModel, Field, validator
 
 from .exceptions import PromptValidationError
 
@@ -315,4 +316,47 @@ class PromptStats:
         result = asdict(self)
         if self.last_updated:
             result['last_updated'] = self.last_updated.isoformat()
-        return result 
+        return result
+
+
+class StorageConfig(BaseModel):
+    """
+    Configuration for storage backends.
+    
+    This model defines the configuration options for different
+    storage backends (local, GCS, etc.).
+    """
+    
+    storage_type: str = Field(..., description="Type of storage backend (local, gcs)")
+    local_path: Optional[str] = Field(None, description="Local file system path for local storage")
+    gcs_bucket: Optional[str] = Field(None, description="GCS bucket name for GCS storage")
+    gcs_credentials: Optional[str] = Field(None, description="Path to GCS credentials file")
+    
+    @validator('storage_type')
+    def validate_storage_type(cls, v):
+        """Validate storage type."""
+        valid_types = ['local', 'gcs']
+        if v not in valid_types:
+            raise ValueError(f"storage_type must be one of {valid_types}")
+        return v
+    
+    @validator('local_path')
+    def validate_local_path(cls, v, values):
+        """Validate local path is provided for local storage."""
+        if values.get('storage_type') == 'local' and not v:
+            raise ValueError("local_path is required for local storage")
+        return v
+    
+    @validator('gcs_bucket')
+    def validate_gcs_bucket(cls, v, values):
+        """Validate GCS bucket is provided for GCS storage."""
+        if values.get('storage_type') == 'gcs' and not v:
+            raise ValueError("gcs_bucket is required for GCS storage")
+        return v
+    
+    @validator('gcs_credentials')
+    def validate_gcs_credentials(cls, v, values):
+        """Validate GCS credentials are provided for GCS storage."""
+        if values.get('storage_type') == 'gcs' and not v:
+            raise ValueError("gcs_credentials is required for GCS storage")
+        return v 

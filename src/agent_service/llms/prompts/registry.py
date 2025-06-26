@@ -6,385 +6,499 @@ with versioning, validation, and retrieval functionality.
 """
 
 import re
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, Set
 from dataclasses import dataclass, asdict
 from pathlib import Path
+from datetime import datetime
+from collections import defaultdict
 
 from .loader import PromptLoader, TemplateError
-
-
-class PromptNotFoundError(Exception):
-    """Raised when a prompt is not found in the registry."""
-    pass
-
-
-class PromptValidationError(Exception):
-    """Raised when a prompt fails validation."""
-    pass
-
-
-@dataclass
-class PromptInfo:
-    """Information about a registered prompt."""
-    name: str
-    content: str
-    version: str
-    metadata: Dict[str, Any]
-    variables: List[str]
-    created_at: str
-    updated_at: str
+from .models import PromptInfo, PromptSearchCriteria, StoreType
+from .service import PromptService
+from .exceptions import PromptValidationError, PromptNotFoundError
 
 
 class PromptRegistry:
     """
-    Registry for managing prompt templates.
+    Central registry for prompt management.
     
-    This class provides functionality for registering, retrieving, and managing
-    prompt templates with versioning and validation support.
+    This registry provides methods for registering, discovering,
+    and managing prompts with metadata and search capabilities.
     """
     
-    def __init__(self, loader: Optional[PromptLoader] = None):
+    def __init__(self, service: PromptService):
+        """Initialize the registry with a prompt service."""
+        self.service = service
+        self._metadata: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        self._tags: Dict[str, Set[str]] = defaultdict(set)
+        self._categories: Dict[str, Set[str]] = defaultdict(set)
+        self._aliases: Dict[str, str] = {}
+    
+    def register_prompt(self, prompt_info: PromptInfo, 
+                       tags: Optional[List[str]] = None,
+                       category: Optional[str] = None,
+                       aliases: Optional[List[str]] = None,
+                       metadata: Optional[Dict[str, Any]] = None) -> None:
         """
-        Initialize the prompt registry.
+        Register a prompt with metadata.
         
         Args:
-            loader: Optional prompt loader instance. If not provided, a new one will be created.
+            prompt_info: The prompt information to register
+            tags: Optional list of tags for categorization
+            category: Optional category for grouping
+            aliases: Optional list of alternative names
+            metadata: Optional additional metadata
         """
-        self.prompts: Dict[str, Dict[str, Any]] = {}
-        self.loader = loader or PromptLoader()
+        if not isinstance(prompt_info, PromptInfo):
+            raise PromptValidationError("prompt_info must be a PromptInfo object")
+        
+        # Save the prompt
+        self.service.save_prompt(prompt_info)
+        
+        # Store metadata
+        prompt_key = f"{prompt_info.name}:{prompt_info.version}"
+        
+        if tags:
+            self._tags[prompt_key].update(tags)
+        
+        if category:
+            self._categories[prompt_key].add(category)
+        
+        if aliases:
+            for alias in aliases:
+                if alias in self._aliases:
+                    raise PromptValidationError(f"Alias '{alias}' already exists")
+                self._aliases[alias] = prompt_key
+        
+        if metadata:
+            self._metadata[prompt_key].update(metadata)
+        
+        # Add registration timestamp
+        self._metadata[prompt_key]['registered_at'] = datetime.utcnow().isoformat()
     
-    def register_prompt(
-        self,
-        name: str,
-        content: str,
-        version: str = "1.0",
-        metadata: Optional[Dict[str, Any]] = None,
-        validate: bool = True,
-        override: bool = False
-    ) -> None:
+    def unregister_prompt(self, name: str, version: Optional[str] = None) -> None:
         """
-        Register a new prompt template.
+        Unregister a prompt and its metadata.
         
         Args:
-            name: Unique name for the prompt
-            content: Template content (Jinja2 format)
-            version: Version string for the prompt
-            metadata: Optional metadata dictionary
-            validate: Whether to validate the template syntax
-            override: Whether to override existing prompt with same name
-            
-        Raises:
-            ValueError: If prompt already exists and override is False
-            PromptValidationError: If template validation fails
+            name: The prompt name
+            version: Optional version (uses latest if not specified)
         """
-        if name in self.prompts and not override:
-            raise ValueError(f"Prompt '{name}' already registered")
-        
-        if validate and not self.validate_prompt(content):
-            raise PromptValidationError("Invalid template syntax")
-        
-        # Extract variables from template
-        variables = self._extract_variables(content)
-        
-        # Store prompt information
-        self.prompts[name] = {
-            "content": content,
-            "version": version,
-            "metadata": metadata or {},
-            "variables": variables,
-            "created_at": self._get_timestamp(),
-            "updated_at": self._get_timestamp()
-        }
-    
-    def get_prompt(self, name: str) -> Dict[str, Any]:
-        """
-        Get a registered prompt by name.
-        
-        Args:
-            name: Name of the prompt to retrieve
-            
-        Returns:
-            Dictionary containing prompt information
-            
-        Raises:
-            PromptNotFoundError: If prompt is not found
-        """
-        if name not in self.prompts:
-            raise PromptNotFoundError(f"Prompt '{name}' not found")
-        
-        return self.prompts[name].copy()
-    
-    def render_prompt(self, name: str, **kwargs) -> str:
-        """
-        Render a prompt template with provided variables.
-        
-        Args:
-            name: Name of the prompt to render
-            **kwargs: Variables to substitute in the template
-            
-        Returns:
-            Rendered prompt string
-            
-        Raises:
-            PromptNotFoundError: If prompt is not found
-            PromptValidationError: If template rendering fails
-        """
-        if name not in self.prompts:
-            raise PromptNotFoundError(f"Prompt '{name}' not found")
-        
-        try:
-            return self.loader.render_template(
-                self.loader.load_template_from_string(self.prompts[name]["content"]),
-                **kwargs
-            )
-        except TemplateError as e:
-            raise PromptValidationError(f"Template rendering failed: {e}")
-    
-    def list_prompts(self) -> List[str]:
-        """
-        List all registered prompt names.
-        
-        Returns:
-            List of prompt names
-        """
-        return list(self.prompts.keys())
-    
-    def get_prompt_info(self, name: str) -> PromptInfo:
-        """
-        Get detailed information about a prompt.
-        
-        Args:
-            name: Name of the prompt
-            
-        Returns:
-            PromptInfo object with detailed information
-            
-        Raises:
-            PromptNotFoundError: If prompt is not found
-        """
-        if name not in self.prompts:
-            raise PromptNotFoundError(f"Prompt '{name}' not found")
-        
-        prompt_data = self.prompts[name]
-        return PromptInfo(
-            name=name,
-            content=prompt_data["content"],
-            version=prompt_data["version"],
-            metadata=prompt_data["metadata"],
-            variables=prompt_data["variables"],
-            created_at=prompt_data["created_at"],
-            updated_at=prompt_data["updated_at"]
-        )
-    
-    def validate_prompt(self, content: str) -> bool:
-        """
-        Validate template syntax.
-        
-        Args:
-            content: Template content to validate
-            
-        Returns:
-            True if valid, False otherwise
-        """
-        try:
-            self.loader.validate_template(content)
-            return True
-        except TemplateError:
-            return False
-    
-    def update_prompt(
-        self,
-        name: str,
-        content: str,
-        version: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        validate: bool = True
-    ) -> None:
-        """
-        Update an existing prompt.
-        
-        Args:
-            name: Name of the prompt to update
-            content: New template content
-            version: New version string (auto-incremented if not provided)
-            metadata: New metadata dictionary
-            validate: Whether to validate the template syntax
-            
-        Raises:
-            PromptNotFoundError: If prompt is not found
-            PromptValidationError: If template validation fails
-        """
-        if name not in self.prompts:
-            raise PromptNotFoundError(f"Prompt '{name}' not found")
-        
-        if validate and not self.validate_prompt(content):
-            raise PromptValidationError("Invalid template syntax")
-        
-        # Auto-increment version if not provided
         if version is None:
-            current_version = self.prompts[name]["version"]
-            try:
-                major, minor = current_version.split(".")
-                new_minor = str(int(minor) + 1)
-                version = f"{major}.{new_minor}"
-            except (ValueError, AttributeError):
-                version = "1.1"
+            version = self.service.get_latest_version(name)
         
-        # Extract variables from new template
-        variables = self._extract_variables(content)
+        prompt_key = f"{name}:{version}"
         
-        # Update prompt information
-        self.prompts[name].update({
-            "content": content,
-            "version": version,
-            "variables": variables,
-            "updated_at": self._get_timestamp()
-        })
+        # Remove from service
+        self.service.delete_prompt(name, version)
         
-        # Update metadata if provided
-        if metadata is not None:
-            self.prompts[name]["metadata"] = metadata
+        # Clean up metadata
+        self._metadata.pop(prompt_key, None)
+        self._tags.pop(prompt_key, None)
+        self._categories.pop(prompt_key, None)
+        
+        # Remove aliases
+        aliases_to_remove = [alias for alias, key in self._aliases.items() if key == prompt_key]
+        for alias in aliases_to_remove:
+            del self._aliases[alias]
     
-    def delete_prompt(self, name: str) -> None:
+    def get_prompt(self, name: str, version: Optional[str] = None) -> PromptInfo:
         """
-        Delete a prompt from the registry.
+        Get a prompt by name and optional version.
         
         Args:
-            name: Name of the prompt to delete
-            
-        Raises:
-            PromptNotFoundError: If prompt is not found
-        """
-        if name not in self.prompts:
-            raise PromptNotFoundError(f"Prompt '{name}' not found")
-        
-        del self.prompts[name]
-    
-    def search_prompts(
-        self,
-        query: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> List[str]:
-        """
-        Search prompts by content or metadata.
-        
-        Args:
-            query: Text to search for in prompt content
-            metadata: Metadata filters to apply
+            name: The prompt name
+            version: Optional version (uses latest if not specified)
             
         Returns:
-            List of matching prompt names
+            The prompt information
         """
-        results = []
-        
-        for name, prompt_data in self.prompts.items():
-            # Search by content
-            if query and query.lower() in prompt_data["content"].lower():
-                results.append(name)
-                continue
-            
-            # Search by metadata
-            if metadata:
-                prompt_metadata = prompt_data.get("metadata", {})
-                if all(
-                    prompt_metadata.get(key) == value
-                    for key, value in metadata.items()
-                ):
-                    results.append(name)
-        
-        return results
+        return self.service.get_prompt(name, version)
     
-    def get_prompts_by_category(self, category: str) -> List[str]:
+    def get_prompt_by_alias(self, alias: str) -> PromptInfo:
+        """
+        Get a prompt by its alias.
+        
+        Args:
+            alias: The prompt alias
+            
+        Returns:
+            The prompt information
+        """
+        if alias not in self._aliases:
+            raise PromptNotFoundError(f"Alias '{alias}' not found")
+        
+        prompt_key = self._aliases[alias]
+        name, version = prompt_key.split(':', 1)
+        return self.service.get_prompt(name, version)
+    
+    def list_prompts(self, criteria: Optional[PromptSearchCriteria] = None) -> List[PromptInfo]:
+        """
+        List prompts based on search criteria.
+        
+        Args:
+            criteria: Optional search criteria
+            
+        Returns:
+            List of matching prompts
+        """
+        if criteria is None:
+            criteria = PromptSearchCriteria()
+        
+        all_prompts = self.service.list_prompts()
+        filtered_prompts = []
+        
+        for prompt in all_prompts:
+            if self._matches_criteria(prompt, criteria):
+                filtered_prompts.append(prompt)
+        
+        return filtered_prompts
+    
+    def search_prompts(self, query: str, 
+                      search_fields: Optional[List[str]] = None) -> List[PromptInfo]:
+        """
+        Search prompts by text query.
+        
+        Args:
+            query: The search query
+            search_fields: Optional list of fields to search (default: name, content)
+            
+        Returns:
+            List of matching prompts
+        """
+        if search_fields is None:
+            search_fields = ['name', 'content']
+        
+        all_prompts = self.service.list_prompts()
+        matching_prompts = []
+        
+        query_lower = query.lower()
+        
+        for prompt in all_prompts:
+            for field in search_fields:
+                if hasattr(prompt, field):
+                    value = getattr(prompt, field)
+                    if isinstance(value, str) and query_lower in value.lower():
+                        matching_prompts.append(prompt)
+                        break
+        
+        return matching_prompts
+    
+    def get_prompts_by_tag(self, tag: str) -> List[PromptInfo]:
+        """
+        Get prompts by tag.
+        
+        Args:
+            tag: The tag to search for
+            
+        Returns:
+            List of prompts with the specified tag
+        """
+        matching_prompts = []
+        
+        for prompt_key, tags in self._tags.items():
+            if tag in tags:
+                name, version = prompt_key.split(':', 1)
+                try:
+                    prompt = self.service.get_prompt(name, version)
+                    matching_prompts.append(prompt)
+                except PromptNotFoundError:
+                    # Skip if prompt no longer exists
+                    continue
+        
+        return matching_prompts
+    
+    def get_prompts_by_category(self, category: str) -> List[PromptInfo]:
         """
         Get prompts by category.
         
         Args:
-            category: Category to filter by
+            category: The category to search for
             
         Returns:
-            List of prompt names in the specified category
+            List of prompts in the specified category
         """
-        return self.search_prompts(metadata={"category": category})
+        matching_prompts = []
+        
+        for prompt_key, categories in self._categories.items():
+            if category in categories:
+                name, version = prompt_key.split(':', 1)
+                try:
+                    prompt = self.service.get_prompt(name, version)
+                    matching_prompts.append(prompt)
+                except PromptNotFoundError:
+                    # Skip if prompt no longer exists
+                    continue
+        
+        return matching_prompts
     
-    def load_prompts_from_directory(self, directory_path: Union[str, Path]) -> None:
+    def get_prompt_metadata(self, name: str, version: Optional[str] = None) -> Dict[str, Any]:
         """
-        Load prompts from a directory containing .j2 template files.
+        Get metadata for a prompt.
         
         Args:
-            directory_path: Path to directory containing templates
+            name: The prompt name
+            version: Optional version (uses latest if not specified)
+            
+        Returns:
+            Dictionary of metadata
         """
-        directory_path = Path(directory_path)
+        if version is None:
+            version = self.service.get_latest_version(name)
         
-        if not directory_path.exists():
-            raise FileNotFoundError(f"Directory {directory_path} does not exist")
-        
-        # Load templates from directory
-        templates = self.loader.load_templates_from_directory(directory_path)
-        
-        # Register each template as a prompt
-        for template_name, template in templates.items():
-            try:
-                content = template.source
-                self.register_prompt(template_name, content)
-            except Exception as e:
-                # Log warning but continue loading other templates
-                print(f"Warning: Failed to load template {template_name}: {e}")
+        prompt_key = f"{name}:{version}"
+        return dict(self._metadata[prompt_key])
     
-    def export_prompts(self) -> Dict[str, Any]:
+    def update_prompt_metadata(self, name: str, 
+                              metadata: Dict[str, Any],
+                              version: Optional[str] = None) -> None:
         """
-        Export all prompts to a dictionary format.
+        Update metadata for a prompt.
+        
+        Args:
+            name: The prompt name
+            metadata: The metadata to update
+            version: Optional version (uses latest if not specified)
+        """
+        if version is None:
+            version = self.service.get_latest_version(name)
+        
+        prompt_key = f"{name}:{version}"
+        self._metadata[prompt_key].update(metadata)
+    
+    def add_tags(self, name: str, tags: List[str], 
+                version: Optional[str] = None) -> None:
+        """
+        Add tags to a prompt.
+        
+        Args:
+            name: The prompt name
+            tags: List of tags to add
+            version: Optional version (uses latest if not specified)
+        """
+        if version is None:
+            version = self.service.get_latest_version(name)
+        
+        prompt_key = f"{name}:{version}"
+        self._tags[prompt_key].update(tags)
+    
+    def remove_tags(self, name: str, tags: List[str], 
+                   version: Optional[str] = None) -> None:
+        """
+        Remove tags from a prompt.
+        
+        Args:
+            name: The prompt name
+            tags: List of tags to remove
+            version: Optional version (uses latest if not specified)
+        """
+        if version is None:
+            version = self.service.get_latest_version(name)
+        
+        prompt_key = f"{name}:{version}"
+        for tag in tags:
+            self._tags[prompt_key].discard(tag)
+    
+    def get_all_tags(self) -> Set[str]:
+        """
+        Get all unique tags in the registry.
         
         Returns:
-            Dictionary containing all prompt data
+            Set of all tags
         """
-        return {
-            "prompts": self.prompts.copy(),
-            "exported_at": self._get_timestamp()
+        all_tags = set()
+        for tags in self._tags.values():
+            all_tags.update(tags)
+        return all_tags
+    
+    def get_all_categories(self) -> Set[str]:
+        """
+        Get all unique categories in the registry.
+        
+        Returns:
+            Set of all categories
+        """
+        all_categories = set()
+        for categories in self._categories.values():
+            all_categories.update(categories)
+        return all_categories
+    
+    def get_prompt_aliases(self, name: str, version: Optional[str] = None) -> List[str]:
+        """
+        Get aliases for a prompt.
+        
+        Args:
+            name: The prompt name
+            version: Optional version (uses latest if not specified)
+            
+        Returns:
+            List of aliases
+        """
+        if version is None:
+            version = self.service.get_latest_version(name)
+        
+        prompt_key = f"{name}:{version}"
+        return [alias for alias, key in self._aliases.items() if key == prompt_key]
+    
+    def add_alias(self, name: str, alias: str, 
+                 version: Optional[str] = None) -> None:
+        """
+        Add an alias for a prompt.
+        
+        Args:
+            name: The prompt name
+            alias: The alias to add
+            version: Optional version (uses latest if not specified)
+        """
+        if version is None:
+            version = self.service.get_latest_version(name)
+        
+        if alias in self._aliases:
+            raise PromptValidationError(f"Alias '{alias}' already exists")
+        
+        prompt_key = f"{name}:{version}"
+        self._aliases[alias] = prompt_key
+    
+    def remove_alias(self, alias: str) -> None:
+        """
+        Remove an alias.
+        
+        Args:
+            alias: The alias to remove
+        """
+        if alias not in self._aliases:
+            raise PromptNotFoundError(f"Alias '{alias}' not found")
+        
+        del self._aliases[alias]
+    
+    def get_registry_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the registry.
+        
+        Returns:
+            Dictionary of registry statistics
+        """
+        all_prompts = self.service.list_prompts()
+        
+        stats = {
+            'total_prompts': len(all_prompts),
+            'total_versions': sum(len(self.service.get_prompt_versions(p.name)) for p in all_prompts),
+            'total_tags': len(self.get_all_tags()),
+            'total_categories': len(self.get_all_categories()),
+            'total_aliases': len(self._aliases),
+            'unique_prompts': len(set(p.name for p in all_prompts)),
+            'average_versions_per_prompt': len(all_prompts) / max(1, len(set(p.name for p in all_prompts)))
         }
+        
+        return stats
     
-    def import_prompts(self, data: Dict[str, Any]) -> None:
+    def _matches_criteria(self, prompt: PromptInfo, criteria: PromptSearchCriteria) -> bool:
+        """Check if a prompt matches the search criteria."""
+        prompt_key = f"{prompt.name}:{prompt.version}"
+        
+        # Check name pattern
+        if criteria.name_pattern:
+            if not re.search(criteria.name_pattern, prompt.name):
+                return False
+        
+        # Check version pattern
+        if criteria.version_pattern:
+            if not re.search(criteria.version_pattern, prompt.version):
+                return False
+        
+        # Check content pattern
+        if criteria.content_pattern:
+            if not re.search(criteria.content_pattern, prompt.content):
+                return False
+        
+        # Check metadata filters
+        if criteria.metadata_filters:
+            for key, value in criteria.metadata_filters.items():
+                if key not in prompt.metadata or prompt.metadata[key] != value:
+                    return False
+        
+        # Check created date range
+        if criteria.created_after and prompt.created_at:
+            try:
+                created_at = datetime.fromisoformat(prompt.created_at)
+                if created_at < criteria.created_after:
+                    return False
+            except ValueError:
+                # Skip date comparison if invalid format
+                pass
+        
+        if criteria.created_before and prompt.created_at:
+            try:
+                created_at = datetime.fromisoformat(prompt.created_at)
+                if created_at > criteria.created_before:
+                    return False
+            except ValueError:
+                # Skip date comparison if invalid format
+                pass
+        
+        # Check updated date range
+        if criteria.updated_after and prompt.updated_at:
+            try:
+                updated_at = datetime.fromisoformat(prompt.updated_at)
+                if updated_at < criteria.updated_after:
+                    return False
+            except ValueError:
+                # Skip date comparison if invalid format
+                pass
+        
+        if criteria.updated_before and prompt.updated_at:
+            try:
+                updated_at = datetime.fromisoformat(prompt.updated_at)
+                if updated_at > criteria.updated_before:
+                    return False
+            except ValueError:
+                # Skip date comparison if invalid format
+                pass
+        
+        return True
+    
+    def export_registry(self) -> Dict[str, Any]:
         """
-        Import prompts from exported data.
+        Export the registry data for backup or migration.
+        
+        Returns:
+            Dictionary containing registry data
+        """
+        all_prompts = self.service.list_prompts()
+        
+        export_data = {
+            'prompts': [prompt.to_dict() for prompt in all_prompts],
+            'metadata': dict(self._metadata),
+            'tags': {k: list(v) for k, v in self._tags.items()},
+            'categories': {k: list(v) for k, v in self._categories.items()},
+            'aliases': dict(self._aliases),
+            'exported_at': datetime.utcnow().isoformat()
+        }
+        
+        return export_data
+    
+    def import_registry(self, data: Dict[str, Any]) -> None:
+        """
+        Import registry data from backup or migration.
         
         Args:
-            data: Dictionary containing prompt data from export
+            data: Dictionary containing registry data
         """
-        if "prompts" not in data:
-            raise ValueError("Invalid export data format")
+        # Import prompts
+        for prompt_dict in data.get('prompts', []):
+            prompt_info = PromptInfo.from_dict(prompt_dict)
+            self.service.save_prompt(prompt_info)
         
-        for name, prompt_data in data["prompts"].items():
-            self.register_prompt(
-                name=name,
-                content=prompt_data["content"],
-                version=prompt_data.get("version", "1.0"),
-                metadata=prompt_data.get("metadata", {}),
-                override=True
-            )
-    
-    def _extract_variables(self, content: str) -> List[str]:
-        """
-        Extract variable names from template content.
+        # Import metadata
+        self._metadata.update(data.get('metadata', {}))
         
-        Args:
-            content: Template content
-            
-        Returns:
-            List of variable names
-        """
-        try:
-            return self.loader.extract_template_variables(content)
-        except TemplateError:
-            # Fallback to regex extraction
-            pattern = r'\{\{\s*(\w+)\s*\}\}'
-            variables = re.findall(pattern, content)
-            return list(set(variables))
-    
-    def _get_timestamp(self) -> str:
-        """
-        Get current timestamp string.
+        # Import tags
+        for key, tags_list in data.get('tags', {}).items():
+            self._tags[key] = set(tags_list)
         
-        Returns:
-            ISO format timestamp string
-        """
-        from datetime import datetime
-        return datetime.now().isoformat()
+        # Import categories
+        for key, categories_list in data.get('categories', {}).items():
+            self._categories[key] = set(categories_list)
+        
+        # Import aliases
+        self._aliases.update(data.get('aliases', {}))
