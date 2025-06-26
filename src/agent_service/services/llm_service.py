@@ -1,26 +1,52 @@
 """
-This service encapsulates all interactions with Large Language Models (LLMs).
+LLM service using the new prompt system.
 
-It provides a centralized place for prompt engineering and processing,
-making the GraphQL resolvers cleaner and more focused on business logic.
+This service provides LLM functionality using the new prompt storage
+and rendering system for better maintainability and flexibility.
 """
+
 import logging
 from typing import List, Dict, Any
 
 from litellm import acompletion
-from pydantic import BaseModel
 
 from agent_service.api.types.suggestion_types import PerformanceReview
+from agent_service.llms.prompts.service import PromptService
+from agent_service.llms.prompts.models import PromptConfig, StoreType
+from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
 
 logger = logging.getLogger(__name__)
 
 
 class LLMService:
     """
-    A service for handling all LLM-related tasks like summarization
-    and structured data extraction.
+    LLM service using the new prompt system.
+    
+    This service provides LLM functionality using the new prompt storage
+    and rendering system for better maintainability and flexibility.
     """
 
+    def __init__(self, prompt_service: PromptService = None):
+        """
+        Initialize the LLM service.
+        
+        Args:
+            prompt_service: Optional prompt service instance. If not provided,
+                          creates a default in-memory service.
+        """
+        if prompt_service is None:
+            # Create default prompt service with in-memory store
+            config = PromptConfig(
+                store_type=StoreType.MEMORY,
+                enable_caching=True,
+                cache_size=100,
+                cache_ttl=3600
+            )
+            store = InMemoryPromptStore()
+            self.prompt_service = PromptService(store=store, config=config)
+        else:
+            self.prompt_service = prompt_service
+    
     async def get_journal_summary(self, journal_entries: List[Dict[str, Any]]) -> str:
         """
         Generates a concise summary from a list of journal entries.
@@ -39,28 +65,27 @@ class LLMService:
             [entry.get("text", "") for entry in journal_entries]
         )
 
-        prompt = f"""
-        As an AI companion, your task is to provide a brief, insightful summary based on the user's recent journal entries.
-        Analyze the following entries and identify the main themes, recurring thoughts, or significant events.
-        The summary should be gentle, encouraging, and forward-looking, like a friendly observer.
-        Do not be overly conversational or ask questions. Focus on synthesizing the information into a cohesive insight.
-
-        Journal Entries:
-        {content_block}
-
-        Synthesize these entries into a single, concise paragraph of 2-4 sentences.
-        """
-
         try:
+            # Render the prompt using the prompt service
+            rendered_prompt = self.prompt_service.render_prompt(
+                "journal_summary",
+                {"content_block": content_block}
+            )
+            
+            # Get prompt metadata for LLM configuration
+            prompt_info = self.prompt_service.get_prompt("journal_summary")
+            metadata = prompt_info.metadata
+            
             response = await acompletion(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=250,
+                model=metadata.get("model", "gpt-4o"),
+                messages=[{"role": "user", "content": rendered_prompt}],
+                temperature=metadata.get("temperature", 0.7),
+                max_tokens=metadata.get("max_tokens", 250),
             )
             summary = response.choices[0].message.content.strip()
             logger.info("Successfully generated journal summary.")
             return summary
+            
         except Exception as e:
             logger.error(f"Error generating journal summary from LLM: {e}")
             return "I am having trouble summarizing your recent thoughts at the moment. Please try again later."
@@ -88,31 +113,22 @@ class LLMService:
             [entry.get("text", "") for entry in journal_entries]
         )
 
-        prompt = f"""
-        Analyze the following journal entries from the past two weeks to generate a performance review.
-        The user is focused on self-improvement. Your task is to identify one key success and one primary area for improvement.
-        Based on this analysis, create a new, targeted journaling prompt to help them reflect further.
-
-        Journal Entries:
-        {content_block}
-
-        Based on these entries, provide the following in a structured format:
-        1.  **Key Success**: A specific, positive achievement or consistent behavior.
-        2.  **Improvement Area**: A constructive, actionable area where the user can focus their efforts.
-        3.  **Journal Prompt**: A new, open-ended question that encourages reflection on the improvement area.
-
-        Please format your response as follows:
-        SUCCESS: [Your identified key success here]
-        IMPROVEMENT: [Your identified improvement area here]
-        PROMPT: [Your generated journal prompt here]
-        """
-
         try:
+            # Render the prompt using the prompt service
+            rendered_prompt = self.prompt_service.render_prompt(
+                "performance_review",
+                {"content_block": content_block}
+            )
+            
+            # Get prompt metadata for LLM configuration
+            prompt_info = self.prompt_service.get_prompt("performance_review")
+            metadata = prompt_info.metadata
+            
             response = await acompletion(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=500,
+                model=metadata.get("model", "gpt-4o"),
+                messages=[{"role": "user", "content": rendered_prompt}],
+                temperature=metadata.get("temperature", 0.5),
+                max_tokens=metadata.get("max_tokens", 500),
             )
             raw_text = response.choices[0].message.content.strip()
 
@@ -127,6 +143,7 @@ class LLMService:
                 improvement_area=improvement_area,
                 journal_prompt=journal_prompt,
             )
+            
         except Exception as e:
             logger.error(f"Error generating performance review from LLM: {e}")
             # Return a default error state
@@ -134,4 +151,32 @@ class LLMService:
                 key_success="Could not generate a review at this time.",
                 improvement_area="There was an error processing your journal entries.",
                 journal_prompt="How do you feel about your progress over the last two weeks?",
-            ) 
+            )
+    
+    def get_prompt_service(self) -> PromptService:
+        """Get the underlying prompt service."""
+        return self.prompt_service
+    
+    def health_check(self) -> Dict[str, Any]:
+        """Perform a health check on the service."""
+        try:
+            # Check if required prompts exist
+            journal_summary_exists = self.prompt_service.exists("journal_summary", "1.0")
+            performance_review_exists = self.prompt_service.exists("performance_review", "1.0")
+            
+            # Check prompt service health
+            prompt_service_health = self.prompt_service.health_check()
+            
+            return {
+                "status": "healthy" if journal_summary_exists and performance_review_exists else "degraded",
+                "journal_summary_prompt_available": journal_summary_exists,
+                "performance_review_prompt_available": performance_review_exists,
+                "prompt_service_health": prompt_service_health
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "journal_summary_prompt_available": False,
+                "performance_review_prompt_available": False
+            } 
