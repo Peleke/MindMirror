@@ -12,6 +12,7 @@ from typing import Optional
 from agent_service.services.llm_service import LLMService
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.models import PromptConfig, StoreType
+from agent_service.llms.prompts.stores.local import LocalPromptStore
 from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,8 @@ class ServiceFactory:
     
     # Environment variable for service selection
     SERVICE_TYPE_ENV = "LLM_SERVICE_TYPE"
+    PROMPT_STORE_TYPE_ENV = "PROMPT_STORE_TYPE"
+    PROMPT_STORE_PATH_ENV = "PROMPT_STORE_PATH"
     
     # Service types
     SERVICE_TYPE_DEFAULT = "default"
@@ -65,14 +68,29 @@ class ServiceFactory:
     def _get_or_create_prompt_service(self) -> PromptService:
         """Get or create a prompt service instance."""
         if self._prompt_service is None:
-            # Create default prompt service with in-memory store
-            config = PromptConfig(
-                store_type=StoreType.MEMORY,
-                enable_caching=True,
-                cache_size=100,
-                cache_ttl=3600
-            )
-            store = InMemoryPromptStore()
+            # Get storage configuration from environment
+            store_type = os.getenv(self.PROMPT_STORE_TYPE_ENV, "memory")
+            store_path = os.getenv(self.PROMPT_STORE_PATH_ENV, "prompts")
+            
+            # Create prompt service based on configuration
+            if store_type == "local":
+                config = PromptConfig(
+                    store_type=StoreType.LOCAL,
+                    store_path=store_path,
+                    enable_caching=True,
+                    cache_size=100,
+                    cache_ttl=3600
+                )
+                store = LocalPromptStore(store_path)
+            else:  # Default to memory
+                config = PromptConfig(
+                    store_type=StoreType.MEMORY,
+                    enable_caching=True,
+                    cache_size=100,
+                    cache_ttl=3600
+                )
+                store = InMemoryPromptStore()
+            
             self._prompt_service = PromptService(store=store, config=config)
         
         return self._prompt_service
@@ -93,7 +111,9 @@ class ServiceFactory:
         """Perform a health check on the factory and services."""
         health_info = {
             "service_type": self._service_type,
-            "prompt_service_available": self._prompt_service is not None
+            "prompt_service_available": self._prompt_service is not None,
+            "prompt_store_type": os.getenv(self.PROMPT_STORE_TYPE_ENV, "memory"),
+            "prompt_store_path": os.getenv(self.PROMPT_STORE_PATH_ENV, "prompts")
         }
         
         if self._prompt_service:

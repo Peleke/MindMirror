@@ -1,13 +1,13 @@
 """
-Local file system prompt store implementation.
+Local file system prompt store.
 
-This module provides the LocalPromptStore class that stores
-prompts as YAML files in a local directory structure.
+This store provides local file system storage for prompts,
+suitable for development and small-scale deployments.
 """
 
-import yaml
-import re
 import os
+import yaml
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -19,379 +19,293 @@ from .protocol import PromptStore
 
 class LocalPromptStore(PromptStore):
     """
-    Local file system storage for prompts.
+    Local file system implementation of prompt storage.
     
     This store saves prompts as YAML files in a directory structure:
-    store_path/
-    ├── prompt_name_1/
+    prompts/
+    ├── journal_summary/
     │   ├── 1.0.yaml
-    │   └── 1.1.yaml
-    └── prompt_name_2/
+    │   └── 2.0.yaml
+    └── performance_review/
         └── 1.0.yaml
     """
     
-    def __init__(self, store_path: str):
+    def __init__(self, base_path: str = "prompts"):
         """
         Initialize the local prompt store.
         
         Args:
-            store_path: Path to the directory where prompts will be stored
-            
-        Raises:
-            PromptStorageError: If the store path cannot be created
+            base_path: Base directory for storing prompts
         """
-        if not store_path:
-            raise PromptStorageError("store_path cannot be empty or None")
-        
-        self.store_path = Path(store_path)
-        
-        try:
-            # Create the store directory if it doesn't exist
-            self.store_path.mkdir(parents=True, exist_ok=True)
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to create store directory: {e}")
+        self.base_path = Path(base_path)
+        self.base_path.mkdir(parents=True, exist_ok=True)
     
-    def save_prompt(self, prompt: PromptInfo) -> None:
+    def save_prompt(self, prompt_info: PromptInfo) -> None:
         """
-        Save a prompt to the local file system.
+        Save a prompt to local storage.
         
         Args:
-            prompt: The prompt to save
+            prompt_info: The prompt to save
             
         Raises:
-            PromptStorageError: If the prompt cannot be saved
+            PromptStorageError: If saving fails
         """
         try:
-            # Create the prompt directory
-            prompt_dir = self.store_path / self._sanitize_filename(prompt.name)
+            # Create prompt directory
+            prompt_dir = self.base_path / prompt_info.name
             prompt_dir.mkdir(parents=True, exist_ok=True)
             
-            # Create the prompt file
-            prompt_file = prompt_dir / f"{prompt.version}.yaml"
+            # Create file path
+            file_path = prompt_dir / f"{prompt_info.version}.yaml"
             
-            # Convert prompt to dictionary and save as YAML
-            prompt_data = prompt.to_dict()
+            # Convert to dictionary
+            prompt_data = {
+                "name": prompt_info.name,
+                "version": prompt_info.version,
+                "content": prompt_info.content,
+                "variables": prompt_info.variables,
+                "metadata": prompt_info.metadata,
+                "created_at": prompt_info.created_at,
+                "updated_at": prompt_info.updated_at
+            }
             
-            with open(prompt_file, 'w', encoding='utf-8') as f:
-                yaml.dump(prompt_data, f, default_flow_style=False, 
-                         allow_unicode=True, sort_keys=False)
+            # Write to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                yaml.dump(prompt_data, f, default_flow_style=False, allow_unicode=True)
                 
-        except (OSError, PermissionError, yaml.YAMLError) as e:
-            raise PromptStorageError(f"Failed to save prompt: {e}")
+        except Exception as e:
+            raise PromptStorageError(f"Failed to save prompt {prompt_info.name}:{prompt_info.version}: {str(e)}")
     
-    def get_prompt(self, name: str, version: str) -> PromptInfo:
+    def get_prompt(self, name: str, version: str = "1.0") -> PromptInfo:
         """
-        Retrieve a prompt from the local file system.
+        Retrieve a prompt from local storage.
         
         Args:
-            name: The name of the prompt
-            version: The version of the prompt
+            name: Prompt name
+            version: Prompt version
             
         Returns:
-            The prompt information
+            PromptInfo object
             
         Raises:
-            PromptNotFoundError: If the prompt is not found
-            PromptStorageError: If the prompt cannot be loaded
+            PromptNotFoundError: If prompt doesn't exist
+            PromptStorageError: If retrieval fails
         """
         try:
-            prompt_file = self.store_path / self._sanitize_filename(name) / f"{version}.yaml"
+            file_path = self.base_path / name / f"{version}.yaml"
             
-            if not prompt_file.exists():
-                raise PromptNotFoundError(f"Prompt '{name}' version '{version}' not found")
+            if not file_path.exists():
+                raise PromptNotFoundError(f"Prompt {name}:{version} not found")
             
-            with open(prompt_file, 'r', encoding='utf-8') as f:
+            # Read from file
+            with open(file_path, 'r', encoding='utf-8') as f:
                 prompt_data = yaml.safe_load(f)
             
-            # Check if the loaded data is a dictionary
-            if not isinstance(prompt_data, dict):
-                raise PromptStorageError(f"Invalid prompt file format: expected dict, got {type(prompt_data)}")
+            # Create PromptInfo object
+            return PromptInfo(**prompt_data)
             
-            return PromptInfo.from_dict(prompt_data)
-            
-        except yaml.YAMLError as e:
-            raise PromptStorageError(f"Failed to parse prompt file: {e}")
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to load prompt: {e}")
+        except PromptNotFoundError:
+            raise
+        except Exception as e:
+            raise PromptStorageError(f"Failed to retrieve prompt {name}:{version}: {str(e)}")
     
-    def delete_prompt(self, name: str, version: str) -> None:
+    def exists(self, name: str, version: str = "1.0") -> bool:
         """
-        Delete a prompt from the local file system.
+        Check if a prompt exists.
         
         Args:
-            name: The name of the prompt
-            version: The version of the prompt
+            name: Prompt name
+            version: Prompt version
+            
+        Returns:
+            True if prompt exists
+        """
+        file_path = self.base_path / name / f"{version}.yaml"
+        return file_path.exists()
+    
+    def delete_prompt(self, name: str, version: str = "1.0") -> None:
+        """
+        Delete a prompt from local storage.
+        
+        Args:
+            name: Prompt name
+            version: Prompt version
             
         Raises:
-            PromptNotFoundError: If the prompt is not found
-            PromptStorageError: If the prompt cannot be deleted
+            PromptNotFoundError: If prompt doesn't exist
+            PromptStorageError: If deletion fails
         """
         try:
-            prompt_file = self.store_path / self._sanitize_filename(name) / f"{version}.yaml"
+            file_path = self.base_path / name / f"{version}.yaml"
             
-            if not prompt_file.exists():
-                raise PromptNotFoundError(f"Prompt '{name}' version '{version}' not found")
+            if not file_path.exists():
+                raise PromptNotFoundError(f"Prompt {name}:{version} not found")
             
-            # Delete the file
-            prompt_file.unlink()
+            # Delete file
+            file_path.unlink()
             
-            # Remove the directory if it's empty
-            prompt_dir = prompt_file.parent
-            if not any(prompt_dir.iterdir()):
+            # Remove directory if empty
+            prompt_dir = self.base_path / name
+            if prompt_dir.exists() and not any(prompt_dir.iterdir()):
                 prompt_dir.rmdir()
                 
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to delete prompt: {e}")
+        except PromptNotFoundError:
+            raise
+        except Exception as e:
+            raise PromptStorageError(f"Failed to delete prompt {name}:{version}: {str(e)}")
     
-    def list_prompts(self) -> List[PromptInfo]:
+    def list_prompts(self, name_pattern: Optional[str] = None) -> List[PromptInfo]:
         """
-        List all prompts in the store.
+        List all prompts in storage.
         
+        Args:
+            name_pattern: Optional pattern to filter prompt names
+            
         Returns:
-            List of all prompts
+            List of PromptInfo objects
             
         Raises:
-            PromptStorageError: If prompts cannot be listed
+            PromptStorageError: If listing fails
         """
         try:
             prompts = []
             
-            for prompt_dir in self.store_path.iterdir():
+            if not self.base_path.exists():
+                return prompts
+            
+            # Iterate through prompt directories
+            for prompt_dir in self.base_path.iterdir():
                 if not prompt_dir.is_dir():
                     continue
                 
+                prompt_name = prompt_dir.name
+                
+                # Apply name pattern filter
+                if name_pattern and name_pattern not in prompt_name:
+                    continue
+                
+                # Iterate through version files
                 for version_file in prompt_dir.glob("*.yaml"):
                     try:
+                        version = version_file.stem  # Remove .yaml extension
+                        
+                        # Read prompt data
                         with open(version_file, 'r', encoding='utf-8') as f:
                             prompt_data = yaml.safe_load(f)
                         
-                        prompts.append(PromptInfo.from_dict(prompt_data))
-                    except (yaml.YAMLError, OSError):
-                        # Skip corrupted files
+                        prompts.append(PromptInfo(**prompt_data))
+                        
+                    except Exception as e:
+                        # Log error but continue with other prompts
+                        print(f"Error reading {version_file}: {e}")
                         continue
             
             return prompts
             
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to list prompts: {e}")
+        except Exception as e:
+            raise PromptStorageError(f"Failed to list prompts: {str(e)}")
     
-    def get_latest_version(self, name: str) -> str:
+    def list_versions(self, name: str) -> List[str]:
         """
-        Get the latest version of a prompt.
+        List all versions of a prompt.
         
         Args:
-            name: The name of the prompt
-            
-        Returns:
-            The latest version string
-            
-        Raises:
-            PromptNotFoundError: If the prompt is not found
-            PromptStorageError: If versions cannot be retrieved
-        """
-        try:
-            prompt_dir = self.store_path / self._sanitize_filename(name)
-            
-            if not prompt_dir.exists():
-                raise PromptNotFoundError(f"Prompt '{name}' not found")
-            
-            versions = []
-            for version_file in prompt_dir.glob("*.yaml"):
-                version = version_file.stem  # Remove .yaml extension
-                versions.append(version)
-            
-            if not versions:
-                raise PromptNotFoundError(f"Prompt '{name}' not found")
-            
-            # Sort versions and return the latest
-            return self._get_latest_version_from_list(versions)
-            
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to get latest version: {e}")
-    
-    def get_prompt_versions(self, name: str) -> List[str]:
-        """
-        Get all versions of a prompt.
-        
-        Args:
-            name: The name of the prompt
+            name: Prompt name
             
         Returns:
             List of version strings
             
         Raises:
-            PromptNotFoundError: If the prompt is not found
-            PromptStorageError: If versions cannot be retrieved
+            PromptStorageError: If listing fails
         """
         try:
-            prompt_dir = self.store_path / self._sanitize_filename(name)
+            prompt_dir = self.base_path / name
             
             if not prompt_dir.exists():
-                raise PromptNotFoundError(f"Prompt '{name}' not found")
+                return []
             
             versions = []
             for version_file in prompt_dir.glob("*.yaml"):
                 version = version_file.stem  # Remove .yaml extension
                 versions.append(version)
             
-            if not versions:
-                raise PromptNotFoundError(f"Prompt '{name}' not found")
+            return sorted(versions)
             
-            return sorted(versions, key=self._version_key)
-            
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to get prompt versions: {e}")
-    
-    def search_prompts(self, query: str) -> List[PromptInfo]:
-        """
-        Search prompts by content or name.
-        
-        Args:
-            query: The search query
-            
-        Returns:
-            List of matching prompts
-            
-        Raises:
-            PromptStorageError: If search cannot be performed
-        """
-        try:
-            query_lower = query.lower()
-            matching_prompts = []
-            
-            for prompt in self.list_prompts():
-                # Search in name
-                if query_lower in prompt.name.lower():
-                    matching_prompts.append(prompt)
-                    continue
-                
-                # Search in content
-                if query_lower in prompt.content.lower():
-                    matching_prompts.append(prompt)
-                    continue
-                
-                # Search in metadata
-                for value in prompt.metadata.values():
-                    if isinstance(value, str) and query_lower in value.lower():
-                        matching_prompts.append(prompt)
-                        break
-            
-            return matching_prompts
-            
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to search prompts: {e}")
-    
-    def exists(self, name: str, version: str) -> bool:
-        """
-        Check if a prompt exists.
-        
-        Args:
-            name: The name of the prompt
-            version: The version of the prompt
-            
-        Returns:
-            True if the prompt exists, False otherwise
-        """
-        try:
-            prompt_file = self.store_path / self._sanitize_filename(name) / f"{version}.yaml"
-            return prompt_file.exists()
-        except (OSError, PermissionError):
-            return False
+        except Exception as e:
+            raise PromptStorageError(f"Failed to list versions for {name}: {str(e)}")
     
     def get_stats(self) -> PromptStats:
         """
-        Get statistics about the store.
+        Get statistics about the prompt store.
         
         Returns:
-            Store statistics
+            PromptStats object
             
         Raises:
-            PromptStorageError: If statistics cannot be retrieved
+            PromptStorageError: If stats calculation fails
         """
         try:
             total_prompts = 0
             total_versions = 0
             storage_size_bytes = 0
+            last_updated = None
             
-            for prompt_dir in self.store_path.iterdir():
-                if not prompt_dir.is_dir():
-                    continue
-                
-                # Count this as one prompt (unique name)
-                total_prompts += 1
-                
-                for version_file in prompt_dir.glob("*.yaml"):
-                    total_versions += 1
-                    storage_size_bytes += version_file.stat().st_size
+            if self.base_path.exists():
+                # Count prompts and versions
+                for prompt_dir in self.base_path.iterdir():
+                    if not prompt_dir.is_dir():
+                        continue
+                    
+                    total_prompts += 1
+                    
+                    for version_file in prompt_dir.glob("*.yaml"):
+                        total_versions += 1
+                        storage_size_bytes += version_file.stat().st_size
+                        
+                        # Track last updated
+                        mtime = datetime.fromtimestamp(version_file.stat().st_mtime)
+                        if last_updated is None or mtime > last_updated:
+                            last_updated = mtime
             
             return PromptStats(
                 total_prompts=total_prompts,
                 total_versions=total_versions,
                 storage_size_bytes=storage_size_bytes,
-                last_updated=datetime.utcnow()
+                last_updated=last_updated
             )
             
-        except (OSError, PermissionError) as e:
-            raise PromptStorageError(f"Failed to get store statistics: {e}")
+        except Exception as e:
+            raise PromptStorageError(f"Failed to calculate stats: {str(e)}")
     
-    def _sanitize_filename(self, filename: str) -> str:
+    def health_check(self) -> Dict[str, Any]:
         """
-        Sanitize a filename to be safe for the file system.
+        Perform a health check on the store.
         
-        Args:
-            filename: The filename to sanitize
-            
         Returns:
-            A sanitized filename
-        """
-        # Replace problematic characters with underscores
-        sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
-        
-        # Remove leading/trailing spaces and dots
-        sanitized = sanitized.strip(' .')
-        
-        # Remove multiple consecutive underscores
-        sanitized = re.sub(r'_+', '_', sanitized)
-        
-        # Remove leading/trailing underscores
-        sanitized = sanitized.strip('_')
-        
-        # Ensure the filename is not empty
-        if not sanitized:
-            sanitized = "unnamed"
-        
-        return sanitized
-    
-    def _version_key(self, version: str) -> tuple:
-        """
-        Convert version string to tuple for proper sorting.
-        
-        Args:
-            version: Version string (e.g., "1.0", "1.1", "2.0")
-            
-        Returns:
-            Tuple for sorting
+            Health check information
         """
         try:
-            parts = version.split('.')
-            return tuple(int(part) for part in parts)
-        except (ValueError, AttributeError):
-            # Fallback to string comparison for invalid versions
-            return (0, 0, 0)
-    
-    def _get_latest_version_from_list(self, versions: List[str]) -> str:
-        """
-        Get the latest version from a list of version strings.
-        
-        Args:
-            versions: List of version strings
+            # Check if base directory is accessible
+            if not self.base_path.exists():
+                self.base_path.mkdir(parents=True, exist_ok=True)
             
-        Returns:
-            The latest version string
-        """
-        if not versions:
-            raise ValueError("No versions provided")
-        
-        # Sort versions and return the latest
-        sorted_versions = sorted(versions, key=self._version_key)
-        return sorted_versions[-1] 
+            # Try to write and read a test file
+            test_file = self.base_path / ".health_check"
+            test_file.write_text("test")
+            test_file.unlink()
+            
+            return {
+                "status": "healthy",
+                "base_path": str(self.base_path),
+                "writable": True,
+                "readable": True
+            }
+            
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "base_path": str(self.base_path),
+                "error": str(e),
+                "writable": False,
+                "readable": False
+            } 
