@@ -72,7 +72,7 @@ class JournalClient:
             # In a real implementation, the journal service would have a get-by-id endpoint
             shared_entries = await client.list_entries_for_user(user_id=user_uuid)
 
-            for entry in shared_entries:
+            for entry in shared_enries:
                 if entry.id == entry_id:
                     return {
                         "id": entry.id,
