@@ -281,10 +281,27 @@ class TestGCSPromptStore:
             "prompts/test_prompt/1.1.yaml"
         ]
         
-        # Mock read_file to return content
-        prompt_data = sample_prompt.to_dict()
-        yaml_content = yaml.dump(prompt_data, default_flow_style=False)
-        mock_gcs_loader.read_file.return_value = yaml_content
+        # Mock read_file to return different content for different versions
+        def mock_read_file(path):
+            if "1.0.yaml" in path:
+                prompt_data = sample_prompt.to_dict()
+            elif "1.1.yaml" in path:
+                # Create a different prompt for version 1.1
+                prompt_v2 = PromptInfo(
+                    name="test_prompt",
+                    version="1.1",
+                    content="Hello {{name}}! Version 1.1",
+                    metadata={"description": "Updated test prompt"},
+                    variables=["name"],
+                    created_at=sample_prompt.created_at,
+                    updated_at=datetime.utcnow().isoformat()
+                )
+                prompt_data = prompt_v2.to_dict()
+            else:
+                prompt_data = sample_prompt.to_dict()
+            return yaml.dump(prompt_data, default_flow_style=False)
+        
+        mock_gcs_loader.read_file.side_effect = mock_read_file
         
         prompts = store.list_prompts()
         assert len(prompts) == 2
@@ -341,13 +358,20 @@ class TestGCSPromptStore:
         }
         mock_gcs_loader.get_stats.return_value = mock_stats
         
+        # Mock list_files for stats calculation
+        mock_gcs_loader.list_files.return_value = [
+            "prompts/test_prompt/1.0.yaml",
+            "prompts/test_prompt/1.1.yaml",
+            "prompts/another_prompt/1.0.yaml"
+        ]
+        
         stats = store.get_stats()
         
         # Verify the loader was called
         mock_gcs_loader.get_stats.assert_called_once()
         
         # Verify stats are passed through
-        assert stats.total_prompts == 5  # Assuming one prompt per file for simplicity
+        assert stats.total_prompts == 2  # Two unique prompt names
         assert stats.total_versions == 5
         assert stats.storage_size_bytes == 1024
     
@@ -394,9 +418,10 @@ class TestGCSPromptStore:
     
     def test_filename_sanitization(self, store, sample_prompt, mock_gcs_loader):
         """Test that filenames are properly sanitized."""
-        # Test with potentially problematic characters
+        # Test with a valid prompt name that contains characters that need sanitization
+        # We'll use a valid name but test the sanitization in the path generation
         prompt = PromptInfo(
-            name="test/prompt\\with*chars?",
+            name="test_prompt_with_chars",  # Valid name that will be sanitized to same
             version="1.0",
             content="Test content",
             metadata={},
@@ -411,4 +436,10 @@ class TestGCSPromptStore:
         call_args = mock_gcs_loader.write_file.call_args
         path = call_args[0][0]
         assert "test_prompt_with_chars" in path
-        assert "1.0.yaml" in path 
+        assert "1.0.yaml" in path
+        
+        # Test that the sanitization method works correctly
+        # Create a prompt with a name that would need sanitization if it were allowed
+        # Since PromptInfo validation prevents invalid names, we'll test the sanitization method directly
+        sanitized_name = store._sanitize_filename("test/prompt\\with*chars?")
+        assert sanitized_name == "test_prompt_with_chars" 

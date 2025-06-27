@@ -32,7 +32,7 @@ class TestLocalPromptStore:
     @pytest.fixture
     def store(self, temp_dir):
         """Create a LocalPromptStore instance."""
-        return LocalPromptStore(store_path=temp_dir)
+        return LocalPromptStore(base_path=temp_dir)
     
     @pytest.fixture
     def sample_prompt(self):
@@ -49,20 +49,20 @@ class TestLocalPromptStore:
     
     def test_store_initialization(self, temp_dir):
         """Test store initialization."""
-        store = LocalPromptStore(store_path=temp_dir)
+        store = LocalPromptStore(base_path=temp_dir)
         assert store.store_path == Path(temp_dir)
         assert store.store_path.exists()
     
     def test_store_initialization_creates_directory(self, temp_dir):
         """Test that store creates directory if it doesn't exist."""
         new_dir = os.path.join(temp_dir, "new_store")
-        store = LocalPromptStore(store_path=new_dir)
+        store = LocalPromptStore(base_path=new_dir)
         assert Path(new_dir).exists()
     
     def test_store_initialization_with_invalid_path(self):
         """Test store initialization with invalid path."""
         with pytest.raises(PromptStorageError):
-            LocalPromptStore(store_path="/invalid/path/that/cannot/be/created")
+            LocalPromptStore(base_path="/invalid/path/that/cannot/be/created")
     
     def test_save_prompt_basic(self, store, sample_prompt):
         """Test basic prompt saving."""
@@ -436,15 +436,15 @@ class TestLocalPromptStore:
             with pytest.raises(PromptStorageError):
                 store.save_prompt(sample_prompt)
     
-    def test_store_path_validation(self):
-        """Test store path validation."""
+    def test_base_path_validation(self):
+        """Test base path validation."""
         # Test with None path
         with pytest.raises(PromptStorageError):
-            LocalPromptStore(store_path=None)
+            LocalPromptStore(base_path=None)
         
         # Test with empty path
         with pytest.raises(PromptStorageError):
-            LocalPromptStore(store_path="")
+            LocalPromptStore(base_path="")
     
     def test_filename_sanitization(self, store):
         """Test that filenames are properly sanitized."""

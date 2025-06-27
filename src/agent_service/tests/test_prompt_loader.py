@@ -14,6 +14,20 @@ from typing import Dict, Any
 from agent_service.llms.prompts.loader import PromptLoader, TemplateError
 
 
+@pytest.fixture(autouse=True)
+def mock_langsmith_client():
+    """Mock LangSmith client for all tests."""
+    mock_client = Mock()
+    mock_trace = Mock()
+    mock_trace.__enter__ = Mock(return_value=mock_trace)
+    mock_trace.__exit__ = Mock(return_value=None)
+    mock_trace.add_metadata = Mock()
+    mock_client.trace.return_value = mock_trace
+    
+    with patch('langsmith.Client', return_value=mock_client):
+        yield mock_client
+
+
 class TestPromptLoader:
     """Test prompt loader functionality."""
     

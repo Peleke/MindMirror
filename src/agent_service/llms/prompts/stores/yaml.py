@@ -256,6 +256,7 @@ class YAMLPromptStore(PromptStore):
                 "storage_type": "yaml",
                 "base_path": str(self.base_path),
                 "file_count": len(yaml_files),
+                "yaml_file_count": len(yaml_files),  # Alias for backward compatibility
                 "writable": True
             }
             

@@ -11,7 +11,7 @@ from typing import Dict, Any
 
 from langchain_core.documents import Document
 
-from agent_service.agents.state import (
+from agent_service.langgraph.state import (
     BaseAgentState,
     RAGAgentState,
     JournalAgentState,

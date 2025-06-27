@@ -19,6 +19,7 @@ from .stores import (
     LocalPromptStore
 )
 from .stores.loaders import GCSStorageLoader
+from .exceptions import PromptConfigError
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,133 @@ class PromptServiceFactory:
             # Development defaults to YAML
             logger.debug("Development environment, returning YAML")
             return StoreType.YAML
+    
+    @staticmethod
+    def create_store(config: PromptConfig):
+        """Create a store based on configuration."""
+        if config.store_type == StoreType.MEMORY:
+            return InMemoryPromptStore()
+        elif config.store_type == StoreType.YAML:
+            store_path = config.store_path or "./prompts"
+            return YAMLPromptStore(store_path)
+        elif config.store_type == StoreType.LOCAL:
+            store_path = config.store_path or "./prompts"
+            return LocalPromptStore(base_path=store_path)
+        elif config.store_type == StoreType.GCS:
+            bucket_name = config.gcs_bucket or "local_gcs_bucket"
+            credentials_file = getattr(config, 'gcs_credentials', None)
+            
+            storage_config = StorageConfig(
+                storage_type="gcs",
+                gcs_bucket=bucket_name,
+                gcs_credentials=credentials_file or "/tmp/default-credentials.json"
+            )
+            loader = GCSStorageLoader(storage_config)
+            return GCSPromptStore(loader)
+        else:
+            raise NotImplementedError(f"Store type {config.store_type} not implemented")
+    
+    @staticmethod
+    def create_service(config: PromptConfig) -> PromptService:
+        """Create a prompt service with the given configuration."""
+        if config is None:
+            raise PromptConfigError("Config cannot be None")
+        
+        store = PromptServiceFactory.create_store(config)
+        return PromptService(store=store, config=config)
+    
+    @staticmethod
+    def create_service_from_dict(config_dict: Dict[str, Any]) -> PromptService:
+        """Create a prompt service from dictionary configuration."""
+        try:
+            config = PromptConfig.from_dict(config_dict)
+            return PromptServiceFactory.create_service(config)
+        except Exception as e:
+            raise PromptConfigError(f"Invalid configuration: {e}")
+    
+    @staticmethod
+    def create_service_from_env(prefix: str = "PROMPT_") -> PromptService:
+        """Create a prompt service from environment variables."""
+        config_dict = {}
+        
+        # Map environment variables to config
+        env_mapping = {
+            f"{prefix}STORE_TYPE": "store_type",
+            f"{prefix}STORE_PATH": "store_path",
+            f"{prefix}CACHE_SIZE": "cache_size",
+            f"{prefix}CACHE_TTL": "cache_ttl",
+            f"{prefix}ENABLE_CACHING": "enable_caching",
+            f"{prefix}ENABLE_VALIDATION": "enable_validation",
+            "GCS_BUCKET_NAME": "gcs_bucket",
+            "GCS_CREDENTIALS_FILE": "gcs_credentials"
+        }
+        
+        for env_var, config_key in env_mapping.items():
+            value = os.getenv(env_var)
+            if value is not None:
+                # Convert string values to appropriate types
+                if config_key in ["cache_size", "cache_ttl"]:
+                    try:
+                        config_dict[config_key] = int(value)
+                    except ValueError:
+                        raise PromptConfigError(f"Invalid {config_key}: {value}")
+                elif config_key in ["enable_caching", "enable_validation"]:
+                    config_dict[config_key] = value.lower() in ["true", "1", "yes"]
+                else:
+                    config_dict[config_key] = value
+        
+        # Use defaults if no environment variables set
+        if not config_dict:
+            config_dict = PromptServiceFactory.get_default_config().to_dict()
+        
+        return PromptServiceFactory.create_service_from_dict(config_dict)
+    
+    @staticmethod
+    def get_default_config() -> PromptConfig:
+        """Get default configuration."""
+        return PromptConfig(
+            store_type=StoreType.MEMORY,
+            cache_size=1000,
+            cache_ttl=3600,
+            enable_caching=True,
+            enable_validation=True
+        )
+    
+    @staticmethod
+    def validate_config(config: PromptConfig) -> bool:
+        """Validate configuration."""
+        if config is None:
+            raise PromptConfigError("Config cannot be None")
+        
+        # The PromptConfig class validates itself in __post_init__
+        return True
+    
+    @staticmethod
+    def create_service_with_store(custom_store, config: PromptConfig) -> PromptService:
+        """Create a service with a custom store."""
+        if config is None:
+            config = PromptServiceFactory.get_default_config()
+        
+        return PromptService(store=custom_store, config=config)
+    
+    @staticmethod
+    def create_service_with_override(base_config: PromptConfig, override_config: Dict[str, Any]) -> PromptService:
+        """Create a service with overridden configuration."""
+        if base_config is None:
+            base_config = PromptServiceFactory.get_default_config()
+        
+        # Merge configurations
+        base_dict = base_config.to_dict()
+        
+        # Handle case where override_config is a PromptConfig object
+        if isinstance(override_config, PromptConfig):
+            override_dict = override_config.to_dict()
+        else:
+            override_dict = override_config
+        
+        base_dict.update(override_dict)
+        
+        return PromptServiceFactory.create_service_from_dict(base_dict)
     
     @staticmethod
     def create_from_environment() -> PromptService:
@@ -197,7 +325,7 @@ class PromptServiceFactory:
             cache_ttl=3600
         )
         
-        store = LocalPromptStore(store_path)
+        store = LocalPromptStore(base_path=store_path)
         logger.info(f"Created local prompt service at {store_path}")
         
         return PromptService(store=store, config=config)
@@ -233,7 +361,7 @@ class PromptServiceFactory:
             store = InMemoryPromptStore()
         elif store_type == StoreType.LOCAL:
             store_path = kwargs.get("store_path", "./prompts")
-            store = LocalPromptStore(store_path)
+            store = LocalPromptStore(base_path=store_path)
         else:
             raise ValueError(f"Unsupported store type: {store_type}")
         
@@ -259,4 +387,8 @@ def get_prompt_service() -> PromptService:
     Returns:
         Configured PromptService instance
     """
-    return PromptServiceFactory.create_from_environment() 
+    return PromptServiceFactory.create_from_environment()
+
+
+# Compatibility alias for tests
+PromptFactory = PromptServiceFactory 

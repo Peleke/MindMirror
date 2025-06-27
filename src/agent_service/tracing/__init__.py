@@ -15,6 +15,9 @@ from .decorators import (
     trace_function,
     trace_performance,
     trace_errors,
+    trace_langchain_operation,
+    trace_agent_workflow,
+    trace_runnable,
 )
 
 
@@ -82,4 +85,9 @@ __all__ = [
     "trace_function",
     "trace_performance", 
     "trace_errors",
+    "trace_langchain_operation",
+    "trace_agent_workflow",
+    "trace_runnable",
+    "setup_langsmith_tracing",
+    "get_langsmith_client",
 ] 

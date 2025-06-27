@@ -319,6 +319,11 @@ class StateManager:
             Updated RAG agent state
         """
         updated_state = state.copy()
+        # Create deep copies of lists to ensure immutability
+        updated_state["context"] = state["context"].copy()
+        updated_state["retrieved_documents"] = state["retrieved_documents"].copy()
+        updated_state["retrieval_scores"] = state["retrieval_scores"].copy()
+        
         updated_state["context"].append(document)
         updated_state["retrieved_documents"].append(document)
         if score is not None:

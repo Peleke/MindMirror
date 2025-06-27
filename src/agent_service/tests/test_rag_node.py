@@ -14,8 +14,22 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.prompts import ChatPromptTemplate
 
-from agent_service.agents.nodes.rag_node import RAGNode, RAGNodeFactory
-from agent_service.agents.state import RAGAgentState, AgentStateFactory
+from agent_service.langgraph.nodes.rag_node import RAGNode, RAGNodeFactory
+from agent_service.langgraph.state import RAGAgentState, AgentStateFactory
+
+
+@pytest.fixture(autouse=True)
+def mock_langsmith_client():
+    """Mock LangSmith client for all tests."""
+    mock_client = Mock()
+    mock_trace = Mock()
+    mock_trace.__enter__ = Mock(return_value=mock_trace)
+    mock_trace.__exit__ = Mock(return_value=None)
+    mock_trace.add_metadata = Mock()
+    mock_client.trace.return_value = mock_trace
+    
+    with patch('langsmith.Client', return_value=mock_client):
+        yield mock_client
 
 
 class TestRAGNode:
@@ -51,7 +65,7 @@ class TestRAGNode:
         assert node.prompt_template == mock_prompt
         assert node.llm == mock_llm
     
-    @patch('agent_service.agents.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
     def test_rag_node_tracing_integration(self, mock_trace_runnable):
         """Test that RAG node integrates with tracing."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -104,11 +118,10 @@ class TestRAGNode:
         
         node = RAGNode(retriever=mock_retriever)
         
-        result = node.retrieve_documents("test query")
-        
-        assert result == []
+        with pytest.raises(Exception, match="Retrieval error"):
+            node.retrieve_documents("test query")
     
-    @patch('agent_service.agents.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
     def test_generate_response_success(self, mock_trace_runnable):
         """Test successful response generation."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -185,7 +198,8 @@ class TestRAGNode:
 class TestRAGNodeLangGraphIntegration:
     """Test RAG node integration with LangGraph state management."""
     
-    def test_rag_node_call_with_state(self):
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    def test_rag_node_call_with_state(self, mock_trace_runnable):
         """Test that RAG node works with LangGraph state."""
         mock_retriever = Mock(spec=BaseRetriever)
         mock_documents = [
@@ -193,11 +207,12 @@ class TestRAGNodeLangGraphIntegration:
         ]
         mock_retriever.get_relevant_documents.return_value = mock_documents
         
-        # Mock the LLM chain
-        mock_llm = Mock()
-        mock_llm.invoke.return_value = "Generated response"
+        # Mock the traced chain
+        mock_traced_chain = Mock()
+        mock_traced_chain.invoke.return_value = "Generated response"
+        mock_trace_runnable.return_value = mock_traced_chain
         
-        node = RAGNode(retriever=mock_retriever, llm=mock_llm)
+        node = RAGNode(retriever=mock_retriever)
         
         # Create test state
         state = AgentStateFactory.create_rag_state(
@@ -218,10 +233,15 @@ class TestRAGNodeLangGraphIntegration:
         assert result_state["response_metadata"]["documents_retrieved"] == 1
         assert result_state["error"] is None
     
-    def test_rag_node_call_with_error(self):
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    def test_rag_node_call_with_error(self, mock_trace_runnable):
         """Test that RAG node handles errors in state execution."""
         mock_retriever = Mock(spec=BaseRetriever)
         mock_retriever.get_relevant_documents.side_effect = Exception("Test error")
+        
+        # Mock the traced chain to avoid initialization issues
+        mock_traced_chain = Mock()
+        mock_trace_runnable.return_value = mock_traced_chain
         
         node = RAGNode(retriever=mock_retriever)
         
@@ -237,7 +257,8 @@ class TestRAGNodeLangGraphIntegration:
         assert result_state["error_type"] == "Exception"
         assert result_state["generated_response"] is None
     
-    def test_rag_node_call_with_documents_without_score(self):
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    def test_rag_node_call_with_documents_without_score(self, mock_trace_runnable):
         """Test RAG node with documents that don't have scores."""
         mock_retriever = Mock(spec=BaseRetriever)
         mock_documents = [
@@ -245,10 +266,12 @@ class TestRAGNodeLangGraphIntegration:
         ]
         mock_retriever.get_relevant_documents.return_value = mock_documents
         
-        mock_llm = Mock()
-        mock_llm.invoke.return_value = "Generated response"
+        # Mock the traced chain
+        mock_traced_chain = Mock()
+        mock_traced_chain.invoke.return_value = "Generated response"
+        mock_trace_runnable.return_value = mock_traced_chain
         
-        node = RAGNode(retriever=mock_retriever, llm=mock_llm)
+        node = RAGNode(retriever=mock_retriever)
         
         state = AgentStateFactory.create_rag_state(
             user_id="test-user",
@@ -311,7 +334,7 @@ class TestRAGNodeFactory:
         assert node.max_documents == 4
         
         # Check that it has coaching-specific prompt
-        prompt_text = node.prompt_template.template
+        prompt_text = str(node.prompt_template)
         assert "coaching assistant" in prompt_text.lower()
         assert "practical, actionable advice" in prompt_text.lower()
 
@@ -334,10 +357,16 @@ class TestRAGNodeEdgeCases:
         with pytest.raises(ValueError):
             RAGNode(retriever=mock_retriever, max_documents=-1)
     
-    def test_rag_node_with_empty_query(self):
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    def test_rag_node_with_empty_query(self, mock_trace_runnable):
         """Test RAG node with empty query."""
         mock_retriever = Mock(spec=BaseRetriever)
         mock_retriever.get_relevant_documents.return_value = []
+        
+        # Mock the traced chain
+        mock_traced_chain = Mock()
+        mock_traced_chain.invoke.return_value = "Generated response"
+        mock_trace_runnable.return_value = mock_traced_chain
         
         node = RAGNode(retriever=mock_retriever)
         
@@ -352,16 +381,19 @@ class TestRAGNodeEdgeCases:
         assert len(result_state["retrieved_documents"]) == 0
         assert result_state["generated_response"] is not None
     
-    def test_rag_node_with_very_long_query(self):
+    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    def test_rag_node_with_very_long_query(self, mock_trace_runnable):
         """Test RAG node with very long query."""
         mock_retriever = Mock(spec=BaseRetriever)
         mock_documents = [Document(page_content="test", metadata={})]
         mock_retriever.get_relevant_documents.return_value = mock_documents
         
-        mock_llm = Mock()
-        mock_llm.invoke.return_value = "Generated response"
+        # Mock the traced chain
+        mock_traced_chain = Mock()
+        mock_traced_chain.invoke.return_value = "Generated response"
+        mock_trace_runnable.return_value = mock_traced_chain
         
-        node = RAGNode(retriever=mock_retriever, llm=mock_llm)
+        node = RAGNode(retriever=mock_retriever)
         
         long_query = "x" * 10000  # Very long query
         state = AgentStateFactory.create_rag_state(

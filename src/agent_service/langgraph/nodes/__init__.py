@@ -1,16 +1,20 @@
 """
-LangGraph nodes package for MindMirror.
+LangGraph nodes for agent workflows.
 
-This package provides individual graph nodes (agents) that can be composed
-into larger workflows and graphs.
+This module provides nodes for different types of agent operations,
+including summarization, review, and RAG functionality.
 """
 
-from .base import BaseNode
+from .base import BaseNode, LLMNode
 from .summarizer_node import SummarizerNode
 from .reviewer_node import ReviewerNode
+from .rag_node import RAGNode, RAGNodeFactory
 
 __all__ = [
     "BaseNode",
-    "SummarizerNode", 
+    "LLMNode", 
+    "SummarizerNode",
     "ReviewerNode",
+    "RAGNode",
+    "RAGNodeFactory",
 ] 

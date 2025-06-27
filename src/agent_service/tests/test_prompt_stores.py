@@ -158,7 +158,7 @@ class TestLocalPromptStore:
     def test_save_prompt(self):
         """Test saving a prompt to local file system."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             prompt = PromptInfo(
                 name="test_prompt",
@@ -181,7 +181,7 @@ class TestLocalPromptStore:
     def test_get_prompt(self):
         """Test retrieving a prompt from local file system."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             prompt = PromptInfo(
                 name="test_prompt",
@@ -198,7 +198,7 @@ class TestLocalPromptStore:
     def test_delete_prompt(self):
         """Test deleting a prompt from local file system."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             prompt = PromptInfo(
                 name="test_prompt",
@@ -219,7 +219,7 @@ class TestLocalPromptStore:
     def test_list_prompts(self):
         """Test listing all prompts from local file system."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Create multiple prompts
             prompts = [
@@ -238,7 +238,7 @@ class TestLocalPromptStore:
     def test_get_latest_version(self):
         """Test getting the latest version of a prompt."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Add multiple versions
             store.save_prompt(PromptInfo(name="test", version="1.0", content="v1"))
@@ -251,7 +251,7 @@ class TestLocalPromptStore:
     def test_get_prompt_versions(self):
         """Test getting all versions of a prompt."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Add multiple versions
             store.save_prompt(PromptInfo(name="test", version="1.0", content="v1"))
@@ -267,7 +267,7 @@ class TestLocalPromptStore:
     def test_search_prompts(self):
         """Test searching prompts by content."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             prompts = [
                 PromptInfo(name="greeting", version="1.0", content="Hello {{name}}!"),
@@ -290,7 +290,7 @@ class TestLocalPromptStore:
     def test_get_stats(self):
         """Test getting store statistics."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Add some prompts
             store.save_prompt(PromptInfo(name="prompt1", version="1.0", content="Content 1"))
@@ -306,7 +306,7 @@ class TestLocalPromptStore:
     def test_invalid_yaml_handling(self):
         """Test handling of invalid YAML files."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Create a corrupted YAML file
             prompt_dir = Path(temp_dir) / "test_prompt"
@@ -529,7 +529,7 @@ class TestPromptStoreProtocol:
     def test_local_implements_protocol(self):
         """Test that LocalPromptStore implements the protocol."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            store = LocalPromptStore(store_path=temp_dir)
+            store = LocalPromptStore(base_path=temp_dir)
             
             # Test all required methods exist
             assert hasattr(store, 'save_prompt')

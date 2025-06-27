@@ -24,13 +24,66 @@ class TestLLMServiceLangChain:
         """Create a mock LangChain LLM."""
         mock = Mock()
         mock.ainvoke = AsyncMock()
+        mock.invoke = Mock()  # Add synchronous invoke method
         return mock
     
     @pytest.fixture
-    def llm_service(self, mock_llm):
-        """Create LLM service with mock LLM."""
-        # Pass the mock LLM directly to the service constructor
-        service = LLMService(llm=mock_llm)
+    def mock_provider_manager(self, mock_llm):
+        """Create a mock provider manager."""
+        mock_manager = Mock()
+        mock_manager.create_model_with_fallback.return_value = mock_llm
+        mock_manager.get_working_providers.return_value = ["openai"]
+        mock_manager.get_provider_status.return_value = {"openai": "healthy"}
+        return mock_manager
+    
+    @pytest.fixture
+    def mock_prompt_service(self):
+        """Create a mock prompt service."""
+        mock_service = Mock()
+        
+        # Mock journal summary prompt
+        mock_journal_prompt = Mock()
+        mock_journal_prompt.metadata = {
+            "model": "gpt-4o",
+            "temperature": 0.7,
+            "max_tokens": 250,
+            "streaming": False
+        }
+        mock_service.get_prompt.return_value = mock_journal_prompt
+        
+        # Mock render_prompt to return realistic content
+        def mock_render_prompt(prompt_name, variables):
+            if prompt_name == "journal_summary":
+                content_block = variables.get("content_block", "")
+                return f"Synthesize these entries into a single, concise paragraph:\n\n{content_block}\n\nSynthesize these entries into a single, concise paragraph of 2-4 sentences."
+            elif prompt_name == "performance_review":
+                content_block = variables.get("content_block", "")
+                return f"Analyze the following journal entries:\n\n{content_block}\n\nPlease format your response as follows:\nSUCCESS: [Your identified key success here]\nIMPROVEMENT: [Your identified improvement area here]\nPROMPT: [Your generated journal prompt here]"
+            return "Test prompt content"
+        
+        mock_service.render_prompt.side_effect = mock_render_prompt
+        mock_service.health_check.return_value = {"status": "healthy"}
+        
+        return mock_service
+    
+    @pytest.fixture
+    def mock_tool_registry(self):
+        """Create a mock tool registry."""
+        mock_registry = Mock()
+        mock_registry.list_tool_names.return_value = []
+        mock_registry.get_tool_registry_health.return_value = {"status": "healthy"}
+        return mock_registry
+    
+    @pytest.fixture
+    def llm_service(self, mock_llm, mock_prompt_service, mock_provider_manager, mock_tool_registry):
+        """Create LLM service with mocked dependencies."""
+        # Create service with mocked dependencies
+        service = LLMService(
+            prompt_service=mock_prompt_service,
+            llm=mock_llm,  # Keep for backward compatibility
+            provider_manager=mock_provider_manager,
+            tool_registry=mock_tool_registry
+        )
         return service
     
     @pytest.mark.asyncio
@@ -71,7 +124,7 @@ class TestLLMServiceLangChain:
         assert result == "No recent journal entries to summarize."
     
     @pytest.mark.asyncio
-    async def test_generate_performance_review_with_langchain(self, llm_service, mock_llm):
+    async def test_get_performance_review_with_langchain(self, llm_service, mock_llm):
         """Test performance review generation using LangChain."""
         # Arrange
         journal_entries = [
@@ -83,10 +136,10 @@ class TestLLMServiceLangChain:
 IMPROVEMENT: Time management skills need attention and could be improved.
 PROMPT: How can you better structure your day to make time management feel less overwhelming?"""
         
-        mock_llm.ainvoke.return_value.content = mock_response
+        mock_llm.invoke.return_value.content = mock_response
         
         # Act
-        result = await llm_service.generate_performance_review(journal_entries)
+        result = await llm_service.get_performance_review(journal_entries)
         
         # Assert
         assert isinstance(result, PerformanceReview)
@@ -94,22 +147,22 @@ PROMPT: How can you better structure your day to make time management feel less 
         assert "time management" in result.improvement_area.lower()
         assert "structure your day" in result.journal_prompt.lower()
         
-        mock_llm.ainvoke.assert_called_once()
+        mock_llm.invoke.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_generate_performance_review_empty_entries(self, llm_service):
+    async def test_get_performance_review_empty_entries(self, llm_service):
         """Test performance review with empty entries."""
         # Arrange
         journal_entries = []
         
         # Act
-        result = await llm_service.generate_performance_review(journal_entries)
+        result = await llm_service.get_performance_review(journal_entries)
         
         # Assert
         assert isinstance(result, PerformanceReview)
-        assert "No recent journal entries found" in result.key_success
-        assert "Try to journal more consistently" in result.improvement_area
-        assert "small step you can take today" in result.journal_prompt
+        assert "No recent journal entries to review" in result.key_success
+        assert "Consider adding more journal entries" in result.improvement_area
+        assert "What would you like to focus on" in result.journal_prompt
     
     @pytest.mark.asyncio
     async def test_llm_error_handling(self, llm_service, mock_llm):
@@ -122,7 +175,7 @@ PROMPT: How can you better structure your day to make time management feel less 
         result = await llm_service.get_journal_summary(journal_entries)
         
         # Assert
-        assert "I am having trouble summarizing" in result
+        assert "Error generating summary" in result
     
     def test_prompt_service_integration(self, llm_service):
         """Test that prompt service is properly integrated."""
@@ -141,9 +194,12 @@ PROMPT: How can you better structure your day to make time management feel less 
         
         # Assert
         assert "status" in health
-        assert "journal_summary_prompt_available" in health
-        assert "performance_review_prompt_available" in health
-        assert "prompt_service_health" in health
+        assert "llm_configured" in health
+        assert "prompt_service" in health
+        assert "missing_prompts" in health
+        assert "provider_status" in health
+        assert "working_providers" in health
+        assert "tool_registry" in health
     
     @pytest.mark.asyncio
     async def test_prompt_metadata_usage(self, llm_service, mock_llm):
@@ -156,14 +212,13 @@ PROMPT: How can you better structure your day to make time management feel less 
         await llm_service.get_journal_summary(journal_entries)
         
         # Assert
-        # Verify that the LLM was configured with metadata from the prompt
-        # This will be checked in the actual implementation
+        # Verify that the LLM was called
         mock_llm.ainvoke.assert_called_once()
     
     def test_configurable_storage(self):
         """Test that storage type is configurable via environment."""
         # Arrange
-        with patch.dict('os.environ', {'PROMPT_STORE_TYPE': 'memory'}):
+        with patch.dict('os.environ', {'PROMPT_STORAGE_TYPE': 'memory'}):
             # Act
             service = LLMService()
             
@@ -171,7 +226,7 @@ PROMPT: How can you better structure your day to make time management feel less 
             assert service.prompt_service is not None
         
         # Test local storage
-        with patch.dict('os.environ', {'PROMPT_STORE_TYPE': 'local', 'PROMPT_STORE_PATH': 'test_prompts'}):
+        with patch.dict('os.environ', {'PROMPT_STORAGE_TYPE': 'local', 'PROMPT_STORE_PATH': 'test_prompts'}):
             # Act
             service = LLMService()
             
@@ -198,5 +253,4 @@ class TestLangChainIntegration:
     def test_langchain_compatibility(self):
         """Test that the service is compatible with LangGraph workflows."""
         # This test will verify that the service can be easily integrated
-        # into LangGraph agent workflows
         pass 

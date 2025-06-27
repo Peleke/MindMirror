@@ -49,7 +49,7 @@ def init_prompt_store(store_path: str = "prompts") -> PromptService:
         cache_ttl=3600
     )
     
-    store = LocalPromptStore(store_path)
+    store = LocalPromptStore(base_path=store_path)
     prompt_service = PromptService(store=store, config=config)
     
     # Load prompts from templates

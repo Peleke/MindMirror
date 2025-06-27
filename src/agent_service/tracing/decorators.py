@@ -2,26 +2,105 @@
 Tracing decorators for monitoring and debugging.
 
 This module provides decorators for tracing function execution,
-performance monitoring, and error tracking.
+performance monitoring, and error tracking using LangSmith.
 """
 
 import functools
 import logging
 import time
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 import uuid
+
+import langsmith
 
 logger = logging.getLogger(__name__)
 
 
 def trace_function(func=None, *, name=None, tags=None):
+    """
+    Decorator to trace function execution using LangSmith.
+    
+    Args:
+        func: Function to trace
+        name: Name for the trace (defaults to function name)
+        tags: List of tags to associate with the trace
+    """
     def decorator(f):
+        @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            # Optionally use name and tags here for tracing
-            return f(*args, **kwargs)
-        wrapper._trace_name = name
-        wrapper._trace_tags = tags
-        return wrapper
+            trace_name = name or f.__name__
+            trace_tags = tags or []
+            
+            # Get LangSmith client
+            client = langsmith.Client()
+            
+            # Start trace
+            with client.trace(
+                name=trace_name,
+                tags=trace_tags,
+                inputs={"args": str(args), "kwargs": str(kwargs)}
+            ) as trace:
+                try:
+                    result = f(*args, **kwargs)
+                    
+                    # Add success metadata
+                    trace.add_metadata({
+                        "result_type": type(result).__name__,
+                        "success": True,
+                    })
+                    
+                    return result
+                    
+                except Exception as e:
+                    # Add error metadata
+                    trace.add_metadata({
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "success": False,
+                    })
+                    raise
+        
+        @functools.wraps(f)
+        async def async_wrapper(*args, **kwargs):
+            trace_name = name or f.__name__
+            trace_tags = tags or []
+            
+            # Get LangSmith client
+            client = langsmith.Client()
+            
+            # Start trace
+            with client.trace(
+                name=trace_name,
+                tags=trace_tags,
+                inputs={"args": str(args), "kwargs": str(kwargs)}
+            ) as trace:
+                try:
+                    result = await f(*args, **kwargs)
+                    
+                    # Add success metadata
+                    trace.add_metadata({
+                        "result_type": type(result).__name__,
+                        "success": True,
+                    })
+                    
+                    return result
+                    
+                except Exception as e:
+                    # Add error metadata
+                    trace.add_metadata({
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "success": False,
+                    })
+                    raise
+        
+        # Return appropriate wrapper based on function type
+        if inspect.iscoroutinefunction(f):
+            return async_wrapper
+        else:
+            return wrapper
+    
     if func is not None:
         return decorator(func)
     return decorator
@@ -92,7 +171,7 @@ def trace_performance(threshold_ms: float = 1000.0):
                 raise
         
         # Return appropriate wrapper based on function type
-        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         else:
             return wrapper
@@ -151,7 +230,7 @@ def trace_errors(
                     raise
         
         # Return appropriate wrapper based on function type
-        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         else:
             return wrapper
@@ -168,109 +247,73 @@ def trace_langchain_operation(operation_name: str, tags: Optional[List[str]] = N
         tags: List of tags to associate with the trace
     """
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Add LangChain-specific tags
-            langchain_tags = ["langchain", operation_name]
-            if tags:
-                langchain_tags.extend(tags)
-            
-            # Use the existing trace_function with LangChain tags
-            traced_func = trace_function(name=operation_name, tags=langchain_tags)(func)
-            return traced_func(*args, **kwargs)
+        # Add LangChain-specific tags
+        langchain_tags = ["langchain", operation_name]
+        if tags:
+            langchain_tags.extend(tags)
         
-        @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            # Add LangChain-specific tags
-            langchain_tags = ["langchain", operation_name]
-            if tags:
-                langchain_tags.extend(tags)
-            
-            # Use the existing trace_function with LangChain tags
-            traced_func = trace_function(name=operation_name, tags=langchain_tags)(func)
-            return await traced_func(*args, **kwargs)
-        
-        # Return appropriate wrapper based on function type
-        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
-            return async_wrapper
-        else:
-            return wrapper
+        # Use the existing trace_function with LangChain tags
+        traced_func = trace_function(name=operation_name, tags=langchain_tags)(func)
+        return traced_func
     
     return decorator
 
 
 def trace_agent_workflow(workflow_name: str, tags: Optional[List[str]] = None):
     """
-    Decorator to trace agent workflow operations.
+    Decorator to trace agent workflows with specific tags.
     
     Args:
         workflow_name: Name of the agent workflow
         tags: List of tags to associate with the trace
     """
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Add agent-specific tags
-            agent_tags = ["agent", "workflow", workflow_name]
-            if tags:
-                agent_tags.extend(tags)
-            
-            # Use the existing trace_function with agent tags
-            traced_func = trace_function(name=workflow_name, tags=agent_tags)(func)
-            return traced_func(*args, **kwargs)
+        # Add agent-specific tags
+        agent_tags = ["agent", "workflow", workflow_name]
+        if tags:
+            agent_tags.extend(tags)
         
-        @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            # Add agent-specific tags
-            agent_tags = ["agent", "workflow", workflow_name]
-            if tags:
-                agent_tags.extend(agent_tags)
-            
-            # Use the existing trace_function with agent tags
-            traced_func = trace_function(name=workflow_name, tags=agent_tags)(func)
-            return await traced_func(*args, **kwargs)
-        
-        # Return appropriate wrapper based on function type
-        if hasattr(func, '__code__') and func.__code__.co_flags & 0x80:  # CO_COROUTINE
-            return async_wrapper
-        else:
-            return wrapper
+        # Use the existing trace_function with agent tags
+        traced_func = trace_function(name=workflow_name, tags=agent_tags)(func)
+        return traced_func
     
     return decorator
 
 
 def trace_runnable(runnable, name: str, tags: Optional[List[str]] = None):
     """
-    Decorator to trace LangChain Runnables.
+    Create a traced version of a LangChain Runnable.
     
     Args:
-        runnable: The LangChain runnable to trace
+        runnable: The LangChain Runnable to trace
         name: Name for the trace
         tags: List of tags to associate with the trace
     """
-    # Add runnable-specific tags
     runnable_tags = ["runnable", name]
     if tags:
         runnable_tags.extend(tags)
     
-    # Create traced versions of invoke and ainvoke methods
-    original_invoke = runnable.invoke
-    original_ainvoke = getattr(runnable, 'ainvoke', None)
-    
     @trace_function(name=name, tags=runnable_tags)
     def traced_invoke(input_data, config=None):
-        return original_invoke(input_data, config)
+        return runnable.invoke(input_data, config)
     
     @trace_function(name=f"{name}_async", tags=runnable_tags)
     async def traced_ainvoke(input_data, config=None):
-        if original_ainvoke:
-            return await original_ainvoke(input_data, config)
-        else:
-            raise NotImplementedError("Async invoke not supported by this runnable")
+        return await runnable.ainvoke(input_data, config)
     
-    # Replace methods with traced versions
-    runnable.invoke = traced_invoke
-    if original_ainvoke:
-        runnable.ainvoke = traced_ainvoke
+    # Create a wrapper that preserves the original runnable interface
+    class TracedRunnable:
+        def __init__(self, original_runnable):
+            self._runnable = original_runnable
+        
+        def invoke(self, input_data, config=None):
+            return traced_invoke(input_data, config)
+        
+        async def ainvoke(self, input_data, config=None):
+            return await traced_ainvoke(input_data, config)
     
-    return runnable 
+    return TracedRunnable(runnable)
+
+
+# Export langsmith for tests
+langsmith = langsmith 

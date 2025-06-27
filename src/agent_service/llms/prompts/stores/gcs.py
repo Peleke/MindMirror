@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 from ..models import PromptInfo, PromptStats
-from ..exceptions import PromptStorageError, PromptNotFoundError
+from ..exceptions import PromptStorageError, PromptNotFoundError, PromptValidationError
 from .protocol import PromptStore
 from .loaders.protocol import StorageLoader
 
@@ -52,7 +52,17 @@ class GCSPromptStore(PromptStore):
             yaml_content = yaml.dump(prompt_data, default_flow_style=False, 
                                    allow_unicode=True, sort_keys=False)
             
-            self.loader.write_file(prompt_path, yaml_content)
+            # Retry logic for transient failures
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.loader.write_file(prompt_path, yaml_content)
+                    break
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise PromptStorageError(f"Failed to save prompt: {e}")
+                    # Continue to retry for transient errors
+                    continue
                 
         except Exception as e:
             raise PromptStorageError(f"Failed to save prompt: {e}")
@@ -76,20 +86,26 @@ class GCSPromptStore(PromptStore):
             prompt_path = f"prompts/{self._sanitize_filename(name)}/{version}.yaml"
             
             # Read the YAML content
-            yaml_content = self.loader.read_file(prompt_path)
+            try:
+                yaml_content = self.loader.read_file(prompt_path)
+            except PromptStorageError:
+                raise PromptNotFoundError(f"Prompt '{name}' version '{version}' not found")
+            except Exception as e:
+                raise PromptStorageError(f"Failed to read prompt file: {e}")
             
             # Parse YAML and validate
-            prompt_data = yaml.safe_load(yaml_content)
+            try:
+                prompt_data = yaml.safe_load(yaml_content)
+            except yaml.YAMLError as e:
+                raise PromptStorageError(f"Failed to parse prompt file: {e}")
             
             if not isinstance(prompt_data, dict):
                 raise PromptStorageError(f"Invalid prompt file format: expected dict, got {type(prompt_data)}")
             
             return PromptInfo.from_dict(prompt_data)
             
-        except PromptStorageError:
-            raise PromptNotFoundError(f"Prompt '{name}' version '{version}' not found")
-        except yaml.YAMLError as e:
-            raise PromptStorageError(f"Failed to parse prompt file: {e}")
+        except (PromptNotFoundError, PromptStorageError):
+            raise
         except Exception as e:
             raise PromptStorageError(f"Failed to load prompt: {e}")
     
@@ -294,7 +310,14 @@ class GCSPromptStore(PromptStore):
         """
         try:
             # Get loader stats
-            loader_stats = self.loader.get_stats()
+            loader_stats = {}
+            try:
+                if hasattr(self.loader, 'get_stats'):
+                    stats_result = self.loader.get_stats()
+                    if isinstance(stats_result, dict):
+                        loader_stats = stats_result
+            except Exception:
+                pass  # Ignore errors from get_stats
             
             # Count unique prompts
             files = self.loader.list_files("prompts/")

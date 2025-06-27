@@ -109,8 +109,14 @@ class TestTracingDecorators:
         with pytest.raises(ValueError, match="Test error"):
             test_func(5)
         
-        # Should have called trace twice (once for success, once for error)
-        assert mock_client.trace.call_count == 2
+        # Should have called trace once (one trace span that captures the error)
+        assert mock_client.trace.call_count == 1
+        # Should have added error metadata
+        mock_trace.add_metadata.assert_called_with({
+            "error": "Test error",
+            "error_type": "ValueError",
+            "success": False,
+        })
     
     @patch('agent_service.tracing.decorators.langsmith.Client')
     def test_trace_langchain_operation(self, mock_client_class):

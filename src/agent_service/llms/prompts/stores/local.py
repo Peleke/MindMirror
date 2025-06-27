@@ -36,9 +36,28 @@ class LocalPromptStore(PromptStore):
         
         Args:
             base_path: Base directory for storing prompts
+            
+        Raises:
+            PromptStorageError: If the path is invalid or cannot be created
         """
+        # Validate base_path
+        if not base_path or not isinstance(base_path, str):
+            raise PromptStorageError("base_path must be a non-empty string")
+        
         self.base_path = Path(base_path)
-        self.base_path.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # Try to create the directory
+            self.base_path.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            raise PromptStorageError(f"Failed to create storage directory '{base_path}': {str(e)}")
+        except Exception as e:
+            raise PromptStorageError(f"Failed to initialize store at '{base_path}': {str(e)}")
+    
+    @property
+    def store_path(self) -> Path:
+        """Alias for base_path for backward compatibility with tests."""
+        return self.base_path
     
     def save_prompt(self, prompt_info: PromptInfo) -> None:
         """
@@ -233,6 +252,131 @@ class LocalPromptStore(PromptStore):
             
         except Exception as e:
             raise PromptStorageError(f"Failed to list versions for {name}: {str(e)}")
+    
+    def get_latest_version(self, name: str) -> str:
+        """
+        Get the latest version of a prompt.
+        
+        Args:
+            name: Prompt name
+            
+        Returns:
+            Latest version string
+            
+        Raises:
+            PromptNotFoundError: If no versions found
+            PromptStorageError: If retrieval fails
+        """
+        try:
+            versions = self.list_versions(name)
+            if not versions:
+                raise PromptNotFoundError(f"No versions found for prompt {name}")
+            
+            # Sort versions and return the latest
+            # Simple version comparison - assumes semantic versioning
+            latest = max(versions, key=lambda v: [int(x) for x in v.split('.')])
+            return latest
+            
+        except PromptNotFoundError:
+            raise
+        except Exception as e:
+            raise PromptStorageError(f"Failed to get latest version for {name}: {str(e)}")
+    
+    def get_prompt_versions(self, name: str) -> List[str]:
+        """
+        Get all versions of a prompt.
+        
+        Args:
+            name: Prompt name
+            
+        Returns:
+            List of version strings
+            
+        Raises:
+            PromptNotFoundError: If prompt not found
+            PromptStorageError: If retrieval fails
+        """
+        try:
+            versions = self.list_versions(name)
+            if not versions:
+                raise PromptNotFoundError(f"Prompt {name} not found")
+            
+            return versions
+            
+        except PromptNotFoundError:
+            raise
+        except Exception as e:
+            raise PromptStorageError(f"Failed to get versions for {name}: {str(e)}")
+    
+    def search_prompts(self, query: str) -> List[PromptInfo]:
+        """
+        Search prompts by content or name.
+        
+        Args:
+            query: The search query
+            
+        Returns:
+            List of matching prompts
+            
+        Raises:
+            PromptStorageError: If search fails
+        """
+        try:
+            all_prompts = self.list_prompts()
+            results = []
+            
+            for prompt in all_prompts:
+                # Search in name
+                if query.lower() in prompt.name.lower():
+                    results.append(prompt)
+                    continue
+                
+                # Search in content
+                if query.lower() in prompt.content.lower():
+                    results.append(prompt)
+                    continue
+                
+                # Search in metadata
+                if prompt.metadata:
+                    metadata_str = str(prompt.metadata).lower()
+                    if query.lower() in metadata_str:
+                        results.append(prompt)
+                        continue
+            
+            return results
+            
+        except Exception as e:
+            raise PromptStorageError(f"Failed to search prompts: {str(e)}")
+    
+    def _sanitize_filename(self, filename: str) -> str:
+        """
+        Sanitize a filename to be safe for storage.
+        
+        Args:
+            filename: The filename to sanitize
+            
+        Returns:
+            A sanitized filename
+        """
+        import re
+        
+        # Replace problematic characters with underscores
+        sanitized = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        
+        # Remove leading/trailing spaces and dots
+        sanitized = sanitized.strip(' .')
+        
+        # Remove multiple consecutive underscores
+        sanitized = re.sub(r'_+', '_', sanitized)
+        
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip('_')
+        
+        # Ensure the filename is not empty
+        if not sanitized:
+            sanitized = "unnamed"
+        
+        return sanitized
     
     def get_stats(self) -> PromptStats:
         """
