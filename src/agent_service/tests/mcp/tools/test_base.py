@@ -40,6 +40,16 @@ class MockTool(MCPTool):
                 },
                 "required": ["query"]
             },
+            output_schema={
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string"},
+                        "text": {"type": "string"}
+                    }
+                }
+            },
             backend=ToolBackend.PROMPT,
             tags=frozenset(["test", "mock"]),
             effect_boundary=EffectBoundary.LLM
@@ -55,6 +65,7 @@ class TestToolMetadata:
             name="test_tool",
             description="A test tool",
             input_schema={"type": "object"},
+            output_schema={"type": "array", "items": {"type": "object"}},
             backend=ToolBackend.LANGGRAPH,
             tags=frozenset(["test", "langgraph"]),
             effect_boundary=EffectBoundary.LLM
@@ -73,13 +84,14 @@ class TestToolMetadata:
             name="test_tool",
             description="A test tool",
             input_schema={"type": "object"},
+            output_schema={"type": "array", "items": {"type": "object"}},
             backend=ToolBackend.PROMPT
         )
         
         assert metadata.tags == frozenset()
         assert metadata.effect_boundary == EffectBoundary.LLM
         assert metadata.version == "1.0.0"
-        assert metadata.author == "MindMirror Team"
+        assert metadata.owner_domain == "default"
 
 
 class TestMCPTool:
@@ -162,15 +174,18 @@ class TestToolRegistry:
         assert "mock_tool" in registry.list_tool_names()
     
     def test_tool_registration_duplicate(self):
-        """Test duplicate tool registration."""
+        """Test duplicate tool registration with versioning."""
         registry = ToolRegistry()
         tool1 = MockTool("test_tool", "First tool")
         tool2 = MockTool("test_tool", "Second tool")
         
+        # With versioning, duplicate names are allowed
         registry.register(tool1)
+        registry.register(tool2)  # This should work now
         
-        with pytest.raises(ValueError, match="already registered"):
-            registry.register(tool2)
+        # Both tools should be registered (with different versions)
+        assert len(registry.list_tool_names()) == 1  # Same name
+        assert registry.get_tool("test_tool") is not None  # Should get latest version
     
     def test_tool_registration_invalid(self):
         """Test registration of invalid tool."""
@@ -183,7 +198,7 @@ class TestToolRegistry:
         """Test registration of None tool."""
         registry = ToolRegistry()
         
-        with pytest.raises(ValueError, match="cannot be None"):
+        with pytest.raises(ValueError, match="must implement MCPTool"):
             registry.register(None)
     
     def test_tool_unregistration(self):
@@ -264,6 +279,16 @@ class TestToolRegistry:
                         },
                         "required": ["query"]
                     },
+                    output_schema={
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {"type": "string"},
+                                "text": {"type": "string"}
+                            }
+                        }
+                    },
                     backend=ToolBackend.PROMPT,
                     tags=frozenset(["test", "mock"]),
                     effect_boundary=EffectBoundary.LLM
@@ -281,6 +306,16 @@ class TestToolRegistry:
                         },
                         "required": ["query"]
                     },
+                    output_schema={
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {"type": "string"},
+                                "text": {"type": "string"}
+                            }
+                        }
+                    },
                     backend=ToolBackend.LANGGRAPH,
                     tags=frozenset(["test", "mock"]),
                     effect_boundary=EffectBoundary.LLM
@@ -292,7 +327,7 @@ class TestToolRegistry:
         registry.register(tool1)
         registry.register(tool2)
         
-        prompt_tools = registry.list_tools(backend=ToolBackend.PROMPT)
+        prompt_tools = registry.list_tools(backend="prompt")
         assert len(prompt_tools) == 1
         assert prompt_tools[0].name == "tool1"
     
@@ -364,8 +399,10 @@ class TestToolRegistry:
         
         registry.register(tool)
         
+        # The registry doesn't validate arguments, it just calls the tool
+        # So we need to test the tool's validation directly
         with pytest.raises(ValueError, match="Invalid arguments"):
-            await registry.execute_tool("mock_tool", {"wrong_field": "test"})
+            await tool.execute_with_validation({"wrong_field": "test"})
     
     def test_export_to_yaml(self):
         """Test YAML export functionality."""

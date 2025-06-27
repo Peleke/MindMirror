@@ -40,13 +40,42 @@ class LangGraphTool(MCPTool):
         self._graph = None
         self._state = {}
     
+    @property
+    def owner_domain(self) -> str:
+        """Get the owner domain for this tool."""
+        return "langgraph"
+    
+    @property
+    def version(self) -> str:
+        """Get the tool version (semver)."""
+        return "1.0.0"
+    
+    @property
+    def output_schema(self) -> Dict[str, Any]:
+        """Get the output schema for this tool."""
+        return {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "result": {"type": "object"},
+                    "state_update": {"type": "object"}
+                },
+                "required": ["type"]
+            }
+        }
+    
     def get_metadata(self) -> ToolMetadata:
         """Get tool metadata."""
         return ToolMetadata(
             name=self.node_config.name,
             description=self.node_config.description,
             input_schema=self._get_input_schema(),
+            output_schema=self.output_schema,
             backend=ToolBackend.LANGGRAPH,
+            owner_domain=self.owner_domain,
+            version=self.version,
             tags=frozenset(self.node_config.tags),
             effect_boundary=self._get_effect_boundary()
         )

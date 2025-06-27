@@ -27,8 +27,7 @@ from .prompt import (
     PromptTool,
     PromptChainTool,
     PromptTemplateManager,
-    PromptType,
-    PromptConfig
+    PromptTemplate
 )
 
 __all__ = [
@@ -50,6 +49,5 @@ __all__ = [
     "PromptTool",
     "PromptChainTool",
     "PromptTemplateManager",
-    "PromptType",
-    "PromptConfig"
+    "PromptTemplate"
 ] 
