@@ -1,6 +1,6 @@
 from typing import List
 
-from agent_service.services.tradition_repository import TraditionRepository
+from app.repositories.tradition_repository import TraditionRepository
 
 
 class TraditionService:

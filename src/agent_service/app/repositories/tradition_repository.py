@@ -1,7 +1,13 @@
+"""
+Tradition Repository
+
+Manages access to tradition data (e.g., knowledge base directories).
+"""
+
 import os
 from typing import List
 
-from config import DATA_DIR
+from app.config import get_settings
 
 
 class TraditionRepository:
@@ -9,8 +15,9 @@ class TraditionRepository:
     Manages access to tradition data (e.g., knowledge base directories).
     """
 
-    def __init__(self, data_dir: str = DATA_DIR):
-        self._data_dir = data_dir
+    def __init__(self, data_dir: str = None):
+        settings = get_settings()
+        self._data_dir = data_dir or settings.data_dir or "/app/local_gcs_bucket"
 
     def list_traditions(self) -> List[str]:
         """
@@ -24,4 +31,4 @@ class TraditionRepository:
             d
             for d in os.listdir(self._data_dir)
             if os.path.isdir(os.path.join(self._data_dir, d))
-        ]
+        ] 
