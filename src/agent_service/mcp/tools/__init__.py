@@ -30,6 +30,15 @@ from .prompt import (
     PromptTemplate
 )
 
+# Graph tool implementations
+from .graph_tools import (
+    GraphTool,
+    GraphToolConfig,
+    JournalSummaryGraphTool,
+    PerformanceReviewGraphTool,
+    GraphToolFactory
+)
+
 __all__ = [
     # Base classes
     "MCPTool",
@@ -49,5 +58,12 @@ __all__ = [
     "PromptTool",
     "PromptChainTool",
     "PromptTemplateManager",
-    "PromptTemplate"
+    "PromptTemplate",
+    
+    # Graph tools
+    "GraphTool",
+    "GraphToolConfig",
+    "JournalSummaryGraphTool",
+    "PerformanceReviewGraphTool",
+    "GraphToolFactory"
 ] 

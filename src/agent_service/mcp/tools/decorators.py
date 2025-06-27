@@ -53,17 +53,19 @@ def register_tool(
             raise ValueError(f"Invalid effect_boundary: {effect_boundary}. Must be one of {[e.value for e in EffectBoundary]}")
         
         # Set default output schema if not provided
-        if output_schema is None:
-            output_schema = {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "type": {"type": "string"},
-                        "content": {"type": "object"}
-                    }
+        default_output_schema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "content": {"type": "object"}
                 }
             }
+        }
+        
+        # Use the provided output_schema or the default
+        final_output_schema = output_schema if output_schema is not None else default_output_schema
         
         # Convert lists to frozensets for immutability
         tags_set = frozenset(tags or [])
@@ -76,7 +78,7 @@ def register_tool(
                 name=name,
                 description=description,
                 input_schema=input_schema,
-                output_schema=output_schema,
+                output_schema=final_output_schema,
                 backend=backend_enum,
                 owner_domain=owner_domain,
                 version=version,
@@ -95,7 +97,7 @@ def register_tool(
         
         @property
         def output_schema_property(self) -> Dict[str, Any]:
-            return output_schema
+            return final_output_schema
         
         @property
         def owner_domain_property(self) -> str:
@@ -137,7 +139,7 @@ def register_tool(
             'name': name,
             'description': description,
             'input_schema': input_schema,
-            'output_schema': output_schema,
+            'output_schema': final_output_schema,
             'backend': backend,
             'owner_domain': owner_domain,
             'version': version,
