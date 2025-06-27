@@ -83,7 +83,7 @@ class BaseNode(ABC, Generic[StateT]):
             self.logger.error(f"Error in node {self.name}: {e}")
             return self._handle_error(state, e)
     
-    @trace_function(f"node_execution", tags=["node", "execution"])
+    @trace_function(name="node_execution", tags=["node", "execution"])
     def _execute_with_tracing(self, state: StateT) -> StateT:
         """
         Execute the node with tracing.

@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 from qdrant_client.http import models
 
-from agent_service.vector_stores.qdrant_client import (QdrantClient,
+from agent_service.app.clients.qdrant_client import (QdrantClient,
                                                        SearchResult)
 
 # Mark all tests in this file as asyncio

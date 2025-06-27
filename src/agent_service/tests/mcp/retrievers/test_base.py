@@ -125,7 +125,7 @@ class TestRetriever:
             def __init__(self):
                 self.documents = sample_documents
             
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return self.documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -141,12 +141,13 @@ class TestRetriever:
         assert isinstance(retriever, Retriever)
         
         # Test retrieve method
-        docs = retriever.retrieve("test query")
+        import asyncio
+        docs = asyncio.run(retriever.retrieve("test query"))
         assert len(docs) == 2
         assert docs[0].page_content == "Test document 1"
         
         # Test batch_retrieve method
-        batch_docs = retriever.batch_retrieve(["query1", "query2"])
+        batch_docs = asyncio.run(retriever.batch_retrieve(["query1", "query2"]))
         assert len(batch_docs) == 2
         assert len(batch_docs[0]) == 2
         assert len(batch_docs[1]) == 2
@@ -166,7 +167,7 @@ class TestRetriever:
             def __init__(self):
                 self.context = {}
             
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return []
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -192,7 +193,7 @@ class TestRetriever:
             def __init__(self):
                 self.reload_count = 0
             
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return []
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -232,7 +233,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class TestRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -257,7 +258,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class TestRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -282,7 +283,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class TestRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -308,7 +309,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class TestRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -336,7 +337,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class TestRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -365,7 +366,7 @@ class TestRetrieverRegistry:
         registry = RetrieverRegistry()
         
         class VectorRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -378,7 +379,7 @@ class TestRetrieverRegistry:
                 )
         
         class SQLRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -422,7 +423,7 @@ class TestRetrieverIntegration:
                 self.documents = sample_documents
                 self.context = {}
             
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 # Use context if available
                 if self.context.get("filter"):
                     return [doc for doc in self.documents if self.context["filter"] in doc.page_content]
@@ -457,12 +458,13 @@ class TestRetrieverIntegration:
         assert metadata.capabilities == ["search", "filtering", "context_aware"]
         
         # Test retrieval
-        docs = retriever.retrieve("test query")
+        import asyncio
+        docs = asyncio.run(retriever.retrieve("test query"))
         assert len(docs) == 2
         
         # Test context setting
         retriever.set_context({"filter": "document 1"})
-        filtered_docs = retriever.retrieve("test query")
+        filtered_docs = asyncio.run(retriever.retrieve("test query"))
         assert len(filtered_docs) == 1
         assert "document 1" in filtered_docs[0].page_content
         
@@ -477,7 +479,7 @@ class TestRetrieverIntegration:
         
         # Create different types of retrievers
         class VectorRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -490,7 +492,7 @@ class TestRetrieverIntegration:
                 )
         
         class SQLRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -503,7 +505,7 @@ class TestRetrieverIntegration:
                 )
         
         class GraphRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return sample_documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -581,7 +583,7 @@ class TestPropertyBased:
                 self.documents = sample_documents
                 self.initialized = True
             
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return self.documents
             
             def get_metadata(self) -> RetrieverMetadata:
@@ -603,7 +605,8 @@ class TestPropertyBased:
         assert retriever.initialized is True
         
         # Test retrieval
-        docs = retriever.retrieve("test")
+        import asyncio
+        docs = asyncio.run(retriever.retrieve("test"))
         assert len(docs) == 2
         
         # Test metadata
@@ -657,7 +660,7 @@ class TestErrorHandling:
     def test_retriever_missing_metadata_method(self):
         """Test that retriever without get_metadata method raises error."""
         class InvalidRetriever(Retriever):
-            def retrieve(self, query: str) -> List[Document]:
+            async def retrieve(self, query: str) -> List[Document]:
                 return []
         
         with pytest.raises(TypeError):

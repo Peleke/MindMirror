@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from agent_service.embedding import get_embedding
-from agent_service.vector_stores.qdrant_client import get_qdrant_client
+from agent_service.app.clients.qdrant_client import get_qdrant_client
 from shared.clients import AuthContext, create_journal_client
 
 logger = logging.getLogger(__name__)

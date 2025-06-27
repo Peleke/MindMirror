@@ -160,6 +160,8 @@ class AgentStateFactory:
     ) -> JournalAgentState:
         """Create a new journal agent state."""
         now = datetime.utcnow()
+        # Sort entry types to ensure consistent order
+        entry_types = sorted(list(set(entry.get("entry_type", "unknown") for entry in journal_entries)))
         return JournalAgentState(
             user_id=user_id,
             tradition=tradition,
@@ -176,7 +178,7 @@ class AgentStateFactory:
             analysis=None,
             review=None,
             date_range=None,
-            entry_types=list(set(entry.get("entry_type", "unknown") for entry in journal_entries)),
+            entry_types=entry_types,
         )
     
     @staticmethod
@@ -319,6 +321,11 @@ class StateManager:
             Updated RAG agent state
         """
         updated_state = state.copy()
+        # Create deep copies of lists to ensure immutability
+        updated_state["context"] = state["context"].copy()
+        updated_state["retrieved_documents"] = state["retrieved_documents"].copy()
+        updated_state["retrieval_scores"] = state["retrieval_scores"].copy()
+        
         updated_state["context"].append(document)
         updated_state["retrieved_documents"].append(document)
         if score is not None:

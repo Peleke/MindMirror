@@ -11,10 +11,10 @@ from unittest.mock import Mock, patch
 from typing import List, Optional
 from datetime import datetime
 
-from agent_service.app.prompts.service import PromptService
-from agent_service.app.prompts.models import PromptInfo, PromptConfig, StoreType
-from agent_service.app.prompts.stores.memory import InMemoryPromptStore
-from agent_service.app.prompts.exceptions import PromptNotFoundError, PromptValidationError
+from agent_service.llms.prompts.service import PromptService
+from agent_service.llms.prompts.models import PromptInfo, PromptConfig, StoreType
+from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
+from agent_service.llms.prompts.exceptions import PromptNotFoundError, PromptValidationError
 
 
 class TestPromptService:
@@ -237,7 +237,7 @@ class TestPromptService:
         service.store.get_prompt.return_value = sample_prompt_info
         
         # Mock Jinja2 template rendering
-        with patch('agent_service.app.prompts.service.Template') as mock_template:
+        with patch('agent_service.llms.prompts.service.Template') as mock_template:
             mock_template.return_value.render.return_value = "Hello John!"
             
             result = service.render_prompt("test_prompt", {"name": "John"})
@@ -251,7 +251,7 @@ class TestPromptService:
         """Test rendering a prompt with specific version."""
         service.store.get_prompt.return_value = sample_prompt_info
         
-        with patch('agent_service.app.prompts.service.Template') as mock_template:
+        with patch('agent_service.llms.prompts.service.Template') as mock_template:
             mock_template.return_value.render.return_value = "Hello John!"
             
             result = service.render_prompt("test_prompt", {"name": "John"}, version="1.0")
@@ -270,7 +270,7 @@ class TestPromptService:
         """Test rendering a prompt with template error."""
         service.store.get_prompt.return_value = sample_prompt_info
         
-        with patch('agent_service.app.prompts.service.Template') as mock_template:
+        with patch('agent_service.llms.prompts.service.Template') as mock_template:
             mock_template.side_effect = Exception("Template error")
             
             with pytest.raises(Exception, match="Template error"):

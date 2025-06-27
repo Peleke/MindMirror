@@ -37,7 +37,7 @@ class GraphRunner(Generic[StateT]):
         self.graph = graph
         self.logger = logging.getLogger(f"{__name__}.GraphRunner")
     
-    @trace_function("graph_execution", tags=["graph", "execution"])
+    @trace_function(name="graph_execution", tags=["graph", "execution"])
     async def run_async(self, state: StateT) -> StateT:
         """
         Run the graph asynchronously.
@@ -65,7 +65,7 @@ class GraphRunner(Generic[StateT]):
                 error_type=type(e).__name__,
             )
     
-    @trace_function("graph_execution", tags=["graph", "execution"])
+    @trace_function(name="graph_execution", tags=["graph", "execution"])
     def run_sync(self, state: StateT) -> StateT:
         """
         Run the graph synchronously.

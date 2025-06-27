@@ -7,6 +7,7 @@ from celery.exceptions import Retry
 
 from agent_service.journal_indexer import (JournalIndexer,
                                            index_journal_entry_by_id)
+from agent_service.app.clients.qdrant_client import get_qdrant_client
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,6 @@ async def health_check_task(self):
     """
     try:
         logger.info("Running health check task")
-        from agent_service.vector_stores.qdrant_client import get_qdrant_client
 
         health_status = {
             "timestamp": datetime.utcnow().isoformat(),
