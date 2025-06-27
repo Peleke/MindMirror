@@ -13,6 +13,7 @@ An open-source, AI-powered personal performance platform that transforms your jo
 - **🌐 GraphQL Federation Mastery:** Hive-powered microservices architecture enabling independent scaling, deployment, and development cycles while maintaining type safety across the entire stack
 - **🔄 Event-Driven Consistency:** Advanced CQRS patterns with Redis pub/sub ensure eventual consistency across distributed services while maintaining sub-200ms response times
 - **🛡️ JWT-Native Security:** End-to-end authentication with Supabase RLS policies, middleware-based route protection, and secure service-to-service communication
+- **💾 Configurable Storage Backends:** Environment-based storage configuration supporting YAML (development), GCS (production), and memory (fallback) with seamless switching
 
 **Differentiated AI Application Layer:**
 - **📊 Context-Aware Personalization:** Unlike generic ChatGPT interfaces, every AI response incorporates user's historical journal data, goals, and selected knowledge traditions (Stoicism, Ayurveda, etc.)
@@ -61,33 +62,54 @@ Before you begin, make sure you have:
 2. **Get your API key** from API Keys section:
    - `RESEND_API_KEY` - Your Resend API key for sending welcome emails
 
-### Quick Start
+### Quick Start with Make Commands
+
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
-cd librarian-ai
+cd MindMirror
 
-# 2. Set up environment variables
-cp env.example .env
-# Edit .env and add your OPENAI_API_KEY (or configure Ollama settings)
-
-# 3. Launch the full stack
+# 2. Launch the full stack (automatically sets up everything)
 make demo
 
-# 4. Access the application
+# 3. Access the application
 # - Main UI: http://localhost:3001
 # - GraphQL Gateway: http://localhost:4000/graphql
 # - Streamlit UI: http://localhost:8501
 # - API Monitoring: http://localhost:5555
+# - GCS Emulator: http://localhost:4443
 ```
 
-**That's it!** The demo will launch a complete distributed system with:
-- 🧠 **Agent Service** - AI reasoning and RAG engine
-- 📖 **Journal Service** - Structured and freeform journaling
-- 🌐 **Next.js Web App** - Modern, responsive frontend
-- 🔗 **Hive Gateway** - Federated GraphQL API layer
-- 🗂️ **Vector Database** - Qdrant for semantic search
-- ⚡ **Task Queue** - Celery workers for background processing
+**That's it!** The `make demo` command automatically:
+- 🧠 **Builds** the Qdrant knowledge base
+- 📁 **Creates** necessary directories (`prompts`, `credentials`, `local_gcs_bucket`)
+- 🐳 **Launches** all Docker containers
+- 🔧 **Initializes** storage (GCS bucket, prompts directory)
+- ✅ **Provides** health check guidance
+
+### 🛠️ Development Commands
+
+```bash
+# Main Commands
+make demo              # Launch the full MindMirror stack
+make stop              # Stop all running services
+make clean             # Stop and remove all containers/volumes
+
+# Development
+make logs              # View logs from all services
+make status            # Show current service status
+make health-check      # Check health of all services
+make rebuild service=<name>  # Rebuild specific service
+
+# Storage Management
+make init-storage      # Initialize storage (GCS bucket, prompts)
+make switch-storage type=<yaml|gcs|memory>  # Switch storage backend
+make build-knowledge-base  # Build Qdrant knowledge base
+
+# Quick Access
+make playground        # Show GraphQL endpoint URLs
+make help              # Show all available commands
+```
 
 ### 🚀 Deployment Modes
 
@@ -101,6 +123,35 @@ This allows you to:
 - ✅ Deploy only the landing page to production for marketing/early access
 - ✅ Easily transition to full deployment by changing environment variable
 
+### 💾 Storage Configuration
+
+MindMirror supports multiple storage backends with environment-based configuration:
+
+```bash
+# Development (YAML Storage)
+PROMPT_STORAGE_TYPE=yaml
+YAML_STORAGE_PATH=./prompts
+
+# Production (GCS Storage)
+PROMPT_STORAGE_TYPE=gcs
+GCS_BUCKET_NAME=mindmirror-prompts
+GCS_CREDENTIALS_FILE=/app/credentials/gcs-credentials.json
+
+# Testing (GCS Emulator)
+GCS_EMULATOR_HOST=localhost:4443
+GCS_BUCKET_NAME=local_gcs_bucket
+
+# Fallback (Memory Storage)
+PROMPT_STORAGE_TYPE=memory
+```
+
+**Storage Type Selection:**
+1. **Explicit Configuration**: `PROMPT_STORAGE_TYPE` environment variable
+2. **Environment Defaults**:
+   - Development: YAML storage
+   - Production: GCS storage (if bucket configured)
+3. **Fallback**: Memory storage
+
 </details>
 
 
@@ -111,6 +162,7 @@ This allows you to:
 -   **🔄 Intelligent Indexing:** Journal entries created via the GraphQL API are automatically processed by Celery workers and made immediately available for semantic search.
 -   **☁️ Knowledge Base Ingestion:** Secure upload and processing of PDFs and text files into tradition-specific knowledge collections.
 -   **🚀 Microservices Architecture:** Distributed system of specialized services orchestrated through a federated GraphQL gateway.
+-   **💾 Configurable Storage:** Environment-based storage configuration supporting YAML, GCS, and memory backends with seamless switching.
 -   **✅ Production-Ready Stack:** Fully containerized with Docker, complete with healthchecks, persistent data, and horizontal scaling capabilities.
 
 ## 🏛️ Architecture
@@ -129,7 +181,7 @@ graph TB
     end
 
     subgraph "Core Services"
-        D[🧠 Agent Service<br/>Port 8000<br/>AI & RAG Engine]
+        D[🧠 Agent Service<br/>Port 8000<br/>AI & RAG Engine<br/>Configurable Storage]
         E[📖 Journal Service<br/>Port 8001<br/>Journaling & History]
     end
 
@@ -138,10 +190,18 @@ graph TB
         G[🌸 Flower<br/>Port 5555<br/>Task Monitoring]
     end
 
+    subgraph "Storage Layer"
+        H[💾 YAML Storage<br/>Development Default]
+        I[☁️ GCS Storage<br/>Production Default]
+        J[🧠 Memory Storage<br/>Fallback]
+        K[🔧 Storage Factory<br/>Environment-Based Selection]
+    end
+
     subgraph "Data Layer"
-        H[🐘 PostgreSQL<br/>Port 5432<br/>Relational Data]
-        I[🧠 Qdrant<br/>Port 6333<br/>Vector Database]
-        J[🔴 Redis<br/>Port 6379<br/>Task Queue]
+        L[🐘 PostgreSQL<br/>Port 5432<br/>Relational Data]
+        M[🧠 Qdrant<br/>Port 6333<br/>Vector Database]
+        N[🔴 Redis<br/>Port 6379<br/>Task Queue]
+        O[☁️ GCS Emulator<br/>Port 4443<br/>Local Testing]
     end
 
     A --> C
@@ -153,21 +213,74 @@ graph TB
     E --> F
     F --> G
     
-    D --> H
-    D --> I
-    D --> J
-    E --> H
-    E --> J
-    F --> H
-    F --> I
-    F --> J
+    D --> K
+    K --> H
+    K --> I
+    K --> J
+    
+    D --> L
+    D --> M
+    D --> N
+    E --> L
+    E --> N
+    F --> L
+    F --> M
+    F --> N
 
     style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     style C fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     style D fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
     style E fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style H fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    style I fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    style K fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    style L fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    style M fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+```
+
+### Storage Architecture
+
+```mermaid
+graph LR
+    subgraph "Environment Detection"
+        A[ENVIRONMENT Variable]
+        B[PROMPT_STORAGE_TYPE]
+        C[GCS_BUCKET_NAME]
+    end
+
+    subgraph "Storage Factory"
+        D[PromptServiceFactory]
+        E[get_storage_type_from_environment]
+        F[create_from_environment]
+    end
+
+    subgraph "Storage Backends"
+        G[YAMLPromptStore<br/>Local YAML Files]
+        H[GCSPromptStore<br/>Google Cloud Storage]
+        I[InMemoryPromptStore<br/>Runtime Memory]
+    end
+
+    subgraph "Development"
+        J[GCS Emulator<br/>Local Testing]
+        K[Local GCS Bucket<br/>File System]
+    end
+
+    A --> D
+    B --> D
+    C --> D
+    
+    D --> E
+    D --> F
+    
+    F --> G
+    F --> H
+    F --> I
+    
+    H --> J
+    H --> K
+
+    style D fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style G fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    style H fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style I fill:#fce4ec,stroke:#c2185b,stroke-width:2px
 ```
 
 ## 🔧 Tech Stack
@@ -181,7 +294,8 @@ graph TB
 | **Vector Store**| Qdrant                                                        |
 | **Task Queue** | Celery, Redis                                                  |
 | **AI/RAG**     | LangChain, OpenAI / Ollama                                     |
-| **Infra**      | Docker, Docker Compose                                         |
+| **Storage**    | YAML (dev), GCS (prod), Memory (fallback)                     |
+| **Infra**      | Docker, Docker Compose, Make                                  |
 | **Testing**    | Pytest, Jest, React Testing Library                           |
 
 
