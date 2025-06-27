@@ -1,8 +1,8 @@
 """
-Tests for LLM service integration with YAML templates.
+Tests for LLM service YAML integration.
 
-This module tests that the LLM service can use YAML templates
-instead of hardcoded prompts.
+These tests verify that the LLM service correctly integrates with
+YAML-based prompt management and configuration.
 """
 
 import pytest
@@ -10,12 +10,17 @@ import tempfile
 import shutil
 import asyncio
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, AsyncMock, patch
+from typing import List, Dict, Any, Optional
 
-from agent_service.services.llm_service import LLMService
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.language_models import BaseLanguageModel
+
+from agent_service.app.services.llm_service import LLMService
 from agent_service.llms.prompts.stores.yaml import YAMLPromptStore
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.models import PromptConfig, StoreType, PromptInfo
+from agent_service.llms.prompts.factory import PromptServiceFactory
 
 
 class TestLLMServiceYAMLIntegration:

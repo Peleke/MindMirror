@@ -7,7 +7,7 @@ Manages access to tradition data (e.g., knowledge base directories).
 import os
 from typing import List
 
-from app.config import get_settings
+from agent_service.app.config import get_settings
 
 
 class TraditionRepository:

@@ -11,8 +11,8 @@ from httpx import ASGITransport, AsyncClient
 from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
                            RedisTestBackend, RedisTestBroker)
 
-from agent_service.vector_stores.qdrant_client import QdrantClient
-from agent_service.web.app import app
+from agent_service.app.clients.qdrant_client import QdrantClient
+from agent_service.app.main import app
 from shared.auth import CurrentUser, UserRole, get_current_user
 
 # Test configuration for agent service
@@ -48,26 +48,26 @@ def celery_app(celery_config):
     """
     Creates a Celery app for testing with proper configuration.
     """
-    from agent_service.celery_app import create_celery_app
+    from agent_service.app.celery import create_celery_app
 
     app = create_celery_app()
     app.conf.update(celery_config)
 
     # Apply task routes for testing
     app.conf.task_routes = {
-        "agent_service.tasks.index_journal_entry_task": {
+        "agent_service.app.tasks.index_journal_entry_task": {
             "priority": 5,
             "routing_key": "indexing",
         },
-        "agent_service.tasks.batch_index_journal_entries_task": {
+        "agent_service.app.tasks.batch_index_journal_entries_task": {
             "priority": 3,
             "routing_key": "indexing",
         },
-        "agent_service.tasks.health_check_task": {
+        "agent_service.app.tasks.health_check_task": {
             "priority": 7,
             "routing_key": "monitoring",
         },
-        "agent_service.tasks.reindex_user_entries_task": {
+        "agent_service.app.tasks.reindex_user_entries_task": {
             "priority": 2,
             "routing_key": "maintenance",
         },
@@ -191,7 +191,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an HTTP client for testing the agent service API.
     """
-    from agent_service.web.app import app
+    from agent_service.app.main import app
     from shared.auth import CurrentUser, UserRole, get_current_user
 
     async def override_get_current_user() -> CurrentUser:

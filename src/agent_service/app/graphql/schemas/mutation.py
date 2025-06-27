@@ -12,12 +12,12 @@ from typing import Optional
 import strawberry
 from strawberry.types import Info
 
-from app.clients.qdrant_client import get_qdrant_client
-from app.graphql.context import GraphQLContext, get_current_user_from_context
-from app.graphql.types.suggestion_types import PerformanceReview
-from app.graphql.types.tool_types import ToolExecutionResult
-from app.services.llm_service import LLMService
-from app.embedding import get_embedding
+from agent_service.app.clients.qdrant_client import get_qdrant_client
+from agent_service.app.graphql.context import GraphQLContext, get_current_user_from_context
+from agent_service.app.graphql.types.suggestion_types import PerformanceReview
+from agent_service.app.graphql.types.tool_types import ToolExecutionResult
+from agent_service.app.services.llm_service import LLMService
+from agent_service.embedding import get_embedding
 
 logger = logging.getLogger(__name__)
 

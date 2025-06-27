@@ -7,9 +7,9 @@ Clean GraphQL router setup with proper schema composition and context management
 import strawberry
 from strawberry.fastapi import GraphQLRouter
 
-from app.graphql.context import GraphQLContext, get_context
-from app.graphql.schemas.mutation import Mutation
-from app.graphql.schemas.query import Query
+from agent_service.app.graphql.context import GraphQLContext, get_context
+from agent_service.app.graphql.schemas.mutation import Mutation
+from agent_service.app.graphql.schemas.query import Query
 
 
 # Create GraphQL schema

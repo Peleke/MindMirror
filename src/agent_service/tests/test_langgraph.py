@@ -135,7 +135,7 @@ class TestNodes:
         assert node.name == "test_llm_node"
         assert node.task == "test_task"
     
-    @patch('agent_service.services.llm_service.LLMService')
+    @patch('agent_service.app.services.llm_service.LLMService')
     def test_summarizer_node_execution(self, mock_llm_service):
         """Test summarizer node execution."""
         mock_service = Mock()
@@ -156,7 +156,7 @@ class TestNodes:
         assert result["summary"] == "Test summary"
         mock_service.get_journal_summary.assert_called_once()
     
-    @patch('agent_service.services.llm_service.LLMService')
+    @patch('agent_service.app.services.llm_service.LLMService')
     def test_reviewer_node_execution(self, mock_llm_service):
         """Test reviewer node execution."""
         mock_service = Mock()
@@ -358,7 +358,7 @@ class TestIntegration:
             {"content": "Learned new things", "date": "2024-01-02"},
         ]
         
-        with patch('agent_service.services.llm_service.LLMService'):
+        with patch('agent_service.app.services.llm_service.LLMService'):
             result = await service.generate_journal_summary(
                 user_id="test_user",
                 journal_entries=journal_entries,
@@ -379,7 +379,7 @@ class TestIntegration:
             "period": "Q1 2024"
         }
         
-        with patch('agent_service.services.llm_service.LLMService'):
+        with patch('agent_service.app.services.llm_service.LLMService'):
             result = await service.generate_performance_review(
                 user_id="test_user",
                 performance_data=performance_data,

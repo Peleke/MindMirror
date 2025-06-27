@@ -8,9 +8,9 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, List, Any, Optional
 
-from agent_service.services.llm_service import LLMService
+from agent_service.app.services.llm_service import LLMService
 from agent_service.mcp.tools.base import ToolRegistry, MCPTool, ToolMetadata, ToolBackend, EffectBoundary
-from agent_service.api.types.suggestion_types import PerformanceReview
+from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 
 
 class MockTool(MCPTool):

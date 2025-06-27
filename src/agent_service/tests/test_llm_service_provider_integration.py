@@ -1,18 +1,23 @@
 """
-Tests for LLMService provider integration.
+Tests for LLM service provider integration.
 
-This module tests the integration between LLMService and the new provider system,
-ensuring backward compatibility while validating new functionality.
+These tests verify that the LLM service correctly integrates with
+different LLM providers and handles fallbacks gracefully.
 """
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any, List
+from unittest.mock import Mock, AsyncMock, patch
+from typing import List, Dict, Any, Optional
 
-from agent_service.services.llm_service import LLMService
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.language_models import BaseLanguageModel
+from langchain_openai import ChatOpenAI
+from langchain_community.llms import Ollama
+
+from agent_service.app.services.llm_service import LLMService
+from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.llms.provider_manager import ProviderManager
 from agent_service.llms.prompts.service import PromptService
-from agent_service.api.types.suggestion_types import PerformanceReview
 
 
 @pytest.fixture(scope="function")
@@ -73,7 +78,7 @@ class TestLLMServiceProviderIntegration:
     
     def test_llm_service_initialization_without_provider_manager(self, mock_prompt_service):
         """Test LLMService initialization without provider manager (uses global)."""
-        with patch('agent_service.services.llm_service.get_provider_manager') as mock_get:
+        with patch('agent_service.app.services.llm_service.get_provider_manager') as mock_get:
             mock_manager = Mock(spec=ProviderManager)
             mock_get.return_value = mock_manager
             
@@ -292,7 +297,7 @@ class TestLLMServiceMigration:
         old_service = LLMService()
         
         # New way (recommended)
-        with patch('agent_service.services.llm_service.get_provider_manager') as mock_get:
+        with patch('agent_service.app.services.llm_service.get_provider_manager') as mock_get:
             mock_manager = Mock(spec=ProviderManager)
             mock_get.return_value = mock_manager
             
@@ -310,7 +315,7 @@ class TestLLMServiceMigration:
         old_service = LLMService(llm=mock_llm)
         
         # New way (recommended)
-        with patch('agent_service.services.llm_service.get_provider_manager') as mock_get:
+        with patch('agent_service.app.services.llm_service.get_provider_manager') as mock_get:
             mock_manager = Mock(spec=ProviderManager)
             mock_get.return_value = mock_manager
             

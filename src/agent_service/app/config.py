@@ -38,10 +38,6 @@ class Settings(BaseSettings):
     # Database settings
     database_url: str = Field(env="DATABASE_URL")
     
-    # External service settings
-    journal_service_url: str = Field(env="JOURNAL_SERVICE_URL")
-    users_service_url: str = Field(env="USERS_SERVICE_URL")
-    
     # Vector database settings
     qdrant_url: str = Field(env="QDRANT_URL")
     qdrant_api_key: str = Field(default="", env="QDRANT_API_KEY")

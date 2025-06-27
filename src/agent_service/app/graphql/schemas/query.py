@@ -11,16 +11,16 @@ from typing import List, Optional
 import strawberry
 from strawberry.types import Info
 
-from app.clients.journal_client import JournalClient
-from app.clients.qdrant_client import get_qdrant_client
-from app.graphql.context import GraphQLContext, get_current_user_from_context
-from app.graphql.types.suggestion_types import JournalSummary
-from app.graphql.types.tool_types import ToolMetadata, ToolRegistryHealth
-from app.services.llm_service import LLMService
-from app.services.tradition_service import TraditionService
-from app.repositories.tradition_repository import TraditionRepository
-from app.embedding import get_embedding
-from app.qdrant_engine import get_qdrant_engine_for_tradition
+from agent_service.app.clients.journal_client import JournalClient
+from agent_service.app.clients.qdrant_client import get_qdrant_client
+from agent_service.app.graphql.context import GraphQLContext, get_current_user_from_context
+from agent_service.app.graphql.types.suggestion_types import JournalSummary
+from agent_service.app.graphql.types.tool_types import ToolMetadata, ToolRegistryHealth
+from agent_service.app.services.llm_service import LLMService
+from agent_service.app.services.tradition_service import TraditionService
+from agent_service.app.repositories.tradition_repository import TraditionRepository
+from agent_service.embedding import get_embedding
+from agent_service.qdrant_engine import get_qdrant_engine_for_tradition
 
 logger = logging.getLogger(__name__)
 

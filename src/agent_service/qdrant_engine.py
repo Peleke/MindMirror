@@ -17,7 +17,7 @@ from pydantic import Field
 
 from agent_service.chain import create_rag_chain
 from agent_service.embedding import get_embedding
-from agent_service.vector_stores.qdrant_client import QdrantClient
+from agent_service.app.clients.qdrant_client import QdrantClient
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,17 @@
 """
-Service factory for managing service implementations.
+Service factory for backward compatibility.
 
-This factory provides a way to switch between different service
-implementations based on configuration or feature flags.
+This module provides factory functions to create services with the old interface
+for backward compatibility during the migration to the new architecture.
 """
 
 import os
 import logging
 from typing import Optional
 
-from agent_service.services.llm_service import LLMService
+from agent_service.app.services.llm_service import LLMService
+from agent_service.llms.prompts.factory import PromptServiceFactory, get_prompt_service
+from agent_service.llms.provider_manager import get_provider_manager
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.models import PromptConfig, StoreType
 from agent_service.llms.prompts.stores.local import LocalPromptStore

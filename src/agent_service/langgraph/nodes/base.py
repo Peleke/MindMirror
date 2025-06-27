@@ -1,18 +1,21 @@
 """
-Base node class for LangGraph agents.
+Base node classes for LangGraph workflows.
 
-This module provides the BaseNode class that all graph nodes inherit from,
-with common functionality for tracing, error handling, and state management.
+This module provides base classes for creating nodes in LangGraph workflows,
+including base nodes and LLM-specific nodes.
 """
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, TypeVar, Generic
+from typing import Any, Dict, Optional, TypeVar, Generic, List
 
 from langchain_core.runnables import Runnable
+from langchain_core.language_models import BaseLanguageModel
+from langchain_core.messages import HumanMessage, AIMessage
 
 from agent_service.langgraph.state import BaseAgentState, StateManager
 from agent_service.tracing.decorators import trace_function
+from agent_service.app.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +182,7 @@ class LLMNode(BaseNode[StateT]):
         self.overrides = overrides or {}
         
         # Import here to avoid circular imports
-        from agent_service.services.llm_service import LLMService
+        from agent_service.app.services.llm_service import LLMService
         self.llm_service = LLMService()
     
     def get_llm(self) -> Runnable:

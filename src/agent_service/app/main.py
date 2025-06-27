@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.graphql_router import graphql_app
-from app.api.rest_router import router as rest_router
-from app.config import get_settings
+from agent_service.app.api.graphql_router import graphql_app
+from agent_service.app.api.rest_router import router as rest_router
+from agent_service.app.config import get_settings
 
 # Configure logging
 logging.basicConfig(

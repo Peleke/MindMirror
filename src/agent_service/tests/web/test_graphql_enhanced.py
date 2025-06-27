@@ -9,8 +9,10 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
 
-from agent_service.web.app import Query, Mutation, ToolMetadata, ToolExecutionResult, ToolRegistryHealth
-from agent_service.services.llm_service import LLMService
+from agent_service.app.graphql.schemas.query import Query
+from agent_service.app.graphql.schemas.mutation import Mutation
+from agent_service.app.graphql.types.tool_types import ToolMetadata, ToolExecutionResult, ToolRegistryHealth
+from agent_service.app.services.llm_service import LLMService
 from agent_service.mcp.tools.base import ToolRegistry, MCPTool, ToolMetadata as MCPToolMetadata, ToolBackend, EffectBoundary
 from shared.auth import CurrentUser
 from uuid import uuid4
@@ -190,7 +192,6 @@ class TestEnhancedGraphQLQuery:
         info.context = {"current_user": mock_current_user}
         return info
     
-    @pytest.fixture
     def mock_llm_service(self):
         """Create a mock LLMService with tool registry."""
         service = Mock(spec=LLMService)
@@ -247,15 +248,13 @@ class TestEnhancedGraphQLQuery:
         
         return service
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_list_tools_no_filter(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test listing tools without filters."""
+    async def test_list_tools_no_filter(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.list_tools(info=mock_info)
-        
         assert len(result) == 2
         assert result[0].name == "journal_summary_graph"
         assert result[0].owner_domain == "journaling"
@@ -263,19 +262,16 @@ class TestEnhancedGraphQLQuery:
         assert result[0].backend == "langgraph"
         assert "journal" in result[0].tags
         assert "summarizer" in result[0].subtools
-        
         assert result[1].name == "performance_review_graph"
         assert result[1].owner_domain == "review"
         assert result[1].version == "1.0.0"
-        
         mock_llm_service.list_tools.assert_called_once_with(None, None, None, None)
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_list_tools_with_filters(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test listing tools with filters."""
+    async def test_list_tools_with_filters(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.list_tools(
             info=mock_info,
@@ -283,18 +279,15 @@ class TestEnhancedGraphQLQuery:
             tags=["journal"],
             owner_domain="journaling"
         )
-        
         mock_llm_service.list_tools.assert_called_once_with("langgraph", ["journal"], "journaling", None)
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_get_tool_metadata(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test getting tool metadata."""
+    async def test_get_tool_metadata(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.get_tool_metadata(info=mock_info, tool_name="journal_summary_graph")
-        
         assert result is not None
         assert result.name == "journal_summary_graph"
         assert result.owner_domain == "journaling"
@@ -302,74 +295,62 @@ class TestEnhancedGraphQLQuery:
         assert result.backend == "langgraph"
         assert "journal" in result.tags
         assert "summarizer" in result.subtools
-        
         mock_llm_service.get_tool_metadata.assert_called_once_with("journal_summary_graph", None)
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_get_tool_metadata_with_version(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test getting tool metadata with specific version."""
+    async def test_get_tool_metadata_with_version(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.get_tool_metadata(info=mock_info, tool_name="journal_summary_graph", version="2.1.0")
-        
         mock_llm_service.get_tool_metadata.assert_called_once_with("journal_summary_graph", "2.1.0")
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_get_tool_metadata_not_found(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test getting metadata for non-existent tool."""
+    async def test_get_tool_metadata_not_found(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.get_tool_metadata.return_value = None
-        
         query = Query()
         result = await query.get_tool_metadata(info=mock_info, tool_name="non_existent")
-        
         assert result is None
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_get_tool_registry_health(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test getting tool registry health."""
+    async def test_get_tool_registry_health(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.get_tool_registry_health(info=mock_info)
-        
         assert result.status == "healthy"
         assert result.total_tools == 2
         assert result.unique_tools == 2
         assert result.backends["langgraph"] == 2
         assert result.error is None
-        
         mock_llm_service.get_tool_registry_health.assert_called_once()
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_get_tool_registry_health_error(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test getting tool registry health with error."""
+    async def test_get_tool_registry_health_error(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.get_tool_registry_health.side_effect = Exception("Registry error")
-        
         query = Query()
         result = await query.get_tool_registry_health(info=mock_info)
-        
         assert result.status == "unhealthy"
         assert result.total_tools == 0
         assert result.unique_tools == 0
         assert result.backends == {}
         assert "Registry error" in result.error
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
     @pytest.mark.asyncio
-    async def test_list_tool_names(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test listing tool names."""
+    async def test_list_tool_names(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
-        
         query = Query()
         result = await query.list_tool_names(info=mock_info)
-        
         assert result == ["journal_summary_graph", "performance_review_graph"]
         mock_llm_service.list_tool_names.assert_called_once()
     
@@ -429,44 +410,39 @@ class TestEnhancedGraphQLMutation:
         info.context = {"current_user": mock_current_user}
         return info
     
-    @pytest.fixture
     def mock_llm_service(self):
         """Create a mock LLMService with tool registry."""
         service = Mock(spec=LLMService)
         return service
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_tool_success(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test successful tool execution."""
+    async def test_execute_tool_success(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_tool.return_value = [{"result": "success"}]
-        
         mutation = Mutation()
         result = await mutation.execute_tool(
             info=mock_info,
             tool_name="journal_summary_graph",
             arguments={"journal_entries": [], "style": "concise"}
         )
-        
         assert result.success is True
         assert result.result == [{"result": "success"}]
         assert result.error is None
         assert result.execution_time_ms is not None
-        
         mock_llm_service.execute_tool.assert_called_once_with(
             "journal_summary_graph",
             {"journal_entries": [], "style": "concise"},
             None
         )
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_tool_with_version(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test tool execution with specific version."""
+    async def test_execute_tool_with_version(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_tool.return_value = [{"result": "success"}]
-        
         mutation = Mutation()
         result = await mutation.execute_tool(
             info=mock_info,
@@ -474,7 +450,6 @@ class TestEnhancedGraphQLMutation:
             arguments={"journal_entries": []},
             version="2.1.0"
         )
-        
         assert result.success is True
         mock_llm_service.execute_tool.assert_called_once_with(
             "journal_summary_graph",
@@ -482,32 +457,29 @@ class TestEnhancedGraphQLMutation:
             "2.1.0"
         )
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_tool_error(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test tool execution with error."""
+    async def test_execute_tool_error(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_tool.side_effect = ValueError("Tool not found")
-        
         mutation = Mutation()
         result = await mutation.execute_tool(
             info=mock_info,
             tool_name="non_existent",
             arguments={}
         )
-        
         assert result.success is False
         assert result.result == []
         assert "Tool not found" in result.error
         assert result.execution_time_ms is not None
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_subtool_success(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test successful subtool execution."""
+    async def test_execute_subtool_success(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_subtool.return_value = {"result": "subtool_success"}
-        
         mutation = Mutation()
         result = await mutation.execute_subtool(
             info=mock_info,
@@ -515,12 +487,10 @@ class TestEnhancedGraphQLMutation:
             subtool_name="summarizer",
             arguments={"arg": "value"}
         )
-        
         assert result.success is True
         assert result.result == [{"result": "subtool_success"}]
         assert result.error is None
         assert result.execution_time_ms is not None
-        
         mock_llm_service.execute_subtool.assert_called_once_with(
             "journal_summary_graph",
             "summarizer",
@@ -528,13 +498,12 @@ class TestEnhancedGraphQLMutation:
             None
         )
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_subtool_with_version(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test subtool execution with specific version."""
+    async def test_execute_subtool_with_version(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_subtool.return_value = {"result": "subtool_success"}
-        
         mutation = Mutation()
         result = await mutation.execute_subtool(
             info=mock_info,
@@ -543,7 +512,6 @@ class TestEnhancedGraphQLMutation:
             arguments={"arg": "value"},
             version="2.1.0"
         )
-        
         assert result.success is True
         mock_llm_service.execute_subtool.assert_called_once_with(
             "journal_summary_graph",
@@ -552,13 +520,12 @@ class TestEnhancedGraphQLMutation:
             "2.1.0"
         )
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_execute_subtool_error(self, mock_llm_service_class, mock_info, mock_llm_service):
-        """Test subtool execution with error."""
+    async def test_execute_subtool_error(self, mock_llm_service_class, mock_info):
+        mock_llm_service = self.mock_llm_service()
         mock_llm_service_class.return_value = mock_llm_service
         mock_llm_service.execute_subtool.side_effect = ValueError("Subtool not found")
-        
         mutation = Mutation()
         result = await mutation.execute_subtool(
             info=mock_info,
@@ -566,7 +533,6 @@ class TestEnhancedGraphQLMutation:
             subtool_name="non_existent",
             arguments={}
         )
-        
         assert result.success is False
         assert result.result == []
         assert "Subtool not found" in result.error
@@ -608,20 +574,17 @@ class TestEnhancedGraphQLIntegration:
         info.context = {"current_user": mock_current_user}
         return info
     
-    @patch("agent_service.web.app.LLMService")
+    @patch("agent_service.app.graphql.schemas.query.LLMService")
+    @patch("agent_service.app.graphql.schemas.mutation.LLMService")
     @pytest.mark.asyncio
-    async def test_full_tool_workflow(self, mock_llm_service_class, mock_info):
+    async def test_full_tool_workflow(self, mock_mutation_llm_service_class, mock_query_llm_service_class, mock_info):
         """Test complete tool workflow: list -> metadata -> execute."""
-        # Create a real LLMService with mock tool registry
         from agent_service.mcp.tools.base import ToolRegistry
-        
         registry = ToolRegistry()
         journal_tool = MockJournalTool()
         review_tool = MockPerformanceReviewTool()
-        
         registry.register(journal_tool)
         registry.register(review_tool)
-        
         mock_llm_service = Mock(spec=LLMService)
         mock_llm_service.tool_registry = registry
         mock_llm_service.list_tools.return_value = [
@@ -657,21 +620,15 @@ class TestEnhancedGraphQLIntegration:
             "unique_tools": 2,
             "backends": {"langgraph": 2}
         }
-        
-        mock_llm_service_class.return_value = mock_llm_service
-        
-        # Test 1: List tools
+        mock_query_llm_service_class.return_value = mock_llm_service
+        mock_mutation_llm_service_class.return_value = mock_llm_service
         query = Query()
         tools = await query.list_tools(info=mock_info)
         assert len(tools) == 1
         assert tools[0].name == "journal_summary_graph"
-        
-        # Test 2: Get tool metadata
         metadata = await query.get_tool_metadata(info=mock_info, tool_name="journal_summary_graph")
         assert metadata.name == "journal_summary_graph"
         assert metadata.owner_domain == "journaling"
-        
-        # Test 3: Execute tool
         mutation = Mutation()
         result = await mutation.execute_tool(
             info=mock_info,
@@ -680,8 +637,6 @@ class TestEnhancedGraphQLIntegration:
         )
         assert result.success is True
         assert result.result == [{"summary": "Test summary"}]
-        
-        # Test 4: Check health
         health = await query.get_tool_registry_health(info=mock_info)
         assert health.status == "healthy"
         assert health.total_tools == 2 

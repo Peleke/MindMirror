@@ -14,7 +14,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langchain_core.language_models import BaseLanguageModel
 
-from agent_service.api.types.suggestion_types import PerformanceReview
+from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.factory import PromptServiceFactory, get_prompt_service
 from agent_service.llms.provider_manager import ProviderManager, get_provider_manager

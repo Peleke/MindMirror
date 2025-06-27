@@ -9,7 +9,7 @@ from typing import Dict, Any
 from fastapi import Depends
 from strawberry.types import Info
 
-from app.db.uow import UnitOfWork, get_uow
+from agent_service.app.db.uow import UnitOfWork, get_uow
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 

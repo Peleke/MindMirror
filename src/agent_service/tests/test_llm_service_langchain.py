@@ -1,16 +1,19 @@
 """
-Tests for LangChain-based LLM service.
+Tests for LLM service with LangChain integration.
 
-This module tests the LLM service using LangChain instead of litellm
-for better integration with LangGraph workflows.
+These tests verify that the LLM service correctly integrates with LangChain
+and handles various LLM operations including chat, completion, and streaming.
 """
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from typing import List, Dict, Any
 
-from agent_service.services.llm_service import LLMService
-from agent_service.api.types.suggestion_types import PerformanceReview
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.language_models import BaseLanguageModel
+
+from agent_service.app.services.llm_service import LLMService
+from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 
 
 class TestLLMServiceLangChain:
