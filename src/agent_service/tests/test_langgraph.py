@@ -24,6 +24,9 @@ from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
 from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
 from agent_service.langgraph_.runner import GraphRunner, GraphRunnerFactory
 from agent_service.langgraph_.service import LangGraphService, LangGraphServiceFactory
+from agent_service.langgraph_.graphs.chat_graph import ChatGraphBuilder, ChatGraphFactory
+from agent_service.langgraph_.nodes.rag_node import RAGNode
+from agent_service.app.clients.qdrant_retriever import QdrantRetriever, QdrantRetrieverFactory
 
 
 class TestStateManagement:
@@ -38,8 +41,8 @@ class TestStateManagement:
         )
         
         assert state["user_id"] == "test_user"
-        assert state["tradition"] == "test_tradition"
-        assert "created_at" in state
+        assert state["tradition_id"] == "test_tradition"
+        assert state["query"] == "test query"
         assert "error" in state
     
     def test_journal_agent_state_creation(self):
@@ -70,9 +73,9 @@ class TestStateManagement:
         )
         
         assert state["user_id"] == "test_user"
-        assert state["tradition"] == "test_tradition"
+        assert state["tradition_id"] == "test_tradition"
         assert state["query"] == "test query"
-        assert state["generated_response"] is None
+        assert state["last_response"] is None
         assert "retrieved_documents" in state
     
     def test_state_manager_add_error(self):
@@ -241,11 +244,17 @@ class TestGraphRunner:
         )
         assert runner.validate_state(valid_state) is True
         
-        invalid_state = AgentStateFactory.create_rag_state(
-            user_id=None, 
-            tradition="test_tradition",
-            query="test"
-        )
+        # Create invalid state without user_id
+        invalid_state = {
+            "tradition_id": "test_tradition",
+            "query": "test",
+            "messages": [],
+            "last_response": None,
+            "retrieved_documents": [],
+            "metadata": {},
+            "error": None,
+            "error_type": None,
+        }
         assert runner.validate_state(invalid_state) is False
     
     def test_graph_runner_get_execution_info(self):

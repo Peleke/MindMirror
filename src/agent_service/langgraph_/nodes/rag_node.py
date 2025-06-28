@@ -1,312 +1,211 @@
 """
-RAG (Retrieval-Augmented Generation) node for LangGraph agents.
+RAG node for chat operations.
 
-This node handles the core RAG functionality: retrieving relevant documents
-and generating responses based on the retrieved context.
+This module provides a LangGraph node that handles retrieval-augmented
+generation for chat operations using Qdrant for document retrieval.
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
 from langchain_core.documents import Document
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.retrievers import BaseRetriever
-from langchain_core.runnables import Runnable, RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough
+from langgraph.prebuilt import ToolNode
 
-from .base import BaseNode, StateT
-from ..state import RAGAgentState, StateManager
-from agent_service.llms.factory import get_llm
-from agent_service.tracing.decorators import trace_langchain_operation, trace_runnable
+from agent_service.app.services.embedding_service import EmbeddingService
+from agent_service.app.services.qdrant_service import QdrantService
+from agent_service.app.services.search_service import SearchService
+from agent_service.langgraph_.state import RAGAgentState
 
 logger = logging.getLogger(__name__)
 
 
-class RAGNode(BaseNode[RAGAgentState]):
+class RAGNode:
     """
-    LangGraph node for RAG operations.
+    RAG node for chat operations.
     
-    This node handles document retrieval and response generation
-    in a modular, testable way.
+    This node handles retrieval-augmented generation by:
+    1. Retrieving relevant documents from Qdrant
+    2. Generating responses using the retrieved context
     """
     
     def __init__(
         self,
-        retriever: BaseRetriever,
-        prompt_template: Optional[ChatPromptTemplate] = None,
-        llm: Optional[Runnable] = None,
-        max_documents: int = 5,
-        name: str = "rag_node",
-        description: str = "RAG node for document retrieval and response generation",
+        retriever=None,  # Will be set dynamically
+        provider: Optional[str] = None,
+        overrides: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the RAG node.
         
         Args:
-            retriever: Document retriever to use
-            prompt_template: Custom prompt template (optional)
-            llm: Language model to use (optional)
-            max_documents: Maximum number of documents to retrieve
-            name: Node name
-            description: Node description
+            retriever: QdrantRetriever instance (set dynamically)
+            provider: Optional LLM provider to use
+            overrides: Optional configuration overrides
         """
-        super().__init__(name, description)
         self.retriever = retriever
-        self.max_documents = max_documents
+        self.provider = provider
+        self.overrides = overrides or {}
         
-        # Validate max_documents
-        if not isinstance(max_documents, int) or max_documents <= 0:
-            raise ValueError("max_documents must be a positive integer")
-        
-        # Use default prompt template if none provided
-        if prompt_template is None:
-            self.prompt_template = self._create_default_prompt()
-        else:
-            self.prompt_template = prompt_template
-        
-        # Use default LLM if none provided
-        if llm is None:
-            self.llm = get_llm(temperature=0, streaming=False)
-        else:
-            self.llm = llm
-        
-        # Create the RAG chain
-        self.rag_chain = self._create_rag_chain()
-        
-        # Wrap with tracing
-        self.traced_rag_chain = trace_runnable(
-            self.rag_chain,
-            name="rag_node.chain",
-            tags=["rag", "node"],
+        # Initialize services
+        self.embedding_service = EmbeddingService()
+        self.qdrant_service = QdrantService()
+        self.search_service = SearchService(
+            embedding_service=self.embedding_service,
+            qdrant_service=self.qdrant_service,
         )
+        
+        # Set up the RAG chain
+        self._setup_rag_chain()
     
-    def _create_default_prompt(self) -> ChatPromptTemplate:
-        """Create the default RAG prompt template."""
-        template = """Answer the question based only on the following context:
-{context}
-
-Question: {question}
-
-Answer:"""
-        
-        return ChatPromptTemplate.from_template(template)
-    
-    def _create_rag_chain(self) -> Runnable:
-        """Create the RAG chain."""
-        return (
-            {"context": self.retriever, "question": RunnablePassthrough()}
-            | self.prompt_template
-            | self.llm
-            | StrOutputParser()
-        )
-    
-    @trace_langchain_operation("rag_retrieval", tags=["retrieval"])
-    def retrieve_documents(self, query: str) -> List[Document]:
-        """
-        Retrieve relevant documents for a query.
-        
-        Args:
-            query: The search query
-            
-        Returns:
-            List of relevant documents
-        """
-        try:
-            documents = self.retriever.get_relevant_documents(query)
-            logger.info(f"Retrieved {len(documents)} documents for query: {query[:50]}...")
-            return documents[:self.max_documents]
-        except Exception as e:
-            logger.error(f"Error retrieving documents: {e}")
-            # Re-raise the exception so it can be caught by the execute method
-            raise
-    
-    @trace_langchain_operation("rag_generation", tags=["generation"])
-    def generate_response(self, query: str, context: List[Document]) -> str:
-        """
-        Generate a response based on query and context.
-        
-        Args:
-            query: The user query
-            context: Retrieved documents for context
-            
-        Returns:
-            Generated response
-        """
-        try:
-            # Format context for the prompt
-            context_text = self._format_context(context)
-            
-            # Generate response
-            response = self.traced_rag_chain.invoke({
-                "context": context_text,
-                "question": query,
-            })
-            
-            logger.info(f"Generated response for query: {query[:50]}...")
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error generating response: {e}")
-            return f"I apologize, but I encountered an error while processing your question: {str(e)}"
-    
-    def _format_context(self, documents: List[Document]) -> str:
-        """
-        Format documents into context string.
-        
-        Args:
-            documents: List of documents to format
-            
-        Returns:
-            Formatted context string
-        """
-        if not documents:
-            return "No relevant context found."
-        
-        context_parts = []
-        for i, doc in enumerate(documents, 1):
-            source = doc.metadata.get("source", "Unknown source")
-            context_parts.append(f"Document {i} (Source: {source}):\n{doc.page_content}")
-        
-        return "\n\n".join(context_parts)
-    
-    def execute(self, state: RAGAgentState) -> RAGAgentState:
-        """
-        Execute the RAG node on a state.
-        
-        This is the main entry point for LangGraph integration.
-        
-        Args:
-            state: Current agent state
-            
-        Returns:
-            Updated agent state
-        """
-        try:
-            query = state["query"]
-            
-            # Step 1: Retrieve documents
-            documents = self.retrieve_documents(query)
-            
-            # Update state with retrieved documents
-            updated_state = state.copy()
-            for doc in documents:
-                score = doc.metadata.get("score", None)
-                updated_state = StateManager.add_document_to_context(
-                    updated_state, doc, score
-                )
-            
-            # Step 2: Generate response
-            response = self.generate_response(query, documents)
-            
-            # Update state with generated response
-            updated_state = StateManager.set_generated_response(
-                updated_state,
-                response,
-                metadata={
-                    "documents_retrieved": len(documents),
-                    "max_documents": self.max_documents,
-                }
-            )
-            
-            logger.info(f"RAG node completed for user {state['user_id']}")
-            return updated_state
-            
-        except Exception as e:
-            logger.error(f"Error in RAG node: {e}")
-            return StateManager.add_error(
-                state,
-                error=str(e),
-                error_type=type(e).__name__,
-            )
-
-
-class RAGNodeFactory:
-    """
-    Factory for creating RAG nodes with different configurations.
-    """
-    
-    @staticmethod
-    def create_standard_rag_node(
-        retriever: BaseRetriever,
-        max_documents: int = 5,
-    ) -> RAGNode:
-        """
-        Create a standard RAG node with default settings.
-        
-        Args:
-            retriever: Document retriever
-            max_documents: Maximum documents to retrieve
-            
-        Returns:
-            Configured RAG node
-        """
-        return RAGNode(
-            retriever=retriever,
-            max_documents=max_documents,
-        )
-    
-    @staticmethod
-    def create_custom_rag_node(
-        retriever: BaseRetriever,
-        prompt_template: ChatPromptTemplate,
-        llm: Runnable,
-        max_documents: int = 5,
-    ) -> RAGNode:
-        """
-        Create a custom RAG node with specific prompt and LLM.
-        
-        Args:
-            retriever: Document retriever
-            prompt_template: Custom prompt template
-            llm: Custom language model
-            max_documents: Maximum documents to retrieve
-            
-        Returns:
-            Configured RAG node
-        """
-        return RAGNode(
-            retriever=retriever,
-            prompt_template=prompt_template,
-            llm=llm,
-            max_documents=max_documents,
-        )
-    
-    @staticmethod
-    def create_coaching_rag_node(
-        retriever: BaseRetriever,
-        max_documents: int = 5,
-    ) -> RAGNode:
-        """
-        Create a RAG node specifically for coaching tasks.
-        
-        Args:
-            retriever: Document retriever
-            max_documents: Maximum documents to retrieve
-            
-        Returns:
-            Configured coaching RAG node
-        """
-        # Create coaching-specific prompt
-        coaching_template = ChatPromptTemplate.from_template("""
-You are a knowledgeable coaching assistant. Answer the question based on the following context,
-providing practical, actionable advice when appropriate.
+    def _setup_rag_chain(self):
+        """Set up the RAG chain with prompt and LLM."""
+        # Create the prompt template
+        self.prompt = ChatPromptTemplate.from_template(
+            """You are a helpful AI assistant that answers questions based on the provided context.
 
 Context:
 {context}
 
 Question: {question}
 
-Provide a helpful, encouraging response that draws from the context:
-""")
+Please provide a helpful and accurate answer based on the context above. If the context doesn't contain enough information to answer the question, say so clearly.
+
+Answer:"""
+        )
         
-        # Use a slightly more creative LLM for coaching
-        coaching_llm = get_llm(temperature=0.3, streaming=False)
+        # Get the LLM (will be set dynamically based on provider)
+        self.llm = self._get_llm()
         
-        return RAGNode(
-            retriever=retriever,
-            prompt_template=coaching_template,
-            llm=coaching_llm,
-            max_documents=max_documents,
-            name="coaching_rag_node",
-            description="RAG node specialized for coaching tasks",
-        ) 
+        # Create the RAG chain
+        self.rag_chain = (
+            {"context": self._retrieve_documents, "question": RunnablePassthrough()}
+            | self.prompt
+            | self.llm
+            | StrOutputParser()
+        )
+    
+    def _get_llm(self) -> BaseLanguageModel:
+        """
+        Get the language model based on provider.
+        
+        Returns:
+            Configured language model
+        """
+        # This will be implemented based on the provider configuration
+        # For now, return a placeholder
+        from langchain_openai import ChatOpenAI
+        
+        return ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+            **self.overrides
+        )
+    
+    def _retrieve_documents(self, state: RAGAgentState) -> str:
+        """
+        Retrieve relevant documents for the query.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Formatted context string from retrieved documents
+        """
+        try:
+            # Get the query from state
+            query = state.get("messages", [{}])[-1].get("content", "")
+            if not query:
+                return "No query provided."
+            
+            # Get user context
+            user_id = state.get("user_id")
+            tradition_id = state.get("tradition_id")
+            
+            # Create retriever if not set
+            if not self.retriever:
+                self.retriever = self.search_service.create_retriever(
+                    user_id=user_id,
+                    tradition_id=tradition_id,
+                    search_type="hybrid"
+                )
+            
+            # Retrieve documents
+            documents = self.retriever.get_relevant_documents(query)
+            
+            # Format context
+            context_parts = []
+            for i, doc in enumerate(documents, 1):
+                content = doc.page_content
+                metadata = doc.metadata
+                source = metadata.get("source", "Unknown")
+                context_parts.append(f"Document {i} (Source: {source}):\n{content}\n")
+            
+            context = "\n".join(context_parts) if context_parts else "No relevant documents found."
+            
+            logger.info(f"Retrieved {len(documents)} documents for query: {query[:100]}...")
+            return context
+            
+        except Exception as e:
+            logger.error(f"Error retrieving documents: {e}")
+            return f"Error retrieving documents: {str(e)}"
+    
+    def __call__(self, state: RAGAgentState) -> RAGAgentState:
+        """
+        Process the state and generate a response.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Updated state with generated response
+        """
+        try:
+            # Get the latest message
+            messages = state.get("messages", [])
+            if not messages:
+                return state
+            
+            latest_message = messages[-1]
+            query = latest_message.get("content", "")
+            
+            if not query:
+                return state
+            
+            # Generate response using RAG chain
+            response = self.rag_chain.invoke(query)
+            
+            # Add response to messages
+            messages.append({
+                "role": "assistant",
+                "content": response,
+                "timestamp": self._get_timestamp()
+            })
+            
+            # Update state
+            state["messages"] = messages
+            state["last_response"] = response
+            
+            logger.info(f"Generated response for query: {query[:100]}...")
+            return state
+            
+        except Exception as e:
+            logger.error(f"Error in RAG node: {e}")
+            # Add error response to messages
+            messages = state.get("messages", [])
+            messages.append({
+                "role": "assistant",
+                "content": f"I apologize, but I encountered an error: {str(e)}",
+                "timestamp": self._get_timestamp()
+            })
+            state["messages"] = messages
+            state["error"] = str(e)
+            return state
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp string."""
+        from datetime import datetime
+        return datetime.now().isoformat() 

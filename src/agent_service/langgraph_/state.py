@@ -8,8 +8,11 @@ for different types of agent workflows in the system.
 from typing import Any, Dict, List, Optional, TypedDict, Union
 from datetime import datetime
 from uuid import UUID
+import logging
 
 from langchain_core.documents import Document
+
+logger = logging.getLogger(__name__)
 
 
 class BaseAgentState(TypedDict):
@@ -36,23 +39,34 @@ class BaseAgentState(TypedDict):
     error_type: Optional[str]
 
 
-class RAGAgentState(BaseAgentState):
+class RAGAgentState(TypedDict):
     """
-    State for RAG-based agent workflows.
+    State for RAG agent operations.
     
-    Used for question-answering and knowledge retrieval tasks.
+    This state tracks the conversation, user context, and
+    retrieved documents for RAG operations.
     """
-    # Query and context
-    query: str
-    context: List[Document]
     
-    # Retrieval results
-    retrieved_documents: List[Document]
-    retrieval_scores: List[float]
+    # User context
+    user_id: Optional[str]
+    tradition_id: Optional[str]
     
-    # Generation
-    generated_response: Optional[str]
-    response_metadata: Optional[Dict[str, Any]]
+    # Conversation
+    messages: List[Dict[str, Any]]
+    
+    # Current query and response
+    query: Optional[str]
+    last_response: Optional[str]
+    
+    # Retrieved documents
+    retrieved_documents: List[Dict[str, Any]]
+    
+    # Metadata
+    metadata: Dict[str, Any]
+    
+    # Error handling
+    error: Optional[str]
+    error_type: Optional[str]
 
 
 class JournalAgentState(BaseAgentState):
@@ -132,23 +146,16 @@ class AgentStateFactory:
         session_id: Optional[str] = None,
     ) -> RAGAgentState:
         """Create a new RAG agent state."""
-        now = datetime.utcnow()
         return RAGAgentState(
             user_id=user_id,
-            tradition=tradition,
-            session_id=session_id,
-            input=query,
-            output=None,
-            created_at=now,
-            updated_at=now,
+            tradition_id=tradition,
+            messages=[],
+            query=query,
+            last_response=None,
+            retrieved_documents=[],
+            metadata={},
             error=None,
             error_type=None,
-            query=query,
-            context=[],
-            retrieved_documents=[],
-            retrieval_scores=[],
-            generated_response=None,
-            response_metadata=None,
         )
     
     @staticmethod
@@ -320,14 +327,11 @@ class StateManager:
         """
         updated_state = state.copy()
         # Create deep copies of lists to ensure immutability
-        updated_state["context"] = state["context"].copy()
         updated_state["retrieved_documents"] = state["retrieved_documents"].copy()
-        updated_state["retrieval_scores"] = state["retrieval_scores"].copy()
         
-        updated_state["context"].append(document)
         updated_state["retrieved_documents"].append(document)
         if score is not None:
-            updated_state["retrieval_scores"].append(score)
+            updated_state["retrieved_documents"][-1]["score"] = score
         updated_state["updated_at"] = datetime.utcnow()
         return updated_state
     
@@ -349,8 +353,7 @@ class StateManager:
             Updated RAG agent state
         """
         return StateManager.update_state(state, {
-            "generated_response": response,
-            "response_metadata": metadata or {},
+            "last_response": response,
             "output": response,
         })
     
@@ -396,4 +399,206 @@ class StateManager:
         return StateManager.update_state(state, {
             "review": review,
             "output": review,
-        }) 
+        })
+    
+    @staticmethod
+    def create_initial_state(
+        user_id: Optional[str] = None,
+        tradition_id: Optional[str] = None,
+        initial_message: Optional[str] = None,
+    ) -> RAGAgentState:
+        """
+        Create initial state for a RAG agent.
+        
+        Args:
+            user_id: User identifier
+            tradition_id: Tradition identifier
+            initial_message: Optional initial message
+            
+        Returns:
+            Initial agent state
+        """
+        state: RAGAgentState = {
+            "user_id": user_id,
+            "tradition_id": tradition_id,
+            "messages": [],
+            "query": None,
+            "last_response": None,
+            "retrieved_documents": [],
+            "metadata": {},
+            "error": None,
+            "error_type": None,
+        }
+        
+        # Add initial message if provided
+        if initial_message:
+            state["messages"].append({
+                "role": "user",
+                "content": initial_message,
+                "timestamp": StateManager._get_timestamp()
+            })
+            state["query"] = initial_message
+        
+        return state
+    
+    @staticmethod
+    def add_user_message(
+        state: RAGAgentState,
+        message: str,
+    ) -> RAGAgentState:
+        """
+        Add a user message to the state.
+        
+        Args:
+            state: Current agent state
+            message: User message content
+            
+        Returns:
+            Updated state with user message
+        """
+        updated_state = state.copy()
+        updated_state["messages"].append({
+            "role": "user",
+            "content": message,
+            "timestamp": StateManager._get_timestamp()
+        })
+        updated_state["query"] = message
+        return updated_state
+    
+    @staticmethod
+    def add_assistant_message(
+        state: RAGAgentState,
+        message: str,
+    ) -> RAGAgentState:
+        """
+        Add an assistant message to the state.
+        
+        Args:
+            state: Current agent state
+            message: Assistant message content
+            
+        Returns:
+            Updated state with assistant message
+        """
+        updated_state = state.copy()
+        updated_state["messages"].append({
+            "role": "assistant",
+            "content": message,
+            "timestamp": StateManager._get_timestamp()
+        })
+        updated_state["last_response"] = message
+        return updated_state
+    
+    @staticmethod
+    def clear_documents(state: RAGAgentState) -> RAGAgentState:
+        """
+        Clear retrieved documents from state.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Updated state with cleared documents
+        """
+        updated_state = state.copy()
+        updated_state["retrieved_documents"] = []
+        return updated_state
+    
+    @staticmethod
+    def set_metadata(
+        state: RAGAgentState,
+        key: str,
+        value: Any,
+    ) -> RAGAgentState:
+        """
+        Set metadata in the state.
+        
+        Args:
+            state: Current agent state
+            key: Metadata key
+            value: Metadata value
+            
+        Returns:
+            Updated state with metadata set
+        """
+        updated_state = state.copy()
+        updated_state["metadata"][key] = value
+        return updated_state
+    
+    @staticmethod
+    def get_metadata(
+        state: RAGAgentState,
+        key: str,
+        default: Any = None,
+    ) -> Any:
+        """
+        Get metadata from the state.
+        
+        Args:
+            state: Current agent state
+            key: Metadata key
+            default: Default value if key not found
+            
+        Returns:
+            Metadata value or default
+        """
+        return state.get("metadata", {}).get(key, default)
+    
+    @staticmethod
+    def get_latest_user_message(state: RAGAgentState) -> Optional[str]:
+        """
+        Get the latest user message from state.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Latest user message or None
+        """
+        messages = state.get("messages", [])
+        for message in reversed(messages):
+            if message.get("role") == "user":
+                return message.get("content")
+        return None
+    
+    @staticmethod
+    def get_latest_assistant_message(state: RAGAgentState) -> Optional[str]:
+        """
+        Get the latest assistant message from state.
+        
+        Args:
+            state: Current agent state
+            
+        Returns:
+            Latest assistant message or None
+        """
+        messages = state.get("messages", [])
+        for message in reversed(messages):
+            if message.get("role") == "assistant":
+                return message.get("content")
+        return None
+    
+    @staticmethod
+    def get_conversation_history(
+        state: RAGAgentState,
+        max_messages: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get conversation history from state.
+        
+        Args:
+            state: Current agent state
+            max_messages: Maximum number of messages to return
+            
+        Returns:
+            List of conversation messages
+        """
+        messages = state.get("messages", [])
+        if max_messages is not None:
+            messages = messages[-max_messages:]
+        return messages
+    
+    @staticmethod
+    def _get_timestamp() -> str:
+        """Get current timestamp string."""
+        return datetime.now().isoformat() 

@@ -8,7 +8,7 @@ including summarization, review, and RAG functionality.
 from .base import BaseNode, LLMNode
 from .summarizer_node import SummarizerNode
 from .reviewer_node import ReviewerNode
-from .rag_node import RAGNode, RAGNodeFactory
+from .rag_node import RAGNode
 
 __all__ = [
     "BaseNode",
@@ -16,5 +16,4 @@ __all__ = [
     "SummarizerNode",
     "ReviewerNode",
     "RAGNode",
-    "RAGNodeFactory",
 ] 

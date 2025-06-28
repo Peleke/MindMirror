@@ -131,12 +131,20 @@ class GraphRunner(Generic[StateT]):
         Returns:
             True if state is valid, False otherwise
         """
-        required_fields = ["user_id", "tradition"]
+        # Check for required user_id
+        if "user_id" not in state or state["user_id"] is None:
+            self.logger.error("Missing required field: user_id")
+            return False
         
-        for field in required_fields:
-            if field not in state or state[field] is None:
-                self.logger.error(f"Missing required field: {field}")
-                return False
+        # Check for tradition (either 'tradition' or 'tradition_id')
+        has_tradition = (
+            ("tradition" in state and state["tradition"] is not None) or
+            ("tradition_id" in state and state["tradition_id"] is not None)
+        )
+        
+        if not has_tradition:
+            self.logger.error("Missing required field: tradition or tradition_id")
+            return False
         
         return True
     

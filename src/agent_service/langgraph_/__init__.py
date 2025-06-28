@@ -18,10 +18,12 @@ from .state import (
 from .nodes.base import BaseNode, LLMNode
 from .nodes.summarizer_node import SummarizerNode
 from .nodes.reviewer_node import ReviewerNode
+from .nodes.rag_node import RAGNode
 
 from .graphs.base import BaseGraphBuilder
 from .graphs.journal_graph import JournalGraphBuilder
 from .graphs.review_graph import ReviewGraphBuilder
+from .graphs.chat_graph import ChatGraphBuilder, ChatGraphFactory
 
 from .runner import GraphRunner, GraphRunnerFactory
 from .service import LangGraphService, LangGraphServiceFactory
@@ -41,11 +43,14 @@ __all__ = [
     "LLMNode",
     "SummarizerNode",
     "ReviewerNode",
+    "RAGNode",
     
     # Graph builders
     "BaseGraphBuilder",
     "JournalGraphBuilder",
     "ReviewGraphBuilder",
+    "ChatGraphBuilder",
+    "ChatGraphFactory",
     
     # Runners
     "GraphRunner",
