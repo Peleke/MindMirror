@@ -42,11 +42,10 @@ services:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
-      - local_gcs_bucket:/app/local_gcs_bucket
-      - ./local_gcs_bucket:/app/storage:ro  # Mount local storage for development
+      - local_gcs_bucket:/app/local_gcs_bucket:ro
       # For production GCS, mount credentials:
       # - ./credentials:/app/credentials:ro
-    command: uvicorn agent_service.web.app:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn agent_service.app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - mindmirror-network
     depends_on:
@@ -71,7 +70,6 @@ services:
     volumes:
       - ./src/journal_service:/app/journal_service
       - ./src/shared:/app/shared
-      - ./src/agent_service:/app/agent_service # Temporary, for task queue import
     command: uvicorn journal_service.web.app:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
@@ -106,22 +104,25 @@ services:
       - "8501:8501" # Streamlit default port
 
   # --- Workers ---
-  celery_worker:
+  celery-worker:
     build:
-      context: .
-      dockerfile: Dockerfile.agent # Uses the same image as agent service
-    container_name: celery_worker
-    command: celery -A agent_service.celery_app.celery_app worker -l info -Q indexing,maintenance
+      context: ./celery-worker
+      dockerfile: Dockerfile
+    container_name: celery-worker
     env_file: .env
     environment:
-      # Prompt Storage Configuration (same as agent_service)
+      # Prompt Storage Configuration
       - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-yaml}
       - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
       - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-http://journal_service:8001}
+      - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY:-dev-secret-key}
     volumes:
-      - ./src/agent_service:/app/agent_service
+      - ./celery-worker:/app
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
       - local_gcs_bucket:/app/local_gcs_bucket
@@ -132,6 +133,14 @@ services:
       - redis
       - postgres
       - qdrant
+      - journal_service
+    ports:
+      - "8002:8000" # Expose for direct access during dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   celery_flower:
     image: mher/flower:2.0

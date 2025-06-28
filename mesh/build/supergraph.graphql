@@ -95,6 +95,11 @@ Date with time (isoformat)
 scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
 
 """
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
+scalar JSON @join__type(graph: AGENT) 
+
+"""
 Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
@@ -104,7 +109,7 @@ scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL)
 type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
-  getMealSuggestion(mealType: String!, tradition: String!) : MealSuggestion! @join__field(graph: AGENT) 
+  getMealSuggestion(mealType: String!, tradition: String!) : String! @join__field(graph: AGENT) 
   summarizeJournals: JournalSummary! @join__field(graph: AGENT) 
   semanticSearch(
     query: String!
@@ -114,12 +119,17 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
     entryTypes: [String!] = null
     limit: Int! = 10
   ): [String!]! @join__field(graph: AGENT) 
+  listTools(
+    backend: String = null
+    tags: [String!] = null
+    ownerDomain: String = null
+    version: String = null
+  ): [ToolMetadata!]! @join__field(graph: AGENT) 
+  getToolMetadata(toolName: String!, version: String = null) : ToolMetadata @join__field(graph: AGENT) 
+  getToolRegistryHealth: ToolRegistryHealth! @join__field(graph: AGENT) 
+  listToolNames: [String!]! @join__field(graph: AGENT) 
   journalEntries: [JournalEntryType!]! @join__field(graph: JOURNAL) 
   journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
-}
-
-type MealSuggestion @join__type(graph: AGENT)  {
-  suggestion: String!
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -127,8 +137,36 @@ type JournalSummary @join__type(graph: AGENT)  {
   generatedAt: DateTime!
 }
 
+type ToolMetadata @join__type(graph: AGENT)  {
+  name: String!
+  description: String!
+  ownerDomain: String!
+  version: String!
+  backend: String!
+  effectBoundary: String!
+  tags: [String!]!
+  subtools: [String!]!
+  inputSchema: JSON!
+  outputSchema: JSON!
+}
+
+type ToolRegistryHealth @join__type(graph: AGENT)  {
+  status: String!
+  totalTools: Int!
+  uniqueTools: Int!
+  backends: JSON!
+  error: String
+}
+
 type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
+  executeTool(toolName: String!, arguments: JSON!, version: String = null) : ToolExecutionResult! @join__field(graph: AGENT) 
+  executeSubtool(
+    toolName: String!
+    subtoolName: String!
+    arguments: JSON!
+    version: String = null
+  ): ToolExecutionResult! @join__field(graph: AGENT) 
   uploadDocument(fileName: String!, content: Base64!, tradition: String! = "canon-default") : Boolean! @join__field(graph: AGENT) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
@@ -140,6 +178,13 @@ type PerformanceReview @join__type(graph: AGENT)  {
   keySuccess: String!
   improvementArea: String!
   journalPrompt: String!
+}
+
+type ToolExecutionResult @join__type(graph: AGENT)  {
+  success: Boolean!
+  result: [JSON!]!
+  error: String
+  executionTimeMs: Int
 }
 
 type FreeformJournalEntry @join__type(graph: JOURNAL)  {
