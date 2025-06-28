@@ -3,11 +3,13 @@ import os
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from agent_service.celery_app import celery_app
+from agent_service.clients.task_client import TaskClient
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Initialize TaskClient
+task_client = TaskClient()
 
 # Dependency to verify the secret header
 async def verify_secret(x_reindex_secret: str = Header(...)):
@@ -29,19 +31,13 @@ async def verify_secret(x_reindex_secret: str = Header(...)):
 )
 async def trigger_reindex(tradition: str):
     """
-    Secure endpoint to trigger a Celery task that rebuilds the knowledge base
-    for a specific tradition from its source (e.g., GCS bucket).
-
-    This is intended to be called by an automated process, like a Cloud Function.
+    Secure endpoint to trigger a tradition reindexing via celery-worker.
     """
     logger.info(f"Received re-indexing request for tradition: {tradition}")
     try:
-        # Note: The task name must match what's registered in Celery.
-        celery_app.send_task(
-            "rebuild_tradition_knowledge_base",
-            args=[tradition],
-        )
-        return {"message": f"Accepted re-indexing task for tradition: {tradition}"}
+        secret = os.getenv("REINDEX_SECRET_KEY")
+        result = await task_client.queue_tradition_reindex(tradition, secret)
+        return {"message": f"Accepted re-indexing task for tradition: {tradition}", "task_id": result.get("task_id")}
     except Exception as e:
         logger.error(f"Failed to queue re-indexing task for {tradition}: {e}")
         raise HTTPException(
