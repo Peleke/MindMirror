@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agent_service.app.api.graphql_router import graphql_app
 from agent_service.app.api.rest_router import router as rest_router
+from agent_service.app.api.hooks import router as hooks_router
 from agent_service.app.config import get_settings
 
 # Configure logging
@@ -78,6 +79,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(graphql_app, prefix="/graphql", tags=["graphql"])
     app.include_router(rest_router, tags=["rest"])
+    app.include_router(hooks_router, tags=["hooks"])
     
     # Health check endpoint
     @app.get("/health", tags=["health"])

@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 # Import the existing hooks router
 # Note: This will need to be updated when we refactor the hooks module
-from agent_service.web.hooks import router as hooks_router
+from agent_service.app.api.hooks import router as hooks_router
 
 # Create main REST router
 router = APIRouter()
