@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from celery_worker.src.utils.embedding import (
+from src.utils.embedding import (
     EmbeddingServiceFactory, 
     OllamaEmbeddingService, 
     MockEmbeddingService,
@@ -76,7 +76,7 @@ async def test_embedding_service_factory_invalid_type():
 @pytest.mark.asyncio
 async def test_convenience_functions():
     """Test the convenience functions."""
-    from celery_worker.src.utils.embedding import get_embedding, get_embeddings
+    from src.utils.embedding import get_embedding, get_embeddings
     
     # Test single embedding
     text = "Hello, world!"
