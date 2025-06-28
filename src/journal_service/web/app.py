@@ -10,9 +10,8 @@ from fastapi import Depends, FastAPI
 from strawberry.fastapi import GraphQLRouter
 from strawberry.types import Info
 
-# Import the task queueing function from the agent service
-# This is a temporary dependency until we have a proper event bus
-from agent_service.tasks import queue_journal_entry_indexing
+# Import the TaskClient for celery-worker communication
+from journal_service.clients.task_client import TaskClient
 # Imports relative to journal_service
 from journal_service.api.types.journal_types import (FreeformEntryInput,
                                                      FreeformJournalEntry,
@@ -32,6 +31,9 @@ from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 
 logger = logging.getLogger(__name__)
+
+# Initialize TaskClient
+task_client = TaskClient()
 
 # --- App Lifespan Management ---
 mock_users_service_client = AsyncMock()
@@ -139,7 +141,7 @@ class Mutation:
             await uow.commit()  # Commit to get the ID
 
         try:
-            queue_journal_entry_indexing(
+            await task_client.queue_journal_indexing(
                 entry_id=str(new_entry.id),
                 user_id=str(current_user.id),
             )
@@ -164,7 +166,7 @@ class Mutation:
             await uow.commit()
 
         try:
-            queue_journal_entry_indexing(
+            await task_client.queue_journal_indexing(
                 entry_id=str(new_entry.id), user_id=str(current_user.id)
             )
             logger.info(f"Queued indexing for gratitude entry {new_entry.id}")
@@ -188,7 +190,7 @@ class Mutation:
             await uow.commit()
 
         try:
-            queue_journal_entry_indexing(
+            await task_client.queue_journal_indexing(
                 entry_id=str(new_entry.id), user_id=str(current_user.id)
             )
             logger.info(f"Queued indexing for reflection entry {new_entry.id}")
