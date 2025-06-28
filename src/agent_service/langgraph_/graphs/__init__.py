@@ -13,4 +13,4 @@ __all__ = [
     "BaseGraphBuilder",
     "JournalGraphBuilder",
     "ReviewGraphBuilder",
-] 
+]

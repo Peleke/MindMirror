@@ -5,11 +5,12 @@ This script sets up the prompt store with the required prompts
 for the LLM service to function properly.
 """
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-from .models import PromptInfo, PromptConfig, StoreType
+import yaml
+
+from .models import PromptConfig, PromptInfo, StoreType
 from .service import PromptService
 from .stores.local import LocalPromptStore
 
@@ -17,26 +18,26 @@ from .stores.local import LocalPromptStore
 def load_prompt_from_yaml(yaml_path: Path) -> PromptInfo:
     """
     Load a prompt from a YAML file.
-    
+
     Args:
         yaml_path: Path to the YAML file
-        
+
     Returns:
         PromptInfo object
     """
-    with open(yaml_path, 'r', encoding='utf-8') as f:
+    with open(yaml_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
-    
+
     return PromptInfo(**data)
 
 
 def init_prompt_store(store_path: str = "prompts") -> PromptService:
     """
     Initialize the prompt store with required prompts.
-    
+
     Args:
         store_path: Path to store prompts
-        
+
     Returns:
         Configured PromptService
     """
@@ -46,37 +47,41 @@ def init_prompt_store(store_path: str = "prompts") -> PromptService:
         store_path=store_path,
         enable_caching=True,
         cache_size=100,
-        cache_ttl=3600
+        cache_ttl=3600,
     )
-    
+
     store = LocalPromptStore(base_path=store_path)
     prompt_service = PromptService(store=store, config=config)
-    
+
     # Load prompts from templates
     templates_dir = Path(__file__).parent / "migrations" / "templates"
-    
+
     if templates_dir.exists():
         for yaml_file in templates_dir.glob("*.yaml"):
             try:
                 prompt_info = load_prompt_from_yaml(yaml_file)
-                
+
                 # Save to store if it doesn't exist
                 if not prompt_service.exists(prompt_info.name, prompt_info.version):
                     prompt_service.save_prompt(prompt_info)
-                    print(f"Initialized prompt: {prompt_info.name}:{prompt_info.version}")
+                    print(
+                        f"Initialized prompt: {prompt_info.name}:{prompt_info.version}"
+                    )
                 else:
-                    print(f"Prompt already exists: {prompt_info.name}:{prompt_info.version}")
-                    
+                    print(
+                        f"Prompt already exists: {prompt_info.name}:{prompt_info.version}"
+                    )
+
             except Exception as e:
                 print(f"Error loading {yaml_file}: {e}")
-    
+
     return prompt_service
 
 
 def create_default_prompts(store_path: str = "prompts") -> None:
     """
     Create default prompts if they don't exist.
-    
+
     Args:
         store_path: Path to store prompts
     """
@@ -100,10 +105,10 @@ Synthesize these entries into a single, concise paragraph of 2-4 sentences.""",
             "model": "gpt-4o",
             "temperature": 0.7,
             "max_tokens": 250,
-            "description": "Generate a concise summary of journal entries"
-        }
+            "description": "Generate a concise summary of journal entries",
+        },
     )
-    
+
     # Create performance review prompt
     performance_review = PromptInfo(
         name="performance_review",
@@ -132,13 +137,13 @@ PROMPT: [Your generated journal prompt here]""",
             "temperature": 0.5,
             "max_tokens": 500,
             "description": "Generate a structured performance review from journal entries",
-            "output_format": "structured"
-        }
+            "output_format": "structured",
+        },
     )
-    
+
     # Initialize store and save prompts
     prompt_service = init_prompt_store(store_path)
-    
+
     # Save prompts
     for prompt in [journal_summary, performance_review]:
         if not prompt_service.exists(prompt.name, prompt.version):
@@ -151,7 +156,7 @@ PROMPT: [Your generated journal prompt here]""",
 if __name__ == "__main__":
     """Run the prompt initialization."""
     import sys
-    
+
     store_path = sys.argv[1] if len(sys.argv) > 1 else "prompts"
     create_default_prompts(store_path)
-    print(f"Prompt store initialized at: {store_path}") 
+    print(f"Prompt store initialized at: {store_path}")

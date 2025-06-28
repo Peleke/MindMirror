@@ -11,14 +11,9 @@ from typing import Optional
 import langsmith
 from langsmith import Client
 
-from .decorators import (
-    trace_function,
-    trace_performance,
-    trace_errors,
-    trace_langchain_operation,
-    trace_agent_workflow,
-    trace_runnable,
-)
+from .decorators import (trace_agent_workflow, trace_errors, trace_function,
+                         trace_langchain_operation, trace_performance,
+                         trace_runnable)
 
 
 def setup_langsmith_tracing(
@@ -28,12 +23,12 @@ def setup_langsmith_tracing(
 ) -> Client:
     """
     Configure LangSmith tracing for the agent service.
-    
+
     Args:
         api_key: LangSmith API key (defaults to LANGCHAIN_API_KEY env var)
         project_name: Project name for tracing (defaults to LANGCHAIN_PROJECT env var)
         endpoint: LangSmith endpoint (defaults to LANGCHAIN_ENDPOINT env var)
-    
+
     Returns:
         Configured LangSmith client
     """
@@ -44,30 +39,30 @@ def setup_langsmith_tracing(
         os.environ["LANGCHAIN_PROJECT"] = project_name
     if endpoint:
         os.environ["LANGCHAIN_ENDPOINT"] = endpoint
-    
+
     # Ensure required environment variables are set
     if not os.getenv("LANGCHAIN_API_KEY"):
         raise ValueError(
             "LANGCHAIN_API_KEY environment variable is required for LangSmith tracing"
         )
-    
+
     # Set default project name if not provided
     if not os.getenv("LANGCHAIN_PROJECT"):
         os.environ["LANGCHAIN_PROJECT"] = "mindmirror-agent"
-    
+
     # Enable tracing by default
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    
+
     # Create and return LangSmith client
     client = langsmith.Client()
-    
+
     return client
 
 
 def get_langsmith_client() -> Client:
     """
     Get the configured LangSmith client.
-    
+
     Returns:
         LangSmith client instance
     """
@@ -83,11 +78,11 @@ except ValueError:
 
 __all__ = [
     "trace_function",
-    "trace_performance", 
+    "trace_performance",
     "trace_errors",
     "trace_langchain_operation",
     "trace_agent_workflow",
     "trace_runnable",
     "setup_langsmith_tracing",
     "get_langsmith_client",
-] 
+]

@@ -1,12 +1,11 @@
 import logging
 from typing import List
 
+from config import EMBEDDING_PROVIDER, OLLAMA_BASE_URL, OLLAMA_EMBEDDING_MODEL
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
-
-from config import EMBEDDING_PROVIDER, OLLAMA_BASE_URL, OLLAMA_EMBEDDING_MODEL
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

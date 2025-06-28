@@ -2,6 +2,4 @@
 
 from .server import JournalPlugin
 
-__all__ = [
-    "JournalPlugin"
-] 
+__all__ = ["JournalPlugin"]

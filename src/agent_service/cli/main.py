@@ -15,4 +15,4 @@ sys.path.insert(0, str(src_path))
 from agent_service.cli.data_management import cli
 
 if __name__ == "__main__":
-    sys.exit(cli()) 
+    sys.exit(cli())

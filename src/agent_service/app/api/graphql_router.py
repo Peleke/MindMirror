@@ -11,7 +11,6 @@ from agent_service.app.graphql.context import GraphQLContext, get_context
 from agent_service.app.graphql.schemas.mutation import Mutation
 from agent_service.app.graphql.schemas.query import Query
 
-
 # Create GraphQL schema
 schema = strawberry.Schema(
     query=Query,
@@ -23,4 +22,4 @@ graphql_app = GraphQLRouter(
     schema=schema,
     graphiql=True,  # Enable GraphiQL interface
     context_getter=get_context,
-) 
+)

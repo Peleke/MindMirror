@@ -9,9 +9,10 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 
-from agent_service.models.journal import JournalEntry
 from shared.clients import (AuthContext, JournalServiceClient,
                             create_journal_client)
+
+from agent_service.models.journal import JournalEntry
 
 
 class JournalClient:

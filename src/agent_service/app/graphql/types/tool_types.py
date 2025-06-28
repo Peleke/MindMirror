@@ -12,7 +12,7 @@ import strawberry
 @strawberry.type
 class ToolMetadata:
     """Enhanced tool metadata for GraphQL introspection."""
-    
+
     name: str
     description: str
     owner_domain: str
@@ -28,7 +28,7 @@ class ToolMetadata:
 @strawberry.type
 class ToolExecutionResult:
     """Result of tool execution."""
-    
+
     success: bool
     result: List[strawberry.scalars.JSON]
     error: Optional[str] = None
@@ -38,9 +38,9 @@ class ToolExecutionResult:
 @strawberry.type
 class ToolRegistryHealth:
     """Health status of the tool registry."""
-    
+
     status: str
     total_tools: int
     unique_tools: int
     backends: strawberry.scalars.JSON
-    error: Optional[str] = None 
+    error: Optional[str] = None

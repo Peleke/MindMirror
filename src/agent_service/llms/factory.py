@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 class LLMFactory:
     """
     Factory for creating and configuring language models.
-    
+
     Provides centralized management of LLM configurations,
     error handling, and tracing integration.
     """
-    
+
     # Default configurations for different use cases
     DEFAULT_CONFIGS = {
         "rag": {
@@ -48,7 +48,7 @@ class LLMFactory:
             "max_tokens": 2000,
         },
     }
-    
+
     @staticmethod
     @trace_function(name="llm_factory.create_llm", tags=["llm", "factory"])
     def create_llm(
@@ -59,27 +59,27 @@ class LLMFactory:
     ) -> BaseChatModel:
         """
         Create a language model with the specified configuration.
-        
+
         Args:
             provider: LLM provider ("openai" or "ollama")
             model_name: Specific model name (optional)
             config_name: Predefined configuration name (optional)
             **kwargs: Additional configuration parameters
-            
+
         Returns:
             Configured language model
         """
         try:
             # Get base configuration
             base_config = LLMFactory._get_base_config(provider, model_name)
-            
+
             # Apply predefined config if specified
             if config_name:
                 base_config.update(LLMFactory.DEFAULT_CONFIGS.get(config_name, {}))
-            
+
             # Apply custom kwargs (override defaults)
             base_config.update(kwargs)
-            
+
             # Create the model
             if provider == "openai":
                 return LLMFactory._create_openai_llm(base_config)
@@ -87,11 +87,11 @@ class LLMFactory:
                 return LLMFactory._create_ollama_llm(base_config)
             else:
                 raise ValueError(f"Unsupported LLM provider: {provider}")
-                
+
         except Exception as e:
             logger.error(f"Error creating LLM: {e}")
             raise
-    
+
     @staticmethod
     def _get_base_config(provider: str, model_name: Optional[str]) -> Dict[str, Any]:
         """Get base configuration for the provider."""
@@ -110,86 +110,88 @@ class LLMFactory:
             }
         else:
             raise ValueError(f"Unsupported provider: {provider}")
-    
+
     @staticmethod
     def _create_openai_llm(config: Dict[str, Any]) -> ChatOpenAI:
         """Create an OpenAI language model."""
         # Ensure required fields are present
         if "openai_api_key" not in config:
             import os
+
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY environment variable is required")
             config["openai_api_key"] = api_key
-        
+
         return ChatOpenAI(**config)
-    
+
     @staticmethod
     def _create_ollama_llm(config: Dict[str, Any]) -> ChatOllama:
         """Create an Ollama language model."""
         # Handle Docker environment
         if LLMFactory._is_docker_environment():
             config["base_url"] = "http://host.docker.internal:11434"
-        
+
         return ChatOllama(**config)
-    
+
     @staticmethod
     def _is_docker_environment() -> bool:
         """Check if running in Docker environment."""
         import os
+
         return (
             os.path.exists("/.dockerenv")
             or os.getenv("DOCKER_CONTAINER") == "true"
             or os.getenv("IN_DOCKER") == "true"
         )
-    
+
     @staticmethod
     def get_rag_llm(**kwargs: Any) -> BaseChatModel:
         """
         Get a language model optimized for RAG tasks.
-        
+
         Args:
             **kwargs: Additional configuration parameters
-            
+
         Returns:
             Configured LLM for RAG
         """
         return LLMFactory.create_llm(config_name="rag", **kwargs)
-    
+
     @staticmethod
     def get_coaching_llm(**kwargs: Any) -> BaseChatModel:
         """
         Get a language model optimized for coaching tasks.
-        
+
         Args:
             **kwargs: Additional configuration parameters
-            
+
         Returns:
             Configured LLM for coaching
         """
         return LLMFactory.create_llm(config_name="coaching", **kwargs)
-    
+
     @staticmethod
     def get_creative_llm(**kwargs: Any) -> BaseChatModel:
         """
         Get a language model optimized for creative tasks.
-        
+
         Args:
             **kwargs: Additional configuration parameters
-            
+
         Returns:
             Configured LLM for creative tasks
         """
         return LLMFactory.create_llm(config_name="creative", **kwargs)
-    
+
     @staticmethod
     def get_analysis_llm(**kwargs: Any) -> BaseChatModel:
         """
         Get a language model optimized for analysis tasks.
-        
+
         Args:
             **kwargs: Additional configuration parameters
-            
+
         Returns:
             Configured LLM for analysis
         """
@@ -204,12 +206,12 @@ def get_llm(
 ) -> BaseChatModel:
     """
     Get a language model (backward compatibility function).
-    
+
     Args:
         provider: LLM provider
         model_name: Specific model name
         **kwargs: Additional configuration
-        
+
     Returns:
         Configured language model
     """
@@ -217,4 +219,4 @@ def get_llm(
         provider=provider,
         model_name=model_name,
         **kwargs,
-    ) 
+    )

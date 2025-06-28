@@ -5,8 +5,8 @@ Strawberry GraphQL type definitions for meal suggestions, performance reviews,
 and journal summaries.
 """
 
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 import strawberry
 
@@ -39,4 +39,4 @@ class JournalSummary:
     """
 
     summary: str
-    generated_at: datetime 
+    generated_at: datetime

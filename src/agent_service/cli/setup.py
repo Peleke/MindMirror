@@ -21,4 +21,4 @@ setup(
             "agent-service=agent_service.cli.main:cli",
         ],
     },
-) 
+)

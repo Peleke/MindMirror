@@ -7,18 +7,18 @@ implementations, and a factory for managing providers.
 """
 
 from .base import BaseProvider
-from .openai_provider import OpenAIProvider
-from .ollama_provider import OllamaProvider
+from .factory import ProviderFactory, create_model, get_factory, health_check
 from .gemini_provider import GeminiProvider
-from .factory import ProviderFactory, get_factory, create_model, health_check
+from .ollama_provider import OllamaProvider
+from .openai_provider import OpenAIProvider
 
 __all__ = [
     "BaseProvider",
-    "OpenAIProvider", 
+    "OpenAIProvider",
     "OllamaProvider",
     "GeminiProvider",
     "ProviderFactory",
     "get_factory",
     "create_model",
-    "health_check"
-] 
+    "health_check",
+]

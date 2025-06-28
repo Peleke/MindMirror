@@ -13,11 +13,12 @@ import strawberry
 from strawberry.types import Info
 
 from agent_service.app.clients.qdrant_client import get_qdrant_client
-from agent_service.app.graphql.context import GraphQLContext, get_current_user_from_context
+from agent_service.app.graphql.context import (GraphQLContext,
+                                               get_current_user_from_context)
 from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.app.graphql.types.tool_types import ToolExecutionResult
 from agent_service.app.services.llm_service import LLMService
-from agent_service.embedding import get_embedding
+from agent_service.app.services.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -25,29 +26,27 @@ logger = logging.getLogger(__name__)
 @strawberry.type
 class Mutation:
     """GraphQL Mutation schema with all mutation fields."""
-    
+
     @strawberry.mutation
     async def generate_review(
-        self, 
-        info: Info[GraphQLContext, None], 
-        tradition: str
+        self, info: Info[GraphQLContext, None], tradition: str
     ) -> PerformanceReview:
         """
         Generates a bi-weekly performance review for the authenticated user.
-        
+
         Args:
             info: GraphQL context info
             tradition: Tradition to use for the review
-            
+
         Returns:
             PerformanceReview: Generated performance review
-            
+
         Raises:
             Exception: If authentication fails or processing fails
         """
         current_user = get_current_user_from_context(info)
 
-        qdrant_client = get_qdrant_client()
+        search_service = SearchService()
         llm_service = LLMService()
 
         try:
@@ -55,25 +54,21 @@ class Mutation:
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=14)
 
-            # 2. Use a general query to find relevant entries via semantic search
+            # 2. Use semantic search to find relevant entries
             search_query = "A review of my personal growth, successes, challenges, and areas for improvement."
-            query_embedding = await get_embedding(search_query)
 
-            if not query_embedding:
-                raise ValueError("Failed to generate embedding for search query.")
-
-            # 3. Fetch relevant journal entries from Qdrant within the date range
-            search_results = await qdrant_client.search_personal_documents_by_date(
+            # 3. Fetch relevant journal entries using semantic search
+            search_results = await search_service.semantic_search(
+                query=search_query,
                 user_id=str(current_user.id),
                 tradition=tradition,
-                query_embedding=query_embedding,
-                start_date=start_date,
-                end_date=end_date,
+                include_personal=True,
+                include_knowledge=False,  # Only personal entries for review
                 limit=25,  # Fetch a good number of entries for context
             )
-            
+
             # Convert search results to dictionaries for the LLM service
-            entry_dicts = [result.__dict__ for result in search_results]
+            entry_dicts = [result for result in search_results]
 
             # 4. Generate the structured review using the LLM service
             review = await llm_service.get_performance_review(entry_dicts)
@@ -97,44 +92,42 @@ class Mutation:
         info: Info[GraphQLContext, None],
         tool_name: str,
         arguments: strawberry.scalars.JSON,
-        version: Optional[str] = None
+        version: Optional[str] = None,
     ) -> ToolExecutionResult:
         """
         Execute a tool from the registry.
-        
+
         Args:
             info: GraphQL context info
             tool_name: Name of the tool to execute
             arguments: Arguments to pass to the tool
             version: Optional version of the tool to use
-            
+
         Returns:
             ToolExecutionResult: Result of tool execution
         """
         get_current_user_from_context(info)  # Ensure authentication
 
         start_time = time.time()
-        
+
         try:
             llm_service = LLMService()
             result = await llm_service.execute_tool(tool_name, arguments, version)
-            
+
             execution_time_ms = int((time.time() - start_time) * 1000)
-            
+
             return ToolExecutionResult(
-                success=True,
-                result=result,
-                execution_time_ms=execution_time_ms
+                success=True, result=result, execution_time_ms=execution_time_ms
             )
         except Exception as e:
             execution_time_ms = int((time.time() - start_time) * 1000)
             logger.error(f"Failed to execute tool {tool_name}: {e}")
-            
+
             return ToolExecutionResult(
                 success=False,
                 result=[],
                 error=str(e),
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
     @strawberry.mutation
@@ -144,45 +137,49 @@ class Mutation:
         tool_name: str,
         subtool_name: str,
         arguments: strawberry.scalars.JSON,
-        version: Optional[str] = None
+        version: Optional[str] = None,
     ) -> ToolExecutionResult:
         """
         Execute a subtool of a specific tool.
-        
+
         Args:
             info: GraphQL context info
             tool_name: Name of the parent tool
             subtool_name: Name of the subtool to execute
             arguments: Arguments to pass to the subtool
             version: Optional version of the tool
-            
+
         Returns:
             ToolExecutionResult: Result of subtool execution
         """
         get_current_user_from_context(info)  # Ensure authentication
 
         start_time = time.time()
-        
+
         try:
             llm_service = LLMService()
-            result = await llm_service.execute_subtool(tool_name, subtool_name, arguments, version)
-            
+            result = await llm_service.execute_subtool(
+                tool_name, subtool_name, arguments, version
+            )
+
             execution_time_ms = int((time.time() - start_time) * 1000)
-            
+
             return ToolExecutionResult(
                 success=True,
                 result=[result] if not isinstance(result, list) else result,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
         except Exception as e:
             execution_time_ms = int((time.time() - start_time) * 1000)
-            logger.error(f"Failed to execute subtool {subtool_name} of tool {tool_name}: {e}")
-            
+            logger.error(
+                f"Failed to execute subtool {subtool_name} of tool {tool_name}: {e}"
+            )
+
             return ToolExecutionResult(
                 success=False,
                 result=[],
                 error=str(e),
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
     @strawberry.mutation
@@ -194,15 +191,15 @@ class Mutation:
     ) -> bool:
         """
         Uploads a new document to the knowledge base for a specific tradition.
-        
+
         Args:
             file_name: Name of the file to upload
             content: Base64 encoded content
             tradition: Tradition to upload to
-            
+
         Returns:
             bool: Success status
-            
+
         Raises:
             NotImplementedError: Feature moved to ingestion pipeline
         """
@@ -210,4 +207,4 @@ class Mutation:
         # and triggered by a webhook, not a direct GraphQL mutation.
         raise NotImplementedError(
             "Document upload is now handled by the GCS ingestion pipeline."
-        ) 
+        )

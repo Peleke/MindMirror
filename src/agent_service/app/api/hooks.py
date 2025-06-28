@@ -11,6 +11,7 @@ router = APIRouter()
 # Initialize TaskClient
 task_client = TaskClient()
 
+
 # Dependency to verify the secret header
 async def verify_secret(x_reindex_secret: str = Header(...)):
     """Dependency to verify the secret re-indexing header."""
@@ -37,7 +38,10 @@ async def trigger_reindex(tradition: str):
     try:
         secret = os.getenv("REINDEX_SECRET_KEY")
         result = await task_client.queue_tradition_reindex(tradition, secret)
-        return {"message": f"Accepted re-indexing task for tradition: {tradition}", "task_id": result.get("task_id")}
+        return {
+            "message": f"Accepted re-indexing task for tradition: {tradition}",
+            "task_id": result.get("task_id"),
+        }
     except Exception as e:
         logger.error(f"Failed to queue re-indexing task for {tradition}: {e}")
         raise HTTPException(

@@ -8,7 +8,8 @@ from typing import Any, Dict, List, Optional
 from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
 from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
-                                  PointStruct, SearchRequest, VectorParams, Range)
+                                  PointStruct, Range, SearchRequest,
+                                  VectorParams)
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +244,9 @@ class QdrantClient:
     ) -> List[SearchResult]:
         """Search for personal journal entries within a specific date range."""
         # Get or create personal collection for user's data
-        collection_name = await self.get_or_create_personal_collection(tradition, user_id)
+        collection_name = await self.get_or_create_personal_collection(
+            tradition, user_id
+        )
 
         # Build a filter for the date range
         date_filter = Filter(
@@ -288,9 +291,7 @@ class QdrantClient:
                     f"Personal collection '{collection_name}' not found for user {user_id}. Returning empty list."
                 )
                 return []
-            logger.error(
-                f"Error searching personal collection {collection_name}: {e}"
-            )
+            logger.error(f"Error searching personal collection {collection_name}: {e}")
             return []
         except Exception as e:
             logger.error(

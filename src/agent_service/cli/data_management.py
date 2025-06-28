@@ -15,13 +15,13 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
+from config import DATA_DIR
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from agent_service.cli.qdrant_data_processing import QdrantKnowledgeBaseBuilder
 from agent_service.app.clients.qdrant_client import QdrantClient
-from config import DATA_DIR
+from agent_service.cli.qdrant_data_processing import QdrantKnowledgeBaseBuilder
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def build_knowledge_base(
 ):
     """Build knowledge base from documents."""
     source_dirs_list = list(source_dirs) if source_dirs else [data_dir]
-    
+
     console.print(f"[bold blue]Building knowledge base...[/bold blue]")
     console.print(f"Source directories: {source_dirs_list}")
     if tradition:
@@ -77,7 +77,7 @@ def build_knowledge_base(
 
     async def _build():
         builder = QdrantKnowledgeBaseBuilder()
-        
+
         # Health check
         with Progress(
             SpinnerColumn(),
@@ -97,14 +97,14 @@ def build_knowledge_base(
                 specific_tradition=tradition,
                 clear_existing=clear_existing,
             )
-            
+
             # Display results
             table = Table(title="Knowledge Base Build Results")
             table.add_column("Tradition", style="cyan")
             table.add_column("Files Processed", style="green")
             table.add_column("Chunks Created", style="blue")
             table.add_column("Status", style="yellow")
-            
+
             for tradition_name, stats in result.items():
                 status = "✅ Success" if stats.get("success", False) else "❌ Failed"
                 table.add_row(
@@ -113,10 +113,10 @@ def build_knowledge_base(
                     str(stats.get("total_chunks", 0)),
                     status,
                 )
-            
+
             console.print(table)
             return 0
-            
+
         except Exception as e:
             console.print(f"[red]❌ Build failed: {e}[/red]")
             return 1
@@ -133,10 +133,10 @@ def build_knowledge_base(
 def health_check(tradition: Optional[str]):
     """Check health of knowledge base and services."""
     console.print("[bold blue]Health Check[/bold blue]")
-    
+
     async def _check():
         qdrant_client = QdrantClient()
-        
+
         # Check Qdrant connection
         with Progress(
             SpinnerColumn(),
@@ -158,27 +158,31 @@ def health_check(tradition: Optional[str]):
         # Check collections
         try:
             collections = qdrant_client.client.get_collections()
-            
+
             table = Table(title="Knowledge Base Collections")
             table.add_column("Collection", style="cyan")
             table.add_column("Points", style="green")
             table.add_column("Status", style="yellow")
-            
+
             for collection in collections.collections:
                 if tradition and not collection.name.startswith(tradition):
                     continue
-                    
+
                 try:
                     info = qdrant_client.client.get_collection(collection.name)
-                    points = info.points_count if hasattr(info, "points_count") else "Unknown"
+                    points = (
+                        info.points_count
+                        if hasattr(info, "points_count")
+                        else "Unknown"
+                    )
                     status = "✅ Active" if points > 0 else "⚠️ Empty"
                     table.add_row(collection.name, str(points), status)
                 except Exception as e:
                     table.add_row(collection.name, "Error", f"❌ {e}")
-            
+
             console.print(table)
             return 0
-            
+
         except Exception as e:
             console.print(f"[red]❌ Collection check failed: {e}[/red]")
             return 1
@@ -201,24 +205,26 @@ def health_check(tradition: Optional[str]):
 def clear_tradition(tradition: str, confirm: bool):
     """Clear a tradition's knowledge base."""
     if not confirm:
-        if not click.confirm(f"Are you sure you want to clear tradition '{tradition}'?"):
+        if not click.confirm(
+            f"Are you sure you want to clear tradition '{tradition}'?"
+        ):
             console.print("[yellow]Operation cancelled[/yellow]")
             return 0
-    
+
     console.print(f"[bold red]Clearing tradition: {tradition}[/bold red]")
-    
+
     async def _clear():
         qdrant_client = QdrantClient()
-        
+
         try:
             # Get collection name
             collection_name = qdrant_client.get_knowledge_collection_name(tradition)
-            
+
             # Delete collection
             await qdrant_client.delete_collection(collection_name)
             console.print(f"[green]✅ Cleared tradition: {tradition}[/green]")
             return 0
-            
+
         except Exception as e:
             console.print(f"[red]❌ Failed to clear tradition: {e}[/red]")
             return 1
@@ -241,36 +247,36 @@ def clear_tradition(tradition: str, confirm: bool):
 def list_traditions(source_dirs: tuple, data_dir: str):
     """List available traditions and their document sources."""
     source_dirs_list = list(source_dirs) if source_dirs else [data_dir]
-    
+
     console.print("[bold blue]Available Traditions[/bold blue]")
-    
+
     async def _list():
         builder = QdrantKnowledgeBaseBuilder()
-        
+
         traditions = builder.discover_source_directories(source_dirs_list)
-        
+
         if not traditions:
             console.print("[yellow]No traditions found[/yellow]")
             return 0
-        
+
         table = Table(title="Traditions")
         table.add_column("Tradition", style="cyan")
         table.add_column("Source Directories", style="green")
         table.add_column("Document Count", style="blue")
-        
+
         for tradition, dirs in traditions.items():
             # Count documents
             total_docs = 0
             for dir_path in dirs:
                 total_docs += len(list(dir_path.glob("*.pdf")))
                 total_docs += len(list(dir_path.glob("*.txt")))
-            
+
             table.add_row(
                 tradition,
                 "\n".join(str(d) for d in dirs),
                 str(total_docs),
             )
-        
+
         console.print(table)
         return 0
 
@@ -278,4 +284,4 @@ def list_traditions(source_dirs: tuple, data_dir: str):
 
 
 if __name__ == "__main__":
-    sys.exit(cli()) 
+    sys.exit(cli())

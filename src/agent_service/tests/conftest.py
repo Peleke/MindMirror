@@ -8,10 +8,10 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from shared.auth import CurrentUser, UserRole, get_current_user
 
 from agent_service.app.clients.qdrant_client import QdrantClient
 from agent_service.app.main import app
-from shared.auth import CurrentUser, UserRole, get_current_user
 
 # Test configuration for agent service
 TEST_QDRANT_PORT = 6334  # Different from production port 6333
@@ -138,8 +138,9 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an HTTP client for testing the agent service API.
     """
-    from agent_service.app.main import app
     from shared.auth import CurrentUser, UserRole, get_current_user
+
+    from agent_service.app.main import app
 
     async def override_get_current_user() -> CurrentUser:
         return CurrentUser(

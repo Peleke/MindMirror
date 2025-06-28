@@ -13,13 +13,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from config import CHUNK_OVERLAP, CHUNK_SIZE
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 
-from agent_service.embedding import get_embedding
 from agent_service.app.clients.qdrant_client import QdrantClient
-from config import CHUNK_OVERLAP, CHUNK_SIZE
+from agent_service.cli.embedding import get_embedding
 
 logger = logging.getLogger(__name__)
 

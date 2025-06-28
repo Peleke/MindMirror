@@ -31,4 +31,4 @@ class TraditionRepository:
             d
             for d in os.listdir(self._data_dir)
             if os.path.isdir(os.path.join(self._data_dir, d))
-        ] 
+        ]
