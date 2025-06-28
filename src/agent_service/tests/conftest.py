@@ -8,8 +8,6 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
-                           RedisTestBackend, RedisTestBroker)
 
 from agent_service.app.clients.qdrant_client import QdrantClient
 from agent_service.app.main import app
@@ -26,61 +24,10 @@ os.environ["QDRANT_URL"] = TEST_QDRANT_URL
 logging.basicConfig(level=logging.INFO)
 
 
-@pytest.fixture
-def celery_config():
-    """Celery configuration for tests."""
-    return {
-        "broker_url": "memory://",
-        "result_backend": "cache+memory://",
-        "task_always_eager": True,  # Execute tasks synchronously
-        "task_eager_propagates": True,  # Propagate exceptions in eager mode
-        "task_track_started": True,
-        "broker_connection_retry_on_startup": True,
-        "include": [
-            "agent_service.tasks",
-            "ingestion.tasks.rebuild_tradition",
-        ],
-    }
-
-
-@pytest.fixture
-def celery_app(celery_config):
-    """
-    Creates a Celery app for testing with proper configuration.
-    """
-    from agent_service.app.celery import create_celery_app
-
-    app = create_celery_app()
-    app.conf.update(celery_config)
-
-    # Apply task routes for testing
-    app.conf.task_routes = {
-        "agent_service.app.tasks.index_journal_entry_task": {
-            "priority": 5,
-            "routing_key": "indexing",
-        },
-        "agent_service.app.tasks.batch_index_journal_entries_task": {
-            "priority": 3,
-            "routing_key": "indexing",
-        },
-        "agent_service.app.tasks.health_check_task": {
-            "priority": 7,
-            "routing_key": "monitoring",
-        },
-        "agent_service.app.tasks.reindex_user_entries_task": {
-            "priority": 2,
-            "routing_key": "maintenance",
-        },
-    }
-
-    return app
-
-
 @pytest.fixture(scope="session")
 def docker_services():
     """
     Manages Docker containers for test services (Qdrant).
-    Redis is now managed automatically by the pytest-celery plugin.
     Session scope ensures they start once and tear down after all tests.
     """
     import docker

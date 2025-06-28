@@ -14,8 +14,8 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.prompts import ChatPromptTemplate
 
-from agent_service.langgraph.nodes.rag_node import RAGNode, RAGNodeFactory
-from agent_service.langgraph.state import RAGAgentState, AgentStateFactory
+from agent_service.langgraph_.nodes.rag_node import RAGNode, RAGNodeFactory
+from agent_service.langgraph_.state import RAGAgentState, AgentStateFactory
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +65,7 @@ class TestRAGNode:
         assert node.prompt_template == mock_prompt
         assert node.llm == mock_llm
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_tracing_integration(self, mock_trace_runnable):
         """Test that RAG node integrates with tracing."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -121,7 +121,7 @@ class TestRAGNode:
         with pytest.raises(Exception, match="Retrieval error"):
             node.retrieve_documents("test query")
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_generate_response_success(self, mock_trace_runnable):
         """Test successful response generation."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -198,7 +198,7 @@ class TestRAGNode:
 class TestRAGNodeLangGraphIntegration:
     """Test RAG node integration with LangGraph state management."""
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_call_with_state(self, mock_trace_runnable):
         """Test that RAG node works with LangGraph state."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -233,7 +233,7 @@ class TestRAGNodeLangGraphIntegration:
         assert result_state["response_metadata"]["documents_retrieved"] == 1
         assert result_state["error"] is None
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_call_with_error(self, mock_trace_runnable):
         """Test that RAG node handles errors in state execution."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -257,7 +257,7 @@ class TestRAGNodeLangGraphIntegration:
         assert result_state["error_type"] == "Exception"
         assert result_state["generated_response"] is None
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_call_with_documents_without_score(self, mock_trace_runnable):
         """Test RAG node with documents that don't have scores."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -357,7 +357,7 @@ class TestRAGNodeEdgeCases:
         with pytest.raises(ValueError):
             RAGNode(retriever=mock_retriever, max_documents=-1)
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_with_empty_query(self, mock_trace_runnable):
         """Test RAG node with empty query."""
         mock_retriever = Mock(spec=BaseRetriever)
@@ -381,7 +381,7 @@ class TestRAGNodeEdgeCases:
         assert len(result_state["retrieved_documents"]) == 0
         assert result_state["generated_response"] is not None
     
-    @patch('agent_service.langgraph.nodes.rag_node.trace_runnable')
+    @patch('agent_service.langgraph_.nodes.rag_node.trace_runnable')
     def test_rag_node_with_very_long_query(self, mock_trace_runnable):
         """Test RAG node with very long query."""
         mock_retriever = Mock(spec=BaseRetriever)

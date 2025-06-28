@@ -1,8 +1,8 @@
 """
-Journal graph builder for journal processing workflows.
+Review graph builder for performance review workflows.
 
-This module provides the JournalGraphBuilder class that creates
-a graph for journal summary generation.
+This module provides the ReviewGraphBuilder class that creates
+a graph for performance review generation.
 """
 
 import logging
@@ -11,30 +11,30 @@ from typing import Any, Dict, Optional
 from langchain_core.runnables import Runnable
 from langgraph.graph import StateGraph, END
 
-from agent_service.langgraph.graphs.base import BaseGraphBuilder
-from agent_service.langgraph.nodes.summarizer_node import SummarizerNode
-from agent_service.langgraph.state import JournalAgentState
+from agent_service.langgraph_.graphs.base import BaseGraphBuilder
+from agent_service.langgraph_.nodes.reviewer_node import ReviewerNode
+from agent_service.langgraph_.state import JournalAgentState
 
 logger = logging.getLogger(__name__)
 
 
-class JournalGraphBuilder(BaseGraphBuilder[JournalAgentState]):
+class ReviewGraphBuilder(BaseGraphBuilder[JournalAgentState]):
     """
-    Graph builder for journal processing workflows.
+    Graph builder for performance review workflows.
     
-    Creates a graph that can generate summaries from journal entries
-    using the SummarizerNode.
+    Creates a graph that can generate performance reviews from journal entries
+    using the ReviewerNode.
     """
     
     def __init__(
         self,
-        name: str = "journal_graph",
-        description: str = "Graph for journal summary generation",
+        name: str = "review_graph",
+        description: str = "Graph for performance review generation",
         provider: Optional[str] = None,
         overrides: Optional[Dict[str, Any]] = None,
     ):
         """
-        Initialize the journal graph builder.
+        Initialize the review graph builder.
         
         Args:
             name: Graph name
@@ -48,39 +48,39 @@ class JournalGraphBuilder(BaseGraphBuilder[JournalAgentState]):
     
     def build(self) -> StateGraph:
         """
-        Build the journal processing graph.
+        Build the performance review graph.
         
         Returns:
-            Configured StateGraph for journal processing
+            Configured StateGraph for performance review processing
         """
-        # Create the summarizer node
-        summarizer_node = SummarizerNode(
+        # Create the reviewer node
+        reviewer_node = ReviewerNode(
             provider=self.provider,
             overrides=self.overrides,
         )
         
         # Add node to graph
-        self.add_node("summarizer", summarizer_node)
+        self.add_node("reviewer", reviewer_node)
         
         # Create the state graph
         self.graph = StateGraph(JournalAgentState)
         
         # Add nodes to the graph
-        self.graph.add_node("summarizer", summarizer_node)
+        self.graph.add_node("reviewer", reviewer_node)
         
-        # Define the workflow: summarizer -> END
-        self.graph.set_entry_point("summarizer")
-        self.graph.add_edge("summarizer", END)
+        # Define the workflow: reviewer -> END
+        self.graph.set_entry_point("reviewer")
+        self.graph.add_edge("reviewer", END)
         
         # Compile the graph
         compiled_graph = self.graph.compile()
         
-        self.logger.info(f"Built journal graph with {len(self.nodes)} nodes")
+        self.logger.info(f"Built review graph with {len(self.nodes)} nodes")
         return compiled_graph
     
-    def get_summary_graph(self) -> Runnable:
+    def get_review_graph(self) -> Runnable:
         """
-        Get a compiled graph for summary generation.
+        Get a compiled graph for review generation.
         
         Returns:
             Compiled graph runnable

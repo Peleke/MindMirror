@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, TypeVar, Generic
 
 from langchain_core.runnables import Runnable
 
-from agent_service.langgraph.state import BaseAgentState, StateManager
+from agent_service.langgraph_.state import BaseAgentState, StateManager
 from agent_service.tracing.decorators import trace_function
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,7 @@ class GraphRunnerFactory:
         Returns:
             Configured graph runner
         """
-        from agent_service.langgraph.graphs.journal_graph import JournalGraphBuilder
+        from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
         
         builder = JournalGraphBuilder(provider=provider, overrides=overrides)
         graph = builder.get_summary_graph()
@@ -196,7 +196,7 @@ class GraphRunnerFactory:
         Returns:
             Configured graph runner
         """
-        from agent_service.langgraph.graphs.review_graph import ReviewGraphBuilder
+        from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
         
         builder = ReviewGraphBuilder(provider=provider, overrides=overrides)
         graph = builder.get_review_graph()

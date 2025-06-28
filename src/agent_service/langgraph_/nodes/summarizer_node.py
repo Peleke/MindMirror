@@ -7,8 +7,8 @@ This node generates summaries from journal entries using the LLMService.
 import logging
 from typing import Any, Dict, List
 
-from agent_service.langgraph.nodes.base import LLMNode
-from agent_service.langgraph.state import JournalAgentState, StateManager
+from agent_service.langgraph_.nodes.base import LLMNode
+from agent_service.langgraph_.state import JournalAgentState, StateManager
 
 logger = logging.getLogger(__name__)
 

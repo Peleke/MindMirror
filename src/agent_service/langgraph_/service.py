@@ -8,8 +8,8 @@ LangGraph workflows while maintaining compatibility with existing code.
 import logging
 from typing import Any, Dict, List, Optional, Union
 
-from agent_service.langgraph.runner import GraphRunner, GraphRunnerFactory
-from agent_service.langgraph.state import (
+from agent_service.langgraph_.runner import GraphRunner, GraphRunnerFactory
+from agent_service.langgraph_.state import (
     BaseAgentState,
     JournalAgentState,
     StateManager,

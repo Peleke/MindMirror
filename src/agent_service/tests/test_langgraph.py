@@ -9,21 +9,21 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any
 
-from agent_service.langgraph.state import (
+from agent_service.langgraph_.state import (
     BaseAgentState,
     JournalAgentState,
     RAGAgentState,
     StateManager,
     AgentStateFactory,
 )
-from agent_service.langgraph.nodes.base import BaseNode, LLMNode
-from agent_service.langgraph.nodes.summarizer_node import SummarizerNode
-from agent_service.langgraph.nodes.reviewer_node import ReviewerNode
-from agent_service.langgraph.graphs.base import BaseGraphBuilder
-from agent_service.langgraph.graphs.journal_graph import JournalGraphBuilder
-from agent_service.langgraph.graphs.review_graph import ReviewGraphBuilder
-from agent_service.langgraph.runner import GraphRunner, GraphRunnerFactory
-from agent_service.langgraph.service import LangGraphService, LangGraphServiceFactory
+from agent_service.langgraph_.nodes.base import BaseNode, LLMNode
+from agent_service.langgraph_.nodes.summarizer_node import SummarizerNode
+from agent_service.langgraph_.nodes.reviewer_node import ReviewerNode
+from agent_service.langgraph_.graphs.base import BaseGraphBuilder
+from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
+from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
+from agent_service.langgraph_.runner import GraphRunner, GraphRunnerFactory
+from agent_service.langgraph_.service import LangGraphService, LangGraphServiceFactory
 
 
 class TestStateManagement:

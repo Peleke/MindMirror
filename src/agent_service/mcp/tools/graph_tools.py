@@ -210,7 +210,7 @@ class JournalSummaryGraphTool(GraphTool):
         )
         
         # Import here to avoid circular imports
-        from agent_service.langgraph.graphs.journal_graph import JournalGraphBuilder
+        from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
         
         super().__init__(
             config=config,
@@ -322,7 +322,7 @@ class PerformanceReviewGraphTool(GraphTool):
         )
         
         # Import here to avoid circular imports
-        from agent_service.langgraph.graphs.review_graph import ReviewGraphBuilder
+        from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
         
         super().__init__(
             config=config,

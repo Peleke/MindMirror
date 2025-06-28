@@ -13,7 +13,7 @@ from langchain_core.runnables import Runnable
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import HumanMessage, AIMessage
 
-from agent_service.langgraph.state import BaseAgentState, StateManager
+from agent_service.langgraph_.state import BaseAgentState, StateManager
 from agent_service.tracing.decorators import trace_function
 from agent_service.app.services.llm_service import LLMService
 

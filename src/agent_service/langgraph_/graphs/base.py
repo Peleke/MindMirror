@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, TypeVar, Generic
 from langchain_core.runnables import Runnable
 from langgraph.graph import StateGraph, END
 
-from agent_service.langgraph.state import BaseAgentState
+from agent_service.langgraph_.state import BaseAgentState
 from agent_service.tracing.decorators import trace_function
 
 logger = logging.getLogger(__name__)
