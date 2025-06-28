@@ -19,7 +19,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from agent_service.qdrant_data_processing import QdrantKnowledgeBaseBuilder
+from agent_service.cli.qdrant_data_processing import QdrantKnowledgeBaseBuilder
 from agent_service.app.clients.qdrant_client import QdrantClient
 from config import DATA_DIR
 
