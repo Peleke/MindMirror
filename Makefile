@@ -23,6 +23,10 @@ demo:
 	fi
 	@echo "📁 Creating necessary directories..."
 	@mkdir -p prompts credentials local_gcs_bucket
+	@echo "🔧 Installing MindMirror CLI..."
+	@if [ -f cli/pyproject.toml ]; then \
+		cd cli && poetry install; \
+	fi
 	@echo "🧠 Building knowledge base..."
 	@make build-knowledge-base
 	@echo "🐳 Starting Docker containers..."
@@ -41,11 +45,12 @@ demo:
 # Build knowledge base
 build-knowledge-base:
 	@echo "🧠 Building Qdrant knowledge base..."
-	@if [ -f scripts/build_qdrant_knowledge_base.py ]; then \
-		echo "📚 Running knowledge base build script..."; \
-		poetry run python scripts/build_qdrant_knowledge_base.py || echo "⚠️  Knowledge base build failed or skipped"; \
+	@if [ -f cli/pyproject.toml ]; then \
+		echo "📚 Running MindMirror CLI..."; \
+		cd cli && poetry run mindmirror qdrant build --tradition canon-default --verbose || echo "⚠️  Knowledge base build failed or skipped"; \
 	else \
-		echo "⚠️  Knowledge base script not found, skipping..."; \
+		echo "⚠️  MindMirror CLI not found, falling back to script..."; \
+		poetry run python scripts/build_qdrant_knowledge_base.py || echo "⚠️  Knowledge base build failed or skipped"; \
 	fi
 	@echo "✅ Knowledge base build complete!"
 
