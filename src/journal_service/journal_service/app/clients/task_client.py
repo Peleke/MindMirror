@@ -1,5 +1,6 @@
 import httpx
 from typing import Optional
+from datetime import datetime
 
 class TaskClient:
     def __init__(self, base_url: str = "http://celery-worker:8000"):
@@ -10,14 +11,22 @@ class TaskClient:
         self, 
         entry_id: str, 
         user_id: str, 
-        tradition: str = "canon-default"
+        content: str,
+        created_at: Optional[datetime] = None,
+        metadata: Optional[dict] = None
     ) -> dict:
+        # Use current time if not provided
+        if created_at is None:
+            created_at = datetime.utcnow()
+            
         response = await self.client.post(
             f"{self.base_url}/tasks/index-journal-entry",
             json={
                 "entry_id": entry_id,
                 "user_id": user_id,
-                "tradition": tradition
+                "content": content,
+                "created_at": created_at.isoformat(),
+                "metadata": metadata or {}
             }
         )
         response.raise_for_status()
