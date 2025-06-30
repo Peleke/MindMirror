@@ -27,8 +27,8 @@ services:
   # --- Backend Services ---
   agent_service:
     build:
-      context: .
-      dockerfile: Dockerfile.agent
+      context: ./src/agent_service
+      dockerfile: Dockerfile
     container_name: agent_service
     env_file: .env
     environment:
@@ -38,11 +38,15 @@ services:
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
       - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
+      # GCS Configuration
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
-      - local_gcs_bucket:/app/local_gcs_bucket:ro
+      - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
+      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # For production GCS, mount credentials:
       # - ./credentials:/app/credentials:ro
     command: uvicorn agent_service.app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -52,6 +56,7 @@ services:
       - postgres
       - qdrant
       - redis
+      - gcs-emulator
     ports:
       - "8000:8000" # Expose for direct access during dev
     healthcheck:
@@ -63,19 +68,26 @@ services:
 
   journal_service:
     build:
-      context: .
-      dockerfile: Dockerfile.journal
+      context: ./src/journal_service
+      dockerfile: Dockerfile
     container_name: journal_service
     env_file: .env
+    environment:
+      # GCS Configuration
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./src/journal_service:/app/journal_service
       - ./src/shared:/app/shared
+      - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
+      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
     command: uvicorn journal_service.web.app:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
     depends_on:
       - postgres
       - redis
+      - gcs-emulator
     ports:
       - "8001:8001" # Expose for direct access during dev
     healthcheck:
@@ -103,12 +115,15 @@ services:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-http://journal_service:8001}
       - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY:-dev-secret-key}
+      # GCS Configuration
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./celery-worker:/app
       - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
-      - local_gcs_bucket:/app/local_gcs_bucket
-      - ./local_gcs_bucket:/app/storage:ro  # Mount local storage for development
+      - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
+      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
     networks:
       - mindmirror-network
     depends_on:
@@ -116,6 +131,7 @@ services:
       - postgres
       - qdrant
       - journal_service
+      - gcs-emulator
     ports:
       - "8002:8000" # Expose for direct access during dev
     healthcheck:
@@ -139,42 +155,19 @@ services:
 
   # --- GCS Emulator (Development Only) ---
   gcs-emulator:
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    image: fsouza/fake-gcs-server:latest
     container_name: gcs-emulator
     ports:
       - "4443:4443"
-    environment:
-      - STORAGE_EMULATOR_HOST=0.0.0.0:4443
-    command: >
-      gcloud beta emulators storage start
-      --host-port=0.0.0.0:4443
-      --project=local-project
+    volumes:
+      - ./local_gcs_bucket:/data:ro  # Preload local files into emulator
+    command: ["-scheme", "http", "-port", "4443"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
-    networks:
-      - mindmirror-network
-
-  # Local GCS bucket for development
-  local_gcs_bucket:
-    image: alpine:latest
-    container_name: local_gcs_bucket
-    volumes:
-      - ./local_gcs_bucket:/data
-    command: >
-      sh -c "
-        mkdir -p /data/prompts &&
-        echo 'Local GCS bucket initialized' > /data/README.md &&
-        tail -f /dev/null
-      "
-    healthcheck:
-      test: ["CMD", "test", "-d", "/data/prompts"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      start_period: 10s
     networks:
       - mindmirror-network
 
@@ -269,10 +262,8 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
-  local_gcs_bucket:
+  gcs_emulator_data:  # Renamed for clarity
   prompts_data:
-    driver: local
-  gcs_emulator_data:
     driver: local
 
 networks:
