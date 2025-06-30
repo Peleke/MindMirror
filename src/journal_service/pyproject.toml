@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "journal-service"
+version = "0.1.0"
+description = "Journal service for MindMirror - handles journal entries and reflections"
+authors = ["MindMirror Team"]
+readme = "README.md"
+packages = [
+    {include = "journal_service", from = "."},
+    {include = "shared", from = "../"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.0"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+strawberry-graphql = "^0.215.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.0"}
+asyncpg = "^0.29.0"
+alembic = "^1.12.0"
+pydantic = "^2.0.0"
+pydantic-settings = "^2.0.0"
+redis = "^5.0.0"
+celery = "^5.3.0"
+httpx = "^0.25.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+pytest-cov = "^4.1.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+mypy = "^1.5.0"
+ruff = "^0.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+select = ["E", "F", "I", "N", "W", "B", "C4", "UP"]
+ignore = ["E501", "B008"] 

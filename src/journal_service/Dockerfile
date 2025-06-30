@@ -12,7 +12,7 @@ WORKDIR /app
 RUN pip install poetry
 
 # Copy only the necessary files for dependency installation
-COPY poetry.lock pyproject.toml ./
+COPY src/journal_service/pyproject.toml src/journal_service/poetry.lock ./
 
 # Install dependencies
 RUN poetry config virtualenvs.create false && poetry install --no-root --only=main
@@ -30,12 +30,14 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
-# Copy the application source code (shared is now in src/shared)
-COPY ./src /app/src
-COPY config.py .
+# Copy the application source code
+COPY src /app/src
+
+# Set Python path to include src directory
+ENV PYTHONPATH=/app/src
 
 # Expose the port the app runs on
 EXPOSE 8001
 
 # Set the entrypoint
-CMD ["uvicorn", "journal_service.web.app:app", "--host", "0.0.0.0", "--port", "8001"] 
+CMD ["uvicorn", "journal_service.main:app", "--host", "0.0.0.0", "--port", "8001"] 
