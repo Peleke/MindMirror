@@ -39,7 +39,7 @@ def rebuild_tradition_knowledge_base(tradition: str):
     logger.info(f"Ensured collection exists: {knowledge_collection_name}")
 
     # 2. List all documents in the tradition's GCS folder
-    doc_prefix = f"{tradition}/documents/"
+    doc_prefix = f"{tradition}/"
     doc_blobs = gcs_client.list_files(prefix=doc_prefix)
 
     if not doc_blobs:

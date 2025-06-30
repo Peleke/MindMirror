@@ -39,7 +39,7 @@ async def rebuild_tradition_knowledge_base(self, tradition: str):
     qdrant_client.get_or_create_knowledge_collection(tradition)
     
     # Process documents
-    doc_prefix = f"{tradition}/documents/"
+    doc_prefix = f"{tradition}/"
     doc_blobs = gcs_client.list_files(prefix=doc_prefix)
     
     if not doc_blobs:

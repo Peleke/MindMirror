@@ -197,14 +197,14 @@ class LocalTraditionLoader(TraditionLoader):
             scan_dir = docs_dir if docs_dir.exists() else tradition_dir
             for file_path in scan_dir.glob("*.pdf"):
                 documents.append({
-                    "name": f"{tradition}/documents/{file_path.name}",
+                    "name": f"{tradition}/{file_path.name}",
                     "size": file_path.stat().st_size,
                     "tradition": tradition,
                     "local_path": str(file_path),
                 })
             for file_path in scan_dir.glob("*.txt"):
                 documents.append({
-                    "name": f"{tradition}/documents/{file_path.name}",
+                    "name": f"{tradition}/{file_path.name}",
                     "size": file_path.stat().st_size,
                     "tradition": tradition,
                     "local_path": str(file_path),
