@@ -234,7 +234,7 @@ PROMPT: How can you better structure your day to make time management feel less 
         # Test local storage
         with patch.dict(
             "os.environ",
-            {"PROMPT_STORAGE_TYPE": "local", "PROMPT_STORE_PATH": "test_prompts"},
+            {"PROMPT_STORAGE_TYPE": "local", "PROMPT_STORE_PATH": "tests/test_prompts"},
         ):
             # Act
             service = LLMService()
