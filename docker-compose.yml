@@ -27,8 +27,8 @@ services:
   # --- Backend Services ---
   agent_service:
     build:
-      context: ./src/agent_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/agent_service/Dockerfile
     container_name: agent_service
     env_file: .env
     environment:
