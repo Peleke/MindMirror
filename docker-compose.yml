@@ -68,8 +68,8 @@ services:
 
   journal_service:
     build:
-      context: ./src/journal_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/journal_service/Dockerfile
     container_name: journal_service
     env_file: .env
     environment:
@@ -77,11 +77,10 @@ services:
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
-      - ./src/journal_service:/app/journal_service
-      - ./src/shared:/app/shared
+      - ./src:/app/src
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
-    command: uvicorn journal_service.web.app:app --host 0.0.0.0 --port 8001 --reload
+    command: uvicorn journal_service.journal_service.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
     depends_on:
