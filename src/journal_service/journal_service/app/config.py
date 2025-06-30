@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     jwt_secret: str = "your-secret-key"
     jwt_algorithm: str = "HS256"
     
+    # Dummy UUIDs for mesh introspection and fallback users
+    # These are obviously fake UUIDs (all 0s except last character)
+    faux_mesh_user_id: str = "00000000-0000-0000-0000-000000000001"
+    faux_mesh_supabase_id: str = "00000000-0000-0000-0000-000000000002"
+    
     # Logging
     log_level: str = "INFO"
     

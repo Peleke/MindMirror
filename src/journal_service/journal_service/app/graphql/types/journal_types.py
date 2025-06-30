@@ -1,48 +1,50 @@
 import strawberry
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 
 
 @strawberry.type
 class GratitudePayloadType:
     """GraphQL type for gratitude payload."""
-    grateful_for: str
-    impact: str
-    reflection: Optional[str] = None
+    gratefulFor: List[str]
+    excitedAbout: List[str]
+    focus: Optional[str] = None
+    affirmation: Optional[str] = None
+    mood: Optional[str] = None
 
 
 @strawberry.type
 class ReflectionPayloadType:
     """GraphQL type for reflection payload."""
-    prompt: str
-    response: str
-    insights: Optional[str] = None
+    wins: List[str]
+    improvements: List[str]
+    mood: Optional[str] = None
 
 
-@strawberry.type
-class JournalEntryType:
-    """Base GraphQL type for journal entries."""
+@strawberry.interface
+class JournalEntryInterface:
+    """Base interface for journal entries."""
     id: str
-    user_id: str
-    entry_type: str
-    created_at: datetime
-    modified_at: Optional[datetime] = None
+    userId: str
+    entryType: str
+    createdAt: datetime
+    modifiedAt: Optional[datetime] = None
 
 
 @strawberry.type
-class GratitudeJournalEntry(JournalEntryType):
+class GratitudeJournalEntry(JournalEntryInterface):
     """GraphQL type for gratitude journal entries."""
     payload: GratitudePayloadType
 
 
 @strawberry.type
-class ReflectionJournalEntry(JournalEntryType):
+class ReflectionJournalEntry(JournalEntryInterface):
     """GraphQL type for reflection journal entries."""
     payload: ReflectionPayloadType
 
 
 @strawberry.type
-class FreeformJournalEntry(JournalEntryType):
+class FreeformJournalEntry(JournalEntryInterface):
     """GraphQL type for freeform journal entries."""
     payload: str
 
@@ -51,17 +53,19 @@ class FreeformJournalEntry(JournalEntryType):
 @strawberry.input
 class GratitudeEntryInput:
     """Input type for creating gratitude entries."""
-    grateful_for: str
-    impact: str
-    reflection: Optional[str] = None
+    gratefulFor: List[str]
+    excitedAbout: List[str]
+    focus: Optional[str] = None
+    affirmation: Optional[str] = None
+    mood: Optional[str] = None
 
 
 @strawberry.input
 class ReflectionEntryInput:
     """Input type for creating reflection entries."""
-    prompt: str
-    response: str
-    insights: Optional[str] = None
+    wins: List[str]
+    improvements: List[str]
+    mood: Optional[str] = None
 
 
 @strawberry.input

@@ -4,13 +4,14 @@ GraphQL Context Management
 Clean GraphQL context management with proper typing and dependency injection.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import Depends
+from fastapi import Depends, Header
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 from strawberry.types import Info
 
+from journal_service.journal_service.app.config import get_settings
 from journal_service.journal_service.app.db.database import get_session
 from journal_service.journal_service.app.db.repositories.journal import JournalRepository
 from journal_service.journal_service.app.services.journal_service import JournalService
@@ -19,26 +20,48 @@ from journal_service.journal_service.app.services.journal_service import Journal
 GraphQLContext = Dict[str, Any]
 
 
+# TODO: INTEGRATE WITH ACTUAL USERS SERVICE
+# Currently mocking role for development - replace with real users service integration
+async def get_current_user_from_header(
+    x_internal_id: Optional[str] = Header(None, alias="x-internal-id")
+) -> CurrentUser:
+    """Get current user from x-internal-id header (real user ID) with mocked role."""
+    settings = get_settings()
+    
+    if x_internal_id:
+        # Real user request with header
+        return CurrentUser(
+            id=x_internal_id,
+            supabase_id=x_internal_id,  # TODO: Should never be used after this
+            roles=[
+                UserRole(role="user", domain="journaling"),  # TODO: Get from users service
+            ]
+        )
+    else:
+        # No header present, assume introspection/development
+        return CurrentUser(
+            id=settings.faux_mesh_user_id,
+            supabase_id=settings.faux_mesh_supabase_id,
+            roles=[
+                UserRole(role="user", domain="journaling"),
+            ]
+        )
+
+
 async def get_context(
     session = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user_from_header),
 ) -> GraphQLContext:
     """
     Create GraphQL context with dependencies.
 
     Args:
         session: Database session
-        current_user: Authenticated user
+        current_user: Authenticated user (from x-internal-id header or fallback)
 
     Returns:
         GraphQLContext: Context dictionary for GraphQL resolvers
     """
-    # Mock user roles for development
-    # In production, this would come from the users service
-    user_roles = [
-        UserRole(role="user", domain="journaling"),
-    ]
-
     # Create service instance
     repository = JournalRepository(session)
     journal_service = JournalService(repository)
@@ -47,7 +70,6 @@ async def get_context(
         "session": session,
         "current_user": current_user,
         "journal_service": journal_service,
-        "user_roles": user_roles,
     }
 
 

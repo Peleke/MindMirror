@@ -34,32 +34,50 @@ class JournalService:
     
     async def create_gratitude_entry(
         self, 
-        user: CurrentUser, 
-        payload: GratitudePayload
+        user_id: str,
+        gratefulFor: List[str],
+        excitedAbout: List[str],
+        focus: Optional[str] = None,
+        affirmation: Optional[str] = None,
+        mood: Optional[str] = None,
     ) -> JournalEntryResponse:
         """Create a gratitude journal entry."""
+        payload = {
+            "gratefulFor": gratefulFor,
+            "excitedAbout": excitedAbout,
+            "focus": focus,
+            "affirmation": affirmation,
+            "mood": mood,
+        }
         entry = await self.repository.create(
-            user_id=user.id,
+            user_id=user_id,
             entry_type="GRATITUDE",
-            payload=payload.model_dump()
+            payload=payload
         )
         
-        logger.info(f"Created gratitude entry {entry.id} for user {user.id}")
+        logger.info(f"Created gratitude entry {entry.id} for user {user_id}")
         return JournalEntryResponse.from_orm(entry)
     
     async def create_reflection_entry(
         self,
-        user: CurrentUser,
-        payload: ReflectionPayload
+        user_id: str,
+        wins: List[str],
+        improvements: List[str],
+        mood: Optional[str] = None,
     ) -> JournalEntryResponse:
         """Create a reflection journal entry."""
+        payload = {
+            "wins": wins,
+            "improvements": improvements,
+            "mood": mood,
+        }
         entry = await self.repository.create(
-            user_id=user.id,
+            user_id=user_id,
             entry_type="REFLECTION",
-            payload=payload.model_dump()
+            payload=payload
         )
         
-        logger.info(f"Created reflection entry {entry.id} for user {user.id}")
+        logger.info(f"Created reflection entry {entry.id} for user {user_id}")
         return JournalEntryResponse.from_orm(entry)
     
     async def get_entries_for_user(
@@ -82,16 +100,20 @@ class JournalService:
         """Check if user has entry of specific type today."""
         return await self.repository.check_for_entry_today(user_id, entry_type)
     
-    async def delete_entry(self, entry_id: UUID) -> bool:
+    async def delete_entry(self, entry_id: UUID, user_id: str) -> bool:
         """Delete a journal entry."""
-        success = await self.repository.delete(str(entry_id))
-        if success:
-            logger.info(f"Deleted journal entry {entry_id}")
-        return success
+        entry = await self.repository.get(str(entry_id))
+        if entry and str(entry.user_id) == user_id:
+            success = await self.repository.delete(str(entry_id))
+            if success:
+                logger.info(f"Deleted journal entry {entry_id} for user {user_id}")
+            return success
+        logger.warning(f"User {user_id} attempted to delete entry {entry_id} but was denied")
+        return False
     
-    async def get_entry(self, entry_id: UUID) -> Optional[JournalEntryResponse]:
+    async def get_entry(self, entry_id: UUID, user_id: str) -> Optional[JournalEntryResponse]:
         """Get a specific journal entry."""
         entry = await self.repository.get(str(entry_id))
-        if entry:
+        if entry and str(entry.user_id) == user_id:
             return JournalEntryResponse.from_orm(entry)
         return None 
