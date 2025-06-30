@@ -3,19 +3,35 @@ from src.models.task_models import IndexJournalEntryRequest, ReindexTraditionReq
 from src.tasks.journal_tasks import queue_journal_entry_indexing
 from src.tasks.tradition_tasks import queue_tradition_reindex
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.post("/tasks/index-journal-entry")
 async def submit_index_task(request: IndexJournalEntryRequest):
     try:
+        logger.info(f"Received indexing request for entry {request.entry_id}, user {request.user_id}")
+        logger.info(f"Request metadata: {request.metadata}")
+        
+        # Extract tradition from metadata, default to "canon-default"
+        tradition = request.metadata.get("tradition", "canon-default") if request.metadata else "canon-default"
+        logger.info(f"Using tradition: {tradition}")
+        
+        logger.info("About to queue journal entry indexing task...")
+        logger.info(f"Calling queue_journal_entry_indexing with args: entry_id={request.entry_id}, user_id={request.user_id}, tradition={tradition}")
+        
         task = queue_journal_entry_indexing(
             request.entry_id, 
             request.user_id, 
-            request.tradition
+            tradition
         )
+        logger.info(f"Successfully queued task with ID: {task.id}")
+        logger.info(f"Task object: {task}")
+        logger.info(f"Task state: {task.state}")
         return {"task_id": task.id, "status": "queued"}
     except Exception as e:
+        logger.error(f"Error in submit_index_task: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/tasks/reindex-tradition")

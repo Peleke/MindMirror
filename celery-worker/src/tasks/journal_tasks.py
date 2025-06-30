@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
 from typing import Any, Dict, List
+import asyncio
 
-from celery import current_app
 from celery.exceptions import Retry
 
+from src.celery_app import celery_app
 from src.clients.journal_client import create_celery_journal_client
 from src.clients.qdrant_client import get_celery_qdrant_client
 from src.utils.embedding import get_embedding
@@ -12,7 +13,8 @@ from src.utils.embedding import get_embedding
 logger = logging.getLogger(__name__)
 
 
-@current_app.task(
+# NOTE: Use task routes instead of queue kwarg: <https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-routes>
+@celery_app.task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 3, "countdown": 60},
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
     time_limit=300,  # 5 minutes
     name="celery_worker.tasks.index_journal_entry_task",
 )
-async def index_journal_entry_task(
+def index_journal_entry_task(
     self, entry_id: str, user_id: str, tradition: str = "canon-default"
 ):
     """
@@ -37,7 +39,7 @@ async def index_journal_entry_task(
     try:
         logger.info(f"Starting indexing task for entry {entry_id}, user {user_id}")
 
-        result = await index_journal_entry_by_id(entry_id, user_id, tradition)
+        result = asyncio.run(index_journal_entry_by_id(entry_id, user_id, tradition))
 
         if not result:
             raise Exception(f"Failed to index journal entry {entry_id}")
@@ -50,14 +52,14 @@ async def index_journal_entry_task(
         raise self.retry(exc=exc)
 
 
-@current_app.task(
+@celery_app.task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2, "countdown": 120},
     time_limit=1800,  # 30 minutes for batch operations
     name="celery_worker.tasks.batch_index_journal_entries_task",
 )
-async def batch_index_journal_entries_task(self, entries_data: List[Dict[str, Any]]):
+def batch_index_journal_entries_task(self, entries_data: List[Dict[str, Any]]):
     """
     Celery task to index multiple journal entries in batch.
 
@@ -71,7 +73,7 @@ async def batch_index_journal_entries_task(self, entries_data: List[Dict[str, An
         logger.info(f"Starting batch indexing task for {len(entries_data)} entries")
 
         indexer = JournalIndexer()
-        result = await indexer.batch_index_entries(entries_data)
+        result = asyncio.run(indexer.batch_index_entries(entries_data))
 
         logger.info(f"Batch indexing completed: {result}")
         return result
@@ -81,14 +83,14 @@ async def batch_index_journal_entries_task(self, entries_data: List[Dict[str, An
         raise self.retry(exc=exc)
 
 
-@current_app.task(
+@celery_app.task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2, "countdown": 300},
     time_limit=3600,  # 1 hour for reindexing
     name="celery_worker.tasks.reindex_user_entries_task",
 )
-async def reindex_user_entries_task(
+def reindex_user_entries_task(
     self, user_id: str, tradition: str = "canon-default"
 ):
     """
@@ -105,7 +107,7 @@ async def reindex_user_entries_task(
         logger.info(f"Starting reindex task for user {user_id}")
 
         indexer = JournalIndexer()
-        result = await indexer.reindex_user_entries(user_id, tradition)
+        result = asyncio.run(indexer.reindex_user_entries(user_id, tradition))
 
         logger.info(f"Reindex completed for user {user_id}: {result}")
         return result
@@ -120,23 +122,41 @@ def queue_journal_entry_indexing(
     entry_id: str, user_id: str, tradition: str = "canon-default"
 ):
     """Queue a journal entry for indexing."""
-    return current_app.send_task(
-        "celery_worker.tasks.index_journal_entry_task",
-        args=[entry_id, user_id, tradition],
-    )
+    logger.info(f"queue_journal_entry_indexing called with entry_id={entry_id}, user_id={user_id}, tradition={tradition}")
+    try:
+        logger.info("About to send task to celery...")
+        logger.info(f"Task name: celery_worker.tasks.index_journal_entry_task")
+        logger.info(f"Task args: [{entry_id}, {user_id}, {tradition}]")
+        
+        task = celery_app.send_task(
+            "celery_worker.tasks.index_journal_entry_task",
+            args=[entry_id, user_id, tradition],
+            queue="indexing",
+        )
+        logger.info(f"Successfully sent task to celery: {task.id}")
+        logger.info(f"Task state: {task.state}")
+        logger.info(f"Task info: {task.info}")
+        return task
+    except Exception as e:
+        logger.error(f"Error in queue_journal_entry_indexing: {e}", exc_info=True)
+        raise
 
 
 def queue_batch_indexing(entries_data: List[Dict[str, Any]]):
     """Queue multiple entries for batch indexing."""
-    return current_app.send_task(
-        "celery_worker.tasks.batch_index_journal_entries_task", args=[entries_data]
+    return celery_app.send_task(
+        "celery_worker.tasks.batch_index_journal_entries_task", 
+        args=[entries_data],
+        queue="indexing"
     )
 
 
 def queue_user_reindex(user_id: str, tradition: str = "canon-default"):
     """Queue all user entries for reindexing."""
-    return current_app.send_task(
-        "celery_worker.tasks.reindex_user_entries_task", args=[user_id, tradition]
+    return celery_app.send_task(
+        "celery_worker.tasks.reindex_user_entries_task", 
+        args=[user_id, tradition],
+        queue="maintenance"
     )
 
 

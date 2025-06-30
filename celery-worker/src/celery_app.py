@@ -1,6 +1,8 @@
+import logging
 import os
 
 from celery import Celery
+from celery.signals import setup_logging
 
 
 def create_celery_app() -> Celery:
@@ -9,6 +11,7 @@ def create_celery_app() -> Celery:
     This prevents the app from being configured at import time, which is crucial
     for testing, allowing pytest fixtures to set the broker/backend URLs.
     """
+    logging.basicConfig(level=logging.INFO)
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
     celery_app = Celery(
