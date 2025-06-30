@@ -9,7 +9,7 @@ export const composeConfig = defineConfig({
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Agent', {
-        endpoint: 'http://agent_service:8000/graphql'
+        endpoint: 'http://agent_service:8000/graphql',
       })
     },
   ]

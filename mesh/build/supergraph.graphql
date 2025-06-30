@@ -106,6 +106,8 @@ scalar Base64 @join__type(graph: AGENT)
 
 scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
 
+scalar UUID @join__type(graph: JOURNAL) 
+
 type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
@@ -128,8 +130,11 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   getToolMetadata(toolName: String!, version: String = null) : ToolMetadata @join__field(graph: AGENT) 
   getToolRegistryHealth: ToolRegistryHealth! @join__field(graph: AGENT) 
   listToolNames: [String!]! @join__field(graph: AGENT) 
-  journalEntries: [JournalEntryType!]! @join__field(graph: JOURNAL) 
-  journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
+  journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
+  journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
+  gratitudeEntries(limit: Int! = 10, offset: Int! = 0) : [GratitudeJournalEntry!]! @join__field(graph: JOURNAL) 
+  reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
+  freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -168,10 +173,10 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
     version: String = null
   ): ToolExecutionResult! @join__field(graph: AGENT) 
   uploadDocument(fileName: String!, content: Base64!, tradition: String! = "canon-default") : Boolean! @join__field(graph: AGENT) 
-  createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
-  deleteJournalEntry(entryId: String!) : Boolean! @join__field(graph: JOURNAL) 
+  createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
+  deleteJournalEntry(entryId: UUID!) : Boolean! @join__field(graph: JOURNAL) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -187,39 +192,30 @@ type ToolExecutionResult @join__type(graph: AGENT)  {
   executionTimeMs: Int
 }
 
-type FreeformJournalEntry @join__type(graph: JOURNAL)  {
+type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: JOURNAL)  @join__implements(graph: JOURNAL, interface: "JournalEntryInterface")  {
   id: String!
   userId: String!
   entryType: String!
-  payload: String!
   createdAt: DateTime!
   modifiedAt: DateTime
-}
-
-type GratitudeJournalEntry @join__type(graph: JOURNAL)  {
-  id: String!
-  userId: String!
-  entryType: String!
   payload: GratitudePayloadType!
-  createdAt: DateTime!
-  modifiedAt: DateTime
 }
 
 type GratitudePayloadType @join__type(graph: JOURNAL)  {
   gratefulFor: [String!]!
   excitedAbout: [String!]!
-  focus: String!
-  affirmation: String!
+  focus: String
+  affirmation: String
   mood: String
 }
 
-type ReflectionJournalEntry @join__type(graph: JOURNAL)  {
+type ReflectionJournalEntry implements JournalEntryInterface @join__type(graph: JOURNAL)  @join__implements(graph: JOURNAL, interface: "JournalEntryInterface")  {
   id: String!
   userId: String!
   entryType: String!
-  payload: ReflectionPayloadType!
   createdAt: DateTime!
   modifiedAt: DateTime
+  payload: ReflectionPayloadType!
 }
 
 type ReflectionPayloadType @join__type(graph: JOURNAL)  {
@@ -228,20 +224,28 @@ type ReflectionPayloadType @join__type(graph: JOURNAL)  {
   mood: String
 }
 
-"""
-A journal entry, which can be freeform, gratitude, or reflection.
-"""
-union JournalEntryType @join__type(graph: JOURNAL)  @join__unionMember(graph: JOURNAL, member: "FreeformJournalEntry")  @join__unionMember(graph: JOURNAL, member: "GratitudeJournalEntry")  @join__unionMember(graph: JOURNAL, member: "ReflectionJournalEntry")  = FreeformJournalEntry | GratitudeJournalEntry | ReflectionJournalEntry
+type FreeformJournalEntry implements JournalEntryInterface @join__type(graph: JOURNAL)  @join__implements(graph: JOURNAL, interface: "JournalEntryInterface")  {
+  id: String!
+  userId: String!
+  entryType: String!
+  createdAt: DateTime!
+  modifiedAt: DateTime
+  payload: String!
+}
 
-input FreeformEntryInput @join__type(graph: JOURNAL)  {
-  content: String!
+interface JournalEntryInterface @join__type(graph: JOURNAL)  {
+  id: String!
+  userId: String!
+  entryType: String!
+  createdAt: DateTime!
+  modifiedAt: DateTime
 }
 
 input GratitudeEntryInput @join__type(graph: JOURNAL)  {
   gratefulFor: [String!]!
   excitedAbout: [String!]!
-  focus: String!
-  affirmation: String!
+  focus: String = null
+  affirmation: String = null
   mood: String = null
 }
 
@@ -249,4 +253,8 @@ input ReflectionEntryInput @join__type(graph: JOURNAL)  {
   wins: [String!]!
   improvements: [String!]!
   mood: String = null
+}
+
+input FreeformEntryInput @join__type(graph: JOURNAL)  {
+  content: String!
 }
