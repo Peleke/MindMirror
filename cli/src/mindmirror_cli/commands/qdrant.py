@@ -11,6 +11,7 @@ from rich.table import Table
 
 from mindmirror_cli.core.builder import QdrantKnowledgeBaseBuilder
 from mindmirror_cli.core.client import QdrantClient
+from mindmirror_cli.core.tradition_loader import create_tradition_loader
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -160,9 +161,9 @@ def list_traditions(
     async def _list():
         console.print("[bold blue]Available Traditions[/bold blue]")
 
-        builder = QdrantKnowledgeBaseBuilder()
-
-        traditions = builder.discover_source_directories(source_dirs)
+        # Use the tradition loader to discover traditions
+        tradition_loader = create_tradition_loader()
+        traditions = tradition_loader.list_traditions()
 
         if not traditions:
             console.print("[yellow]No traditions found[/yellow]")
@@ -170,20 +171,21 @@ def list_traditions(
 
         table = Table(title="Traditions")
         table.add_column("Tradition", style="cyan")
-        table.add_column("Source Directories", style="green")
+        table.add_column("Source", style="green")
         table.add_column("Document Count", style="blue")
 
-        for tradition, dirs in traditions.items():
-            # Count documents
-            total_docs = 0
-            for dir_path in dirs:
-                total_docs += len(list(dir_path.glob("*.pdf")))
-                total_docs += len(list(dir_path.glob("*.txt")))
+        for tradition in traditions:
+            # Get document count for this tradition
+            documents = tradition_loader.get_tradition_documents(tradition)
+            doc_count = len(documents)
+            
+            # Determine source (GCS or local)
+            source = "GCS Emulator" if tradition_loader.health_check() else "Local Files"
 
             table.add_row(
                 tradition,
-                "\n".join(str(d) for d in dirs),
-                str(total_docs),
+                source,
+                str(doc_count),
             )
 
         console.print(table)

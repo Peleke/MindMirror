@@ -13,6 +13,7 @@ from langchain_core.documents import Document
 
 from mindmirror_cli.core.client import QdrantClient
 from mindmirror_cli.core.embedding import get_embedding
+from mindmirror_cli.core.tradition_loader import create_tradition_loader, TraditionLoader
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,9 @@ class QdrantKnowledgeBaseBuilder:
     robust error handling with progress reporting.
     """
 
-    def __init__(self, qdrant_client: Optional[QdrantClient] = None):
+    def __init__(self, qdrant_client: Optional[QdrantClient] = None, tradition_loader: TraditionLoader = None):
         self.qdrant_client = qdrant_client or QdrantClient()
+        self.tradition_loader = tradition_loader or create_tradition_loader()
         
         # Get chunking configuration from environment
         chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
@@ -56,53 +58,49 @@ class QdrantKnowledgeBaseBuilder:
             logger.error(f"❌ Qdrant connection failed: {e}")
             return False
 
-    def discover_source_directories(
-        self, base_dirs: List[str]
-    ) -> Dict[str, List[Path]]:
+    def discover_source_directories(self, base_dirs: List[str]) -> Dict[str, List[Path]]:
         """
-        Discover traditions and their source directories.
-
-        Args:
-            base_dirs: List of base directories to scan
-
-        Returns:
-            Dict mapping tradition names to their document directories
+        Discover traditions using the loader (GCS-first, local fallback).
+        If local source directories are provided, use local discovery.
         """
         traditions = {}
-
-        for base_dir in base_dirs:
-            base_path = Path(base_dir)
-            if not base_path.exists():
-                logger.warning(f"Base directory not found: {base_dir}")
-                continue
-
-            logger.info(f"Scanning for traditions in: {base_dir}")
-
-            # Find tradition subdirectories
-            for tradition_dir in base_path.iterdir():
-                if not tradition_dir.is_dir():
+        
+        # Check if we have local source directories that actually exist
+        local_dirs_exist = any(Path(base_dir).exists() for base_dir in base_dirs)
+        
+        if local_dirs_exist:
+            # Use local discovery for the provided directories
+            logger.info(f"Using local discovery for directories: {base_dirs}")
+            for base_dir in base_dirs:
+                base_path = Path(base_dir)
+                if not base_path.exists():
+                    logger.warning(f"Base directory not found: {base_dir}")
                     continue
-
-                tradition = tradition_dir.name
-
-                # Look for documents subdirectory
-                docs_dir = tradition_dir / "documents"
-                if docs_dir.exists():
-                    if tradition not in traditions:
-                        traditions[tradition] = []
-                    traditions[tradition].append(docs_dir)
-                    logger.info(f"Found tradition '{tradition}' in {docs_dir}")
-                elif any(tradition_dir.glob("*.pdf")) or any(
-                    tradition_dir.glob("*.txt")
-                ):
-                    # Legacy: PDFs directly in tradition directory
-                    if tradition not in traditions:
-                        traditions[tradition] = []
-                    traditions[tradition].append(tradition_dir)
-                    logger.info(
-                        f"Found legacy tradition '{tradition}' in {tradition_dir}"
-                    )
-
+                
+                # If the base directory itself contains files, treat it as a tradition
+                if base_path.is_dir() and (any(base_path.glob("*.pdf")) or any(base_path.glob("*.txt"))):
+                    tradition_name = base_path.name
+                    if tradition_name not in traditions:
+                        traditions[tradition_name] = []
+                    traditions[tradition_name].append(base_path)
+                    logger.info(f"Found tradition '{tradition_name}' in {base_path}")
+                
+                # Look for subdirectories that might be traditions
+                for item in base_path.iterdir():
+                    if item.is_dir():
+                        tradition_name = item.name
+                        # Check if this directory contains documents
+                        if any(item.glob("*.pdf")) or any(item.glob("*.txt")):
+                            if tradition_name not in traditions:
+                                traditions[tradition_name] = []
+                            traditions[tradition_name].append(item)
+                            logger.info(f"Found tradition '{tradition_name}' in {item}")
+        else:
+            # Use tradition loader (GCS-first, local fallback)
+            logger.info("Using tradition loader for discovery")
+            for tradition in self.tradition_loader.list_traditions():
+                traditions[tradition] = []  # We don't resolve actual directories in GCS mode
+        
         return traditions
 
     async def load_documents_from_directory(self, directory: Path) -> List[Document]:
