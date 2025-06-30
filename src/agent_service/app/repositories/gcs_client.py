@@ -52,11 +52,25 @@ class GCSClient:
             
             for blob in blobs:
                 # Extract tradition name from path
-                # Expected structure: tradition_name/documents/file.pdf
+                # Expected structures:
+                # 1. tradition_name/file.pdf (direct structure)
+                # 2. file.txt (flat structure - treat as 'default' tradition)
+                # 3. subdirectory/file.txt (use bucket name as tradition)
                 path_parts = blob.name.split('/')
-                if len(path_parts) >= 1:
-                    tradition = path_parts[0]
-                    traditions.add(tradition)
+                
+                if len(path_parts) == 1:
+                    # Flat structure: file.txt -> tradition = 'default'
+                    traditions.add('default')
+                elif len(path_parts) >= 2:
+                    # Check if first part is a subdirectory (like 'documents')
+                    if path_parts[0] in ['documents', 'files']:
+                        # Subdirectory structure: documents/file.txt -> use bucket name as tradition
+                        tradition = self.bucket_name
+                        traditions.add(tradition)
+                    else:
+                        # Direct structure: tradition_name/file.pdf
+                        tradition = path_parts[0]
+                        traditions.add(tradition)
             
             logger.info(f"Found traditions in GCS: {list(traditions)}")
             return list(traditions)
@@ -70,8 +84,21 @@ class GCSClient:
         try:
             documents = []
             
-            # List blobs with tradition prefix
-            prefix = f"{tradition}/"
+            # Determine prefix based on tradition
+            if tradition == 'default':
+                # For default tradition, look for files without prefix
+                prefix = ""
+            elif tradition == self.bucket_name:
+                # For bucket-named tradition, look for documents/ or files/ subdirectory
+                prefix = "documents/"
+                # Try files/ if documents/ doesn't exist
+                test_blobs = list(self.client.list_blobs(self.bucket_name, prefix=prefix, max_results=1))
+                if not test_blobs:
+                    prefix = "files/"
+            else:
+                # For named traditions, look for tradition/ prefix
+                prefix = f"{tradition}/"
+            
             blobs = self.client.list_blobs(self.bucket_name, prefix=prefix)
             
             for blob in blobs:

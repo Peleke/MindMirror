@@ -550,12 +550,12 @@ class PromptChainTool(MCPTool):
         if "initial_variables" in arguments:
             current_args = arguments["initial_variables"].copy()
         else:
-        current_args = arguments.copy()
+            current_args = arguments.copy()
         
         for i, template in enumerate(self.templates):
             # Format the template
             try:
-            formatted_prompt = template.template.format(**current_args)
+                formatted_prompt = template.template.format(**current_args)
             except KeyError as e:
                 raise ValueError(f"Missing variable in template {template.name}: {e}")
             
@@ -649,7 +649,7 @@ class PromptTemplateManager:
         template = self.get_template(template_name)
         if template:
             if isinstance(template, PromptConfig):
-            return PromptTool(template)
+                return PromptTool(template)
             else:
                 # Create a PromptConfig from the template
                 prompt_config = PromptConfig(

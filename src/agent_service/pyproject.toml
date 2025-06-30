@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "agent-service"
+version = "0.1.0"
+description = "AI Agent Service for MindMirror"
+authors = ["Gemini"]
+readme = "README.md"
+packages = [
+    {include = "agent_service", from = "."},
+    {include = "shared", from = "../shared"}
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+# Core dependencies
+fastapi = "^0.115.0"
+uvicorn = "^0.30.3"
+pydantic = {extras = ["email"], version = "^2.11.5"}
+python-dotenv = "^1.0.1"
+
+# AI/ML dependencies
+openai = "^1.37.0"
+langchain = "^0.3.25"
+langchain-openai = "^0.3.22"
+langchain-community = "^0.3.25"
+langchain-experimental = "^0.3.4"
+langgraph = "^0.4.8"
+tiktoken = "^0.7.0"
+litellm = "^1.72.6.post1"
+langchain-google-genai = "^2.1.5"
+
+# Database and storage
+sqlalchemy = "^2.0.41"
+asyncpg = "^0.30.0"
+qdrant-client = "^1.14.2"
+google-cloud-storage = "^3.1.0"
+
+# HTTP and networking
+httpx = "^0.28.1"
+aiohttp = "^3.12.12"
+
+# Authentication and security
+pyjwt = "^2.10.1"
+
+# Utilities
+tenacity = "^9.1.2"
+networkx = "^3.3"
+strawberry-graphql = "^0.275.5"
+langchain-ollama = "^0.3.3"
+pydantic-settings = "^2.10.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+pytest-asyncio = "^1.0.0"
+pytest-mock = "^3.14.1"
+httpx = "^0.28.1"
+black = "^25.1.0"
+isort = "^6.0.1"
+flake8 = "^7.2.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api" 

@@ -12,7 +12,7 @@ WORKDIR /app
 RUN pip install poetry
 
 # Copy only the necessary files for dependency installation
-COPY poetry.lock pyproject.toml ./
+COPY src/agent_service/pyproject.toml src/agent_service/poetry.lock ./
 
 # Install dependencies
 RUN poetry config virtualenvs.create false && poetry install --no-root --only=main
@@ -30,10 +30,9 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
-# Copy the application source code (shared is now in src/shared)
-COPY ./src /app/src
-COPY ./ingestion /app/ingestion
-COPY config.py .
+# Copy the application source code
+COPY src /app/src
+COPY ingestion /app/ingestion
 
 # Expose the port the app runs on
 EXPOSE 8000

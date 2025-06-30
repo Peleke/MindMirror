@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     # Data directory
     data_dir: str = Field(default="./data", env="DATA_DIR")
 
+    # Chunking settings for document processing
+    chunk_size: int = Field(default=1000, env="CHUNK_SIZE")
+    chunk_overlap: int = Field(default=200, env="CHUNK_OVERLAP")
+
+    # Storage paths
+    graph_store_path: str = Field(default="./data/graph_store", env="GRAPH_STORE_PATH")
+    pdf_dir: str = Field(default="./data/pdfs", env="PDF_DIR")
+    vector_store_dir: str = Field(default="./data/vector_store", env="VECTOR_STORE_DIR")
+
     # Logging settings
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     log_format: str = Field(

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from ..exceptions import PromptNotFoundError, PromptValidationError
 from ..models import PromptInfo
-from . import PromptStore
+from .protocol import PromptStore
 
 
 class InMemoryPromptStore(PromptStore):

@@ -100,7 +100,7 @@ class LocalTraditionLoader(TraditionLoader):
             # Scan for PDF and text files
             for file_path in scan_dir.glob("*.pdf"):
                 documents.append({
-                    "name": f"{tradition}/documents/{file_path.name}",
+                    "name": f"{tradition}/{file_path.name}",
                     "size": file_path.stat().st_size,
                     "content_type": "application/pdf",
                     "tradition": tradition,
@@ -109,7 +109,7 @@ class LocalTraditionLoader(TraditionLoader):
 
             for file_path in scan_dir.glob("*.txt"):
                 documents.append({
-                    "name": f"{tradition}/documents/{file_path.name}",
+                    "name": f"{tradition}/{file_path.name}",
                     "size": file_path.stat().st_size,
                     "content_type": "text/plain",
                     "tradition": tradition,
