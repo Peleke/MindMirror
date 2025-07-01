@@ -15,6 +15,9 @@ from qdrant_client.http import models
 
 logger = logging.getLogger(__name__)
 
+# Configuration constants
+VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "768"))  # nomic-embed-text dimension
+
 
 @dataclass
 class SearchResult:
@@ -35,7 +38,7 @@ class CeleryQdrantClient:
 
     def __init__(self, host: str = None, port: int = None):
         """Initialize Qdrant client."""
-        self.host = host or os.getenv("QDRANT_HOST", "localhost")
+        self.host = host or os.getenv("QDRANT_HOST", "qdrant")
         self.port = port or int(os.getenv("QDRANT_PORT", "6333"))
         self.client = QdrantClientBase(host=self.host, port=self.port)
         logger.info(f"Initialized CeleryQdrantClient with {self.host}:{self.port}")
@@ -78,7 +81,7 @@ class CeleryQdrantClient:
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=models.VectorParams(
-                    size=1536, distance=Distance.COSINE  # nomic-embed-text dimension
+                    size=VECTOR_SIZE, distance=Distance.COSINE
                 ),
             )
 
@@ -178,6 +181,67 @@ class CeleryQdrantClient:
         except Exception as e:
             logger.error(f"Failed to get collection info for {collection_name}: {e}")
             return None
+
+    def get_personal_collection_name(self, tradition: str, user_id: str) -> str:
+        """Get collection name for user's personal data (journals)."""
+        return f"{tradition}_{user_id}_personal"
+
+    async def get_or_create_personal_collection(self, tradition: str, user_id: str) -> str:
+        """Get or create personal collection for user's data."""
+        collection_name = self.get_personal_collection_name(tradition, user_id)
+        await self._create_collection(collection_name)
+        return collection_name
+
+    async def index_personal_document(
+        self,
+        tradition: str,
+        user_id: str,
+        text: str,
+        embedding: List[float],
+        metadata: Dict[str, Any],
+    ) -> str:
+        """Index a personal document (journal entry) in user's collection."""
+        collection_name = await self.get_or_create_personal_collection(tradition, user_id)
+
+        # Ensure source_type and user_id are set for personal documents
+        metadata = {**metadata, "source_type": "journal", "user_id": user_id}
+
+        return await self.index_document(collection_name, text, embedding, metadata)
+
+    async def index_document(
+        self,
+        collection_name: str,
+        text: str,
+        embedding: List[float],
+        metadata: Dict[str, Any],
+    ) -> str:
+        """Index a document in the specified collection."""
+        try:
+            # Generate unique ID for the document
+            doc_id = str(uuid.uuid4())
+            
+            # Add text to metadata
+            metadata["text"] = text
+            
+            # Create point for insertion
+            point = PointStruct(
+                id=doc_id,
+                vector=embedding,
+                payload=metadata
+            )
+            
+            # Insert into collection
+            self.client.upsert(
+                collection_name=collection_name,
+                points=[point]
+            )
+            
+            logger.info(f"Successfully indexed document {doc_id} in collection {collection_name}")
+            return doc_id
+            
+        except Exception as e:
+            logger.error(f"Failed to index document in collection {collection_name}: {e}")
+            raise
 
 
 # Global client instance

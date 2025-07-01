@@ -1,6 +1,7 @@
 import logging
 import os
 import asyncio
+import httpx
 from typing import List, Protocol
 from abc import ABC, abstractmethod
 
@@ -23,9 +24,9 @@ class OllamaEmbeddingService:
     """Ollama-based embedding service."""
     
     def __init__(self, base_url: str = None, model: str = None):
-        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://ollama:11434")
+        self.base_url = base_url or os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
         self.model = model or os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
-        self.client = asyncio.AsyncClient()
+        self.client = httpx.AsyncClient()
     
     async def get_embedding(self, text: str) -> List[float]:
         """Generate embedding for text using Ollama."""
@@ -67,7 +68,7 @@ class OpenAIEmbeddingService:
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002")
-        self.client = asyncio.AsyncClient()
+        self.client = httpx.AsyncClient()
         
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
@@ -224,9 +225,7 @@ async def get_embedding(text: str) -> List[float]:
         List of floats representing the embedding vector
     """
     try:
-        import httpx
-        
-        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
         model = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
         
         async with httpx.AsyncClient() as client:
@@ -244,7 +243,7 @@ async def get_embedding(text: str) -> List[float]:
     except Exception as e:
         logger.error(f"Failed to generate embedding: {e}")
         # Return zero vector as fallback
-        return [0.0] * 1536
+        return [0.0] * 768
 
 
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
@@ -269,4 +268,4 @@ async def get_embeddings(texts: List[str]) -> List[List[float]]:
     except Exception as e:
         logger.error(f"Failed to generate embeddings: {e}")
         # Return zero vectors as fallback
-        return [[0.0] * 1536 for _ in texts] 
+        return [[0.0] * 768 for _ in texts] 
