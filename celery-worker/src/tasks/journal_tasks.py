@@ -131,7 +131,6 @@ def queue_journal_entry_indexing(
         task = celery_app.send_task(
             "celery_worker.tasks.index_journal_entry_task",
             args=[entry_id, user_id, tradition],
-            queue="indexing",
         )
         logger.info(f"Successfully sent task to celery: {task.id}")
         logger.info(f"Task state: {task.state}")
@@ -146,8 +145,7 @@ def queue_batch_indexing(entries_data: List[Dict[str, Any]]):
     """Queue multiple entries for batch indexing."""
     return celery_app.send_task(
         "celery_worker.tasks.batch_index_journal_entries_task", 
-        args=[entries_data],
-        queue="indexing"
+        args=[entries_data]
     )
 
 
@@ -155,8 +153,7 @@ def queue_user_reindex(user_id: str, tradition: str = "canon-default"):
     """Queue all user entries for reindexing."""
     return celery_app.send_task(
         "celery_worker.tasks.reindex_user_entries_task", 
-        args=[user_id, tradition],
-        queue="maintenance"
+        args=[user_id, tradition]
     )
 
 

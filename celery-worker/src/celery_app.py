@@ -28,6 +28,11 @@ def create_celery_app() -> Celery:
     celery_app.conf.update(
         task_track_started=True,
         broker_connection_retry_on_startup=True,
+        task_routes={
+            'celery_worker.tasks.index_journal_entry_task': {'queue': 'indexing'},
+            'celery_worker.tasks.batch_index_journal_entries_task': {'queue': 'indexing'},
+            'celery_worker.tasks.reindex_user_entries_task': {'queue': 'maintenance'},
+        }
     )
 
     return celery_app
