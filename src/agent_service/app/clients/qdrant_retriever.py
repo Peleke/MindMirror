@@ -99,7 +99,9 @@ class QdrantRetriever(BaseRetriever):
         """
         try:
             # Determine the tradition to use - use tradition_id or default
-            tradition = self.tradition_id or "default"
+            tradition = self.tradition_id or "canon-default"
+
+            logger.info(f"QdrantRetriever: Using tradition '{tradition}' for query '{query[:50]}...'")
 
             # Perform search based on type
             if self.search_type == "vector":

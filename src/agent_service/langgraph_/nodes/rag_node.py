@@ -186,11 +186,12 @@ Answer:"""
             if not query:
                 return state
 
-            # Set up retriever if not already configured and we have user context
+            # Set up retriever dynamically if not already set
             if not self.retriever and state.get("user_id") and state.get("tradition_id"):
                 try:
                     user_id = state.get("user_id")
                     tradition_id = state.get("tradition_id")
+                    logger.info(f"RAG Node: Creating retriever with user_id={user_id}, tradition_id='{tradition_id}'")
                     self.retriever = self.search_service.create_retriever(
                         user_id=user_id, tradition_id=tradition_id, search_type="hybrid"
                     )

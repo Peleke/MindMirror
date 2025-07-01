@@ -47,6 +47,9 @@ class Query:
         try:
             current_user = get_current_user_from_context(info)
             
+            # Add debug logging
+            logger.info(f"GraphQL ask() called with tradition: '{tradition}', query: '{query[:100]}...'")
+            
             # Import here to avoid circular imports
             from agent_service.langgraph_.graphs.chat_graph import ChatGraphFactory
             from agent_service.langgraph_.state import StateManager
@@ -61,6 +64,8 @@ class Query:
                 initial_message=query,
             )
             
+            logger.info(f"Created state with tradition_id: '{state.get('tradition_id')}'")
+            
             # Build and execute the graph
             chat_graph = chat_graph_builder.get_chat_graph()
             updated_state = chat_graph.invoke(state)
@@ -69,6 +74,8 @@ class Query:
             response = updated_state.get(
                 "last_response", "I apologize, but I couldn't generate a response."
             )
+            
+            logger.info(f"Final state tradition_id: '{updated_state.get('tradition_id')}', response length: {len(response) if response else 0}")
             
             return response
             
