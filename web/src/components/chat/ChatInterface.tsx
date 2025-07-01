@@ -89,6 +89,12 @@ export function ChatInterface() {
 
     // Send to AI
     try {
+      console.log('ChatInterface: selectedTradition =', selectedTradition)
+      console.log('ChatInterface: About to call askQuery with variables:', {
+        query: queryWithHistory,
+        tradition: selectedTradition,
+      })
+      
       await askQuery({
         variables: {
           query: queryWithHistory,

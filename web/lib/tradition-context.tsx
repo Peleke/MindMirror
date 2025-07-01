@@ -28,11 +28,26 @@ export function TraditionProvider({ children }: TraditionProviderProps) {
   // Load selected tradition from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(TRADITION_STORAGE_KEY)
+    console.log('TraditionProvider: localStorage value =', stored)
     if (stored) {
-      setSelectedTraditionState(stored)
+      // Fix legacy 'default' value to 'canon-default'
+      const tradition = stored === 'default' ? 'canon-default' : stored
+      console.log('TraditionProvider: Setting selectedTradition to stored value:', tradition)
+      setSelectedTraditionState(tradition)
+      // Update localStorage if we fixed the value
+      if (tradition !== stored) {
+        localStorage.setItem(TRADITION_STORAGE_KEY, tradition)
+      }
+    } else {
+      console.log('TraditionProvider: No stored value, using default:', DEFAULT_TRADITION)
     }
     setLoading(false)
   }, [])
+
+  // Add logging whenever selectedTradition changes
+  useEffect(() => {
+    console.log('TraditionProvider: selectedTradition changed to:', selectedTradition)
+  }, [selectedTradition])
 
   // Save selected tradition to localStorage when it changes
   const setSelectedTradition = (tradition: string) => {
