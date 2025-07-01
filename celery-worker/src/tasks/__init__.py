@@ -1,1 +1,1 @@
-# Celery tasks 
+# Celery tasks

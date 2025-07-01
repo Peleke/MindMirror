@@ -29,10 +29,12 @@ def create_celery_app() -> Celery:
         task_track_started=True,
         broker_connection_retry_on_startup=True,
         task_routes={
-            'celery_worker.tasks.index_journal_entry_task': {'queue': 'indexing'},
-            'celery_worker.tasks.batch_index_journal_entries_task': {'queue': 'indexing'},
-            'celery_worker.tasks.reindex_user_entries_task': {'queue': 'maintenance'},
-        }
+            "celery_worker.tasks.index_journal_entry_task": {"queue": "indexing"},
+            "celery_worker.tasks.batch_index_journal_entries_task": {
+                "queue": "indexing"
+            },
+            "celery_worker.tasks.reindex_user_entries_task": {"queue": "maintenance"},
+        },
     )
 
     return celery_app
@@ -40,4 +42,4 @@ def create_celery_app() -> Celery:
 
 # Instantiate the app for the application to use.
 # In a test environment, pytest-celery will manage the app instance.
-celery_app = create_celery_app() 
+celery_app = create_celery_app()

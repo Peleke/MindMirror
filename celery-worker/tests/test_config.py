@@ -1,4 +1,5 @@
 """Tests for the Config class."""
+
 import os
 import pytest
 from unittest.mock import patch
@@ -21,33 +22,40 @@ class TestConfig:
         assert Config.TASK_MAX_RETRIES == 3
         assert Config.TASK_TIME_LIMIT == 300
 
-    @patch.dict(os.environ, {
-        "EMBEDDING_VECTOR_SIZE": "1024",
-        "QDRANT_HOST": "test-qdrant",
-        "QDRANT_PORT": "9999",
-        "REDIS_URL": "redis://test-redis:6379/1",
-        "JOURNAL_SERVICE_URL": "http://test-journal:8001",
-        "EMBEDDING_SERVICE": "openai",
-        "TASK_DEFAULT_RETRY_DELAY": "120",
-        "TASK_MAX_RETRIES": "5",
-        "TASK_TIME_LIMIT": "600",
-        "TESTING": "true"
-    }, clear=False)
+    @patch.dict(
+        os.environ,
+        {
+            "EMBEDDING_VECTOR_SIZE": "1024",
+            "QDRANT_HOST": "test-qdrant",
+            "QDRANT_PORT": "9999",
+            "REDIS_URL": "redis://test-redis:6379/1",
+            "JOURNAL_SERVICE_URL": "http://test-journal:8001",
+            "EMBEDDING_SERVICE": "openai",
+            "TASK_DEFAULT_RETRY_DELAY": "120",
+            "TASK_MAX_RETRIES": "5",
+            "TASK_TIME_LIMIT": "600",
+            "TESTING": "true",
+        },
+        clear=False,
+    )
     def test_config_environment_overrides(self):
         """Test that environment variables override defaults."""
+
         # Create a new config class to test with the new environment
         class TestConfig:
             VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "768"))
             QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
             QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
             REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-            JOURNAL_SERVICE_URL = os.getenv("JOURNAL_SERVICE_URL", "http://journal_service:8001")
+            JOURNAL_SERVICE_URL = os.getenv(
+                "JOURNAL_SERVICE_URL", "http://journal_service:8001"
+            )
             EMBEDDING_SERVICE = os.getenv("EMBEDDING_SERVICE", "ollama")
             TASK_DEFAULT_RETRY_DELAY = int(os.getenv("TASK_DEFAULT_RETRY_DELAY", "60"))
             TASK_MAX_RETRIES = int(os.getenv("TASK_MAX_RETRIES", "3"))
             TASK_TIME_LIMIT = int(os.getenv("TASK_TIME_LIMIT", "300"))
             TESTING = os.getenv("TESTING", "false").lower() == "true"
-        
+
         assert TestConfig.VECTOR_SIZE == 1024
         assert TestConfig.QDRANT_HOST == "test-qdrant"
         assert TestConfig.QDRANT_PORT == 9999
@@ -65,18 +73,21 @@ class TestConfig:
         assert url == f"http://{Config.QDRANT_HOST}:{Config.QDRANT_PORT}"
         assert url == "http://qdrant:6333"  # Default values
 
-    @patch.dict(os.environ, {"QDRANT_HOST": "custom-host", "QDRANT_PORT": "7777"}, clear=False)
+    @patch.dict(
+        os.environ, {"QDRANT_HOST": "custom-host", "QDRANT_PORT": "7777"}, clear=False
+    )
     def test_get_qdrant_url_custom(self):
         """Test get_qdrant_url with custom values."""
+
         # Create a new config class to test with the new environment
         class TestConfig:
             QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
             QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
-            
+
             @classmethod
             def get_qdrant_url(cls):
                 return f"http://{cls.QDRANT_HOST}:{cls.QDRANT_PORT}"
-        
+
         url = TestConfig.get_qdrant_url()
         assert url == "http://custom-host:7777"
 
@@ -87,58 +98,63 @@ class TestConfig:
     @patch.dict(os.environ, {"TESTING": "true"}, clear=False)
     def test_is_testing_true_when_set(self):
         """Test that is_testing returns True when TESTING env var is set."""
+
         # Create a new config class to test with the new environment
         class TestConfig:
             TESTING = os.getenv("TESTING", "false").lower() == "true"
-            
+
             @classmethod
             def is_testing(cls):
                 return cls.TESTING
-        
+
         assert TestConfig.is_testing() is True
 
     @patch.dict(os.environ, {"TESTING": "false"}, clear=False)
     def test_is_testing_false_when_explicitly_false(self):
         """Test that is_testing returns False when TESTING is explicitly false."""
+
         # Create a new config class to test with the new environment
         class TestConfig:
             TESTING = os.getenv("TESTING", "false").lower() == "true"
-            
+
             @classmethod
             def is_testing(cls):
                 return cls.TESTING
-        
+
         assert TestConfig.is_testing() is False
 
     def test_is_testing_case_insensitive(self):
         """Test that is_testing method handles case insensitive values."""
         with patch.dict(os.environ, {"TESTING": "True"}, clear=False):
+
             class TestConfig:
                 TESTING = os.getenv("TESTING", "false").lower() == "true"
-                
+
                 @classmethod
                 def is_testing(cls):
                     return cls.TESTING
-            
+
             # Should be True because "True".lower() == "true"
             assert TestConfig.is_testing() is True
 
         with patch.dict(os.environ, {"TESTING": "false"}, clear=False):
+
             class TestConfig:
                 TESTING = os.getenv("TESTING", "false").lower() == "true"
-                
+
                 @classmethod
                 def is_testing(cls):
                     return cls.TESTING
-            
+
             # Should be False for "false"
             assert TestConfig.is_testing() is False
 
     def test_config_instance_exists(self):
         """Test that the global config instance exists."""
         from src.config import config
+
         assert config is not None
-        assert hasattr(config, 'VECTOR_SIZE')  # Check it has config attributes
+        assert hasattr(config, "VECTOR_SIZE")  # Check it has config attributes
 
     def test_integer_parsing(self):
         """Test that integer environment variables are parsed correctly."""
@@ -156,4 +172,4 @@ class TestConfig:
 
     def test_qdrant_url_property_consistency(self):
         """Test that QDRANT_URL property is consistent with get_qdrant_url method."""
-        assert Config.QDRANT_URL == Config.get_qdrant_url() 
+        assert Config.QDRANT_URL == Config.get_qdrant_url()

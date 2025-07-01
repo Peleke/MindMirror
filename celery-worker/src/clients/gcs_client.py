@@ -10,7 +10,9 @@ class GCSClient:
     """Google Cloud Storage client for tradition documents."""
 
     def __init__(self, bucket_name: str = None):
-        self.bucket_name = bucket_name or os.getenv("GCS_BUCKET_NAME", "local_gcs_bucket")
+        self.bucket_name = bucket_name or os.getenv(
+            "GCS_BUCKET_NAME", "local_gcs_bucket"
+        )
         self.client = storage.Client()
         self.bucket = self.client.bucket(self.bucket_name)
         logger.info(f"Initialized GCS client with bucket: {self.bucket_name}")
@@ -66,4 +68,4 @@ def get_gcs_client() -> GCSClient:
     global _gcs_client
     if _gcs_client is None:
         _gcs_client = GCSClient()
-    return _gcs_client 
+    return _gcs_client

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class JournalEntry:
     """Journal entry model for Celery operations."""
+
     id: str
     user_id: str
     content: str
@@ -24,15 +25,19 @@ class CeleryJournalClient:
     """Celery-specific journal client that uses GraphQL to talk to journal service."""
 
     def __init__(self, base_url: str = None):
-        self.base_url = base_url or os.getenv("JOURNAL_SERVICE_URL", "http://journal_service:8001")
+        self.base_url = base_url or os.getenv(
+            "JOURNAL_SERVICE_URL", "http://journal_service:8001"
+        )
         self.graphql_endpoint = f"{self.base_url}/graphql"
         self.client = httpx.AsyncClient()
-        logger.info(f"Initialized CeleryJournalClient with GraphQL URL: {self.graphql_endpoint}")
+        logger.info(
+            f"Initialized CeleryJournalClient with GraphQL URL: {self.graphql_endpoint}"
+        )
 
     def _camel_to_snake(self, name: str) -> str:
         """Convert camelCase to snake_case."""
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
     def _convert_to_snake_case(self, data: Any) -> Any:
         """Recursively convert camelCase keys to snake_case."""
@@ -46,34 +51,33 @@ class CeleryJournalClient:
         else:
             return data
 
-    async def _execute_query(self, query: str, variables: Dict[str, Any] = None, user_id: str = None) -> Dict[str, Any]:
+    async def _execute_query(
+        self, query: str, variables: Dict[str, Any] = None, user_id: str = None
+    ) -> Dict[str, Any]:
         """Execute a GraphQL query."""
-        payload = {
-            "query": query,
-            "variables": variables or {}
-        }
-        
+        payload = {"query": query, "variables": variables or {}}
+
         headers = {"Content-Type": "application/json"}
-        
+
         # Add user context for authentication if user_id is provided
         if user_id:
             # The journal service uses x-internal-id header to identify the user
             headers["x-internal-id"] = user_id
-        
+
         response = await self.client.post(
-            self.graphql_endpoint,
-            json=payload,
-            headers=headers
+            self.graphql_endpoint, json=payload, headers=headers
         )
         response.raise_for_status()
-        
+
         result = response.json()
         if "errors" in result:
             raise Exception(f"GraphQL errors: {result['errors']}")
-        
+
         return result.get("data", {})
 
-    async def get_entry_by_id(self, entry_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_entry_by_id(
+        self, entry_id: str, user_id: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Get a specific journal entry by ID using GraphQL.
 
@@ -100,18 +104,22 @@ class CeleryJournalClient:
                     }
                 }
             """
-            
+
             variables = {"id": entry_id}
-            
-            logger.info(f"Executing GraphQL query for entry {entry_id} with variables: {variables}")
-            
+
+            logger.info(
+                f"Executing GraphQL query for entry {entry_id} with variables: {variables}"
+            )
+
             data = await self._execute_query(query, variables, user_id)
-            
+
             logger.info(f"GraphQL response data: {data}")
-            
+
             entry_data = data.get("journalEntry")
             if not entry_data:
-                logger.warning(f"Journal entry {entry_id} not found - GraphQL returned: {data}")
+                logger.warning(
+                    f"Journal entry {entry_id} not found - GraphQL returned: {data}"
+                )
                 return None
 
             logger.info(f"Raw entry data from GraphQL: {entry_data}")
@@ -131,7 +139,7 @@ class CeleryJournalClient:
     def _extract_payload_from_entry(self, entry_data: Dict[str, Any]) -> Any:
         """Extract payload from GraphQL entry data based on entry type."""
         entry_type = entry_data.get("entryType", "")
-        
+
         if entry_type == "GRATITUDE":
             payload = entry_data.get("payload", {})
             if isinstance(payload, dict):
@@ -140,7 +148,7 @@ class CeleryJournalClient:
                     "excited_about": payload.get("excitedAbout", []),
                     "focus": payload.get("focus", ""),
                     "affirmation": payload.get("affirmation", ""),
-                    "mood": payload.get("mood", "")
+                    "mood": payload.get("mood", ""),
                 }
         elif entry_type == "REFLECTION":
             payload = entry_data.get("payload", {})
@@ -148,13 +156,13 @@ class CeleryJournalClient:
                 return {
                     "wins": payload.get("wins", []),
                     "improvements": payload.get("improvements", []),
-                    "mood": payload.get("mood", "")
+                    "mood": payload.get("mood", ""),
                 }
         elif entry_type == "FREEFORM":
             # For freeform, the content comes from the 'content' field
             content = entry_data.get("content", "")
             return {"content": content if isinstance(content, str) else str(content)}
-        
+
         return entry_data.get("payload", entry_data)
 
     async def list_by_user_for_period(
@@ -184,21 +192,23 @@ class CeleryJournalClient:
                     }
                 }
             """
-            
+
             variables = {
                 "userId": user_id,
                 "startDate": start_date,
-                "endDate": end_date
+                "endDate": end_date,
             }
-            
+
             data = await self._execute_query(query, variables, user_id)
-            
+
             entries_data = data.get("journalEntries", [])
 
             # Convert to snake_case
             converted_entries = self._convert_to_snake_case(entries_data)
 
-            logger.info(f"Retrieved {len(converted_entries)} journal entries for user {user_id}")
+            logger.info(
+                f"Retrieved {len(converted_entries)} journal entries for user {user_id}"
+            )
             return converted_entries
 
         except Exception as e:
@@ -208,7 +218,11 @@ class CeleryJournalClient:
     def _extract_content_from_payload(self, payload: Any, entry_type: str) -> str:
         """Extract text content from payload for different entry types."""
         if entry_type == "FREEFORM":
-            return payload.get("content", "") if isinstance(payload, dict) else str(payload)
+            return (
+                payload.get("content", "")
+                if isinstance(payload, dict)
+                else str(payload)
+            )
         elif entry_type == "GRATITUDE":
             parts = []
             if payload.get("grateful_for"):
@@ -231,7 +245,7 @@ class CeleryJournalClient:
             if payload.get("mood"):
                 parts.append(f"Mood: {payload['mood']}")
             return "\n".join(parts)
-        
+
         return str(payload) if payload else ""
 
 
@@ -249,4 +263,4 @@ def get_celery_journal_client() -> CeleryJournalClient:
 
 def create_celery_journal_client() -> CeleryJournalClient:
     """Create a new CeleryJournalClient instance."""
-    return CeleryJournalClient() 
+    return CeleryJournalClient()

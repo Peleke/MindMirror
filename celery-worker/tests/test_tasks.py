@@ -57,13 +57,15 @@ class TestCeleryTasks:
         entry_id = "test-entry-id"
         user_id = "test-user-id"
         tradition = "canon-default"
-        
-        with patch('src.tasks.journal_tasks.index_journal_entry_by_id', new_callable=AsyncMock) as mock_index:
+
+        with patch(
+            "src.tasks.journal_tasks.index_journal_entry_by_id", new_callable=AsyncMock
+        ) as mock_index:
             mock_index.return_value = True
-            
+
             # Call the task function directly without self parameter
             result = index_journal_entry_task(entry_id, user_id, tradition)
-            
+
             assert result is True
 
     def test_index_journal_entry_task_entry_not_found(self):
@@ -71,10 +73,12 @@ class TestCeleryTasks:
         entry_id = "nonexistent-entry-id"
         user_id = "test-user-id"
         tradition = "canon-default"
-        
-        with patch('src.tasks.journal_tasks.index_journal_entry_by_id', new_callable=AsyncMock) as mock_index:
+
+        with patch(
+            "src.tasks.journal_tasks.index_journal_entry_by_id", new_callable=AsyncMock
+        ) as mock_index:
             mock_index.return_value = False
-            
+
             # The task should raise an exception when indexing fails
             with pytest.raises(Exception, match="Failed to index journal entry"):
                 index_journal_entry_task(entry_id, user_id, tradition)
@@ -84,10 +88,12 @@ class TestCeleryTasks:
         entry_id = "test-entry-id"
         user_id = "test-user-id"
         tradition = "canon-default"
-        
-        with patch('src.tasks.journal_tasks.index_journal_entry_by_id', new_callable=AsyncMock) as mock_index:
+
+        with patch(
+            "src.tasks.journal_tasks.index_journal_entry_by_id", new_callable=AsyncMock
+        ) as mock_index:
             mock_index.side_effect = Exception("Embedding service error")
-            
+
             # The task should raise an exception when embedding fails
             with pytest.raises(Exception):
                 index_journal_entry_task(entry_id, user_id, tradition)
@@ -97,10 +103,12 @@ class TestCeleryTasks:
         entry_id = "test-entry-id"
         user_id = "test-user-id"
         tradition = "canon-default"
-        
-        with patch('src.tasks.journal_tasks.index_journal_entry_by_id', new_callable=AsyncMock) as mock_index:
+
+        with patch(
+            "src.tasks.journal_tasks.index_journal_entry_by_id", new_callable=AsyncMock
+        ) as mock_index:
             mock_index.side_effect = Exception("Qdrant connection error")
-            
+
             # The task should raise an exception when Qdrant fails
             with pytest.raises(Exception):
                 index_journal_entry_task(entry_id, user_id, tradition)
@@ -113,24 +121,24 @@ class TestCeleryTasks:
         mock_indexer.batch_index_entries.return_value = {
             "indexed": 2,
             "failed": 0,
-            "total": 2
+            "total": 2,
         }
         mock_indexer_class.return_value = mock_indexer
-        
+
         entries_data = [
             {"entry_id": "entry1", "user_id": "user1", "tradition": "stoicism"},
-            {"entry_id": "entry2", "user_id": "user1", "tradition": "stoicism"}
+            {"entry_id": "entry2", "user_id": "user1", "tradition": "stoicism"},
         ]
-        
+
         # Execute task (bound tasks don't need self parameter when called directly)
         result = batch_index_journal_entries_task(entries_data)
-        
+
         # Verify
         assert result["indexed"] == 2
         assert result["failed"] == 0
         assert result["total"] == 2
 
-    @patch("src.tasks.journal_tasks.JournalIndexer")  
+    @patch("src.tasks.journal_tasks.JournalIndexer")
     def test_reindex_user_entries_task(self, mock_indexer_class):
         """Test reindexing all entries for a user."""
         # Setup mock
@@ -139,13 +147,13 @@ class TestCeleryTasks:
             "indexed": 5,
             "total_entries": 5,
             "user_id": "test-user",
-            "tradition": "stoicism"
+            "tradition": "stoicism",
         }
         mock_indexer_class.return_value = mock_indexer
-        
+
         # Execute task (bound tasks don't need self parameter when called directly)
         result = reindex_user_entries_task("test-user", "stoicism")
-        
+
         # Verify
         assert result["indexed"] == 5
         assert result["total_entries"] == 5
@@ -154,21 +162,25 @@ class TestCeleryTasks:
 
     def test_health_check_task_healthy(self):
         """Test health check task when all services are healthy."""
-        with patch('src.tasks.health_tasks.get_celery_qdrant_client') as mock_get_qdrant:
-            with patch('src.tasks.health_tasks.current_app') as mock_current_app:
-                
+        with patch(
+            "src.tasks.health_tasks.get_celery_qdrant_client"
+        ) as mock_get_qdrant:
+            with patch("src.tasks.health_tasks.current_app") as mock_current_app:
+
                 # Setup mocks
                 mock_qdrant_client = AsyncMock()
                 mock_qdrant_client.health_check.return_value = True
                 mock_get_qdrant.return_value = mock_qdrant_client
-                
+
                 # Mock Redis connection
                 mock_conn = Mock()
-                mock_current_app.connection_for_read.return_value.__enter__.return_value = mock_conn
-                
+                mock_current_app.connection_for_read.return_value.__enter__.return_value = (
+                    mock_conn
+                )
+
                 # Execute task (bound tasks don't need self parameter when called directly)
                 result = health_check_task()
-                
+
                 # Verify result
                 assert result["status"] == "healthy"
                 assert result["services"]["qdrant"] == "healthy"
@@ -176,20 +188,24 @@ class TestCeleryTasks:
 
     def test_health_check_task_degraded(self):
         """Test health check task when some services are unhealthy."""
-        with patch('src.tasks.health_tasks.get_celery_qdrant_client') as mock_get_qdrant:
-            with patch('src.tasks.health_tasks.current_app') as mock_current_app:
-                
+        with patch(
+            "src.tasks.health_tasks.get_celery_qdrant_client"
+        ) as mock_get_qdrant:
+            with patch("src.tasks.health_tasks.current_app") as mock_current_app:
+
                 # Setup mocks - Qdrant healthy, Redis unhealthy
                 mock_qdrant_client = AsyncMock()
                 mock_qdrant_client.health_check.return_value = True
                 mock_get_qdrant.return_value = mock_qdrant_client
-                
+
                 # Mock Redis connection failure
-                mock_current_app.connection_for_read.return_value.__enter__.side_effect = Exception("Redis connection failed")
-                
+                mock_current_app.connection_for_read.return_value.__enter__.side_effect = Exception(
+                    "Redis connection failed"
+                )
+
                 # Execute task (bound tasks don't need self parameter when called directly)
                 result = health_check_task()
-                
+
                 # Verify result
                 assert result["status"] == "degraded"
                 assert result["services"]["qdrant"] == "healthy"
@@ -202,21 +218,24 @@ class TestTaskRetryLogic:
     def test_task_retry_configuration(self, test_celery_app):
         """Test that task has correct retry configuration."""
         # Get the task from the Celery app
-        task = test_celery_app.tasks.get('src.tasks.journal_tasks.index_journal_entry_task')
+        task = test_celery_app.tasks.get(
+            "src.tasks.journal_tasks.index_journal_entry_task"
+        )
         if task is None:
             # If task is not registered, check the function directly
             from src.tasks.journal_tasks import index_journal_entry_task as task_func
+
             task = task_func
-        
+
         # Note: In real implementation, we'd check task.retry_kwargs
         # For now, just test that the task exists and is callable
         assert callable(task)
 
-    @pytest.mark.asyncio 
+    @pytest.mark.asyncio
     async def test_different_entry_types(self, test_celery_app, mock_vector_embedding):
         """Test indexing different types of journal entries."""
         entry_types = ["FREEFORM", "GRATITUDE", "REFLECTION"]
-        
+
         for entry_type in entry_types:
             # Create appropriate payload for each entry type
             if entry_type == "FREEFORM":
@@ -226,47 +245,57 @@ class TestTaskRetryLogic:
                     "grateful_for": ["test item 1", "test item 2"],
                     "excited_about": ["test excitement"],
                     "focus": "test focus",
-                    "affirmation": "test affirmation"
+                    "affirmation": "test affirmation",
                 }
             elif entry_type == "REFLECTION":
                 payload = {
                     "wins": ["test win 1", "test win 2"],
                     "improvements": ["test improvement"],
-                    "mood": "positive"
+                    "mood": "positive",
                 }
-            
+
             mock_entry = {
                 "id": f"entry-{entry_type.lower()}",
                 "user_id": "test-user-123",
                 "tradition": "stoicism",
                 "entry_type": entry_type,
                 "payload": payload,
-                "created_at": "2024-01-01T10:00:00Z"
+                "created_at": "2024-01-01T10:00:00Z",
             }
-            
-            with patch('src.tasks.journal_tasks.create_celery_journal_client') as mock_get_journal_client:
-                with patch('src.tasks.journal_tasks.get_celery_qdrant_client') as mock_get_qdrant_client:
-                    with patch('src.tasks.journal_tasks.get_embedding') as mock_get_embedding_service:
-                        
+
+            with patch(
+                "src.tasks.journal_tasks.create_celery_journal_client"
+            ) as mock_get_journal_client:
+                with patch(
+                    "src.tasks.journal_tasks.get_celery_qdrant_client"
+                ) as mock_get_qdrant_client:
+                    with patch(
+                        "src.tasks.journal_tasks.get_embedding"
+                    ) as mock_get_embedding_service:
+
                         # Setup mocks
                         mock_journal_client = AsyncMock()
                         mock_journal_client.get_entry_by_id.return_value = mock_entry
                         mock_get_journal_client.return_value = mock_journal_client
-                        
+
                         mock_qdrant_client = AsyncMock()
-                        mock_qdrant_client.get_or_create_personal_collection.return_value = f"stoicism_test-user-123_personal"
-                        mock_qdrant_client.index_personal_document.return_value = f"doc-{entry_type.lower()}"
+                        mock_qdrant_client.get_or_create_personal_collection.return_value = (
+                            f"stoicism_test-user-123_personal"
+                        )
+                        mock_qdrant_client.index_personal_document.return_value = (
+                            f"doc-{entry_type.lower()}"
+                        )
                         mock_get_qdrant_client.return_value = mock_qdrant_client
-                        
+
                         mock_get_embedding_service.return_value = mock_vector_embedding
-                        
+
                         # Execute task
                         result = await index_journal_entry_by_id(
                             entry_id=f"entry-{entry_type.lower()}",
                             user_id="test-user-123",
-                            tradition="stoicism"
+                            tradition="stoicism",
                         )
-                        
+
                         # Verify success
                         assert result is True
 
@@ -299,7 +328,7 @@ class TestTaskIntegration:
         # Setup mock to raise exception
         mock_index_func.side_effect = ValueError("Entry not found")
 
-        # Execute task directly 
+        # Execute task directly
         with pytest.raises(ValueError, match="Entry not found"):
             index_journal_entry_task("invalid-id", str(uuid4()), "canon-default")
 
@@ -455,4 +484,4 @@ class TestTaskConfiguration:
         # Reindex task
         reindex_task = celery_app.tasks["celery_worker.tasks.reindex_user_entries_task"]
         assert reindex_task.retry_kwargs["max_retries"] == 2
-        assert reindex_task.retry_kwargs["countdown"] == 300 
+        assert reindex_task.retry_kwargs["countdown"] == 300

@@ -9,9 +9,7 @@ from src.clients.qdrant_client import get_celery_qdrant_client
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(
-    bind=True, name="celery_worker.tasks.health_check_task", time_limit=60
-)
+@celery_app.task(bind=True, name="celery_worker.tasks.health_check_task", time_limit=60)
 def health_check_task(self):
     """
     Health check task for monitoring system status.
@@ -66,4 +64,4 @@ def health_check_task(self):
 
 def queue_health_check():
     """Queue a health check task."""
-    return current_app.send_task("celery_worker.tasks.health_check_task") 
+    return current_app.send_task("celery_worker.tasks.health_check_task")

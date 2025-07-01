@@ -127,4 +127,4 @@ query GetJournalEntriesByDateRange($startDate: DateTime!, $endDate: DateTime!, $
         }
     }
 }
-""" 
+"""

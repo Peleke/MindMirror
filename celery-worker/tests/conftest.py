@@ -8,8 +8,12 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
-                           RedisTestBackend, RedisTestBroker)
+from pytest_celery import (
+    CeleryBackendCluster,
+    CeleryBrokerCluster,
+    RedisTestBackend,
+    RedisTestBroker,
+)
 from celery import Celery
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -58,7 +62,7 @@ def mock_journal_client():
         "content": "Test journal entry content",
         "entry_type": "FREEFORM",
         "created_at": "2024-01-01T00:00:00Z",
-        "user_id": "test-user-id"
+        "user_id": "test-user-id",
     }
     return mock_client
 
@@ -95,14 +99,16 @@ def mock_journal_entry():
         "content": "Today I practiced mindfulness and gratitude.",
         "entry_type": "FREEFORM",
         "created_at": "2024-01-01T10:00:00Z",
-        "updated_at": "2024-01-01T10:00:00Z"
+        "updated_at": "2024-01-01T10:00:00Z",
     }
 
 
 @pytest.fixture
 def mock_vector_embedding():
     """Mock vector embedding."""
-    return [0.1, 0.2, 0.3] * (Config.VECTOR_SIZE // 3) + [0.1] * (Config.VECTOR_SIZE % 3)
+    return [0.1, 0.2, 0.3] * (Config.VECTOR_SIZE // 3) + [0.1] * (
+        Config.VECTOR_SIZE % 3
+    )
 
 
 @pytest.fixture
@@ -243,6 +249,7 @@ async def qdrant_client(docker_services):
     await asyncio.sleep(1)
 
     from src.clients.qdrant_client import CeleryQdrantClient
+
     client = CeleryQdrantClient(host="localhost", port=TEST_QDRANT_PORT)
 
     # Verify connection
@@ -285,4 +292,4 @@ async def user():
     return {
         "id": str(UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6")),
         "roles": [{"role": "user", "domain": "coaching"}],
-    } 
+    }

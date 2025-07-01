@@ -6,6 +6,7 @@ import asyncio
 import httpx
 import time
 
+
 async def test_celery_worker():
     """Test the celery-worker health endpoint"""
     async with httpx.AsyncClient() as client:
@@ -18,6 +19,7 @@ async def test_celery_worker():
             print(f"Error connecting to celery-worker: {e}")
             return False
 
+
 async def test_task_submission():
     """Test submitting a task to celery-worker"""
     async with httpx.AsyncClient() as client:
@@ -27,8 +29,8 @@ async def test_task_submission():
                 json={
                     "entry_id": "test-entry-123",
                     "user_id": "test-user-456",
-                    "tradition": "canon-default"
-                }
+                    "tradition": "canon-default",
+                },
             )
             print(f"Task submission status: {response.status_code}")
             print(f"Response: {response.json()}")
@@ -37,29 +39,31 @@ async def test_task_submission():
             print(f"Error submitting task: {e}")
             return False
 
+
 async def main():
     print("Testing celery-worker...")
-    
+
     # Wait a bit for services to start
     print("Waiting for services to start...")
     await asyncio.sleep(5)
-    
+
     # Test health endpoint
     health_ok = await test_celery_worker()
     if not health_ok:
         print("❌ Health check failed")
         return
-    
+
     print("✅ Health check passed")
-    
+
     # Test task submission
     task_ok = await test_task_submission()
     if not task_ok:
         print("❌ Task submission failed")
         return
-    
+
     print("✅ Task submission passed")
     print("🎉 All tests passed!")
 
+
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

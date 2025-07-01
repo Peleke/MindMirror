@@ -73,7 +73,9 @@ async def test_semantic_search_finds_indexed_journal_entry(
 
     # Mock the Qdrant client
     mock_qdrant_client = AsyncMock()
-    mock_qdrant_client.get_or_create_personal_collection.return_value = "test_collection"
+    mock_qdrant_client.get_or_create_personal_collection.return_value = (
+        "test_collection"
+    )
     mock_qdrant_client.index_personal_document.return_value = None
     mock_get_qdrant_client.return_value = mock_qdrant_client
 
@@ -84,8 +86,10 @@ async def test_semantic_search_finds_indexed_journal_entry(
     # 3. Assert: Verify that our mocks were called correctly
     mock_journal_client.get_entry_by_id.assert_called_once_with(entry_id, user_id)
     mock_get_embedding.assert_called_once_with(unique_content)
-    mock_qdrant_client.get_or_create_personal_collection.assert_called_once_with(tradition, user_id)
+    mock_qdrant_client.get_or_create_personal_collection.assert_called_once_with(
+        tradition, user_id
+    )
     mock_qdrant_client.index_personal_document.assert_called_once()
 
     # This test no longer needs to perform a real search, as we are unit-testing the indexing pipeline.
-    # A separate test would cover the search functionality, mocking the retriever. 
+    # A separate test would cover the search functionality, mocking the retriever.

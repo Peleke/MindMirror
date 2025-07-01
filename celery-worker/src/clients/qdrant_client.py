@@ -9,8 +9,16 @@ from typing import Any, Dict, List, Optional
 
 from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
-from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
-                                  PointStruct, SearchRequest, VectorParams, Range)
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    SearchRequest,
+    VectorParams,
+    Range,
+)
 from qdrant_client.http import models
 
 from ..config import Config
@@ -141,7 +149,7 @@ class CeleryQdrantClient:
         collection_name: str,
         query_vector: List[float],
         limit: int = 10,
-        score_threshold: float = 0.7
+        score_threshold: float = 0.7,
     ) -> List[SearchResult]:
         """Search the knowledge base with a query vector."""
         try:
@@ -149,25 +157,31 @@ class CeleryQdrantClient:
                 collection_name=collection_name,
                 query_vector=query_vector,
                 limit=limit,
-                score_threshold=score_threshold
+                score_threshold=score_threshold,
             )
-            
+
             search_results = []
             for result in results:
-                search_results.append(SearchResult(
-                    id=result.id,
-                    score=result.score,
-                    payload=result.payload,
-                    vector=result.vector
-                ))
-            
-            logger.debug(f"Found {len(search_results)} results in collection {collection_name}")
+                search_results.append(
+                    SearchResult(
+                        id=result.id,
+                        score=result.score,
+                        payload=result.payload,
+                        vector=result.vector,
+                    )
+                )
+
+            logger.debug(
+                f"Found {len(search_results)} results in collection {collection_name}"
+            )
             return search_results
         except Exception as e:
             logger.error(f"Failed to search collection {collection_name}: {e}")
             return []
 
-    async def get_collection_info(self, collection_name: str) -> Optional[Dict[str, Any]]:
+    async def get_collection_info(
+        self, collection_name: str
+    ) -> Optional[Dict[str, Any]]:
         """Get information about a collection."""
         try:
             info = self.client.get_collection(collection_name=collection_name)
@@ -175,7 +189,7 @@ class CeleryQdrantClient:
                 "name": info.name,
                 "vectors_count": info.vectors_count,
                 "points_count": info.points_count,
-                "status": info.status
+                "status": info.status,
             }
         except Exception as e:
             logger.error(f"Failed to get collection info for {collection_name}: {e}")
@@ -185,7 +199,9 @@ class CeleryQdrantClient:
         """Get collection name for user's personal data (journals)."""
         return f"{tradition}_{user_id}_personal"
 
-    async def get_or_create_personal_collection(self, tradition: str, user_id: str) -> str:
+    async def get_or_create_personal_collection(
+        self, tradition: str, user_id: str
+    ) -> str:
         """Get or create personal collection for user's data."""
         collection_name = self.get_personal_collection_name(tradition, user_id)
         await self._create_collection(collection_name)
@@ -200,7 +216,9 @@ class CeleryQdrantClient:
         metadata: Dict[str, Any],
     ) -> str:
         """Index a personal document (journal entry) in user's collection."""
-        collection_name = await self.get_or_create_personal_collection(tradition, user_id)
+        collection_name = await self.get_or_create_personal_collection(
+            tradition, user_id
+        )
 
         # Ensure source_type and user_id are set for personal documents
         metadata = {**metadata, "source_type": "journal", "user_id": user_id}
@@ -218,28 +236,25 @@ class CeleryQdrantClient:
         try:
             # Generate unique ID for the document
             doc_id = str(uuid.uuid4())
-            
+
             # Add text to metadata
             metadata["text"] = text
-            
+
             # Create point for insertion
-            point = PointStruct(
-                id=doc_id,
-                vector=embedding,
-                payload=metadata
-            )
-            
+            point = PointStruct(id=doc_id, vector=embedding, payload=metadata)
+
             # Insert into collection
-            self.client.upsert(
-                collection_name=collection_name,
-                points=[point]
+            self.client.upsert(collection_name=collection_name, points=[point])
+
+            logger.info(
+                f"Successfully indexed document {doc_id} in collection {collection_name}"
             )
-            
-            logger.info(f"Successfully indexed document {doc_id} in collection {collection_name}")
             return doc_id
-            
+
         except Exception as e:
-            logger.error(f"Failed to index document in collection {collection_name}: {e}")
+            logger.error(
+                f"Failed to index document in collection {collection_name}: {e}"
+            )
             raise
 
 
@@ -252,4 +267,4 @@ def get_celery_qdrant_client() -> CeleryQdrantClient:
     global _celery_qdrant_client
     if _celery_qdrant_client is None:
         _celery_qdrant_client = CeleryQdrantClient()
-    return _celery_qdrant_client 
+    return _celery_qdrant_client

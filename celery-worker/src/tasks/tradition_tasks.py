@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2, "countdown": 300},
     time_limit=3600,
-    name="celery_worker.tasks.rebuild_tradition_knowledge_base"
+    name="celery_worker.tasks.rebuild_tradition_knowledge_base",
 )
 async def rebuild_tradition_knowledge_base(self, tradition: str):
     """Celery task to rebuild a tradition's knowledge base from documents in GCS."""
@@ -37,11 +37,11 @@ async def rebuild_tradition_knowledge_base(self, tradition: str):
         logger.warning(f"Could not delete collection {knowledge_collection_name}: {e}")
 
     qdrant_client.get_or_create_knowledge_collection(tradition)
-    
+
     # Process documents
     doc_prefix = f"{tradition}/"
     doc_blobs = gcs_client.list_files(prefix=doc_prefix)
-    
+
     if not doc_blobs:
         logger.warning(f"No documents found for tradition '{tradition}'")
         return {"status": "success", "message": "No documents to process."}
@@ -64,7 +64,7 @@ async def rebuild_tradition_knowledge_base(self, tradition: str):
             os.remove(temp_file_path)
 
             texts = [doc.page_content for doc in docs]
-            
+
             # Generate embeddings using async function
             embeddings = await get_embeddings(texts)
 
@@ -110,4 +110,4 @@ def queue_tradition_reindex(tradition: str):
     return current_app.send_task(
         "celery_worker.tasks.rebuild_tradition_knowledge_base",
         args=[tradition],
-    ) 
+    )

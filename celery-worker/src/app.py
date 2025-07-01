@@ -8,23 +8,30 @@ import logging
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
+
 @app.post("/tasks/index-journal-entry")
 async def submit_index_task(request: IndexJournalEntryRequest):
     try:
-        logger.info(f"Received indexing request for entry {request.entry_id}, user {request.user_id}")
+        logger.info(
+            f"Received indexing request for entry {request.entry_id}, user {request.user_id}"
+        )
         logger.info(f"Request metadata: {request.metadata}")
-        
+
         # Extract tradition from metadata, default to "canon-default"
-        tradition = request.metadata.get("tradition", "canon-default") if request.metadata else "canon-default"
+        tradition = (
+            request.metadata.get("tradition", "canon-default")
+            if request.metadata
+            else "canon-default"
+        )
         logger.info(f"Using tradition: {tradition}")
-        
+
         logger.info("About to queue journal entry indexing task...")
-        logger.info(f"Calling queue_journal_entry_indexing with args: entry_id={request.entry_id}, user_id={request.user_id}, tradition={tradition}")
-        
+        logger.info(
+            f"Calling queue_journal_entry_indexing with args: entry_id={request.entry_id}, user_id={request.user_id}, tradition={tradition}"
+        )
+
         task = queue_journal_entry_indexing(
-            request.entry_id, 
-            request.user_id, 
-            tradition
+            request.entry_id, request.user_id, tradition
         )
         logger.info(f"Successfully queued task with ID: {task.id}")
         logger.info(f"Task object: {task}")
@@ -34,21 +41,22 @@ async def submit_index_task(request: IndexJournalEntryRequest):
         logger.error(f"Error in submit_index_task: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/tasks/reindex-tradition")
 async def submit_reindex_task(
-    request: ReindexTraditionRequest,
-    x_reindex_secret: str = Header(...)
+    request: ReindexTraditionRequest, x_reindex_secret: str = Header(...)
 ):
     secret = os.getenv("REINDEX_SECRET_KEY")
     if not secret or x_reindex_secret != secret:
         raise HTTPException(status_code=401, detail="Invalid secret")
-    
+
     try:
         task = queue_tradition_reindex(request.tradition)
         return {"task_id": task.id, "status": "queued"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "celery-worker"} 
+    return {"status": "healthy", "service": "celery-worker"}
