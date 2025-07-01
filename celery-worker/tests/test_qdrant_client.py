@@ -15,8 +15,9 @@ class TestCeleryQdrantClient:
         """Test Qdrant client initialization with default values."""
         client = CeleryQdrantClient()
         
-        # In test environment, QDRANT_HOST might be set to localhost
-        expected_host = Config.QDRANT_HOST
+        # In test environment, QDRANT_HOST is set to localhost in conftest.py
+        # Check what the actual config value is, which reflects environment variables
+        expected_host = "localhost"  # As set in conftest.py
         expected_port = Config.QDRANT_PORT
         
         assert client.host == expected_host

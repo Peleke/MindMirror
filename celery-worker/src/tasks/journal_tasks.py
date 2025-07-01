@@ -14,6 +14,22 @@ from src.utils.embedding import get_embedding
 logger = logging.getLogger(__name__)
 
 
+def run_async_in_sync(coro):
+    """Run an async coroutine in a sync context, handling existing event loops."""
+    try:
+        # Try to get the current event loop
+        loop = asyncio.get_running_loop()
+        # If we get here, an event loop is already running
+        # We need to run the coroutine in a different way
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, coro)
+            return future.result()
+    except RuntimeError:
+        # No event loop is running, we can create one
+        return asyncio.run(coro)
+
+
 # NOTE: Use task routes instead of queue kwarg: <https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-routes>
 @celery_app.task(
     bind=True,
@@ -38,23 +54,20 @@ def index_journal_entry_task(
     """
     try:
         logger.info(f"Starting indexing task for entry {entry_id}, user {user_id}")
-
-        # Create new event loop for this task
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(index_journal_entry_by_id(entry_id, user_id, tradition))
-        finally:
-            loop.close()
-
+        
+        # Use our helper function to run the async code
+        result = run_async_in_sync(index_journal_entry_by_id(entry_id, user_id, tradition))
+        
         if not result:
-            raise Exception(f"Failed to index journal entry {entry_id}")
-
+            logger.error(f"Failed to index journal entry {entry_id}")
+            raise Exception("Failed to index journal entry")
+        
         logger.info(f"Successfully indexed journal entry {entry_id}")
         return True
-
+        
     except Exception as exc:
         logger.error(f"Error indexing journal entry {entry_id}: {exc}")
+        # Retry the task
         raise self.retry(exc=exc)
 
 
@@ -77,19 +90,17 @@ def batch_index_journal_entries_task(self, entries_data: List[Dict[str, Any]]):
     """
     try:
         logger.info(f"Starting batch indexing task for {len(entries_data)} entries")
-
-        # Create new event loop for this task
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
+        
+        async def batch_index():
             indexer = JournalIndexer()
-            result = loop.run_until_complete(indexer.batch_index_entries(entries_data))
-        finally:
-            loop.close()
-
+            return await indexer.batch_index_entries(entries_data)
+        
+        # Use our helper function to run the async code
+        result = run_async_in_sync(batch_index())
+        
         logger.info(f"Batch indexing completed: {result}")
         return result
-
+        
     except Exception as exc:
         logger.error(f"Error in batch indexing task: {exc}")
         raise self.retry(exc=exc)
@@ -117,19 +128,17 @@ def reindex_user_entries_task(
     """
     try:
         logger.info(f"Starting reindex task for user {user_id}")
-
-        # Create new event loop for this task
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
+        
+        async def reindex_user():
             indexer = JournalIndexer()
-            result = loop.run_until_complete(indexer.reindex_user_entries(user_id, tradition))
-        finally:
-            loop.close()
-
+            return await indexer.reindex_user_entries(user_id, tradition)
+        
+        # Use our helper function to run the async code
+        result = run_async_in_sync(reindex_user())
+        
         logger.info(f"Reindex completed for user {user_id}: {result}")
         return result
-
+        
     except Exception as exc:
         logger.error(f"Error reindexing user {user_id}: {exc}")
         raise self.retry(exc=exc)
