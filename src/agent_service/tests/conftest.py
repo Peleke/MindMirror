@@ -20,6 +20,9 @@ TEST_QDRANT_URL = f"http://localhost:{TEST_QDRANT_PORT}"
 # Set environment variables for the application's config
 os.environ["TESTING"] = "True"
 os.environ["QDRANT_URL"] = TEST_QDRANT_URL
+os.environ["OPENAI_API_KEY"] = "test"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost/test"
+os.environ["QDRANT_URL"] = "http://test"
 
 logging.basicConfig(level=logging.INFO)
 

@@ -43,8 +43,15 @@ class Settings(BaseSettings):
     qdrant_api_key: str = Field(default="", env="QDRANT_API_KEY")
 
     # LLM settings
-    openai_api_key: str = Field(env="OPENAI_API_KEY")
+    llm_provider: str = Field(default="openai", env="LLM_PROVIDER")
+    embedding_provider: str = Field(default="openai", env="EMBEDDING_PROVIDER")
+    openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4", env="OPENAI_MODEL")
+
+    # Ollama settings
+    ollama_base_url: str = Field(default="http://localhost:11434", env="OLLAMA_BASE_URL")
+    ollama_chat_model: str = Field(default="llama3.2", env="OLLAMA_CHAT_MODEL")
+    ollama_embedding_model: str = Field(default="nomic-embed-text", env="OLLAMA_EMBEDDING_MODEL")
 
     # Data directory
     data_dir: str = Field(default="./data", env="DATA_DIR")

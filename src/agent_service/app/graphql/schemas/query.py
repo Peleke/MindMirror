@@ -11,19 +11,19 @@ from typing import List, Optional
 import strawberry
 from strawberry.types import Info
 
-from agent_service.app.clients.journal_client import JournalClient
-from agent_service.app.clients.qdrant_client import get_qdrant_client
-from agent_service.app.graphql.context import (GraphQLContext,
+from ...clients.journal_client import JournalClient
+from ...clients.qdrant_client import get_qdrant_client
+from ..context import (GraphQLContext,
                                                get_current_user_from_context)
-from agent_service.app.graphql.types.suggestion_types import JournalSummary
-from agent_service.app.graphql.types.tool_types import (ToolMetadata,
+from ..types.suggestion_types import JournalSummary
+from ..types.tool_types import (ToolMetadata,
                                                         ToolRegistryHealth)
-from agent_service.app.repositories.tradition_repository import \
+from ...repositories.tradition_repository import \
     TraditionRepository
-from agent_service.app.services.embedding_service import EmbeddingService
-from agent_service.app.services.llm_service import LLMService
-from agent_service.app.services.search_service import SearchService
-from agent_service.app.services.tradition_service import TraditionService
+from ...services.embedding_service import EmbeddingService
+from ...services.llm_service import LLMService
+from ...services.search_service import SearchService
+from ...services.tradition_service import TraditionService
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class Query:
     """GraphQL Query schema with all query fields."""
 
     @strawberry.field
-    def ask(self, query: str, tradition: str = "canon-default") -> str:
+    def ask(self, info: Info[GraphQLContext, None], query: str, tradition: str = "canon-default") -> str:
         """
         Answers a question using the underlying RAG chain for a specific tradition.
 
@@ -45,13 +45,36 @@ class Query:
             str: The answer to the question
         """
         try:
-            search_service = SearchService()
-            # For now, return a simple response since we need to implement RAG chain integration
-            # TODO: Integrate with LangGraph RAG chain
-            return f"Question about {tradition}: {query} - This feature is being updated to use the new service layer."
+            current_user = get_current_user_from_context(info)
+            
+            # Import here to avoid circular imports
+            from agent_service.langgraph_.graphs.chat_graph import ChatGraphFactory
+            from agent_service.langgraph_.state import StateManager
+            
+            # Create chat graph using ProviderManager for LLM selection
+            chat_graph_builder = ChatGraphFactory.create_default_chat_graph()
+            
+            # Create initial state with user context
+            state = StateManager.create_initial_state(
+                user_id=str(current_user.id),
+                tradition_id=tradition,
+                initial_message=query,
+            )
+            
+            # Build and execute the graph
+            chat_graph = chat_graph_builder.get_chat_graph()
+            updated_state = chat_graph.invoke(state)
+            
+            # Extract response
+            response = updated_state.get(
+                "last_response", "I apologize, but I couldn't generate a response."
+            )
+            
+            return response
+            
         except Exception as e:
             logger.error(f"Error in ask method: {e}")
-            return f"Sorry, I encountered an error while processing your question about the tradition '{tradition}'."
+            return f"Sorry, I encountered an error while processing your question about the tradition '{tradition}'. Please try again."
 
     @strawberry.field
     def list_traditions(self) -> List[str]:

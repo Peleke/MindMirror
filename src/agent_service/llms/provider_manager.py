@@ -235,8 +235,15 @@ class ProviderManager:
         if provider:
             config["provider"] = provider
 
-        # Get model from environment
-        model = os.getenv("LLM_MODEL", self._default_model)
+        # Get model from environment, use provider-specific default if not set
+        model = os.getenv("LLM_MODEL")
+        if not model and provider:
+            # Use provider-specific default model
+            model = self._get_default_model_for_provider(provider)
+        elif not model:
+            # Fallback to global default
+            model = self._default_model
+            
         if model:
             config["model"] = model
 

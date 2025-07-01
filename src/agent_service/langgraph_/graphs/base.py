@@ -1,15 +1,17 @@
 """
-Base graph builder for LangGraph workflows.
+Base graph builder classes for LangGraph workflows.
 
-This module provides the base class for building LangGraph workflows
-with common functionality and validation.
+This module provides foundational graph builder classes that specific graph
+builders can inherit from, promoting code reuse and consistent patterns.
 """
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from langgraph.graph import StateGraph
+
+from ..state import BaseAgentState
 
 logger = logging.getLogger(__name__)
 

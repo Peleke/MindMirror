@@ -22,13 +22,19 @@ class EmbeddingClient:
     via HTTP requests.
     """
 
-    def __init__(self, base_url: str = "http://ollama:11434"):
+    def __init__(self, base_url: Optional[str] = None):
         """
         Initialize the embedding client.
 
         Args:
-            base_url: Base URL for the embedding service
+            base_url: Base URL for the embedding service (uses config if None)
         """
+        if base_url is None:
+            # Get base URL from configuration
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            base_url = settings.ollama_base_url
+            
         self.base_url = base_url
         self.client = httpx.AsyncClient(timeout=30.0)
         self.logger = logging.getLogger(f"{__name__}.EmbeddingClient")
@@ -46,9 +52,14 @@ class EmbeddingClient:
         try:
             self.logger.debug(f"Requesting embedding for text: {text[:100]}...")
 
+            # Get the embedding model from config
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            model = settings.ollama_embedding_model
+
             response = await self.client.post(
                 f"{self.base_url}/api/embeddings",
-                json={"model": "llama2", "prompt": text},
+                json={"model": model, "prompt": text},
             )
 
             response.raise_for_status()

@@ -11,9 +11,9 @@ from typing import Any, Dict, Optional
 from langchain_core.runnables import Runnable
 from langgraph.graph import END, StateGraph
 
-from agent_service.langgraph_.graphs.base import BaseGraphBuilder
-from agent_service.langgraph_.nodes.rag_node import RAGNode
-from agent_service.langgraph_.state import RAGAgentState
+from .base import BaseGraphBuilder
+from ..nodes.rag_node import RAGNode
+from ..state import RAGAgentState
 
 logger = logging.getLogger(__name__)
 

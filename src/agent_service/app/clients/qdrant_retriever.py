@@ -7,9 +7,11 @@ LangChain's retriever interface for document retrieval from Qdrant.
 
 import logging
 from typing import Any, Dict, List, Optional
+import asyncio
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
+from pydantic import Field
 
 from agent_service.app.services.embedding_service import EmbeddingService
 from agent_service.app.services.qdrant_service import QdrantService
@@ -25,6 +27,20 @@ class QdrantRetriever(BaseRetriever):
     collections, supporting different search types and user contexts.
     """
 
+    # Define Pydantic fields
+    qdrant_service: QdrantService = Field(...)
+    embedding_service: EmbeddingService = Field(...)
+    collection_name: str = Field(...)
+    user_id: Optional[str] = Field(default=None)
+    tradition_id: Optional[str] = Field(default=None)
+    search_type: str = Field(default="hybrid")
+    k: int = Field(default=5)
+    score_threshold: Optional[float] = Field(default=None)
+
+    class Config:
+        """Pydantic configuration."""
+        arbitrary_types_allowed = True
+
     def __init__(
         self,
         qdrant_service: QdrantService,
@@ -35,6 +51,7 @@ class QdrantRetriever(BaseRetriever):
         search_type: str = "hybrid",
         k: int = 5,
         score_threshold: Optional[float] = None,
+        **kwargs
     ):
         """
         Initialize the Qdrant retriever.
@@ -49,15 +66,17 @@ class QdrantRetriever(BaseRetriever):
             k: Number of documents to retrieve
             score_threshold: Optional minimum score threshold
         """
-        super().__init__()
-        self.qdrant_service = qdrant_service
-        self.embedding_service = embedding_service
-        self.collection_name = collection_name
-        self.user_id = user_id
-        self.tradition_id = tradition_id
-        self.search_type = search_type
-        self.k = k
-        self.score_threshold = score_threshold
+        super().__init__(
+            qdrant_service=qdrant_service,
+            embedding_service=embedding_service,
+            collection_name=collection_name,
+            user_id=user_id,
+            tradition_id=tradition_id,
+            search_type=search_type,
+            k=k,
+            score_threshold=score_threshold,
+            **kwargs
+        )
 
         # Validate search type
         if search_type not in ["vector", "keyword", "hybrid"]:
@@ -68,9 +87,9 @@ class QdrantRetriever(BaseRetriever):
             f"with search_type='{search_type}', k={k}"
         )
 
-    def get_relevant_documents(self, query: str) -> List[Document]:
+    async def _aget_relevant_documents(self, query: str) -> List[Document]:
         """
-        Retrieve relevant documents for a query.
+        Async version of get_relevant_documents.
 
         Args:
             query: Search query
@@ -79,22 +98,16 @@ class QdrantRetriever(BaseRetriever):
             List of relevant documents
         """
         try:
-            # Get query embedding
-            query_embedding = self.embedding_service.get_embedding(query)
-
-            # Build search filters
-            filters = self._build_search_filters()
+            # Determine the tradition to use - use tradition_id or default
+            tradition = self.tradition_id or "default"
 
             # Perform search based on type
             if self.search_type == "vector":
-                results = self._vector_search(query_embedding, filters)
+                documents = await self._async_vector_search(query, tradition)
             elif self.search_type == "keyword":
-                results = self._keyword_search(query, filters)
+                documents = await self._async_keyword_search(query, tradition)
             else:  # hybrid
-                results = self._hybrid_search(query, query_embedding, filters)
-
-            # Convert to LangChain documents
-            documents = self._convert_to_documents(results)
+                documents = await self._async_hybrid_search(query, tradition)
 
             logger.info(
                 f"Retrieved {len(documents)} documents for query: {query[:100]}..."
@@ -104,6 +117,91 @@ class QdrantRetriever(BaseRetriever):
         except Exception as e:
             logger.error(f"Error retrieving documents: {e}")
             return []
+
+    def get_relevant_documents(self, query: str) -> List[Document]:
+        """
+        Retrieve relevant documents for a query (sync version).
+
+        Args:
+            query: Search query
+
+        Returns:
+            List of relevant documents
+        """
+        # Run the async method in the current event loop or create one
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, use asyncio.create_task
+                # This is a workaround for sync calls from async contexts
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, self._aget_relevant_documents(query))
+                    return future.result()
+            else:
+                return loop.run_until_complete(self._aget_relevant_documents(query))
+        except RuntimeError:
+            # No event loop running, create a new one
+            return asyncio.run(self._aget_relevant_documents(query))
+
+    async def _async_vector_search(self, query: str, tradition: str) -> List[Document]:
+        """
+        Perform async vector search.
+
+        Args:
+            query: Search query
+            tradition: Tradition to search in
+
+        Returns:
+            List of search results
+        """
+        # Use knowledge base search for now
+        return await self.qdrant_service.search_knowledge_base(
+            query=query,
+            tradition=tradition,
+            limit=self.k,
+            score_threshold=self.score_threshold or 0.0,
+        )
+
+    async def _async_keyword_search(self, query: str, tradition: str) -> List[Document]:
+        """
+        Perform async keyword search.
+
+        Args:
+            query: Search query  
+            tradition: Tradition to search in
+
+        Returns:
+            List of search results
+        """
+        # For now, use the same as vector search
+        return await self._async_vector_search(query, tradition)
+
+    async def _async_hybrid_search(self, query: str, tradition: str) -> List[Document]:
+        """
+        Perform async hybrid search.
+
+        Args:
+            query: Search query
+            tradition: Tradition to search in
+
+        Returns:
+            List of search results
+        """
+        if self.user_id:
+            # Use the proper hybrid search that includes both knowledge and personal data
+            return await self.qdrant_service.hybrid_search(
+                query=query,
+                user_id=self.user_id,
+                tradition=tradition,
+                include_personal=True,
+                include_knowledge=True,
+                limit=self.k,
+                score_threshold=self.score_threshold or 0.0,
+            )
+        else:
+            # Just use knowledge base search if no user_id
+            return await self._async_vector_search(query, tradition)
 
     def _build_search_filters(self) -> Dict[str, Any]:
         """

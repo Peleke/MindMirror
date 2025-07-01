@@ -15,10 +15,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langgraph.prebuilt import ToolNode
 
-from agent_service.app.services.embedding_service import EmbeddingService
-from agent_service.app.services.qdrant_service import QdrantService
-from agent_service.app.services.search_service import SearchService
-from agent_service.langgraph_.state import RAGAgentState
+from ...app.services.embedding_service import EmbeddingService
+from ...app.services.qdrant_service import QdrantService
+from ...app.services.search_service import SearchService
+from ..state import RAGAgentState
+from ...llms.provider_manager import get_provider_manager
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +81,9 @@ Answer:"""
         # Get the LLM (will be set dynamically based on provider)
         self.llm = self._get_llm()
 
-        # Create the RAG chain
+        # Create the RAG chain - fix to use proper callable
         self.rag_chain = (
-            {"context": self._retrieve_documents, "question": RunnablePassthrough()}
+            {"context": lambda x: self._retrieve_documents(x), "question": RunnablePassthrough()}
             | self.prompt
             | self.llm
             | StrOutputParser()
@@ -90,45 +91,55 @@ Answer:"""
 
     def _get_llm(self) -> BaseLanguageModel:
         """
-        Get the language model based on provider.
+        Get the language model using the ProviderManager.
 
         Returns:
             Configured language model
         """
-        # This will be implemented based on the provider configuration
-        # For now, return a placeholder
-        from langchain_openai import ChatOpenAI
+        try:
+            provider_manager = get_provider_manager()
+            
+            # Create config from environment variables first
+            config = provider_manager.create_config_from_env()
+            
+            # Override with any specified provider
+            if self.provider:
+                config["provider"] = self.provider
+                
+            # Add any overrides
+            config.update(self.overrides)
+            
+            # Use provider manager to create model with fallback
+            return provider_manager.create_model_with_fallback(config if config else None)
+            
+        except Exception as e:
+            logger.error(f"Failed to create LLM using ProviderManager: {e}")
+            # Fallback to default provider manager behavior
+            provider_manager = get_provider_manager()
+            return provider_manager.create_model_with_fallback()
 
-        return ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, **self.overrides)
-
-    def _retrieve_documents(self, state: RAGAgentState) -> str:
+    def _retrieve_documents(self, query: str) -> str:
         """
         Retrieve relevant documents for the query.
 
         Args:
-            state: Current agent state
+            query: The query string to search for
 
         Returns:
             Formatted context string from retrieved documents
         """
         try:
-            # Get the query from state
-            query = state.get("messages", [{}])[-1].get("content", "")
             if not query:
                 return "No query provided."
 
-            # Get user context
-            user_id = state.get("user_id")
-            tradition_id = state.get("tradition_id")
-
-            # Create retriever if not set
+            # Use search service if no retriever is set
             if not self.retriever:
-                self.retriever = self.search_service.create_retriever(
-                    user_id=user_id, tradition_id=tradition_id, search_type="hybrid"
-                )
+                logger.warning("No retriever set, using search service with default parameters")
+                # For now, return a placeholder context
+                return f"Context for query: {query}\n[Note: Retriever not properly configured]"
 
-            # Retrieve documents
-            documents = self.retriever.get_relevant_documents(query)
+            # Retrieve documents using the retriever with modern interface
+            documents = self.retriever.invoke(query)
 
             # Format context
             context_parts = []
@@ -174,6 +185,18 @@ Answer:"""
 
             if not query:
                 return state
+
+            # Set up retriever if not already configured and we have user context
+            if not self.retriever and state.get("user_id") and state.get("tradition_id"):
+                try:
+                    user_id = state.get("user_id")
+                    tradition_id = state.get("tradition_id")
+                    self.retriever = self.search_service.create_retriever(
+                        user_id=user_id, tradition_id=tradition_id, search_type="hybrid"
+                    )
+                    logger.info(f"Created retriever for user {user_id} with tradition {tradition_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to create retriever: {e}", exc_info=True)
 
             # Generate response using RAG chain
             response = self.rag_chain.invoke(query)

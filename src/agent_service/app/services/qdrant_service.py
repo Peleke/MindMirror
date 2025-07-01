@@ -51,12 +51,25 @@ class QdrantService:
         try:
             self.logger.debug(f"Searching knowledge base for query: {query[:100]}...")
 
-            results = await self.qdrant_client.search_knowledge_base(
-                query=query,
+            # Get query embedding first
+            from agent_service.app.services.embedding_service import EmbeddingService
+            embedding_service = EmbeddingService()
+            
+            # Get embedding for the query
+            query_embedding = await embedding_service.get_embedding(query)
+            if not query_embedding:
+                self.logger.warning("Failed to get query embedding")
+                return []
+
+            results = self.qdrant_client.search_knowledge_base(
                 tradition=tradition,
+                query_embedding=query_embedding,
                 limit=limit,
-                score_threshold=score_threshold,
             )
+
+            # Filter results by score threshold if specified
+            if score_threshold > 0:
+                results = [r for r in results if r.score >= score_threshold]
 
             # Convert to LangChain documents
             documents = []
@@ -163,16 +176,30 @@ class QdrantService:
         try:
             self.logger.debug(f"Performing hybrid search for user {user_id}")
 
+            # Get query embedding first
+            from agent_service.app.services.embedding_service import EmbeddingService
+            embedding_service = EmbeddingService()
+            
+            # Get embedding for the query
+            query_embedding = await embedding_service.get_embedding(query)
+            if not query_embedding:
+                self.logger.warning("Failed to get query embedding")
+                return []
+
             results = await self.qdrant_client.hybrid_search(
                 query=query,
                 user_id=user_id,
                 tradition=tradition,
+                query_embedding=query_embedding,
                 include_personal=include_personal,
                 include_knowledge=include_knowledge,
                 entry_types=entry_types,
                 limit=limit,
-                score_threshold=score_threshold,
             )
+
+            # Filter results by score threshold if specified
+            if score_threshold > 0:
+                results = [r for r in results if r.score >= score_threshold]
 
             # Convert to LangChain documents
             documents = []
