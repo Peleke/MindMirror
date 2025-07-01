@@ -10,19 +10,99 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from pytest_celery import (CeleryBackendCluster, CeleryBrokerCluster,
                            RedisTestBackend, RedisTestBroker)
+from celery import Celery
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.celery_app import create_celery_app
+from src.config import Config
 
 # Test configuration for celery-worker
 TEST_QDRANT_PORT = 6334  # Different from production port 6333
 TEST_QDRANT_URL = f"http://localhost:{TEST_QDRANT_PORT}"
 
 # Set environment variables for the application's config
-os.environ["TESTING"] = "True"
+os.environ["TESTING"] = "true"
 os.environ["QDRANT_HOST"] = "localhost"
-os.environ["QDRANT_PORT"] = str(TEST_QDRANT_PORT)
+os.environ["QDRANT_PORT"] = "6333"
+os.environ["REDIS_URL"] = "redis://localhost:6379/1"
+os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_mindmirror"
 
 logging.basicConfig(level=logging.INFO)
+
+
+@pytest.fixture
+def config():
+    """Test configuration fixture."""
+    # Ensure we're in testing mode
+    Config.TESTING = True
+    return Config
+
+
+@pytest.fixture
+def mock_qdrant_client():
+    """Mock Qdrant client for testing."""
+    mock_client = MagicMock()
+    mock_client.get_collections.return_value = MagicMock(collections=[])
+    mock_client.create_collection.return_value = True
+    mock_client.upsert.return_value = MagicMock(status="completed")
+    mock_client.search.return_value = []
+    return mock_client
+
+
+@pytest.fixture
+def mock_journal_client():
+    """Mock journal client for testing."""
+    mock_client = AsyncMock()
+    mock_client.get_entry_by_id.return_value = {
+        "id": "test-entry-id",
+        "content": "Test journal entry content",
+        "entry_type": "FREEFORM",
+        "created_at": "2024-01-01T00:00:00Z",
+        "user_id": "test-user-id"
+    }
+    return mock_client
+
+
+@pytest.fixture
+def mock_embedding_service():
+    """Mock embedding service for testing."""
+    mock_service = AsyncMock()
+    mock_service.get_embedding.return_value = [0.1] * Config.VECTOR_SIZE
+    mock_service.get_embeddings.return_value = [[0.1] * Config.VECTOR_SIZE]
+    return mock_service
+
+
+@pytest.fixture
+def test_celery_app():
+    """Create a test Celery app."""
+    app = Celery("test_worker")
+    app.conf.update(
+        broker_url="memory://",
+        result_backend="cache+memory://",
+        task_always_eager=True,
+        task_eager_propagates=True,
+    )
+    return app
+
+
+@pytest.fixture
+def mock_journal_entry():
+    """Mock journal entry data."""
+    return {
+        "id": "628b77ec-dad0-4481-9d97-05b2481c260f",
+        "user_id": "test-user-123",
+        "tradition": "stoicism",
+        "content": "Today I practiced mindfulness and gratitude.",
+        "entry_type": "FREEFORM",
+        "created_at": "2024-01-01T10:00:00Z",
+        "updated_at": "2024-01-01T10:00:00Z"
+    }
+
+
+@pytest.fixture
+def mock_vector_embedding():
+    """Mock vector embedding."""
+    return [0.1, 0.2, 0.3] * (Config.VECTOR_SIZE // 3) + [0.1] * (Config.VECTOR_SIZE % 3)
 
 
 @pytest.fixture

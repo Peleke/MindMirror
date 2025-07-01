@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
@@ -24,9 +25,26 @@ class CeleryJournalClient:
 
     def __init__(self, base_url: str = None):
         self.base_url = base_url or os.getenv("JOURNAL_SERVICE_URL", "http://journal_service:8001")
-        self.graphql_url = f"{self.base_url}/graphql"
+        self.graphql_endpoint = f"{self.base_url}/graphql"
         self.client = httpx.AsyncClient()
-        logger.info(f"Initialized CeleryJournalClient with GraphQL URL: {self.graphql_url}")
+        logger.info(f"Initialized CeleryJournalClient with GraphQL URL: {self.graphql_endpoint}")
+
+    def _camel_to_snake(self, name: str) -> str:
+        """Convert camelCase to snake_case."""
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+    def _convert_to_snake_case(self, data: Any) -> Any:
+        """Recursively convert camelCase keys to snake_case."""
+        if isinstance(data, dict):
+            return {
+                self._camel_to_snake(k): self._convert_to_snake_case(v)
+                for k, v in data.items()
+            }
+        elif isinstance(data, list):
+            return [self._convert_to_snake_case(item) for item in data]
+        else:
+            return data
 
     async def _execute_query(self, query: str, variables: Dict[str, Any] = None, user_id: str = None) -> Dict[str, Any]:
         """Execute a GraphQL query."""
@@ -43,7 +61,7 @@ class CeleryJournalClient:
             headers["x-internal-id"] = user_id
         
         response = await self.client.post(
-            self.graphql_url,
+            self.graphql_endpoint,
             json=payload,
             headers=headers
         )
@@ -67,16 +85,27 @@ class CeleryJournalClient:
             Journal entry dictionary if found, None otherwise
         """
         try:
-            from .queries import GET_JOURNAL_ENTRY_BY_ID
+            # Simple GraphQL query for journal entry
+            query = """
+                query GetJournalEntry($id: UUID!) {
+                    journalEntry(entryId: $id) {
+                        id
+                        content
+                        entryType
+                        createdAt
+                        modifiedAt
+                        user {
+                            id
+                        }
+                    }
+                }
+            """
             
-            variables = {
-                "entryId": entry_id
-            }
+            variables = {"id": entry_id}
             
             logger.info(f"Executing GraphQL query for entry {entry_id} with variables: {variables}")
             
-            # Note: GraphQL context will handle user validation
-            data = await self._execute_query(GET_JOURNAL_ENTRY_BY_ID, variables, user_id)
+            data = await self._execute_query(query, variables, user_id)
             
             logger.info(f"GraphQL response data: {data}")
             
@@ -87,20 +116,13 @@ class CeleryJournalClient:
 
             logger.info(f"Raw entry data from GraphQL: {entry_data}")
 
-            # Convert GraphQL response to the format expected by indexing code
-            result = {
-                "id": entry_data["id"],
-                "user_id": entry_data["userId"],
-                "entry_type": entry_data["entryType"],
-                "payload": self._extract_payload_from_entry(entry_data),
-                "created_at": entry_data["createdAt"],
-                "updated_at": entry_data.get("modifiedAt", entry_data["createdAt"]),
-                "metadata": {}
-            }
+            # Convert to snake_case and add user_id for convenience
+            converted_data = self._convert_to_snake_case(entry_data)
+            if "user" in converted_data and "id" in converted_data["user"]:
+                converted_data["user_id"] = converted_data["user"]["id"]
 
-            logger.info(f"Converted result: {result}")
             logger.info(f"Retrieved journal entry {entry_id} for user {user_id}")
-            return result
+            return converted_data
 
         except Exception as e:
             logger.error(f"Failed to get journal entry {entry_id}: {e}")
@@ -133,53 +155,51 @@ class CeleryJournalClient:
             content = entry_data.get("content", "")
             return {"content": content if isinstance(content, str) else str(content)}
         
-        return entry_data.get("payload", {})
+        return entry_data.get("payload", entry_data)
 
     async def list_by_user_for_period(
-        self, user_id: str, start_date: datetime, end_date: datetime
-    ) -> List[JournalEntry]:
+        self, user_id: str, start_date: str, end_date: str
+    ) -> List[Dict[str, Any]]:
         """
         List journal entries for a user within a specific time period using GraphQL.
 
         Args:
             user_id: The user ID
-            start_date: Start of the time period
-            end_date: End of the time period
+            start_date: Start of the time period (ISO string)
+            end_date: End of the time period (ISO string)
 
         Returns:
-            List of journal entries
+            List of journal entry dictionaries
         """
         try:
-            from .queries import GET_JOURNAL_ENTRIES
+            # Simple GraphQL query for journal entries
+            query = """
+                query GetJournalEntries($userId: UUID!, $startDate: DateTime!, $endDate: DateTime!) {
+                    journalEntries(userId: $userId, startDate: $startDate, endDate: $endDate) {
+                        id
+                        content
+                        entryType
+                        createdAt
+                        modifiedAt
+                    }
+                }
+            """
             
-            # Note: We'll need to filter by date on the client side since the schema
-            # doesn't seem to have date filtering built in
-            data = await self._execute_query(GET_JOURNAL_ENTRIES, {"limit": 100}, user_id)
+            variables = {
+                "userId": user_id,
+                "startDate": start_date,
+                "endDate": end_date
+            }
+            
+            data = await self._execute_query(query, variables, user_id)
             
             entries_data = data.get("journalEntries", [])
-            
-            # Convert to JournalEntry objects and filter by date
-            entries = []
-            for entry_data in entries_data:
-                entry_created_at = datetime.fromisoformat(entry_data["createdAt"].replace("Z", "+00:00"))
-                
-                # Filter by date range
-                if start_date <= entry_created_at <= end_date:
-                    payload = self._extract_payload_from_entry(entry_data)
-                    content = self._extract_content_from_payload(payload, entry_data.get("entryType", ""))
-                    
-                    entry = JournalEntry(
-                        id=entry_data["id"],
-                        user_id=entry_data["userId"],
-                        content=content,
-                        created_at=entry_created_at,
-                        updated_at=datetime.fromisoformat(entry_data.get("modifiedAt", entry_data["createdAt"]).replace("Z", "+00:00")),
-                        metadata={}
-                    )
-                    entries.append(entry)
 
-            logger.info(f"Retrieved {len(entries)} journal entries for user {user_id}")
-            return entries
+            # Convert to snake_case
+            converted_entries = self._convert_to_snake_case(entries_data)
+
+            logger.info(f"Retrieved {len(converted_entries)} journal entries for user {user_id}")
+            return converted_entries
 
         except Exception as e:
             logger.error(f"Failed to list journal entries for user {user_id}: {e}")
@@ -199,7 +219,9 @@ class CeleryJournalClient:
                 parts.append(f"Focus: {payload['focus']}")
             if payload.get("affirmation"):
                 parts.append(f"Affirmation: {payload['affirmation']}")
-            return " ".join(parts)
+            if payload.get("mood"):
+                parts.append(f"Mood: {payload['mood']}")
+            return "\n".join(parts)
         elif entry_type == "REFLECTION":
             parts = []
             if payload.get("wins"):
@@ -208,18 +230,23 @@ class CeleryJournalClient:
                 parts.append(f"Improvements: {', '.join(payload['improvements'])}")
             if payload.get("mood"):
                 parts.append(f"Mood: {payload['mood']}")
-            return " ".join(parts)
+            return "\n".join(parts)
         
         return str(payload) if payload else ""
 
 
-# Global client instance
-_celery_journal_client: Optional[CeleryJournalClient] = None
+# Global instance
+_celery_journal_client = None
 
 
-def create_celery_journal_client() -> CeleryJournalClient:
-    """Create or get the global Celery journal client instance."""
+def get_celery_journal_client() -> CeleryJournalClient:
+    """Get the global CeleryJournalClient instance."""
     global _celery_journal_client
     if _celery_journal_client is None:
         _celery_journal_client = CeleryJournalClient()
-    return _celery_journal_client 
+    return _celery_journal_client
+
+
+def create_celery_journal_client() -> CeleryJournalClient:
+    """Create a new CeleryJournalClient instance."""
+    return CeleryJournalClient() 

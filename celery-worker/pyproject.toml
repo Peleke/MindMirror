@@ -19,6 +19,7 @@ langchain-community = "^0.0.10"
 google-cloud-storage = "^2.10.0"
 qdrant-client = "^1.6.0"
 strawberry-graphql = "^0.275.5"
+sentence-transformers = "^5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-asyncio = "^1.0.0"

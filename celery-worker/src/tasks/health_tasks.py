@@ -1,16 +1,18 @@
 import logging
 from datetime import datetime
 from celery import current_app
+import asyncio
 
+from src.celery_app import celery_app
 from src.clients.qdrant_client import get_celery_qdrant_client
 
 logger = logging.getLogger(__name__)
 
 
-@current_app.task(
+@celery_app.task(
     bind=True, name="celery_worker.tasks.health_check_task", time_limit=60
 )
-async def health_check_task(self):
+def health_check_task(self):
     """
     Health check task for monitoring system status.
 
@@ -26,12 +28,18 @@ async def health_check_task(self):
             "services": {},
         }
 
-        # Check Qdrant
-        qdrant_client = get_celery_qdrant_client()
-        qdrant_healthy = await qdrant_client.health_check()
-        health_status["services"]["qdrant"] = (
-            "healthy" if qdrant_healthy else "unhealthy"
-        )
+        # Create event loop for async operations
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            # Check Qdrant
+            qdrant_client = get_celery_qdrant_client()
+            qdrant_healthy = loop.run_until_complete(qdrant_client.health_check())
+            health_status["services"]["qdrant"] = (
+                "healthy" if qdrant_healthy else "unhealthy"
+            )
+        finally:
+            loop.close()
 
         # Check Redis (Celery broker)
         try:

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List
 import asyncio
+from celery import current_app
 
 from celery.exceptions import Retry
 
@@ -18,7 +19,6 @@ logger = logging.getLogger(__name__)
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 3, "countdown": 60},
-    retry_backoff=True,
     time_limit=300,  # 5 minutes
     name="celery_worker.tasks.index_journal_entry_task",
 )
@@ -39,7 +39,13 @@ def index_journal_entry_task(
     try:
         logger.info(f"Starting indexing task for entry {entry_id}, user {user_id}")
 
-        result = asyncio.run(index_journal_entry_by_id(entry_id, user_id, tradition))
+        # Create new event loop for this task
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(index_journal_entry_by_id(entry_id, user_id, tradition))
+        finally:
+            loop.close()
 
         if not result:
             raise Exception(f"Failed to index journal entry {entry_id}")
@@ -72,8 +78,14 @@ def batch_index_journal_entries_task(self, entries_data: List[Dict[str, Any]]):
     try:
         logger.info(f"Starting batch indexing task for {len(entries_data)} entries")
 
-        indexer = JournalIndexer()
-        result = asyncio.run(indexer.batch_index_entries(entries_data))
+        # Create new event loop for this task
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            indexer = JournalIndexer()
+            result = loop.run_until_complete(indexer.batch_index_entries(entries_data))
+        finally:
+            loop.close()
 
         logger.info(f"Batch indexing completed: {result}")
         return result
@@ -106,8 +118,14 @@ def reindex_user_entries_task(
     try:
         logger.info(f"Starting reindex task for user {user_id}")
 
-        indexer = JournalIndexer()
-        result = asyncio.run(indexer.reindex_user_entries(user_id, tradition))
+        # Create new event loop for this task
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            indexer = JournalIndexer()
+            result = loop.run_until_complete(indexer.reindex_user_entries(user_id, tradition))
+        finally:
+            loop.close()
 
         logger.info(f"Reindex completed for user {user_id}: {result}")
         return result
@@ -128,7 +146,7 @@ def queue_journal_entry_indexing(
         logger.info(f"Task name: celery_worker.tasks.index_journal_entry_task")
         logger.info(f"Task args: [{entry_id}, {user_id}, {tradition}]")
         
-        task = celery_app.send_task(
+        task = current_app.send_task(
             "celery_worker.tasks.index_journal_entry_task",
             args=[entry_id, user_id, tradition],
         )
@@ -143,7 +161,7 @@ def queue_journal_entry_indexing(
 
 def queue_batch_indexing(entries_data: List[Dict[str, Any]]):
     """Queue multiple entries for batch indexing."""
-    return celery_app.send_task(
+    return current_app.send_task(
         "celery_worker.tasks.batch_index_journal_entries_task", 
         args=[entries_data]
     )
@@ -151,7 +169,7 @@ def queue_batch_indexing(entries_data: List[Dict[str, Any]]):
 
 def queue_user_reindex(user_id: str, tradition: str = "canon-default"):
     """Queue all user entries for reindexing."""
-    return celery_app.send_task(
+    return current_app.send_task(
         "celery_worker.tasks.reindex_user_entries_task", 
         args=[user_id, tradition]
     )

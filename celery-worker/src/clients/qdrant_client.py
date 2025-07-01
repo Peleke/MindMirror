@@ -13,10 +13,9 @@ from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
                                   PointStruct, SearchRequest, VectorParams, Range)
 from qdrant_client.http import models
 
-logger = logging.getLogger(__name__)
+from ..config import Config
 
-# Configuration constants
-VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "768"))  # nomic-embed-text dimension
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,8 +37,8 @@ class CeleryQdrantClient:
 
     def __init__(self, host: str = None, port: int = None):
         """Initialize Qdrant client."""
-        self.host = host or os.getenv("QDRANT_HOST", "qdrant")
-        self.port = port or int(os.getenv("QDRANT_PORT", "6333"))
+        self.host = host or os.getenv("QDRANT_HOST", Config.QDRANT_HOST)
+        self.port = port or int(os.getenv("QDRANT_PORT", str(Config.QDRANT_PORT)))
         self.client = QdrantClientBase(host=self.host, port=self.port)
         logger.info(f"Initialized CeleryQdrantClient with {self.host}:{self.port}")
 
@@ -81,7 +80,7 @@ class CeleryQdrantClient:
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=models.VectorParams(
-                    size=VECTOR_SIZE, distance=Distance.COSINE
+                    size=Config.VECTOR_SIZE, distance=Distance.COSINE
                 ),
             )
 

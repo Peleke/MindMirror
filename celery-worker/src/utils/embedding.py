@@ -5,6 +5,8 @@ import httpx
 from typing import List, Protocol
 from abc import ABC, abstractmethod
 
+from ..config import Config
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +49,7 @@ class OllamaEmbeddingService:
         except Exception as e:
             logger.error(f"Failed to generate embedding with Ollama: {e}")
             # Return zero vector as fallback
-            return [0.0] * 768
+            return [0.0] * Config.VECTOR_SIZE
     
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts."""
@@ -59,7 +61,7 @@ class OllamaEmbeddingService:
             return embeddings
         except Exception as e:
             logger.error(f"Failed to generate embeddings with Ollama: {e}")
-            return [[0.0] * 768 for _ in texts]
+            return [[0.0] * Config.VECTOR_SIZE for _ in texts]
 
 
 class OpenAIEmbeddingService:
@@ -117,10 +119,21 @@ class OpenAIEmbeddingService:
 class SentenceTransformersEmbeddingService:
     """Local Sentence Transformers embedding service."""
     
-    def __init__(self, model_name: str = None):
-        self.model_name = model_name or os.getenv("SENTENCE_TRANSFORMERS_MODEL", "all-MiniLM-L6-v2")
+    def __init__(self, model_name: str = None, **kwargs):
+        # Handle both direct parameter and config dict
+        if isinstance(model_name, dict):
+            config = model_name
+            self.model_name = config.get("model_name") or os.getenv("SENTENCE_TRANSFORMERS_MODEL", "all-MiniLM-L6-v2")
+        else:
+            self.model_name = model_name or os.getenv("SENTENCE_TRANSFORMERS_MODEL", "all-MiniLM-L6-v2")
+        
         self._model = None
-        self._tokenizer = None
+        
+        # Check if sentence_transformers is available at initialization
+        try:
+            import sentence_transformers
+        except ImportError:
+            raise ImportError("sentence_transformers package is required but not installed. Run: pip install sentence-transformers")
     
     def _load_model(self):
         """Lazy load the model."""
@@ -129,26 +142,45 @@ class SentenceTransformersEmbeddingService:
                 from sentence_transformers import SentenceTransformer
                 self._model = SentenceTransformer(self.model_name)
                 logger.info(f"Loaded Sentence Transformers model: {self.model_name}")
-            except ImportError:
-                raise ImportError("sentence-transformers is not installed. Run: pip install sentence-transformers")
             except Exception as e:
                 logger.error(f"Failed to load Sentence Transformers model: {e}")
                 raise
     
-    async def get_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text using Sentence Transformers."""
+    def get_embedding(self, text: str) -> List[float]:
+        """Generate embedding for text using Sentence Transformers (synchronous)."""
+        try:
+            self._load_model()
+            # SentenceTransformers expects a list of texts
+            embedding = self._model.encode([text])
+            return embedding[0].tolist()
+        except Exception as e:
+            logger.error(f"Failed to generate embedding with Sentence Transformers: {e}")
+            raise
+    
+    async def get_embedding_async(self, text: str) -> List[float]:
+        """Generate embedding for text using Sentence Transformers (async wrapper)."""
         try:
             self._load_model()
             # Note: SentenceTransformers is synchronous, so we run it in a thread
             loop = asyncio.get_event_loop()
-            embedding = await loop.run_in_executor(None, self._model.encode, text)
-            return embedding.tolist()
+            embedding = await loop.run_in_executor(None, self._model.encode, [text])
+            return embedding[0].tolist()
         except Exception as e:
             logger.error(f"Failed to generate embedding with Sentence Transformers: {e}")
             return [0.0] * 384  # Default dimension for all-MiniLM-L6-v2
     
-    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts."""
+    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple texts (synchronous)."""
+        try:
+            self._load_model()
+            embeddings = self._model.encode(texts)
+            return embeddings.tolist()
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings with Sentence Transformers: {e}")
+            raise
+    
+    async def get_embeddings_async(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple texts (async wrapper)."""
         try:
             self._load_model()
             loop = asyncio.get_event_loop()
@@ -162,8 +194,8 @@ class SentenceTransformersEmbeddingService:
 class MockEmbeddingService:
     """Mock embedding service for testing."""
     
-    def __init__(self, dimension: int = 768):
-        self.dimension = dimension
+    def __init__(self, dimension: int = None):
+        self.dimension = dimension or Config.VECTOR_SIZE
     
     async def get_embedding(self, text: str) -> List[float]:
         """Generate mock embedding."""
@@ -243,7 +275,7 @@ async def get_embedding(text: str) -> List[float]:
     except Exception as e:
         logger.error(f"Failed to generate embedding: {e}")
         # Return zero vector as fallback
-        return [0.0] * 768
+        return [0.0] * Config.VECTOR_SIZE
 
 
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
@@ -268,4 +300,4 @@ async def get_embeddings(texts: List[str]) -> List[List[float]]:
     except Exception as e:
         logger.error(f"Failed to generate embeddings: {e}")
         # Return zero vectors as fallback
-        return [[0.0] * 768 for _ in texts] 
+        return [[0.0] * Config.VECTOR_SIZE for _ in texts] 
