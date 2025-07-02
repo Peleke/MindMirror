@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # Database settings - REQUIRED
     database_url: str = Field(env="DATABASE_URL")
-    
+
     # PostgreSQL settings
     postgres_user: Optional[str] = Field(default=None, env="POSTGRES_USER")
     postgres_password: Optional[str] = Field(default=None, env="POSTGRES_PASSWORD")

@@ -447,16 +447,18 @@ class TestLLMServiceEnhanced:
             prompt_service=mock_prompt_service, provider_manager=mock_provider_manager
         )
 
-        # Mock LLM response
-        mock_llm = Mock()
-        mock_llm.invoke.return_value.content = "SUCCESS: Direct prompt review\nIMPROVEMENT: More details needed\nPROMPT: What's next?"
+        # Mock LLM response for fallback
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke.return_value.content = (
+            "SUCCESS: Fallback review\nIMPROVEMENT: More details\nPROMPT: What's next?"
+        )
         mock_provider_manager.create_model_with_fallback.return_value = mock_llm
 
         journal_entries = [{"text": "Entry 1"}]
         result = await service.get_performance_review(journal_entries)
 
         assert isinstance(result, PerformanceReview)
-        assert "Direct prompt review" in result.key_success
+        assert "Fallback review" in result.key_success
         mock_prompt_service.render_prompt.assert_called_once()
 
     def test_get_tool_registry_health(self, enhanced_llm_service):
@@ -564,8 +566,8 @@ class TestLLMServiceEnhanced:
         )
 
         # Mock LLM response for fallback
-        mock_llm = Mock()
-        mock_llm.invoke.return_value.content = (
+        mock_llm = AsyncMock()
+        mock_llm.ainvoke.return_value.content = (
             "SUCCESS: Fallback review\nIMPROVEMENT: More details\nPROMPT: What's next?"
         )
         mock_provider_manager.create_model_with_fallback.return_value = mock_llm

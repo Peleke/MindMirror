@@ -80,7 +80,7 @@ class TestLLMFactory:
         llm = LLMFactory.create_llm(provider="ollama")
 
         assert isinstance(llm, ChatOllama)
-        assert llm.model == "llama3"
+        assert llm.model == "llama3.2"
         assert llm.base_url == "http://localhost:11434"
         assert llm.temperature == 0
         # ChatOllama doesn't have a stream attribute by default

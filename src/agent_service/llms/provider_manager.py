@@ -31,12 +31,14 @@ class ProviderManager:
         """Initialize the provider manager."""
         self._factory: ProviderFactory = get_factory()
         self._settings = get_settings()
+        self._default_provider = None  # For backward compatibility with tests
         self._validate_configuration()
 
     def _validate_configuration(self):
         """Validate that required configuration is present."""
         # This will raise if LLM_PROVIDER is not set
         provider = self._settings.llm_provider
+        self._default_provider = provider  # Set default provider
 
         # This will raise if provider-specific model is not set
         model = self._settings.llm_model
@@ -61,6 +63,31 @@ class ProviderManager:
             ValueError: If configuration is missing or invalid
         """
         return self.create_config_from_env()
+
+    def validate_config(self, config: Dict[str, Any]) -> bool:
+        """
+        Validate configuration for the specified provider.
+
+        Args:
+            config: Configuration dictionary to validate
+
+        Returns:
+            True if configuration is valid, False otherwise
+        """
+        return self._factory.validate_config(config)
+
+    def create_config_template(self, provider_name: str, model_name: str) -> Dict[str, Any]:
+        """
+        Create a configuration template for a specific provider and model.
+
+        Args:
+            provider_name: Name of the provider
+            model_name: Name of the model
+
+        Returns:
+            Configuration template dictionary
+        """
+        return self._factory.create_config_template(provider_name, model_name)
 
     def create_model(
         self, config: Optional[Dict[str, Any]] = None
@@ -381,6 +408,22 @@ class ProviderManager:
         except Exception as e:
             logger.error(f"Failed to create model with config {config}: {e}")
             raise RuntimeError(f"Model creation failed: {e}")
+
+    def set_default_provider(self, provider_name: str):
+        """
+        Set the default provider for this manager instance.
+        
+        Args:
+            provider_name: Name of the provider to set as default
+            
+        Raises:
+            ValueError: If provider is not available
+        """
+        if provider_name not in self.list_available_providers():
+            raise ValueError(f"Provider '{provider_name}' not available")
+        
+        self._default_provider = provider_name
+        logger.info(f"Set default provider to: {provider_name}")
 
 
 # Global provider manager instance

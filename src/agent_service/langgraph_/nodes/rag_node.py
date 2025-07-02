@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 class RAGNode:
     """
     RAG node for chat operations.
-
+    
     This node handles retrieval-augmented generation by:
     1. Retrieving relevant documents from Qdrant
     2. Generating responses using the retrieved context
     """
-
+    
     def __init__(
         self,
         retriever=None,  # Will be set dynamically
@@ -41,7 +41,7 @@ class RAGNode:
     ):
         """
         Initialize the RAG node.
-
+        
         Args:
             retriever: QdrantRetriever instance (set dynamically)
             provider: Optional LLM provider to use
@@ -91,11 +91,11 @@ Answer:"""
             | self.llm
             | StrOutputParser()
         )
-
+    
     def _get_llm(self) -> BaseLanguageModel:
         """
         Get the language model using the ProviderManager.
-
+            
         Returns:
             Configured language model
         """
@@ -126,10 +126,10 @@ Answer:"""
     def _retrieve_documents(self, query: str) -> str:
         """
         Retrieve relevant documents for the query.
-
+        
         Args:
             query: The query string to search for
-
+            
         Returns:
             Formatted context string from retrieved documents
         """
@@ -166,7 +166,7 @@ Answer:"""
                 f"Retrieved {len(documents)} documents for query: {query[:100]}..."
             )
             return context
-
+            
         except Exception as e:
             logger.error(f"Error retrieving documents: {e}")
             return f"Error retrieving documents: {str(e)}"
@@ -174,10 +174,10 @@ Answer:"""
     def __call__(self, state: RAGAgentState) -> RAGAgentState:
         """
         Process the state and generate a response.
-
+        
         Args:
             state: Current agent state
-
+            
         Returns:
             Updated state with generated response
         """
@@ -232,7 +232,7 @@ Answer:"""
 
             logger.info(f"Generated response for query: {query[:100]}...")
             return state
-
+            
         except Exception as e:
             logger.error(f"Error in RAG node: {e}")
             # Add error response to messages

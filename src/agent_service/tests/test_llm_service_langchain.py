@@ -142,7 +142,7 @@ class TestLLMServiceLangChain:
 IMPROVEMENT: Time management skills need attention and could be improved.
 PROMPT: How can you better structure your day to make time management feel less overwhelming?"""
 
-        mock_llm.invoke.return_value.content = mock_response
+        mock_llm.ainvoke.return_value.content = mock_response
 
         # Act
         result = await llm_service.get_performance_review(journal_entries)
@@ -153,7 +153,7 @@ PROMPT: How can you better structure your day to make time management feel less 
         assert "time management" in result.improvement_area.lower()
         assert "structure your day" in result.journal_prompt.lower()
 
-        mock_llm.invoke.assert_called_once()
+        mock_llm.ainvoke.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_performance_review_empty_entries(self, llm_service):

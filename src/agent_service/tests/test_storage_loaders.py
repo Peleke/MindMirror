@@ -151,7 +151,8 @@ class TestGCSStorageLoader:
     def test_create_gcs_store_with_emulator(self, mock_client_class):
         """Test creating GCS store with emulator configuration."""
         mock_client = Mock()
-        mock_client_class.from_service_account_json.return_value = mock_client
+        # When using emulator, regular Client() constructor is used, not from_service_account_json
+        mock_client_class.return_value = mock_client
 
         config = StorageConfig(
             storage_type="gcs",
@@ -164,9 +165,9 @@ class TestGCSStorageLoader:
             loader = GCSStorageLoader(config)
 
             assert loader.bucket_name == "test-bucket"
-            mock_client_class.from_service_account_json.assert_called_once_with(
-                "/path/to/credentials.json"
-            )
+            # When using emulator, regular Client() constructor is called, not from_service_account_json
+            mock_client_class.assert_called_once_with()
+            mock_client_class.from_service_account_json.assert_not_called()
 
     @patch("google.cloud.storage.Client")
     def test_create_gcs_store_handles_client_error(self, mock_client_class):

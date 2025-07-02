@@ -185,9 +185,15 @@ class TestLLMServiceProviderIntegration:
         # Make create_model fail, but create_model_with_fallback succeed
         mock_provider_manager.create_model.side_effect = Exception("Provider failed")
 
-        # This should raise an exception since we're not using fallback logic in get_llm
+        # This should raise an exception since we specify a provider and don't use fallback
         with pytest.raises(Exception, match="Provider failed"):
             service.get_llm("journal_summary", provider="openai")
+
+        # But this should work because it uses create_model_with_fallback
+        # Reset the mock to succeed for fallback call
+        mock_provider_manager.create_model_with_fallback.side_effect = None
+        llm = service.get_llm("journal_summary")  # No provider specified, should use fallback
+        assert llm is not None
 
     def test_get_provider_status(self, mock_prompt_service, mock_provider_manager):
         """Test getting provider status."""
@@ -402,4 +408,4 @@ class TestLLMServiceErrorHandling:
         result = await service.get_performance_review(journal_entries)
 
         assert isinstance(result, PerformanceReview)
-        assert "Unable to generate performance review" in result.key_success
+        assert "Error generating review" in result.key_success

@@ -732,7 +732,12 @@ class LLMService:
                 config.update(overrides)
 
             # Create model using provider manager
-            return self.provider_manager.create_model_with_fallback(config)
+            # If specific provider is requested, use create_model (no fallback)
+            # Otherwise use create_model_with_fallback for resilience
+            if provider:
+                return self.provider_manager.create_model(config)
+            else:
+                return self.provider_manager.create_model_with_fallback(config)
 
         except Exception as e:
             logger.error(f"Error getting LLM for task '{task}': {e}")
