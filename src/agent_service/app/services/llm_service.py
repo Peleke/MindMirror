@@ -284,17 +284,26 @@ class LLMService:
 
         Args:
             journal_entries: A list of journal entries
-            style: Summary style
+            style: Summary style ("concise" or "detailed")
 
         Returns:
-            Generated summary
+            Generated summary text
         """
         # Extract content from journal entries based on their type
         content_parts = []
         for entry in journal_entries:
+            # Handle multiple entry formats for flexibility
             entry_type = entry.get("entry_type", "").upper()
             created_at = entry.get("created_at", "")
+            
+            # Check for simple test format with 'text' field first
+            if "text" in entry:
+                content = entry["text"]
+                if content:
+                    content_parts.append(f"[{created_at}] {content}")
+                continue
 
+            # Handle structured entry types
             if entry_type == "FREEFORM":
                 # For freeform entries, payload is the text content
                 content = entry.get("payload", "")
@@ -305,12 +314,16 @@ class LLMService:
                 # For gratitude entries, format the structured payload
                 payload = entry.get("payload", {})
                 parts = []
-                if "grateful_for" in payload and payload["grateful_for"]:
+                if "gratefulFor" in payload and payload["gratefulFor"]:
+                    parts.append(f"Grateful for: {', '.join(payload['gratefulFor'])}")
+                elif "grateful_for" in payload and payload["grateful_for"]:
                     parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
-                if "excited_about" in payload and payload["excited_about"]:
-                    parts.append(
-                        f"Excited about: {', '.join(payload['excited_about'])}"
-                    )
+                
+                if "excitedAbout" in payload and payload["excitedAbout"]:
+                    parts.append(f"Excited about: {', '.join(payload['excitedAbout'])}")
+                elif "excited_about" in payload and payload["excited_about"]:
+                    parts.append(f"Excited about: {', '.join(payload['excited_about'])}")
+                
                 if "focus" in payload and payload["focus"]:
                     parts.append(f"Focus: {payload['focus']}")
                 if "affirmation" in payload and payload["affirmation"]:
@@ -334,6 +347,13 @@ class LLMService:
 
                 if parts:
                     content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+            
+            else:
+                # Fallback: try to extract any text content from the entry
+                for key in ["content", "payload", "text", "description"]:
+                    if key in entry and entry[key]:
+                        content_parts.append(f"[{created_at}] {entry[key]}")
+                        break
 
         # Consolidate journal content into a single block for the prompt
         content_block = "\n\n---\n\n".join(content_parts)
@@ -443,9 +463,18 @@ class LLMService:
         # Extract content from journal entries based on their type
         content_parts = []
         for entry in journal_entries:
+            # Handle multiple entry formats for flexibility
             entry_type = entry.get("entry_type", "").upper()
             created_at = entry.get("created_at", "")
+            
+            # Check for simple test format with 'text' field first
+            if "text" in entry:
+                content = entry["text"]
+                if content:
+                    content_parts.append(f"[{created_at}] {content}")
+                continue
 
+            # Handle structured entry types
             if entry_type == "FREEFORM":
                 # For freeform entries, payload is the text content
                 content = entry.get("payload", "")
@@ -456,12 +485,16 @@ class LLMService:
                 # For gratitude entries, format the structured payload
                 payload = entry.get("payload", {})
                 parts = []
-                if "grateful_for" in payload and payload["grateful_for"]:
+                if "gratefulFor" in payload and payload["gratefulFor"]:
+                    parts.append(f"Grateful for: {', '.join(payload['gratefulFor'])}")
+                elif "grateful_for" in payload and payload["grateful_for"]:
                     parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
-                if "excited_about" in payload and payload["excited_about"]:
-                    parts.append(
-                        f"Excited about: {', '.join(payload['excited_about'])}"
-                    )
+                
+                if "excitedAbout" in payload and payload["excitedAbout"]:
+                    parts.append(f"Excited about: {', '.join(payload['excitedAbout'])}")
+                elif "excited_about" in payload and payload["excited_about"]:
+                    parts.append(f"Excited about: {', '.join(payload['excited_about'])}")
+                
                 if "focus" in payload and payload["focus"]:
                     parts.append(f"Focus: {payload['focus']}")
                 if "affirmation" in payload and payload["affirmation"]:
@@ -485,6 +518,13 @@ class LLMService:
 
                 if parts:
                     content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+            
+            else:
+                # Fallback: try to extract any text content from the entry
+                for key in ["content", "payload", "text", "description"]:
+                    if key in entry and entry[key]:
+                        content_parts.append(f"[{created_at}] {entry[key]}")
+                        break
 
         # Consolidate journal content into a single block for the prompt
         content_block = "\n\n---\n\n".join(content_parts)
@@ -511,17 +551,17 @@ class LLMService:
 
             # Create the message and invoke the LLM
             message = HumanMessage(content=rendered_prompt)
-            response = llm.invoke([message])
+            response = await llm.ainvoke([message])
 
-            # Parse the structured response
+            # Parse the response into a PerformanceReview object
             return self._parse_performance_review_response(response.content)
 
         except Exception as e:
             logger.error(f"Error generating performance review: {e}")
             return PerformanceReview(
-                key_success="Unable to generate performance review.",
-                improvement_area="Consider adding more detailed journal entries.",
-                journal_prompt="What would you like to focus on in your next journal entry?",
+                key_success=f"Error generating review: {str(e)}",
+                improvement_area="Please try again later.",
+                journal_prompt="How are you feeling right now?",
             )
 
     # ENHANCED: Tool Registry Health Check

@@ -96,18 +96,18 @@ class LLMFactory:
     def _get_base_config(provider: str, model_name: Optional[str]) -> Dict[str, Any]:
         """Get base configuration for the provider."""
         if provider == "openai":
-            if not model_name:
-                raise ValueError("model_name is required for OpenAI provider")
+            # Use default model if none specified
+            default_model = model_name or "gpt-4o"
             return {
-                "model_name": model_name,
+                "model_name": default_model,
                 "temperature": 0,
                 "streaming": False,
             }
         elif provider == "ollama":
-            if not model_name:
-                raise ValueError("model_name is required for Ollama provider")
+            # Use default model if none specified
+            default_model = model_name or "llama3.2"
             return {
-                "model": model_name,
+                "model": default_model,
                 "base_url": "http://localhost:11434",
                 "temperature": 0,
                 "streaming": False,

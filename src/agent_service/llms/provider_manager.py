@@ -260,6 +260,62 @@ class ProviderManager:
         """
         return self._settings.llm_model
 
+    def get_provider_status(self, provider_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get provider status information.
+
+        Args:
+            provider_name: Optional provider name. If None, returns status for all providers.
+
+        Returns:
+            Provider status information
+        """
+        if provider_name:
+            # Return status for specific provider
+            provider = self._factory.get_provider(provider_name)
+            if not provider:
+                return {"status": "not_found", "message": f"Provider '{provider_name}' not found"}
+            
+            try:
+                is_healthy = provider.test_connection()
+                return {
+                    "status": "healthy" if is_healthy else "unhealthy",
+                    "message": "Provider is working" if is_healthy else "Provider is not responding"
+                }
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
+        else:
+            # Return status for all providers
+            status = {}
+            for provider_name in self._factory.list_providers():
+                provider = self._factory.get_provider(provider_name)
+                try:
+                    is_healthy = provider.test_connection()
+                    status[provider_name] = {
+                        "status": "healthy" if is_healthy else "unhealthy"
+                    }
+                except Exception as e:
+                    status[provider_name] = {"status": "error", "message": str(e)}
+            return status
+
+    def get_working_providers(self) -> List[str]:
+        """
+        Get list of providers that are currently working.
+
+        Returns:
+            List of working provider names
+        """
+        working_providers = []
+        for provider_name in self._factory.list_providers():
+            provider = self._factory.get_provider(provider_name)
+            try:
+                if provider and provider.test_connection():
+                    working_providers.append(provider_name)
+            except Exception:
+                # Provider is not working, skip it
+                continue
+        return working_providers
+
     def create_config_from_env(self) -> Dict[str, Any]:
         """
         Create configuration from settings.

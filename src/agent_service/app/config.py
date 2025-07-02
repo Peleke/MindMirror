@@ -9,7 +9,7 @@ import os
 from functools import lru_cache
 from typing import List, Optional
 
-from pydantic import Field, validator
+from pydantic import Field, validator, ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     Uses pydantic-settings for automatic environment variable loading
     and validation. NO defaults for critical settings - fail fast if missing.
     """
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        # extra="ignore",  # Allow extra fields but ignore them
+    )
 
     # Application settings
     debug: bool = Field(default=False, env="DEBUG")
@@ -28,6 +35,7 @@ class Settings(BaseSettings):
     # Server settings
     host: str = Field(default="0.0.0.0", env="HOST")
     port: int = Field(default=8000, env="PORT")
+    api_port: Optional[str] = Field(default=None, env="API_PORT")
 
     # CORS settings
     allowed_origins: List[str] = Field(
@@ -37,6 +45,14 @@ class Settings(BaseSettings):
 
     # Database settings - REQUIRED
     database_url: str = Field(env="DATABASE_URL")
+    
+    # PostgreSQL settings
+    postgres_user: Optional[str] = Field(default=None, env="POSTGRES_USER")
+    postgres_password: Optional[str] = Field(default=None, env="POSTGRES_PASSWORD")
+    postgres_db: Optional[str] = Field(default=None, env="POSTGRES_DB")
+
+    # Redis settings
+    redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
 
     # Vector database settings - REQUIRED
     qdrant_url: str = Field(env="QDRANT_URL")
@@ -82,12 +98,35 @@ class Settings(BaseSettings):
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s", env="LOG_FORMAT"
     )
 
-    class Config:
-        """Pydantic configuration."""
+    # Frontend/Next.js settings
+    next_public_app_mode: Optional[str] = Field(default=None, env="NEXT_PUBLIC_APP_MODE")
+    next_public_insight_timeout: Optional[str] = Field(default=None, env="NEXT_PUBLIC_INSIGHT_TIMEOUT")
+    next_public_supabase_url: Optional[str] = Field(default=None, env="NEXT_PUBLIC_SUPABASE_URL")
+    next_public_supabase_anon_key: Optional[str] = Field(default=None, env="NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # Supabase settings
+    supabase_url: Optional[str] = Field(default=None, env="SUPABASE_URL")
+    supabase_anon_key: Optional[str] = Field(default=None, env="SUPABASE_ANON_KEY")
+    supabase_service_role_key: Optional[str] = Field(default=None, env="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_jwt_secret: Optional[str] = Field(default=None, env="SUPABASE_JWT_SECRET")
+
+    # External service settings
+    resend_api_key: Optional[str] = Field(default=None, env="RESEND_API_KEY")
+
+    # Docker/deployment settings
+    uvicorn_reload: Optional[str] = Field(default=None, env="UVICORN_RELOAD")
+    i_am_in_a_docker_container: Optional[str] = Field(default=None, env="I_AM_IN_A_DOCKER_CONTAINER")
+
+    # Security settings
+    jwt_secret: Optional[str] = Field(default=None, env="JWT_SECRET")
+    reindex_secret_key: Optional[str] = Field(default=None, env="REINDEX_SECRET_KEY")
+
+    # Storage settings
+    prompt_storage_type: Optional[str] = Field(default=None, env="PROMPT_STORAGE_TYPE")
+    use_gcs_emulator: Optional[str] = Field(default=None, env="USE_GCS_EMULATOR")
+    gcs_bucket_name: Optional[str] = Field(default=None, env="GCS_BUCKET_NAME")
+    gcs_emulator_host: Optional[str] = Field(default=None, env="GCS_EMULATOR_HOST")
+    storage_emulator_host: Optional[str] = Field(default=None, env="STORAGE_EMULATOR_HOST")
 
     @validator("llm_provider")
     def validate_llm_provider(cls, v):
