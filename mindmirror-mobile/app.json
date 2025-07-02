@@ -1,11 +1,12 @@
 {
-  "expo": {
-    "name": "MindMirror",
-    "slug": "mindmirror-mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+      "expo": {
+      "name": "MindMirror",
+      "slug": "mindmirror-mobile",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/icon.png",
+      "userInterfaceStyle": "light",
+      "scheme": "mindmirror",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",

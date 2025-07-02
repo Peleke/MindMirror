@@ -14,25 +14,43 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/components/*": ["src/components/*"],
-      "@/features/*": ["src/features/*"],
-      "@/hooks/*": ["src/hooks/*"],
-      "@/services/*": ["src/services/*"],
-      "@/utils/*": ["src/utils/*"],
-      "@/theme/*": ["src/theme/*"],
-      "@/types/*": ["src/types/*"],
-      "@/assets/*": ["src/assets/*"],
-      "@/navigation/*": ["src/navigation/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/components/*": [
+        "src/components/*"
+      ],
+      "@/features/*": [
+        "src/features/*"
+      ],
+      "@/hooks/*": [
+        "src/hooks/*"
+      ],
+      "@/services/*": [
+        "src/services/*"
+      ],
+      "@/utils/*": [
+        "src/utils/*"
+      ],
+      "@/theme/*": [
+        "src/theme/*"
+      ],
+      "@/types/*": [
+        "src/types/*"
+      ],
+      "@/assets/*": [
+        "src/assets/*"
+      ],
+      "@/navigation/*": [
+        "src/navigation/*"
+      ]
     }
   },
   "include": [
     "src/**/*",
     "__tests__/**/*",
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
