@@ -15,8 +15,10 @@ class GCSClient:
 
     def __init__(self, bucket_name: str = None):
         """Initialize GCS client."""
-        self.bucket_name = bucket_name or os.getenv("GCS_BUCKET_NAME", "local_gcs_bucket")
-        
+        self.bucket_name = bucket_name or os.getenv(
+            "GCS_BUCKET_NAME", "local_gcs_bucket"
+        )
+
         # Check if we're using emulator
         emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
         if emulator_host:
@@ -27,7 +29,7 @@ class GCSClient:
             logger.info("Using real GCS")
             # For real GCS, credentials should be set via GOOGLE_APPLICATION_CREDENTIALS
             self.client = storage.Client()
-        
+
         self.bucket = None
         self._ensure_bucket_exists()
 
@@ -46,24 +48,24 @@ class GCSClient:
         """List all traditions available in GCS."""
         try:
             traditions = set()
-            
+
             # List all blobs in the bucket
             blobs = self.client.list_blobs(self.bucket_name)
-            
+
             for blob in blobs:
                 # Extract tradition name from path
                 # Expected structures:
                 # 1. tradition_name/file.pdf (direct structure)
                 # 2. file.txt (flat structure - treat as 'default' tradition)
                 # 3. subdirectory/file.txt (use bucket name as tradition)
-                path_parts = blob.name.split('/')
-                
+                path_parts = blob.name.split("/")
+
                 if len(path_parts) == 1:
                     # Flat structure: file.txt -> tradition = 'default'
-                    traditions.add('default')
+                    traditions.add("default")
                 elif len(path_parts) >= 2:
                     # Check if first part is a subdirectory (like 'documents')
-                    if path_parts[0] in ['documents', 'files']:
+                    if path_parts[0] in ["documents", "files"]:
                         # Subdirectory structure: documents/file.txt -> use bucket name as tradition
                         tradition = self.bucket_name
                         traditions.add(tradition)
@@ -71,10 +73,10 @@ class GCSClient:
                         # Direct structure: tradition_name/file.pdf
                         tradition = path_parts[0]
                         traditions.add(tradition)
-            
+
             logger.info(f"Found traditions in GCS: {list(traditions)}")
             return list(traditions)
-            
+
         except Exception as e:
             logger.error(f"Failed to list traditions from GCS: {e}")
             return []
@@ -83,29 +85,33 @@ class GCSClient:
         """Get all documents for a specific tradition."""
         try:
             documents = []
-            
+
             # Determine prefix based on tradition
-            if tradition == 'default':
+            if tradition == "default":
                 # For default tradition, look for files without prefix
                 prefix = ""
             elif tradition == self.bucket_name:
                 # For bucket-named tradition, look for documents/ or files/ subdirectory
                 prefix = "documents/"
                 # Try files/ if documents/ doesn't exist
-                test_blobs = list(self.client.list_blobs(self.bucket_name, prefix=prefix, max_results=1))
+                test_blobs = list(
+                    self.client.list_blobs(
+                        self.bucket_name, prefix=prefix, max_results=1
+                    )
+                )
                 if not test_blobs:
                     prefix = "files/"
             else:
                 # For named traditions, look for tradition/ prefix
                 prefix = f"{tradition}/"
-            
+
             blobs = self.client.list_blobs(self.bucket_name, prefix=prefix)
-            
+
             for blob in blobs:
                 # Skip directories
-                if blob.name.endswith('/'):
+                if blob.name.endswith("/"):
                     continue
-                    
+
                 document = {
                     "name": blob.name,
                     "size": blob.size,
@@ -114,10 +120,10 @@ class GCSClient:
                     "tradition": tradition,
                 }
                 documents.append(document)
-            
+
             logger.info(f"Found {len(documents)} documents for tradition '{tradition}'")
             return documents
-            
+
         except Exception as e:
             logger.error(f"Failed to get documents for tradition '{tradition}': {e}")
             return []
@@ -133,7 +139,9 @@ class GCSClient:
             logger.error(f"Failed to download document '{blob_name}': {e}")
             return None
 
-    def upload_document(self, blob_name: str, content: bytes, content_type: str = None) -> bool:
+    def upload_document(
+        self, blob_name: str, content: bytes, content_type: str = None
+    ) -> bool:
         """Upload a document to GCS."""
         try:
             blob = self.bucket.blob(blob_name)
@@ -152,4 +160,4 @@ class GCSClient:
             return True
         except Exception as e:
             logger.error(f"GCS health check failed: {e}")
-            return False 
+            return False

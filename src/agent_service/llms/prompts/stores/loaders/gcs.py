@@ -42,7 +42,7 @@ class GCSStorageLoader(StorageLoader):
 
         try:
             from google.cloud import storage
-            
+
             # Check if we're using emulator
             emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
             if emulator_host:
@@ -51,8 +51,10 @@ class GCSStorageLoader(StorageLoader):
             else:
                 # For real GCS, credentials are required
                 if not config.gcs_credentials:
-                    raise PromptStorageError("gcs_credentials is required for GCSStorageLoader when not using emulator")
-                
+                    raise PromptStorageError(
+                        "gcs_credentials is required for GCSStorageLoader when not using emulator"
+                    )
+
                 self.client = storage.Client.from_service_account_json(
                     self.credentials_path
                 )

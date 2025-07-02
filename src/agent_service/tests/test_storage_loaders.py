@@ -11,12 +11,16 @@ import pytest
 
 from agent_service.llms.prompts.exceptions import PromptStorageError
 from agent_service.llms.prompts.models import StorageConfig
-from agent_service.llms.prompts.stores import (GCSPromptStore,
-                                               InMemoryPromptStore,
-                                               LocalPromptStore)
-from agent_service.llms.prompts.stores.loaders import (GCSStorageLoader,
-                                                       LocalStorageLoader,
-                                                       StorageLoader)
+from agent_service.llms.prompts.stores import (
+    GCSPromptStore,
+    InMemoryPromptStore,
+    LocalPromptStore,
+)
+from agent_service.llms.prompts.stores.loaders import (
+    GCSStorageLoader,
+    LocalStorageLoader,
+    StorageLoader,
+)
 
 
 class TestStorageLoader:

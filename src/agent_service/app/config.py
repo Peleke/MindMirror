@@ -47,15 +47,17 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.7, env="LLM_TEMPERATURE")
     llm_max_tokens: int = Field(default=1000, env="LLM_MAX_TOKENS")
     llm_streaming: bool = Field(default=False, env="LLM_STREAMING")
-    
+
     # Provider-specific settings - loaded as-is from env
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openai_model: Optional[str] = Field(default=None, env="OPENAI_MODEL")
-    
+
     ollama_base_url: Optional[str] = Field(default=None, env="OLLAMA_BASE_URL")
     ollama_chat_model: Optional[str] = Field(default=None, env="OLLAMA_CHAT_MODEL")
-    ollama_embedding_model: Optional[str] = Field(default=None, env="OLLAMA_EMBEDDING_MODEL")
-    
+    ollama_embedding_model: Optional[str] = Field(
+        default=None, env="OLLAMA_EMBEDDING_MODEL"
+    )
+
     google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     google_model: Optional[str] = Field(default=None, env="GOOGLE_MODEL")
 
@@ -82,6 +84,7 @@ class Settings(BaseSettings):
 
     class Config:
         """Pydantic configuration."""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
@@ -109,15 +112,21 @@ class Settings(BaseSettings):
         """Get the chat model for the configured LLM provider."""
         if self.llm_provider == "openai":
             if not self.openai_model:
-                raise ValueError("OPENAI_MODEL environment variable is required when using OpenAI provider")
+                raise ValueError(
+                    "OPENAI_MODEL environment variable is required when using OpenAI provider"
+                )
             return self.openai_model
         elif self.llm_provider == "ollama":
             if not self.ollama_chat_model:
-                raise ValueError("OLLAMA_CHAT_MODEL environment variable is required when using Ollama provider")
+                raise ValueError(
+                    "OLLAMA_CHAT_MODEL environment variable is required when using Ollama provider"
+                )
             return self.ollama_chat_model
         elif self.llm_provider == "gemini":
             if not self.google_model:
-                raise ValueError("GOOGLE_MODEL environment variable is required when using Gemini provider")
+                raise ValueError(
+                    "GOOGLE_MODEL environment variable is required when using Gemini provider"
+                )
             return self.google_model
         else:
             raise ValueError(f"Unknown LLM provider: {self.llm_provider}")
@@ -130,7 +139,9 @@ class Settings(BaseSettings):
             return "text-embedding-3-small"  # This is their standard embedding model
         elif self.embedding_provider == "ollama":
             if not self.ollama_embedding_model:
-                raise ValueError("OLLAMA_EMBEDDING_MODEL environment variable is required when using Ollama embedding provider")
+                raise ValueError(
+                    "OLLAMA_EMBEDDING_MODEL environment variable is required when using Ollama embedding provider"
+                )
             return self.ollama_embedding_model
         elif self.embedding_provider == "gemini":
             return "models/embedding-001"  # Standard Gemini embedding model
@@ -142,11 +153,15 @@ class Settings(BaseSettings):
         """Get the API key for the configured LLM provider."""
         if self.llm_provider == "openai":
             if not self.openai_api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required when using OpenAI provider")
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required when using OpenAI provider"
+                )
             return self.openai_api_key
         elif self.llm_provider == "gemini":
             if not self.google_api_key:
-                raise ValueError("GOOGLE_API_KEY environment variable is required when using Gemini provider")
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is required when using Gemini provider"
+                )
             return self.google_api_key
         elif self.llm_provider == "ollama":
             return None  # Ollama doesn't require API key
@@ -158,11 +173,15 @@ class Settings(BaseSettings):
         """Get the API key for the configured embedding provider."""
         if self.embedding_provider == "openai":
             if not self.openai_api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required when using OpenAI embedding provider")
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required when using OpenAI embedding provider"
+                )
             return self.openai_api_key
         elif self.embedding_provider == "gemini":
             if not self.google_api_key:
-                raise ValueError("GOOGLE_API_KEY environment variable is required when using Gemini embedding provider")
+                raise ValueError(
+                    "GOOGLE_API_KEY environment variable is required when using Gemini embedding provider"
+                )
             return self.google_api_key
         elif self.embedding_provider == "ollama":
             return None  # Ollama doesn't require API key
@@ -174,7 +193,9 @@ class Settings(BaseSettings):
         """Get the base URL for the configured LLM provider."""
         if self.llm_provider == "ollama":
             if not self.ollama_base_url:
-                raise ValueError("OLLAMA_BASE_URL environment variable is required when using Ollama provider")
+                raise ValueError(
+                    "OLLAMA_BASE_URL environment variable is required when using Ollama provider"
+                )
             return self.ollama_base_url
         return None
 
@@ -183,7 +204,9 @@ class Settings(BaseSettings):
         """Get the base URL for the configured embedding provider."""
         if self.embedding_provider == "ollama":
             if not self.ollama_base_url:
-                raise ValueError("OLLAMA_BASE_URL environment variable is required when using Ollama embedding provider")
+                raise ValueError(
+                    "OLLAMA_BASE_URL environment variable is required when using Ollama embedding provider"
+                )
             return self.ollama_base_url
         return None
 

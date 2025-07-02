@@ -7,9 +7,16 @@ from typing import Any, Dict, List, Optional
 
 from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
-from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
-                                  PointStruct, Range, SearchRequest,
-                                  VectorParams)
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    Range,
+    SearchRequest,
+    VectorParams,
+)
 
 logger = logging.getLogger(__name__)
 

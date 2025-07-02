@@ -53,8 +53,9 @@ class QdrantService:
 
             # Get query embedding first
             from agent_service.app.services.embedding_service import EmbeddingService
+
             embedding_service = EmbeddingService()
-            
+
             # Get embedding for the query
             query_embedding = await embedding_service.get_embedding(query)
             if not query_embedding:
@@ -178,8 +179,9 @@ class QdrantService:
 
             # Get query embedding first
             from agent_service.app.services.embedding_service import EmbeddingService
+
             embedding_service = EmbeddingService()
-            
+
             # Get embedding for the query
             query_embedding = await embedding_service.get_embedding(query)
             if not query_embedding:

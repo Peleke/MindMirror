@@ -419,8 +419,7 @@ class TestServiceIntegration:
 
     def test_embedding_service_integration(self):
         """Test embedding service integration."""
-        from agent_service.app.services.embedding_service import \
-            EmbeddingService
+        from agent_service.app.services.embedding_service import EmbeddingService
 
         service = EmbeddingService()
 
@@ -443,8 +442,7 @@ class TestServiceIntegration:
 
     def test_search_service_integration(self):
         """Test search service integration."""
-        from agent_service.app.services.embedding_service import \
-            EmbeddingService
+        from agent_service.app.services.embedding_service import EmbeddingService
         from agent_service.app.services.qdrant_service import QdrantService
         from agent_service.app.services.search_service import SearchService
 

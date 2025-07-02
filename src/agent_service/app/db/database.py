@@ -1,8 +1,7 @@
 from typing import AsyncGenerator
 
 from agent_service.app.config import get_settings
-from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
-                                    create_async_engine)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.sql import text
 
 # Get settings

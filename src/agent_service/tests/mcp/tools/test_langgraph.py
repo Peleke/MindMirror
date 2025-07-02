@@ -9,11 +9,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from agent_service.mcp.tools.langgraph import (LangGraphNodeConfig,
-                                               LangGraphNodeType,
-                                               LangGraphStateManager,
-                                               LangGraphTool,
-                                               LangGraphWorkflowTool)
+from agent_service.mcp.tools.langgraph import (
+    LangGraphNodeConfig,
+    LangGraphNodeType,
+    LangGraphStateManager,
+    LangGraphTool,
+    LangGraphWorkflowTool,
+)
 
 
 class TestLangGraphNodeType:

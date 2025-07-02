@@ -12,9 +12,12 @@ from typing import Optional
 import strawberry
 from strawberry.types import Info
 
+from agent_service.app.clients.journal_client import JournalClient
 from agent_service.app.clients.qdrant_client import get_qdrant_client
-from agent_service.app.graphql.context import (GraphQLContext,
-                                               get_current_user_from_context)
+from agent_service.app.graphql.context import (
+    GraphQLContext,
+    get_current_user_from_context,
+)
 from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.app.graphql.types.tool_types import ToolExecutionResult
 from agent_service.app.services.llm_service import LLMService
@@ -46,7 +49,9 @@ class Mutation:
         """
         current_user = get_current_user_from_context(info)
 
-        search_service = SearchService()
+        logger.info(f"generate_review called for user {current_user.id}")
+
+        journal_client = JournalClient()
         llm_service = LLMService()
 
         try:
@@ -54,24 +59,37 @@ class Mutation:
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=14)
 
-            # 2. Use semantic search to find relevant entries
-            search_query = "A review of my personal growth, successes, challenges, and areas for improvement."
-
-            # 3. Fetch relevant journal entries using semantic search
-            search_results = await search_service.semantic_search(
-                query=search_query,
-                user_id=str(current_user.id),
-                tradition=tradition,
-                include_personal=True,
-                include_knowledge=False,  # Only personal entries for review
-                limit=25,  # Fetch a good number of entries for context
+            logger.info(
+                f"Fetching journal entries for user {current_user.id} from {start_date} to {end_date}"
             )
 
-            # Convert search results to dictionaries for the LLM service
-            entry_dicts = [result for result in search_results]
+            # 2. Fetch journal entries directly from the journal service (same as summarize_journals)
+            entries = await journal_client.list_by_user_for_period(
+                user_id=str(current_user.id),
+                start_date=start_date,
+                end_date=end_date,
+            )
 
-            # 4. Generate the structured review using the LLM service
-            review = await llm_service.get_performance_review(entry_dicts)
+            logger.info(
+                f"Retrieved {len(entries)} journal entries for user {current_user.id}"
+            )
+            if entries:
+                logger.info(
+                    f"Sample entry: {entries[0].model_dump() if hasattr(entries[0], 'model_dump') else entries[0]}"
+                )
+
+            # Convert model instances to dictionaries for the LLM service
+            entry_dicts = [entry.model_dump() for entry in entries]
+
+            logger.info(f"Converted {len(entry_dicts)} entries to dictionaries")
+
+            # 3. Generate the structured review using the LLM service
+            review = await llm_service.get_performance_review(
+                entry_dicts, period="bi-weekly"
+            )
+
+            logger.info(f"Generated review: key_success='{review.key_success[:50]}...'")
+
             return review
 
         except Exception as e:

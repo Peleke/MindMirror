@@ -156,8 +156,7 @@ class TestDockerServiceHealth:
         """Test GCS service health check."""
         with patch("google.cloud.storage.Client", return_value=mock_gcs_client):
             from agent_service.llms.prompts.models import StorageConfig
-            from agent_service.llms.prompts.stores.loaders import \
-                GCSStorageLoader
+            from agent_service.llms.prompts.stores.loaders import GCSStorageLoader
 
             # Create a proper storage config
             config = StorageConfig(

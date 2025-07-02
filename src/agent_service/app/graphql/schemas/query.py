@@ -13,13 +13,10 @@ from strawberry.types import Info
 
 from ...clients.journal_client import JournalClient
 from ...clients.qdrant_client import get_qdrant_client
-from ..context import (GraphQLContext,
-                                               get_current_user_from_context)
+from ..context import GraphQLContext, get_current_user_from_context
 from ..types.suggestion_types import JournalSummary
-from ..types.tool_types import (ToolMetadata,
-                                                        ToolRegistryHealth)
-from ...repositories.tradition_repository import \
-    TraditionRepository
+from ..types.tool_types import ToolMetadata, ToolRegistryHealth
+from ...repositories.tradition_repository import TraditionRepository
 from ...services.embedding_service import EmbeddingService
 from ...services.llm_service import LLMService
 from ...services.search_service import SearchService
@@ -33,7 +30,12 @@ class Query:
     """GraphQL Query schema with all query fields."""
 
     @strawberry.field
-    def ask(self, info: Info[GraphQLContext, None], query: str, tradition: str = "canon-default") -> str:
+    def ask(
+        self,
+        info: Info[GraphQLContext, None],
+        query: str,
+        tradition: str = "canon-default",
+    ) -> str:
         """
         Answers a question using the underlying RAG chain for a specific tradition.
 
@@ -46,39 +48,45 @@ class Query:
         """
         try:
             current_user = get_current_user_from_context(info)
-            
+
             # Add debug logging
-            logger.info(f"GraphQL ask() called with tradition: '{tradition}', query: '{query[:100]}...'")
-            
+            logger.info(
+                f"GraphQL ask() called with tradition: '{tradition}', query: '{query[:100]}...'"
+            )
+
             # Import here to avoid circular imports
             from agent_service.langgraph_.graphs.chat_graph import ChatGraphFactory
             from agent_service.langgraph_.state import StateManager
-            
+
             # Create chat graph using ProviderManager for LLM selection
             chat_graph_builder = ChatGraphFactory.create_default_chat_graph()
-            
+
             # Create initial state with user context
             state = StateManager.create_initial_state(
                 user_id=str(current_user.id),
                 tradition_id=tradition,
                 initial_message=query,
             )
-            
-            logger.info(f"Created state with tradition_id: '{state.get('tradition_id')}'")
-            
+
+            logger.info(
+                f"Created state with tradition_id: '{state.get('tradition_id')}'"
+            )
+
             # Build and execute the graph
             chat_graph = chat_graph_builder.get_chat_graph()
             updated_state = chat_graph.invoke(state)
-            
+
             # Extract response
             response = updated_state.get(
                 "last_response", "I apologize, but I couldn't generate a response."
             )
-            
-            logger.info(f"Final state tradition_id: '{updated_state.get('tradition_id')}', response length: {len(response) if response else 0}")
-            
+
+            logger.info(
+                f"Final state tradition_id: '{updated_state.get('tradition_id')}', response length: {len(response) if response else 0}"
+            )
+
             return response
-            
+
         except Exception as e:
             logger.error(f"Error in ask method: {e}")
             return f"Sorry, I encountered an error while processing your question about the tradition '{tradition}'. Please try again."
@@ -134,7 +142,7 @@ class Query:
             Exception: If authentication fails or processing fails
         """
         current_user = get_current_user_from_context(info)
-        
+
         logger.info(f"summarize_journals called for user {current_user.id}")
 
         journal_client = JournalClient()
@@ -144,27 +152,33 @@ class Query:
             # 1. Fetch journal entries from the last 3 days
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=3)
-            
-            logger.info(f"Fetching journal entries for user {current_user.id} from {start_date} to {end_date}")
+
+            logger.info(
+                f"Fetching journal entries for user {current_user.id} from {start_date} to {end_date}"
+            )
 
             entries = await journal_client.list_by_user_for_period(
                 user_id=str(current_user.id),
                 start_date=start_date,
                 end_date=end_date,
             )
-            
-            logger.info(f"Retrieved {len(entries)} journal entries for user {current_user.id}")
+
+            logger.info(
+                f"Retrieved {len(entries)} journal entries for user {current_user.id}"
+            )
             if entries:
-                logger.info(f"Sample entry: {entries[0].model_dump() if hasattr(entries[0], 'model_dump') else entries[0]}")
+                logger.info(
+                    f"Sample entry: {entries[0].model_dump() if hasattr(entries[0], 'model_dump') else entries[0]}"
+                )
 
             # Convert model instances to dictionaries for the LLM service
             entry_dicts = [entry.model_dump() for entry in entries]
-            
+
             logger.info(f"Converted {len(entry_dicts)} entries to dictionaries")
 
             # 2. Generate summary using the LLM service
             summary_text = await llm_service.get_journal_summary(entry_dicts)
-            
+
             logger.info(f"Generated summary: {summary_text[:100]}...")
 
             # 3. Return the summary in the specified GraphQL type

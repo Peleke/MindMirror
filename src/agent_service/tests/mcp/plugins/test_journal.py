@@ -12,15 +12,21 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from langchain_core.documents import Document
 
-from agent_service.mcp.core.base import (MCPPlugin, MCPPrompt, MCPResource,
-                                         MCPTool)
-from agent_service.mcp.plugins.journal.metadata import (JournalPluginMetadata,
-                                                        PluginMetadata)
+from agent_service.mcp.core.base import MCPPlugin, MCPPrompt, MCPResource, MCPTool
+from agent_service.mcp.plugins.journal.metadata import (
+    JournalPluginMetadata,
+    PluginMetadata,
+)
 from agent_service.mcp.plugins.journal.server import JournalPlugin
-from agent_service.mcp.retrievers.base import (Retriever, RetrieverMetadata,
-                                               RetrieverRegistry)
-from agent_service.mcp.retrievers.journal import (JournalRetriever,
-                                                  JournalRetrieverFactory)
+from agent_service.mcp.retrievers.base import (
+    Retriever,
+    RetrieverMetadata,
+    RetrieverRegistry,
+)
+from agent_service.mcp.retrievers.journal import (
+    JournalRetriever,
+    JournalRetrieverFactory,
+)
 
 # ============================================================================
 # Test Data

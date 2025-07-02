@@ -18,8 +18,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent_service.app.services.llm_service import LLMService
 from agent_service.llms.prompts.factory import PromptServiceFactory
-from agent_service.llms.prompts.models import (PromptConfig, PromptInfo,
-                                               StoreType)
+from agent_service.llms.prompts.models import PromptConfig, PromptInfo, StoreType
 from agent_service.llms.prompts.service import PromptService
 from agent_service.llms.prompts.stores.yaml import YAMLPromptStore
 
@@ -205,8 +204,7 @@ class TestLLMServiceYAMLIntegration:
             cache_ttl=3600,
         )
 
-        from agent_service.llms.prompts.stores.memory import \
-            InMemoryPromptStore
+        from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
 
         store = InMemoryPromptStore()
         prompt_service = PromptService(store=store, config=config)

@@ -6,8 +6,7 @@ MCP plugin for journal processing capabilities with real retriever integration.
 
 from typing import Any, Dict, List, Optional
 
-from agent_service.mcp.core.base import (MCPPlugin, MCPPrompt, MCPResource,
-                                         MCPTool)
+from agent_service.mcp.core.base import MCPPlugin, MCPPrompt, MCPResource, MCPTool
 from agent_service.mcp.retrievers.base import Retriever, RetrieverRegistry
 from agent_service.mcp.retrievers.journal import JournalRetrieverFactory
 

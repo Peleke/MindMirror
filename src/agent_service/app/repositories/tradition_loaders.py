@@ -55,7 +55,9 @@ class LocalTraditionLoader(TraditionLoader):
 
     def __init__(self, data_dir: str = None):
         """Initialize local tradition loader."""
-        self.data_dir = Path(data_dir or os.getenv("TRADITION_DATA_DIR", "/app/local_gcs_bucket"))
+        self.data_dir = Path(
+            data_dir or os.getenv("TRADITION_DATA_DIR", "/app/local_gcs_bucket")
+        )
 
     def list_traditions(self) -> List[str]:
         """List all traditions available in local files."""
@@ -69,7 +71,11 @@ class LocalTraditionLoader(TraditionLoader):
                 if item.is_dir():
                     # Check if it has documents subdirectory or direct files
                     docs_dir = item / "documents"
-                    if docs_dir.exists() or any(item.glob("*.pdf")) or any(item.glob("*.txt")):
+                    if (
+                        docs_dir.exists()
+                        or any(item.glob("*.pdf"))
+                        or any(item.glob("*.txt"))
+                    ):
                         traditions.append(item.name)
 
             logger.info(f"Found traditions in local files: {traditions}")
@@ -99,28 +105,36 @@ class LocalTraditionLoader(TraditionLoader):
 
             # Scan for PDF and text files
             for file_path in scan_dir.glob("*.pdf"):
-                documents.append({
-                    "name": f"{tradition}/{file_path.name}",
-                    "size": file_path.stat().st_size,
-                    "content_type": "application/pdf",
-                    "tradition": tradition,
-                    "local_path": str(file_path),
-                })
+                documents.append(
+                    {
+                        "name": f"{tradition}/{file_path.name}",
+                        "size": file_path.stat().st_size,
+                        "content_type": "application/pdf",
+                        "tradition": tradition,
+                        "local_path": str(file_path),
+                    }
+                )
 
             for file_path in scan_dir.glob("*.txt"):
-                documents.append({
-                    "name": f"{tradition}/{file_path.name}",
-                    "size": file_path.stat().st_size,
-                    "content_type": "text/plain",
-                    "tradition": tradition,
-                    "local_path": str(file_path),
-                })
+                documents.append(
+                    {
+                        "name": f"{tradition}/{file_path.name}",
+                        "size": file_path.stat().st_size,
+                        "content_type": "text/plain",
+                        "tradition": tradition,
+                        "local_path": str(file_path),
+                    }
+                )
 
-            logger.info(f"Found {len(documents)} documents for tradition '{tradition}' in local files")
+            logger.info(
+                f"Found {len(documents)} documents for tradition '{tradition}' in local files"
+            )
             return documents
 
         except Exception as e:
-            logger.error(f"Failed to get documents for tradition '{tradition}' from local files: {e}")
+            logger.error(
+                f"Failed to get documents for tradition '{tradition}' from local files: {e}"
+            )
             return []
 
     def health_check(self) -> bool:
@@ -135,7 +149,11 @@ class LocalTraditionLoader(TraditionLoader):
 class HybridTraditionLoader(TraditionLoader):
     """GCS-first with local fallback tradition loader."""
 
-    def __init__(self, gcs_loader: GCSTraditionLoader = None, local_loader: LocalTraditionLoader = None):
+    def __init__(
+        self,
+        gcs_loader: GCSTraditionLoader = None,
+        local_loader: LocalTraditionLoader = None,
+    ):
         """Initialize hybrid tradition loader."""
         self.gcs_loader = gcs_loader or GCSTraditionLoader()
         self.local_loader = local_loader or LocalTraditionLoader()
@@ -149,7 +167,9 @@ class HybridTraditionLoader(TraditionLoader):
                 logger.info(f"Found traditions in GCS: {gcs_traditions}")
                 return gcs_traditions
         except Exception as e:
-            logger.warning(f"GCS tradition discovery failed, falling back to local: {e}")
+            logger.warning(
+                f"GCS tradition discovery failed, falling back to local: {e}"
+            )
 
         # Fallback to local
         local_traditions = self.local_loader.list_traditions()
@@ -162,21 +182,27 @@ class HybridTraditionLoader(TraditionLoader):
             # Try GCS first
             gcs_documents = self.gcs_loader.get_tradition_documents(tradition)
             if gcs_documents:
-                logger.info(f"Found {len(gcs_documents)} documents in GCS for tradition '{tradition}'")
+                logger.info(
+                    f"Found {len(gcs_documents)} documents in GCS for tradition '{tradition}'"
+                )
                 return gcs_documents
         except Exception as e:
-            logger.warning(f"GCS document discovery failed for '{tradition}', falling back to local: {e}")
+            logger.warning(
+                f"GCS document discovery failed for '{tradition}', falling back to local: {e}"
+            )
 
         # Fallback to local
         local_documents = self.local_loader.get_tradition_documents(tradition)
-        logger.info(f"Using local documents as fallback for tradition '{tradition}': {len(local_documents)} documents")
+        logger.info(
+            f"Using local documents as fallback for tradition '{tradition}': {len(local_documents)} documents"
+        )
         return local_documents
 
     def health_check(self) -> bool:
         """Check if either GCS or local files are accessible."""
         gcs_healthy = self.gcs_loader.health_check()
         local_healthy = self.local_loader.health_check()
-        
+
         if gcs_healthy:
             logger.info("GCS is healthy")
             return True
@@ -191,7 +217,7 @@ class HybridTraditionLoader(TraditionLoader):
 def create_tradition_loader(mode: str = None) -> TraditionLoader:
     """Factory function to create the appropriate tradition loader."""
     mode = mode or os.getenv("TRADITION_DISCOVERY_MODE", "gcs-first")
-    
+
     if mode == "gcs-only":
         logger.info("Creating GCS-only tradition loader")
         return GCSTraditionLoader()
@@ -202,5 +228,7 @@ def create_tradition_loader(mode: str = None) -> TraditionLoader:
         logger.info("Creating GCS-first with local fallback tradition loader")
         return HybridTraditionLoader()
     else:
-        logger.warning(f"Unknown tradition discovery mode '{mode}', defaulting to gcs-first")
-        return HybridTraditionLoader() 
+        logger.warning(
+            f"Unknown tradition discovery mode '{mode}', defaulting to gcs-first"
+        )
+        return HybridTraditionLoader()

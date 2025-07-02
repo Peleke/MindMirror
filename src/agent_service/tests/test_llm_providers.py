@@ -615,8 +615,7 @@ class TestIntegration:
 
     def test_manager_singleton(self):
         """Test that manager is a singleton."""
-        from src.agent_service.llms.provider_manager import \
-            get_provider_manager
+        from src.agent_service.llms.provider_manager import get_provider_manager
 
         manager1 = get_provider_manager()
         manager2 = get_provider_manager()

@@ -9,8 +9,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from agent_service.mcp.tools.base import (EffectBoundary, MCPTool, ToolBackend,
-                                          ToolMetadata, ToolRegistry)
+from agent_service.mcp.tools.base import (
+    EffectBoundary,
+    MCPTool,
+    ToolBackend,
+    ToolMetadata,
+    ToolRegistry,
+)
 
 
 class MockTool(MCPTool):

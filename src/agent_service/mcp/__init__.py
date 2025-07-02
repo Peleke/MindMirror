@@ -9,10 +9,22 @@ __version__ = "1.0.0"
 __author__ = "MindMirror Team"
 
 # Core MCP Infrastructure
-from .core import (BaseMCPServer, MCPCheckpoint, MCPCheckpointHandler,
-                   MCPPlugin, MCPPluginRegistry, MCPPrompt, MCPPromptHandler,
-                   MCPResource, MCPResourceHandler, MCPTool, MCPToolHandler,
-                   PluginInfo, create_checkpoint, validate_plugin_interface)
+from .core import (
+    BaseMCPServer,
+    MCPCheckpoint,
+    MCPCheckpointHandler,
+    MCPPlugin,
+    MCPPluginRegistry,
+    MCPPrompt,
+    MCPPromptHandler,
+    MCPResource,
+    MCPResourceHandler,
+    MCPTool,
+    MCPToolHandler,
+    PluginInfo,
+    create_checkpoint,
+    validate_plugin_interface,
+)
 
 __all__ = [
     # Core Infrastructure

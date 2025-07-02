@@ -83,7 +83,10 @@ Answer:"""
 
         # Create the RAG chain - fix to use proper callable
         self.rag_chain = (
-            {"context": lambda x: self._retrieve_documents(x), "question": RunnablePassthrough()}
+            {
+                "context": lambda x: self._retrieve_documents(x),
+                "question": RunnablePassthrough(),
+            }
             | self.prompt
             | self.llm
             | StrOutputParser()
@@ -98,20 +101,22 @@ Answer:"""
         """
         try:
             provider_manager = get_provider_manager()
-            
+
             # Create config from environment variables first
             config = provider_manager.create_config_from_env()
-            
+
             # Override with any specified provider
             if self.provider:
                 config["provider"] = self.provider
-                
+
             # Add any overrides
             config.update(self.overrides)
-            
+
             # Use provider manager to create model with fallback
-            return provider_manager.create_model_with_fallback(config if config else None)
-            
+            return provider_manager.create_model_with_fallback(
+                config if config else None
+            )
+
         except Exception as e:
             logger.error(f"Failed to create LLM using ProviderManager: {e}")
             # Fallback to default provider manager behavior
@@ -134,7 +139,9 @@ Answer:"""
 
             # Use search service if no retriever is set
             if not self.retriever:
-                logger.warning("No retriever set, using search service with default parameters")
+                logger.warning(
+                    "No retriever set, using search service with default parameters"
+                )
                 # For now, return a placeholder context
                 return f"Context for query: {query}\n[Note: Retriever not properly configured]"
 
@@ -187,15 +194,23 @@ Answer:"""
                 return state
 
             # Set up retriever dynamically if not already set
-            if not self.retriever and state.get("user_id") and state.get("tradition_id"):
+            if (
+                not self.retriever
+                and state.get("user_id")
+                and state.get("tradition_id")
+            ):
                 try:
                     user_id = state.get("user_id")
                     tradition_id = state.get("tradition_id")
-                    logger.info(f"RAG Node: Creating retriever with user_id={user_id}, tradition_id='{tradition_id}'")
+                    logger.info(
+                        f"RAG Node: Creating retriever with user_id={user_id}, tradition_id='{tradition_id}'"
+                    )
                     self.retriever = self.search_service.create_retriever(
                         user_id=user_id, tradition_id=tradition_id, search_type="hybrid"
                     )
-                    logger.info(f"Created retriever for user {user_id} with tradition {tradition_id}")
+                    logger.info(
+                        f"Created retriever for user {user_id} with tradition {tradition_id}"
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to create retriever: {e}", exc_info=True)
 

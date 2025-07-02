@@ -11,8 +11,13 @@ import pytest
 
 from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.app.services.llm_service import LLMService
-from agent_service.mcp.tools.base import (EffectBoundary, MCPTool, ToolBackend,
-                                          ToolMetadata, ToolRegistry)
+from agent_service.mcp.tools.base import (
+    EffectBoundary,
+    MCPTool,
+    ToolBackend,
+    ToolMetadata,
+    ToolRegistry,
+)
 
 
 class MockTool(MCPTool):
@@ -581,7 +586,9 @@ class TestLLMServiceIntegration:
     def real_tool_registry(self):
         """Create a real tool registry with actual tools."""
         from agent_service.mcp.tools.graph_tools import (
-            JournalSummaryGraphTool, PerformanceReviewGraphTool)
+            JournalSummaryGraphTool,
+            PerformanceReviewGraphTool,
+        )
 
         registry = ToolRegistry()
 

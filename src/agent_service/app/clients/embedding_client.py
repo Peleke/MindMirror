@@ -32,9 +32,10 @@ class EmbeddingClient:
         if base_url is None:
             # Get base URL from configuration
             from agent_service.app.config import get_settings
+
             settings = get_settings()
             base_url = settings.ollama_base_url
-            
+
         self.base_url = base_url
         self.client = httpx.AsyncClient(timeout=30.0)
         self.logger = logging.getLogger(f"{__name__}.EmbeddingClient")
@@ -54,6 +55,7 @@ class EmbeddingClient:
 
             # Get the embedding model from config
             from agent_service.app.config import get_settings
+
             settings = get_settings()
             model = settings.ollama_embedding_model
 

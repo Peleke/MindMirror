@@ -12,14 +12,22 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from agent_service.mcp.core import (BaseMCPServer, MCPCheckpoint,
-                                    MCPCheckpointHandler, MCPPlugin,
-                                    MCPPluginRegistry, MCPPrompt,
-                                    MCPPromptHandler, MCPResource,
-                                    MCPResourceHandler, MCPTool,
-                                    MCPToolHandler, PluginInfo,
-                                    create_checkpoint,
-                                    validate_plugin_interface)
+from agent_service.mcp.core import (
+    BaseMCPServer,
+    MCPCheckpoint,
+    MCPCheckpointHandler,
+    MCPPlugin,
+    MCPPluginRegistry,
+    MCPPrompt,
+    MCPPromptHandler,
+    MCPResource,
+    MCPResourceHandler,
+    MCPTool,
+    MCPToolHandler,
+    PluginInfo,
+    create_checkpoint,
+    validate_plugin_interface,
+)
 
 # ============================================================================
 # Test Data

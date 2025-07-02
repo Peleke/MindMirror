@@ -10,8 +10,7 @@ from typing import List
 from uuid import UUID
 import logging
 
-from shared.clients import (AuthContext, JournalServiceClient,
-                            create_journal_client)
+from shared.clients import AuthContext, JournalServiceClient, create_journal_client
 
 from agent_service.models.journal import JournalEntry
 
@@ -37,21 +36,25 @@ class JournalClient:
         JournalEntry model for compatibility with existing code.
         """
         logger = logging.getLogger(__name__)
-        
-        logger.info(f"JournalClient: Fetching entries for user {user_id} from {start_date} to {end_date}")
-        
+
+        logger.info(
+            f"JournalClient: Fetching entries for user {user_id} from {start_date} to {end_date}"
+        )
+
         async with self._http_client as client:
             # Convert string user_id to UUID for the shared client
             user_uuid = UUID(user_id)
-            
+
             logger.info(f"JournalClient: Converted user_id to UUID: {user_uuid}")
 
             # Get all entries for the user and filter by date range
             shared_entries = await client.list_entries_for_user(
                 user_id=user_uuid, start_date=start_date, end_date=end_date
             )
-            
-            logger.info(f"JournalClient: Retrieved {len(shared_entries)} entries from journal service")
+
+            logger.info(
+                f"JournalClient: Retrieved {len(shared_entries)} entries from journal service"
+            )
             if shared_entries:
                 logger.info(f"JournalClient: Sample entry: {shared_entries[0]}")
 
@@ -67,8 +70,10 @@ class JournalClient:
                     modified_at=shared_entry.modified_at,
                 )
                 agent_entries.append(agent_entry)
-            
-            logger.info(f"JournalClient: Converted to {len(agent_entries)} agent service entries")
+
+            logger.info(
+                f"JournalClient: Converted to {len(agent_entries)} agent service entries"
+            )
 
             return agent_entries
 

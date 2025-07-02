@@ -8,9 +8,13 @@ from typing import Any, Dict
 import pytest
 
 from agent_service.llms.prompts.exceptions import PromptValidationError
-from agent_service.llms.prompts.models import (PromptConfig, PromptInfo,
-                                               PromptStats, StorageConfig,
-                                               StoreType)
+from agent_service.llms.prompts.models import (
+    PromptConfig,
+    PromptInfo,
+    PromptStats,
+    StorageConfig,
+    StoreType,
+)
 
 
 class TestPromptInfo:

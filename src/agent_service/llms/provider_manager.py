@@ -37,17 +37,17 @@ class ProviderManager:
         """Validate that required configuration is present."""
         # This will raise if LLM_PROVIDER is not set
         provider = self._settings.llm_provider
-        
+
         # This will raise if provider-specific model is not set
         model = self._settings.llm_model
-        
+
         # Validate provider exists
         if not self._factory.get_provider(provider):
             available_providers = self._factory.list_providers()
             raise ValueError(
                 f"Provider '{provider}' not found. Available providers: {available_providers}"
             )
-        
+
         logger.info(f"Validated configuration: provider={provider}, model={model}")
 
     def get_default_config(self) -> Dict[str, Any]:
@@ -105,7 +105,7 @@ class ProviderManager:
         """
         if not self._factory.get_provider(provider_name):
             raise ValueError(f"Provider '{provider_name}' not found")
-            
+
         config = {
             "provider": provider_name,
             "model": model_name,
@@ -114,7 +114,7 @@ class ProviderManager:
             "streaming": self._settings.llm_streaming,
         }
         config.update(kwargs)
-        
+
         # Add provider-specific settings
         if provider_name == "openai":
             api_key = self._settings.llm_api_key  # This will raise if missing
@@ -125,7 +125,7 @@ class ProviderManager:
         elif provider_name == "gemini":
             api_key = self._settings.llm_api_key  # This will raise if missing
             config["api_key"] = api_key
-        
+
         return self._factory.create_model(config)
 
     def list_available_providers(self) -> List[str]:

@@ -12,8 +12,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import yaml
 
-from agent_service.llms.prompts.exceptions import (PromptNotFoundError,
-                                                   PromptStorageError)
+from agent_service.llms.prompts.exceptions import (
+    PromptNotFoundError,
+    PromptStorageError,
+)
 from agent_service.llms.prompts.models import PromptInfo, StorageConfig
 from agent_service.llms.prompts.stores.gcs import GCSPromptStore
 from agent_service.llms.prompts.stores.loaders.gcs import GCSStorageLoader

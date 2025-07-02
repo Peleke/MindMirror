@@ -185,8 +185,7 @@ class GraphRunnerFactory:
         Returns:
             Configured graph runner
         """
-        from agent_service.langgraph_.graphs.journal_graph import \
-            JournalGraphBuilder
+        from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
 
         builder = JournalGraphBuilder(provider=provider, overrides=overrides)
         graph = builder.get_summary_graph()
@@ -208,8 +207,7 @@ class GraphRunnerFactory:
         Returns:
             Configured graph runner
         """
-        from agent_service.langgraph_.graphs.review_graph import \
-            ReviewGraphBuilder
+        from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
 
         builder = ReviewGraphBuilder(provider=provider, overrides=overrides)
         graph = builder.get_review_graph()

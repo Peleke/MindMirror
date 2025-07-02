@@ -14,10 +14,12 @@ import pytest
 from agent_service.tracing import get_langsmith_client, setup_langsmith_tracing
 
 try:
-    from agent_service.tracing.decorators import (trace_agent_workflow,
-                                                  trace_function,
-                                                  trace_langchain_operation,
-                                                  trace_runnable)
+    from agent_service.tracing.decorators import (
+        trace_agent_workflow,
+        trace_function,
+        trace_langchain_operation,
+        trace_runnable,
+    )
 except ImportError:
 
     def trace_langchain_operation(*args, **kwargs):

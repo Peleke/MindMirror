@@ -10,11 +10,15 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from agent_service.app.clients.qdrant_retriever import (QdrantRetriever,
-                                                        QdrantRetrieverFactory)
+from agent_service.app.clients.qdrant_retriever import (
+    QdrantRetriever,
+    QdrantRetrieverFactory,
+)
 from agent_service.langgraph_.graphs.base import BaseGraphBuilder
-from agent_service.langgraph_.graphs.chat_graph import (ChatGraphBuilder,
-                                                        ChatGraphFactory)
+from agent_service.langgraph_.graphs.chat_graph import (
+    ChatGraphBuilder,
+    ChatGraphFactory,
+)
 from agent_service.langgraph_.graphs.journal_graph import JournalGraphBuilder
 from agent_service.langgraph_.graphs.review_graph import ReviewGraphBuilder
 from agent_service.langgraph_.nodes.base import BaseNode, LLMNode
@@ -22,11 +26,14 @@ from agent_service.langgraph_.nodes.rag_node import RAGNode
 from agent_service.langgraph_.nodes.reviewer_node import ReviewerNode
 from agent_service.langgraph_.nodes.summarizer_node import SummarizerNode
 from agent_service.langgraph_.runner import GraphRunner, GraphRunnerFactory
-from agent_service.langgraph_.service import (LangGraphService,
-                                              LangGraphServiceFactory)
-from agent_service.langgraph_.state import (AgentStateFactory, BaseAgentState,
-                                            JournalAgentState, RAGAgentState,
-                                            StateManager)
+from agent_service.langgraph_.service import LangGraphService, LangGraphServiceFactory
+from agent_service.langgraph_.state import (
+    AgentStateFactory,
+    BaseAgentState,
+    JournalAgentState,
+    RAGAgentState,
+    StateManager,
+)
 
 
 class TestStateManagement:

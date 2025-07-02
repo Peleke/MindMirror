@@ -10,10 +10,13 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from agent_service.mcp.tools.base import EffectBoundary, ToolBackend
-from agent_service.mcp.tools.graph_tools import (GraphTool, GraphToolConfig,
-                                                 GraphToolFactory,
-                                                 JournalSummaryGraphTool,
-                                                 PerformanceReviewGraphTool)
+from agent_service.mcp.tools.graph_tools import (
+    GraphTool,
+    GraphToolConfig,
+    GraphToolFactory,
+    JournalSummaryGraphTool,
+    PerformanceReviewGraphTool,
+)
 
 
 class MockGraphBuilder:

@@ -47,27 +47,27 @@ class PromptTemplate:
 
 class PromptTool(MCPTool):
     """Base class for prompt-based tools."""
-    
+
     def __init__(self, prompt_config: PromptConfig):
         self.prompt_config = prompt_config
         self._compiled_template = None
         self._llm_service = None  # Would be injected
-    
+
     @property
     def owner_domain(self) -> str:
         """Get the owner domain for this tool."""
         return "prompt"
-    
+
     @property
     def version(self) -> str:
         """Get the tool version (semver)."""
         return "1.0.0"
-    
+
     @property
     def output_schema(self) -> Dict[str, Any]:
         """Get the output schema for this tool."""
         return self.prompt_config.output_format
-    
+
     def get_metadata(self) -> ToolMetadata:
         """Get tool metadata."""
         return ToolMetadata(
@@ -158,10 +158,10 @@ class PromptTool(MCPTool):
             formatted_prompt = self.prompt_config.content.format(**variables)
         except KeyError as e:
             raise ValueError(f"Missing variable in prompt: {e}")
-        
+
         # Simulate LLM call
         response = f"Generated response for: {formatted_prompt}"
-        
+
         return [
             {
                 "type": "prompt_result",
@@ -387,8 +387,8 @@ class PromptTool(MCPTool):
             {
                 "type": "prompt_result",
                 "prompt_type": "conditional",
-            "text": response,
-            "prompt": formatted_prompt,
+                "text": response,
+                "prompt": formatted_prompt,
                 "processed_prompt": formatted_prompt,
                 "variables": variables,
                 "condition": True,
@@ -445,7 +445,7 @@ class PromptTool(MCPTool):
 
 class PromptChainTool(MCPTool):
     """Tool for executing chains of prompts."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self.name = config.get("name", "chain_tool")
         self.description = config.get("description", "A prompt chain tool")
@@ -453,7 +453,7 @@ class PromptChainTool(MCPTool):
         self.flow_control = config.get("flow_control", {})
         self.chain_config = config  # Store the full config for tests
         self._llm_service = None  # Would be injected
-    
+
         # Convert prompts to templates
         self.templates = []
         for prompt in self.prompts:
@@ -471,12 +471,12 @@ class PromptChainTool(MCPTool):
     def owner_domain(self) -> str:
         """Get the owner domain for this tool."""
         return "prompt_chain"
-    
+
     @property
     def version(self) -> str:
         """Get the tool version (semver)."""
         return "1.0.0"
-    
+
     @property
     def output_schema(self) -> Dict[str, Any]:
         """Get the output schema for this tool."""
@@ -493,7 +493,7 @@ class PromptChainTool(MCPTool):
                 "required": ["step", "template", "prompt", "response"],
             },
         }
-    
+
     def get_metadata(self) -> ToolMetadata:
         """Get tool metadata."""
         return ToolMetadata(
@@ -507,12 +507,12 @@ class PromptChainTool(MCPTool):
             tags=frozenset(["chain", "prompt"]),
             effect_boundary=EffectBoundary.LLM,
         )
-    
+
     def _get_input_schema(self) -> Dict[str, Any]:
         """Get input schema for the chain."""
         properties = {}
         required = []
-        
+
         for template in self.templates:
             for field_name, field_schema in template.input_schema.get(
                 "properties", {}
@@ -520,13 +520,13 @@ class PromptChainTool(MCPTool):
                 properties[field_name] = field_schema
                 if field_name in template.input_schema.get("required", []):
                     required.append(field_name)
-        
+
         return {"type": "object", "properties": properties, "required": required}
-    
+
     def list_subtools(self) -> List[str]:
         """List available subtools (individual templates)."""
         return [template.name for template in self.templates]
-    
+
     async def execute_subtool(self, name: str, args: Dict[str, Any]) -> Any:
         """Execute a subtool (individual template)."""
         for template in self.templates:
@@ -541,7 +541,7 @@ class PromptChainTool(MCPTool):
                 prompt_tool = PromptTool(prompt_config)
                 return await prompt_tool.execute({"variables": args})
         raise ValueError(f"Subtool {name} not found")
-    
+
     async def execute(self, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Execute the prompt chain."""
         results = []
@@ -551,17 +551,17 @@ class PromptChainTool(MCPTool):
             current_args = arguments["initial_variables"].copy()
         else:
             current_args = arguments.copy()
-        
+
         for i, template in enumerate(self.templates):
             # Format the template
             try:
                 formatted_prompt = template.template.format(**current_args)
             except KeyError as e:
                 raise ValueError(f"Missing variable in template {template.name}: {e}")
-            
+
             # Simulate LLM call
             response = f"Step {i+1} response for: {formatted_prompt}"
-            
+
             # Update arguments for next step based on output mapping
             # Check if this prompt has output mapping
             prompt_config = self.prompts[i] if i < len(self.prompts) else {}
@@ -579,12 +579,12 @@ class PromptChainTool(MCPTool):
 
             # Also add step response for backward compatibility
             current_args[f"step_{i+1}_response"] = response
-            
+
             results.append(
                 {
-                "step": i + 1,
-                "template": template.name,
-                "prompt": formatted_prompt,
+                    "step": i + 1,
+                    "template": template.name,
+                    "prompt": formatted_prompt,
                     "response": response,
                 }
             )
@@ -602,7 +602,7 @@ class PromptChainTool(MCPTool):
 
 class PromptTemplateManager:
     """Manages prompt templates."""
-    
+
     def __init__(self):
         self.templates: Dict[str, Any] = {}
         self.original_configs: Dict[str, PromptConfig] = (
@@ -639,11 +639,11 @@ class PromptTemplateManager:
         if name in self.original_configs:
             return self.original_configs[name]
         return self.templates.get(name)
-    
+
     def list_templates(self) -> List[str]:
         """List all template names."""
         return list(self.templates.keys())
-    
+
     def create_tool_from_template(self, template_name: str) -> Optional[PromptTool]:
         """Create a tool from a template."""
         template = self.get_template(template_name)
@@ -660,7 +660,7 @@ class PromptTemplateManager:
                 )
                 return PromptTool(prompt_config)
         return None
-    
+
     def export_templates(self) -> Dict[str, Any]:
         """Export templates to dictionary format."""
         data = {}

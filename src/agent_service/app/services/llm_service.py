@@ -16,11 +16,9 @@ from langchain_openai import ChatOpenAI
 
 from agent_service.app.config import get_settings
 from agent_service.app.graphql.types.suggestion_types import PerformanceReview
-from agent_service.llms.prompts.factory import (PromptServiceFactory,
-                                                get_prompt_service)
+from agent_service.llms.prompts.factory import PromptServiceFactory, get_prompt_service
 from agent_service.llms.prompts.service import PromptService
-from agent_service.llms.provider_manager import (ProviderManager,
-                                                 get_provider_manager)
+from agent_service.llms.provider_manager import ProviderManager, get_provider_manager
 from agent_service.mcp.tools.base import ToolRegistry, get_global_registry
 
 logger = logging.getLogger(__name__)
@@ -58,7 +56,7 @@ class LLMService:
                           uses the global tool registry.
         """
         self._settings = get_settings()
-        
+
         if prompt_service is None:
             # Use the configurable factory to create prompt service
             self.prompt_service = PromptServiceFactory.create_from_environment()
@@ -291,10 +289,57 @@ class LLMService:
         Returns:
             Generated summary
         """
+        # Extract content from journal entries based on their type
+        content_parts = []
+        for entry in journal_entries:
+            entry_type = entry.get("entry_type", "").upper()
+            created_at = entry.get("created_at", "")
+
+            if entry_type == "FREEFORM":
+                # For freeform entries, payload is the text content
+                content = entry.get("payload", "")
+                if content:
+                    content_parts.append(f"[{created_at}] {content}")
+
+            elif entry_type == "GRATITUDE":
+                # For gratitude entries, format the structured payload
+                payload = entry.get("payload", {})
+                parts = []
+                if "grateful_for" in payload and payload["grateful_for"]:
+                    parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
+                if "excited_about" in payload and payload["excited_about"]:
+                    parts.append(
+                        f"Excited about: {', '.join(payload['excited_about'])}"
+                    )
+                if "focus" in payload and payload["focus"]:
+                    parts.append(f"Focus: {payload['focus']}")
+                if "affirmation" in payload and payload["affirmation"]:
+                    parts.append(f"Affirmation: {payload['affirmation']}")
+                if "mood" in payload and payload["mood"]:
+                    parts.append(f"Mood: {payload['mood']}")
+
+                if parts:
+                    content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+
+            elif entry_type == "REFLECTION":
+                # For reflection entries, format the structured payload
+                payload = entry.get("payload", {})
+                parts = []
+                if "wins" in payload and payload["wins"]:
+                    parts.append(f"Wins: {', '.join(payload['wins'])}")
+                if "improvements" in payload and payload["improvements"]:
+                    parts.append(f"Improvements: {', '.join(payload['improvements'])}")
+                if "mood" in payload and payload["mood"]:
+                    parts.append(f"Mood: {payload['mood']}")
+
+                if parts:
+                    content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+
         # Consolidate journal content into a single block for the prompt
-        content_block = "\n\n---\n\n".join(
-            [entry.get("text", "") for entry in journal_entries]
-        )
+        content_block = "\n\n---\n\n".join(content_parts)
+
+        if not content_block:
+            return "No content found in journal entries to summarize."
 
         try:
             # Render the prompt using the prompt service
@@ -395,10 +440,61 @@ class LLMService:
         Returns:
             Generated performance review
         """
+        # Extract content from journal entries based on their type
+        content_parts = []
+        for entry in journal_entries:
+            entry_type = entry.get("entry_type", "").upper()
+            created_at = entry.get("created_at", "")
+
+            if entry_type == "FREEFORM":
+                # For freeform entries, payload is the text content
+                content = entry.get("payload", "")
+                if content:
+                    content_parts.append(f"[{created_at}] {content}")
+
+            elif entry_type == "GRATITUDE":
+                # For gratitude entries, format the structured payload
+                payload = entry.get("payload", {})
+                parts = []
+                if "grateful_for" in payload and payload["grateful_for"]:
+                    parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
+                if "excited_about" in payload and payload["excited_about"]:
+                    parts.append(
+                        f"Excited about: {', '.join(payload['excited_about'])}"
+                    )
+                if "focus" in payload and payload["focus"]:
+                    parts.append(f"Focus: {payload['focus']}")
+                if "affirmation" in payload and payload["affirmation"]:
+                    parts.append(f"Affirmation: {payload['affirmation']}")
+                if "mood" in payload and payload["mood"]:
+                    parts.append(f"Mood: {payload['mood']}")
+
+                if parts:
+                    content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+
+            elif entry_type == "REFLECTION":
+                # For reflection entries, format the structured payload
+                payload = entry.get("payload", {})
+                parts = []
+                if "wins" in payload and payload["wins"]:
+                    parts.append(f"Wins: {', '.join(payload['wins'])}")
+                if "improvements" in payload and payload["improvements"]:
+                    parts.append(f"Improvements: {', '.join(payload['improvements'])}")
+                if "mood" in payload and payload["mood"]:
+                    parts.append(f"Mood: {payload['mood']}")
+
+                if parts:
+                    content_parts.append(f"[{created_at}] {' | '.join(parts)}")
+
         # Consolidate journal content into a single block for the prompt
-        content_block = "\n\n---\n\n".join(
-            [entry.get("text", "") for entry in journal_entries]
-        )
+        content_block = "\n\n---\n\n".join(content_parts)
+
+        if not content_block:
+            return PerformanceReview(
+                key_success="No content found in journal entries to review.",
+                improvement_area="Consider adding more detailed journal entries.",
+                journal_prompt="What would you like to focus on in your next journal entry?",
+            )
 
         try:
             # Render the prompt using the prompt service
@@ -468,7 +564,9 @@ class LLMService:
             config = {
                 "provider": self._settings.llm_provider,
                 "model": metadata.get("model", self._settings.llm_model),
-                "temperature": metadata.get("temperature", self._settings.llm_temperature),
+                "temperature": metadata.get(
+                    "temperature", self._settings.llm_temperature
+                ),
                 "max_tokens": metadata.get("max_tokens", self._settings.llm_max_tokens),
                 "streaming": metadata.get("streaming", self._settings.llm_streaming),
             }
@@ -582,7 +680,9 @@ class LLMService:
             config = {
                 "provider": provider or self._settings.llm_provider,
                 "model": metadata.get("model", self._settings.llm_model),
-                "temperature": metadata.get("temperature", self._settings.llm_temperature),
+                "temperature": metadata.get(
+                    "temperature", self._settings.llm_temperature
+                ),
                 "max_tokens": metadata.get("max_tokens", self._settings.llm_max_tokens),
                 "streaming": metadata.get("streaming", self._settings.llm_streaming),
             }

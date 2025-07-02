@@ -39,6 +39,7 @@ class QdrantRetriever(BaseRetriever):
 
     class Config:
         """Pydantic configuration."""
+
         arbitrary_types_allowed = True
 
     def __init__(
@@ -51,7 +52,7 @@ class QdrantRetriever(BaseRetriever):
         search_type: str = "hybrid",
         k: int = 5,
         score_threshold: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the Qdrant retriever.
@@ -75,7 +76,7 @@ class QdrantRetriever(BaseRetriever):
             search_type=search_type,
             k=k,
             score_threshold=score_threshold,
-            **kwargs
+            **kwargs,
         )
 
         # Validate search type
@@ -101,7 +102,9 @@ class QdrantRetriever(BaseRetriever):
             # Determine the tradition to use - use tradition_id or default
             tradition = self.tradition_id or "canon-default"
 
-            logger.info(f"QdrantRetriever: Using tradition '{tradition}' for query '{query[:50]}...'")
+            logger.info(
+                f"QdrantRetriever: Using tradition '{tradition}' for query '{query[:50]}...'"
+            )
 
             # Perform search based on type
             if self.search_type == "vector":
@@ -137,8 +140,11 @@ class QdrantRetriever(BaseRetriever):
                 # If we're already in an async context, use asyncio.create_task
                 # This is a workaround for sync calls from async contexts
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, self._aget_relevant_documents(query))
+                    future = executor.submit(
+                        asyncio.run, self._aget_relevant_documents(query)
+                    )
                     return future.result()
             else:
                 return loop.run_until_complete(self._aget_relevant_documents(query))
@@ -170,7 +176,7 @@ class QdrantRetriever(BaseRetriever):
         Perform async keyword search.
 
         Args:
-            query: Search query  
+            query: Search query
             tradition: Tradition to search in
 
         Returns:

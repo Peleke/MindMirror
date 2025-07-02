@@ -12,9 +12,13 @@ import pytest
 
 # If PromptType does not exist, comment out or fix the import
 try:
-    from agent_service.mcp.tools.prompt import (PromptChainTool, PromptConfig,
-                                                PromptTemplateManager,
-                                                PromptTool, PromptType)
+    from agent_service.mcp.tools.prompt import (
+        PromptChainTool,
+        PromptConfig,
+        PromptTemplateManager,
+        PromptTool,
+        PromptType,
+    )
 except ImportError:
     PromptType = None
 

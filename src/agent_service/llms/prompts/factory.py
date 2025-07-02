@@ -13,8 +13,12 @@ from typing import Any, Dict, Optional
 from .exceptions import PromptConfigError
 from .models import PromptConfig, StorageConfig, StoreType
 from .service import PromptService
-from .stores import (GCSPromptStore, InMemoryPromptStore, LocalPromptStore,
-                     YAMLPromptStore)
+from .stores import (
+    GCSPromptStore,
+    InMemoryPromptStore,
+    LocalPromptStore,
+    YAMLPromptStore,
+)
 from .stores.loaders import GCSStorageLoader
 
 logger = logging.getLogger(__name__)
@@ -374,7 +378,11 @@ class PromptServiceFactory:
             enable_caching=kwargs.get("enable_caching", True),
             cache_size=kwargs.get("cache_size", 100),
             cache_ttl=kwargs.get("cache_ttl", 3600),
-            gcs_bucket=kwargs.get("bucket_name") if store_type == StoreType.GCS else kwargs.get("gcs_bucket"),
+            gcs_bucket=(
+                kwargs.get("bucket_name")
+                if store_type == StoreType.GCS
+                else kwargs.get("gcs_bucket")
+            ),
             store_path=kwargs.get("store_path"),
             enable_validation=kwargs.get("enable_validation", True),
         )

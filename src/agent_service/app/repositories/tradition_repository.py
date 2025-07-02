@@ -7,7 +7,10 @@ Manages access to tradition data (e.g., knowledge base directories).
 import os
 from typing import List
 
-from agent_service.app.repositories.tradition_loaders import create_tradition_loader, TraditionLoader
+from agent_service.app.repositories.tradition_loaders import (
+    create_tradition_loader,
+    TraditionLoader,
+)
 
 
 class TraditionRepository:

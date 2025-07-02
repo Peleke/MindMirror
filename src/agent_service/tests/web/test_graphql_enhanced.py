@@ -14,9 +14,11 @@ from shared.auth import CurrentUser
 
 from agent_service.app.graphql.schemas.mutation import Mutation
 from agent_service.app.graphql.schemas.query import Query
-from agent_service.app.graphql.types.tool_types import (ToolExecutionResult,
-                                                        ToolMetadata,
-                                                        ToolRegistryHealth)
+from agent_service.app.graphql.types.tool_types import (
+    ToolExecutionResult,
+    ToolMetadata,
+    ToolRegistryHealth,
+)
 from agent_service.app.services.llm_service import LLMService
 from agent_service.mcp.tools.base import EffectBoundary, MCPTool, ToolBackend
 from agent_service.mcp.tools.base import ToolMetadata as MCPToolMetadata

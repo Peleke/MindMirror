@@ -11,8 +11,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from agent_service.llms.prompts.exceptions import (PromptNotFoundError,
-                                                   PromptValidationError)
+from agent_service.llms.prompts.exceptions import (
+    PromptNotFoundError,
+    PromptValidationError,
+)
 from agent_service.llms.prompts.models import PromptInfo
 from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
 

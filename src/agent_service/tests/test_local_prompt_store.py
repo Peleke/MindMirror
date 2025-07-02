@@ -15,8 +15,10 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 import yaml
 
-from agent_service.llms.prompts.exceptions import (PromptNotFoundError,
-                                                   PromptStorageError)
+from agent_service.llms.prompts.exceptions import (
+    PromptNotFoundError,
+    PromptStorageError,
+)
 from agent_service.llms.prompts.models import PromptInfo, StoreType
 from agent_service.llms.prompts.stores.local import LocalPromptStore
 
