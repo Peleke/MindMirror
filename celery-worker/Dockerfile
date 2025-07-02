@@ -15,13 +15,22 @@ RUN poetry config virtualenvs.create false
 WORKDIR /app
 
 # Copy Poetry files
-COPY pyproject.toml poetry.lock* ./
+COPY celery-worker/pyproject.toml celery-worker/poetry.lock* ./
 
 # Install dependencies (excluding dev dependencies)
 RUN poetry install --without dev
 
+# Copy and build the shared package
+COPY src/shared /app/shared
+WORKDIR /app/shared
+RUN poetry build
+
+# Go back to app directory and install the shared wheel
+WORKDIR /app
+RUN pip install ./shared/dist/*.whl
+
 # Copy application code
-COPY . .
+COPY celery-worker .
 
 # Make startup script executable
 RUN chmod +x start.sh

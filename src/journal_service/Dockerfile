@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim as builder
 
@@ -11,11 +13,25 @@ WORKDIR /app
 # Install poetry
 RUN pip install poetry
 
-# Copy only the necessary files for dependency installation
+# Copy journal_service's poetry project
 COPY src/journal_service/pyproject.toml src/journal_service/poetry.lock ./
 
-# Install dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-root --only=main
+# Install journal_service deps
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --only=main
+
+# Now, bring in the shared package
+COPY src/shared /app/shared
+
+# Build the shared wheel automatically
+WORKDIR /app/shared
+RUN poetry build
+
+# Go back to service directory
+WORKDIR /app
+
+# Install the freshly built wheel
+RUN pip install ./shared/dist/*.whl
 
 # --- Final Stage ---
 FROM python:3.11-slim
@@ -31,7 +47,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
 # Copy the application source code
-COPY src /app/src
+COPY src/journal_service /app/journal_service
 
 # Set Python path to include src directory
 ENV PYTHONPATH=/app/src

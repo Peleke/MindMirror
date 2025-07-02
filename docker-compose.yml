@@ -44,7 +44,6 @@ services:
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./src/agent_service:/app/agent_service
-      - ./src/shared:/app/shared
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # For production GCS, mount credentials:
@@ -77,7 +76,7 @@ services:
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
-      - ./src:/app/src
+      - ./src/journal_service:/app/journal_service
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
     command: uvicorn journal_service.journal_service.main:app --host 0.0.0.0 --port 8001 --reload
@@ -99,8 +98,8 @@ services:
   # --- Workers ---
   celery-worker:
     build:
-      context: ./celery-worker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: celery-worker/Dockerfile
     container_name: celery-worker
     env_file: .env
     environment:
@@ -119,7 +118,6 @@ services:
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./celery-worker:/app
-      - ./src/shared:/app/shared
       - ./ingestion:/app/ingestion
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
