@@ -60,7 +60,9 @@ class OpenAIProvider(BaseProvider):
             api_key = self._get_api_key(config, "OPENAI_API_KEY")
 
             # Extract model parameters
-            model_name = config.get("model", config.get("model_name", "gpt-4o"))
+            model_name = config.get("model", config.get("model_name"))
+            if not model_name:
+                raise ValueError("Model name must be specified in configuration")
             temperature = config.get("temperature", 0.7)
             max_tokens = config.get("max_tokens", 1000)
             streaming = config.get("streaming", False)

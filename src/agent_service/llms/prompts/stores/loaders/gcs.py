@@ -6,6 +6,7 @@ Google Cloud Storage for production deployments.
 """
 
 import os
+import time
 from typing import Any, Dict, List
 
 from ...exceptions import PromptStorageError
@@ -34,9 +35,6 @@ class GCSStorageLoader(StorageLoader):
         if not config.gcs_bucket:
             raise PromptStorageError("gcs_bucket is required for GCSStorageLoader")
 
-        if not config.gcs_credentials:
-            raise PromptStorageError("gcs_credentials is required for GCSStorageLoader")
-
         self.bucket_name = config.gcs_bucket
         self.credentials_path = config.gcs_credentials
         self.max_retries = 3
@@ -44,10 +42,20 @@ class GCSStorageLoader(StorageLoader):
 
         try:
             from google.cloud import storage
-
-            self.client = storage.Client.from_service_account_json(
-                self.credentials_path
-            )
+            
+            # Check if we're using emulator
+            emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
+            if emulator_host:
+                # For emulator, we don't need credentials
+                self.client = storage.Client()
+            else:
+                # For real GCS, credentials are required
+                if not config.gcs_credentials:
+                    raise PromptStorageError("gcs_credentials is required for GCSStorageLoader when not using emulator")
+                
+                self.client = storage.Client.from_service_account_json(
+                    self.credentials_path
+                )
         except ImportError:
             raise PromptStorageError(
                 "google-cloud-storage package is required for GCSStorageLoader"

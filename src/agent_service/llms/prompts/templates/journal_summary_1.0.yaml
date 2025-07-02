@@ -1,27 +1,26 @@
-name: journal_summary
+name: "journal_summary"
 version: "1.0"
 content: |
-  As an AI companion, your task is to provide a brief, insightful summary based on the user's recent journal entries.
-  Analyze the following entries and identify the main themes, recurring thoughts, or significant events.
-  The summary should be gentle, encouraging, and forward-looking, like a friendly observer.
-  Do not be overly conversational or ask questions. Focus on synthesizing the information into a cohesive insight.
+  You are an AI assistant that helps create concise summaries of journal entries.
+  
+  Please analyze the following journal content and provide a {{style}} summary that captures:
+  - Key themes and patterns
+  - Important events or milestones
+  - Emotional insights or personal growth
+  - Notable achievements or challenges
+  
+  Journal Content:
+  {{content_block}}
+  
+  Please provide a well-structured summary that would be helpful for reflection and review.
 
-  Journal Entries:
-  {{ content_block }}
-
-  Synthesize these entries into a single, concise paragraph of 2-4 sentences.
+metadata:
+  description: "Generate a concise summary from journal entries"
+  temperature: 0.7
+  max_tokens: 500
+  streaming: false
 variables:
   - content_block
-metadata:
-  category: journal
-  type: summary
-  model: gpt-4o
-  temperature: 0.7
-  max_tokens: 250
-  description: Generate a concise summary of journal entries
-  tags:
-    - journal
-    - summary
-    - analysis
+  - style
 created_at: "2024-01-01T00:00:00"
 updated_at: "2024-01-01T00:00:00" 

@@ -133,7 +133,6 @@ class PromptServiceFactory:
             f"{prefix}ENABLE_CACHING": "enable_caching",
             f"{prefix}ENABLE_VALIDATION": "enable_validation",
             "GCS_BUCKET_NAME": "gcs_bucket",
-            "GCS_CREDENTIALS_FILE": "gcs_credentials",
         }
 
         for env_var, config_key in env_mapping.items():
@@ -289,7 +288,6 @@ class PromptServiceFactory:
         config = PromptConfig(
             store_type=StoreType.GCS,
             gcs_bucket=bucket_name,
-            gcs_credentials=credentials_file,
             enable_caching=True,
             cache_size=100,
             cache_ttl=3600,
@@ -376,11 +374,9 @@ class PromptServiceFactory:
             enable_caching=kwargs.get("enable_caching", True),
             cache_size=kwargs.get("cache_size", 100),
             cache_ttl=kwargs.get("cache_ttl", 3600),
-            **{
-                k: v
-                for k, v in kwargs.items()
-                if k not in ["enable_caching", "cache_size", "cache_ttl"]
-            },
+            gcs_bucket=kwargs.get("bucket_name") if store_type == StoreType.GCS else kwargs.get("gcs_bucket"),
+            store_path=kwargs.get("store_path"),
+            enable_validation=kwargs.get("enable_validation", True),
         )
 
         return PromptService(store=store, config=config)

@@ -14,6 +14,7 @@ from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
+from agent_service.app.config import get_settings
 from agent_service.app.graphql.types.suggestion_types import PerformanceReview
 from agent_service.llms.prompts.factory import (PromptServiceFactory,
                                                 get_prompt_service)
@@ -56,6 +57,8 @@ class LLMService:
             tool_registry: Optional tool registry instance. If not provided,
                           uses the global tool registry.
         """
+        self._settings = get_settings()
+        
         if prompt_service is None:
             # Use the configurable factory to create prompt service
             self.prompt_service = PromptServiceFactory.create_from_environment()
@@ -447,6 +450,7 @@ class LLMService:
     ) -> BaseLanguageModel:
         """
         Get an LLM instance configured for a specific task.
+        NO hardcoded defaults - uses settings and fails fast if config missing.
 
         Args:
             task_name: Name of the task (e.g., "journal_summary", "performance_review")
@@ -454,29 +458,27 @@ class LLMService:
 
         Returns:
             Configured LLM instance
+
+        Raises:
+            ValueError: If required configuration is missing
+            RuntimeError: If LLM creation fails
         """
         try:
-            # Try to create LLM using provider manager with fallback
+            # Create config using provider manager settings
             config = {
-                "model": metadata.get("model", "gpt-4o"),
-                "temperature": metadata.get("temperature", 0.7),
-                "max_tokens": metadata.get("max_tokens", 1000),
-                "streaming": metadata.get("streaming", False),
+                "provider": self._settings.llm_provider,
+                "model": metadata.get("model", self._settings.llm_model),
+                "temperature": metadata.get("temperature", self._settings.llm_temperature),
+                "max_tokens": metadata.get("max_tokens", self._settings.llm_max_tokens),
+                "streaming": metadata.get("streaming", self._settings.llm_streaming),
             }
 
-            # Use provider manager to create LLM with fallback
+            # Use provider manager to create LLM - no fallback
             return self.provider_manager.create_model_with_fallback(config)
 
         except Exception as e:
-            logger.warning(f"Failed to create LLM with provider manager: {e}")
-
-            # DEPRECATED: Fallback to direct ChatOpenAI creation
-            logger.warning("Falling back to direct ChatOpenAI creation (DEPRECATED)")
-            return ChatOpenAI(
-                model=metadata.get("model", "gpt-4o"),
-                temperature=metadata.get("temperature", 0.7),
-                max_tokens=metadata.get("max_tokens", 1000),
-            )
+            logger.error(f"Failed to create LLM for task '{task_name}': {e}")
+            raise RuntimeError(f"LLM creation failed for task '{task_name}': {e}")
 
     def _parse_performance_review_response(self, response: str) -> PerformanceReview:
         """
@@ -557,6 +559,7 @@ class LLMService:
     ) -> BaseLanguageModel:
         """
         Get an LLM instance for a specific task with optional provider and overrides.
+        NO hardcoded defaults - uses settings and prompt metadata.
 
         Args:
             task: Name of the task (e.g., "journal_summary", "performance_review")
@@ -565,35 +568,35 @@ class LLMService:
 
         Returns:
             Configured LLM instance
+
+        Raises:
+            ValueError: If required configuration is missing
+            RuntimeError: If LLM creation fails
         """
         try:
             # Get prompt metadata for the task
             prompt_info = self.prompt_service.get_prompt(task)
             metadata = prompt_info.metadata
 
-            # Start with metadata configuration
+            # Start with settings-based configuration
             config = {
-                "model": metadata.get("model", "gpt-4o"),
-                "temperature": metadata.get("temperature", 0.7),
-                "max_tokens": metadata.get("max_tokens", 1000),
-                "streaming": metadata.get("streaming", False),
+                "provider": provider or self._settings.llm_provider,
+                "model": metadata.get("model", self._settings.llm_model),
+                "temperature": metadata.get("temperature", self._settings.llm_temperature),
+                "max_tokens": metadata.get("max_tokens", self._settings.llm_max_tokens),
+                "streaming": metadata.get("streaming", self._settings.llm_streaming),
             }
 
             # Apply overrides if provided
             if overrides:
                 config.update(overrides)
 
-            # Use specific provider if requested
-            if provider:
-                config["provider"] = provider
-                return self.provider_manager.create_model(config)
-            else:
-                # Use provider manager with fallback
-                return self.provider_manager.create_model_with_fallback(config)
+            # Create model using provider manager
+            return self.provider_manager.create_model_with_fallback(config)
 
         except Exception as e:
             logger.error(f"Error getting LLM for task '{task}': {e}")
-            raise
+            raise RuntimeError(f"Failed to get LLM for task '{task}': {e}")
 
     def get_provider_status(
         self, provider_name: Optional[str] = None

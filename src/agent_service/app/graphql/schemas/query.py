@@ -134,6 +134,8 @@ class Query:
             Exception: If authentication fails or processing fails
         """
         current_user = get_current_user_from_context(info)
+        
+        logger.info(f"summarize_journals called for user {current_user.id}")
 
         journal_client = JournalClient()
         llm_service = LLMService()
@@ -142,18 +144,28 @@ class Query:
             # 1. Fetch journal entries from the last 3 days
             end_date = datetime.now(timezone.utc)
             start_date = end_date - timedelta(days=3)
+            
+            logger.info(f"Fetching journal entries for user {current_user.id} from {start_date} to {end_date}")
 
             entries = await journal_client.list_by_user_for_period(
                 user_id=str(current_user.id),
                 start_date=start_date,
                 end_date=end_date,
             )
+            
+            logger.info(f"Retrieved {len(entries)} journal entries for user {current_user.id}")
+            if entries:
+                logger.info(f"Sample entry: {entries[0].model_dump() if hasattr(entries[0], 'model_dump') else entries[0]}")
 
             # Convert model instances to dictionaries for the LLM service
             entry_dicts = [entry.model_dump() for entry in entries]
+            
+            logger.info(f"Converted {len(entry_dicts)} entries to dictionaries")
 
             # 2. Generate summary using the LLM service
             summary_text = await llm_service.get_journal_summary(entry_dicts)
+            
+            logger.info(f"Generated summary: {summary_text[:100]}...")
 
             # 3. Return the summary in the specified GraphQL type
             return JournalSummary(
