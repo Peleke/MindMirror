@@ -63,7 +63,10 @@ class TestYAMLTemplates:
         assert prompt_info.name == "journal_summary"
         assert prompt_info.version == "1.0"
         assert "content_block" in prompt_info.variables
-        assert prompt_info.metadata.get("description") == "Generate a concise summary from journal entries"
+        assert (
+            prompt_info.metadata.get("description")
+            == "Generate a concise summary from journal entries"
+        )
         assert prompt_info.metadata.get("temperature") == 0.7
 
     def test_performance_review_template_structure(self, templates_dir):
@@ -78,7 +81,10 @@ class TestYAMLTemplates:
         assert prompt_info.name == "performance_review"
         assert prompt_info.version == "1.0"
         assert "content_block" in prompt_info.variables
-        assert prompt_info.metadata.get("description") == "Generate a performance review from journal entries"
+        assert (
+            prompt_info.metadata.get("description")
+            == "Generate a performance review from journal entries"
+        )
         assert prompt_info.metadata.get("temperature") == 0.7
 
     def test_template_rendering(self, temp_templates_dir):
@@ -125,7 +131,9 @@ class TestYAMLTemplates:
         assert metadata["temperature"] == 0.7
         assert metadata["max_tokens"] == 500
         assert metadata["streaming"] is False
-        assert metadata["description"] == "Generate a concise summary from journal entries"
+        assert (
+            metadata["description"] == "Generate a concise summary from journal entries"
+        )
 
     def test_template_versioning(self, temp_templates_dir):
         """Test template versioning support."""
@@ -207,4 +215,7 @@ class TestTemplateIntegration:
         content = prompt_info.content
         assert "{{content_block}}" in content
         assert "{{style}}" in content
-        assert "You are an AI assistant that helps create concise summaries of journal entries" in content
+        assert (
+            "You are an AI assistant that helps create concise summaries of journal entries"
+            in content
+        )

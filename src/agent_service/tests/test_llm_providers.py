@@ -462,7 +462,10 @@ class TestProviderManager:
         manager = ProviderManager()
 
         with patch.object(manager, "create_config_from_env") as mock_config_from_env:
-            mock_config_from_env.return_value = {"provider": "openai", "model": "gpt-3.5-turbo"}
+            mock_config_from_env.return_value = {
+                "provider": "openai",
+                "model": "gpt-3.5-turbo",
+            }
             with patch.object(manager._factory, "create_model") as mock_create:
                 mock_instance = Mock()
                 mock_create.return_value = mock_instance
@@ -478,15 +481,20 @@ class TestProviderManager:
         with patch.object(manager._factory, "create_model") as mock_create:
             mock_instance = Mock()
             mock_create.return_value = mock_instance
-            
+
             # Mock the settings properties to avoid missing attribute errors
-            with patch.object(manager._settings, 'llm_temperature', 0.7), \
-                 patch.object(manager._settings, 'llm_max_tokens', 1000), \
-                 patch.object(manager._settings, 'llm_streaming', False), \
-                 patch.object(manager._settings, 'openai_api_key', 'test_key'):
-                
+            with patch.object(manager._settings, "llm_temperature", 0.7), patch.object(
+                manager._settings, "llm_max_tokens", 1000
+            ), patch.object(manager._settings, "llm_streaming", False), patch.object(
+                manager._settings, "openai_api_key", "test_key"
+            ):
+
                 # Mock the llm_api_key property specifically
-                with patch.object(type(manager._settings), 'llm_api_key', new_callable=lambda: property(lambda self: 'test_key')):
+                with patch.object(
+                    type(manager._settings),
+                    "llm_api_key",
+                    new_callable=lambda: property(lambda self: "test_key"),
+                ):
                     model = manager.create_model_for_provider(
                         "openai", "gpt-3.5-turbo", temperature=0.8
                     )
@@ -532,14 +540,14 @@ class TestProviderManager:
         """Test getting working providers."""
         manager = ProviderManager()
 
-        with patch.object(manager._factory, 'list_providers') as mock_list:
-            mock_list.return_value = ['openai', 'ollama']
-            with patch.object(manager._factory, 'get_provider') as mock_get:
+        with patch.object(manager._factory, "list_providers") as mock_list:
+            mock_list.return_value = ["openai", "ollama"]
+            with patch.object(manager._factory, "get_provider") as mock_get:
                 # Mock providers that test_connection successfully
                 mock_provider = Mock()
                 mock_provider.test_connection.return_value = True
                 mock_get.return_value = mock_provider
-                
+
                 working = manager.get_working_providers()
                 assert "openai" in working
                 assert "ollama" in working
@@ -547,8 +555,8 @@ class TestProviderManager:
     def test_get_best_available_provider(self):
         """Test getting best available provider."""
         manager = ProviderManager()
-        
-        with patch.object(manager._settings, 'llm_provider', 'openai'):
+
+        with patch.object(manager._settings, "llm_provider", "openai"):
             with patch.object(manager, "test_provider_health") as mock_health:
                 mock_health.return_value = True
                 best = manager.get_best_available_provider()
@@ -557,18 +565,20 @@ class TestProviderManager:
     def test_get_best_available_provider_fallback(self):
         """Test getting best available provider with fallback."""
         manager = ProviderManager()
-        
-        with patch.object(manager._settings, 'llm_provider', 'openai'):
+
+        with patch.object(manager._settings, "llm_provider", "openai"):
             with patch.object(manager, "test_provider_health") as mock_health:
                 mock_health.return_value = False
                 best = manager.get_best_available_provider()
-                assert best is None  # Current implementation returns None instead of fallback
+                assert (
+                    best is None
+                )  # Current implementation returns None instead of fallback
 
     def test_create_model_with_fallback(self):
         """Test creating model with fallback."""
         manager = ProviderManager()
 
-        with patch.object(manager, 'create_config_from_env') as mock_config:
+        with patch.object(manager, "create_config_from_env") as mock_config:
             mock_config.return_value = {"provider": "openai", "model": "gpt-3.5-turbo"}
             with patch.object(manager._factory, "create_model") as mock_create:
                 mock_instance = Mock()
@@ -582,14 +592,12 @@ class TestProviderManager:
         """Test creating model with fallback when no providers work."""
         manager = ProviderManager()
 
-        with patch.object(manager, 'create_config_from_env') as mock_config:
+        with patch.object(manager, "create_config_from_env") as mock_config:
             mock_config.return_value = {"provider": "openai", "model": "gpt-3.5-turbo"}
             with patch.object(manager._factory, "create_model") as mock_create:
                 mock_create.side_effect = Exception("Failed")
 
-                with pytest.raises(
-                    RuntimeError, match="Model creation failed"
-                ):
+                with pytest.raises(RuntimeError, match="Model creation failed"):
                     manager.create_model_with_fallback()
 
 
@@ -598,7 +606,10 @@ class TestIntegration:
 
     def test_end_to_end_model_creation(self):
         """Test end-to-end model creation through the complete system."""
-        from src.agent_service.llms import create_model_with_fallback, get_provider_manager
+        from src.agent_service.llms import (
+            create_model_with_fallback,
+            get_provider_manager,
+        )
 
         manager = get_provider_manager()
         assert manager is not None

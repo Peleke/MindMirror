@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     Uses pydantic-settings for automatic environment variable loading
     and validation. NO defaults for critical settings - fail fast if missing.
     """
-    
+
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -99,15 +99,25 @@ class Settings(BaseSettings):
     )
 
     # Frontend/Next.js settings
-    next_public_app_mode: Optional[str] = Field(default=None, env="NEXT_PUBLIC_APP_MODE")
-    next_public_insight_timeout: Optional[str] = Field(default=None, env="NEXT_PUBLIC_INSIGHT_TIMEOUT")
-    next_public_supabase_url: Optional[str] = Field(default=None, env="NEXT_PUBLIC_SUPABASE_URL")
-    next_public_supabase_anon_key: Optional[str] = Field(default=None, env="NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    next_public_app_mode: Optional[str] = Field(
+        default=None, env="NEXT_PUBLIC_APP_MODE"
+    )
+    next_public_insight_timeout: Optional[str] = Field(
+        default=None, env="NEXT_PUBLIC_INSIGHT_TIMEOUT"
+    )
+    next_public_supabase_url: Optional[str] = Field(
+        default=None, env="NEXT_PUBLIC_SUPABASE_URL"
+    )
+    next_public_supabase_anon_key: Optional[str] = Field(
+        default=None, env="NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    )
 
     # Supabase settings
     supabase_url: Optional[str] = Field(default=None, env="SUPABASE_URL")
     supabase_anon_key: Optional[str] = Field(default=None, env="SUPABASE_ANON_KEY")
-    supabase_service_role_key: Optional[str] = Field(default=None, env="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_service_role_key: Optional[str] = Field(
+        default=None, env="SUPABASE_SERVICE_ROLE_KEY"
+    )
     supabase_jwt_secret: Optional[str] = Field(default=None, env="SUPABASE_JWT_SECRET")
 
     # External service settings
@@ -115,7 +125,9 @@ class Settings(BaseSettings):
 
     # Docker/deployment settings
     uvicorn_reload: Optional[str] = Field(default=None, env="UVICORN_RELOAD")
-    i_am_in_a_docker_container: Optional[str] = Field(default=None, env="I_AM_IN_A_DOCKER_CONTAINER")
+    i_am_in_a_docker_container: Optional[str] = Field(
+        default=None, env="I_AM_IN_A_DOCKER_CONTAINER"
+    )
 
     # Security settings
     jwt_secret: Optional[str] = Field(default=None, env="JWT_SECRET")
@@ -126,7 +138,9 @@ class Settings(BaseSettings):
     use_gcs_emulator: Optional[str] = Field(default=None, env="USE_GCS_EMULATOR")
     gcs_bucket_name: Optional[str] = Field(default=None, env="GCS_BUCKET_NAME")
     gcs_emulator_host: Optional[str] = Field(default=None, env="GCS_EMULATOR_HOST")
-    storage_emulator_host: Optional[str] = Field(default=None, env="STORAGE_EMULATOR_HOST")
+    storage_emulator_host: Optional[str] = Field(
+        default=None, env="STORAGE_EMULATOR_HOST"
+    )
 
     @validator("llm_provider")
     def validate_llm_provider(cls, v):

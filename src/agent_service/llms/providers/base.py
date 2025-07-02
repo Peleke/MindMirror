@@ -140,51 +140,59 @@ class BaseProvider(ABC):
     def test_connection(self) -> bool:
         """
         Test if the provider can connect and create models.
-        
+
         Returns:
             True if provider is healthy, False otherwise
         """
         try:
             # Try to create a model with minimal config to test connectivity
             test_config = {"provider": self.provider_name}
-            
+
             # Add required fields based on provider type
             if self.provider_name == "openai":
                 import os
+
                 if not os.getenv("OPENAI_API_KEY"):
                     return False
-                test_config.update({
-                    "model": "gpt-3.5-turbo",
-                    "api_key": os.getenv("OPENAI_API_KEY"),
-                    "temperature": 0,
-                    "max_tokens": 1
-                })
+                test_config.update(
+                    {
+                        "model": "gpt-3.5-turbo",
+                        "api_key": os.getenv("OPENAI_API_KEY"),
+                        "temperature": 0,
+                        "max_tokens": 1,
+                    }
+                )
             elif self.provider_name == "ollama":
-                test_config.update({
-                    "model": "llama3.2",
-                    "base_url": "http://localhost:11434",
-                    "temperature": 0
-                })
+                test_config.update(
+                    {
+                        "model": "llama3.2",
+                        "base_url": "http://localhost:11434",
+                        "temperature": 0,
+                    }
+                )
             elif self.provider_name == "gemini":
                 import os
+
                 if not os.getenv("GOOGLE_API_KEY"):
                     return False
-                test_config.update({
-                    "model": "gemini-pro",
-                    "api_key": os.getenv("GOOGLE_API_KEY"),
-                    "temperature": 0
-                })
-            
+                test_config.update(
+                    {
+                        "model": "gemini-pro",
+                        "api_key": os.getenv("GOOGLE_API_KEY"),
+                        "temperature": 0,
+                    }
+                )
+
             # Try to validate config (lightweight test)
             return self.validate_config(test_config)
-            
+
         except Exception:
             return False
 
     def supports_streaming(self) -> bool:
         """
         Check if this provider supports streaming.
-        
+
         Returns:
             True if streaming is supported, False otherwise
         """
@@ -193,7 +201,7 @@ class BaseProvider(ABC):
     def supports_function_calling(self) -> bool:
         """
         Check if this provider supports function calling.
-        
+
         Returns:
             True if function calling is supported, False otherwise
         """
@@ -202,36 +210,38 @@ class BaseProvider(ABC):
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """
         Get information about a specific model.
-        
+
         Args:
             model_name: Name of the model
-            
+
         Returns:
             Model information dictionary
         """
         if model_name not in self.get_supported_models():
-            raise ValueError(f"Model '{model_name}' not supported by {self.provider_name}")
-        
-        return {
-            "name": model_name,
-            "provider": self.provider_name,
-            "supported": True
-        }
+            raise ValueError(
+                f"Model '{model_name}' not supported by {self.provider_name}"
+            )
 
-    def _validate_required_fields(self, config: Dict[str, Any], required_fields: List[str]) -> bool:
+        return {"name": model_name, "provider": self.provider_name, "supported": True}
+
+    def _validate_required_fields(
+        self, config: Dict[str, Any], required_fields: List[str]
+    ) -> bool:
         """
         Helper method to validate required fields in configuration.
-        
+
         Args:
             config: Configuration dictionary to validate
             required_fields: List of required field names
-            
+
         Returns:
             True if all required fields are present, False otherwise
         """
         for field in required_fields:
             if field not in config or config[field] is None:
-                logger.error(f"Missing required field '{field}' for {self.provider_name} provider")
+                logger.error(
+                    f"Missing required field '{field}' for {self.provider_name} provider"
+                )
                 return False
         return True
 

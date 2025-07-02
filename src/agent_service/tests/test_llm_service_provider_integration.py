@@ -192,7 +192,9 @@ class TestLLMServiceProviderIntegration:
         # But this should work because it uses create_model_with_fallback
         # Reset the mock to succeed for fallback call
         mock_provider_manager.create_model_with_fallback.side_effect = None
-        llm = service.get_llm("journal_summary")  # No provider specified, should use fallback
+        llm = service.get_llm(
+            "journal_summary"
+        )  # No provider specified, should use fallback
         assert llm is not None
 
     def test_get_provider_status(self, mock_prompt_service, mock_provider_manager):

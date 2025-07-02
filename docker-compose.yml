@@ -11,6 +11,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - NEXT_PUBLIC_APP_MODE=${NEXT_PUBLIC_APP_MODE:-demo}
+      - NEXT_PUBLIC_INSIGHT_TIMEOUT=${NEXT_PUBLIC_INSIGHT_TIMEOUT:-240000}
     networks:
       - mindmirror-network
     depends_on:
@@ -44,7 +45,6 @@ services:
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./src/shared:/app/shared
-      - ./ingestion:/app/ingestion
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # For production GCS, mount credentials:

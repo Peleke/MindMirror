@@ -76,7 +76,9 @@ class ProviderManager:
         """
         return self._factory.validate_config(config)
 
-    def create_config_template(self, provider_name: str, model_name: str) -> Dict[str, Any]:
+    def create_config_template(
+        self, provider_name: str, model_name: str
+    ) -> Dict[str, Any]:
         """
         Create a configuration template for a specific provider and model.
 
@@ -287,7 +289,9 @@ class ProviderManager:
         """
         return self._settings.llm_model
 
-    def get_provider_status(self, provider_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_provider_status(
+        self, provider_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get provider status information.
 
@@ -301,13 +305,20 @@ class ProviderManager:
             # Return status for specific provider
             provider = self._factory.get_provider(provider_name)
             if not provider:
-                return {"status": "not_found", "message": f"Provider '{provider_name}' not found"}
-            
+                return {
+                    "status": "not_found",
+                    "message": f"Provider '{provider_name}' not found",
+                }
+
             try:
                 is_healthy = provider.test_connection()
                 return {
                     "status": "healthy" if is_healthy else "unhealthy",
-                    "message": "Provider is working" if is_healthy else "Provider is not responding"
+                    "message": (
+                        "Provider is working"
+                        if is_healthy
+                        else "Provider is not responding"
+                    ),
                 }
             except Exception as e:
                 return {"status": "error", "message": str(e)}
@@ -412,16 +423,16 @@ class ProviderManager:
     def set_default_provider(self, provider_name: str):
         """
         Set the default provider for this manager instance.
-        
+
         Args:
             provider_name: Name of the provider to set as default
-            
+
         Raises:
             ValueError: If provider is not available
         """
         if provider_name not in self.list_available_providers():
             raise ValueError(f"Provider '{provider_name}' not available")
-        
+
         self._default_provider = provider_name
         logger.info(f"Set default provider to: {provider_name}")
 

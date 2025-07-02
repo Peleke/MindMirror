@@ -295,7 +295,7 @@ class LLMService:
             # Handle multiple entry formats for flexibility
             entry_type = entry.get("entry_type", "").upper()
             created_at = entry.get("created_at", "")
-            
+
             # Check for simple test format with 'text' field first
             if "text" in entry:
                 content = entry["text"]
@@ -318,12 +318,14 @@ class LLMService:
                     parts.append(f"Grateful for: {', '.join(payload['gratefulFor'])}")
                 elif "grateful_for" in payload and payload["grateful_for"]:
                     parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
-                
+
                 if "excitedAbout" in payload and payload["excitedAbout"]:
                     parts.append(f"Excited about: {', '.join(payload['excitedAbout'])}")
                 elif "excited_about" in payload and payload["excited_about"]:
-                    parts.append(f"Excited about: {', '.join(payload['excited_about'])}")
-                
+                    parts.append(
+                        f"Excited about: {', '.join(payload['excited_about'])}"
+                    )
+
                 if "focus" in payload and payload["focus"]:
                     parts.append(f"Focus: {payload['focus']}")
                 if "affirmation" in payload and payload["affirmation"]:
@@ -347,7 +349,7 @@ class LLMService:
 
                 if parts:
                     content_parts.append(f"[{created_at}] {' | '.join(parts)}")
-            
+
             else:
                 # Fallback: try to extract any text content from the entry
                 for key in ["content", "payload", "text", "description"]:
@@ -466,7 +468,7 @@ class LLMService:
             # Handle multiple entry formats for flexibility
             entry_type = entry.get("entry_type", "").upper()
             created_at = entry.get("created_at", "")
-            
+
             # Check for simple test format with 'text' field first
             if "text" in entry:
                 content = entry["text"]
@@ -489,12 +491,14 @@ class LLMService:
                     parts.append(f"Grateful for: {', '.join(payload['gratefulFor'])}")
                 elif "grateful_for" in payload and payload["grateful_for"]:
                     parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
-                
+
                 if "excitedAbout" in payload and payload["excitedAbout"]:
                     parts.append(f"Excited about: {', '.join(payload['excitedAbout'])}")
                 elif "excited_about" in payload and payload["excited_about"]:
-                    parts.append(f"Excited about: {', '.join(payload['excited_about'])}")
-                
+                    parts.append(
+                        f"Excited about: {', '.join(payload['excited_about'])}"
+                    )
+
                 if "focus" in payload and payload["focus"]:
                     parts.append(f"Focus: {payload['focus']}")
                 if "affirmation" in payload and payload["affirmation"]:
@@ -518,7 +522,7 @@ class LLMService:
 
                 if parts:
                     content_parts.append(f"[{created_at}] {' | '.join(parts)}")
-            
+
             else:
                 # Fallback: try to extract any text content from the entry
                 for key in ["content", "payload", "text", "description"]:

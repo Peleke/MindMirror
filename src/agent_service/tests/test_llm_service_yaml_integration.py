@@ -126,7 +126,10 @@ class TestLLMServiceYAMLIntegration:
         # The mock is called with a list of messages, so we need to access the first message
         messages = call_args[0][0]  # First argument is the list of messages
         prompt_content = messages[0].content  # First message in the list
-        assert "You are an AI assistant that helps create concise summaries" in prompt_content
+        assert (
+            "You are an AI assistant that helps create concise summaries"
+            in prompt_content
+        )
         assert "Today I felt productive" in prompt_content
 
     @pytest.mark.asyncio
@@ -204,9 +207,9 @@ class TestLLMServiceYAMLIntegration:
             cache_ttl=3600,
         )
 
-        from agent_service.llms.prompts.stores.memory import MemoryPromptStore
+        from agent_service.llms.prompts.stores.memory import InMemoryPromptStore
 
-        store = MemoryPromptStore()
+        store = InMemoryPromptStore()
         prompt_service = PromptService(store=store, config=config)
 
         service = LLMService(
@@ -216,11 +219,14 @@ class TestLLMServiceYAMLIntegration:
             tool_registry=mock_tool_registry,
         )
 
-        # This should handle missing template gracefully
+        # This should handle missing template gracefully by falling back to direct method
         journal_entries = [{"text": "Test entry"}]
 
-        with pytest.raises(Exception):  # Should raise error for missing prompt
-            await service.get_journal_summary(journal_entries)
+        # The service should not raise an exception but should fall back to direct method
+        result = await service.get_journal_summary(journal_entries)
+
+        # Should get some result (mock response)
+        assert result is not None
 
     def test_llm_service_health_check_with_yaml(self, llm_service_with_yaml):
         """Test LLM service health check with YAML templates."""

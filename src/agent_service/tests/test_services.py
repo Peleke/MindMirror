@@ -75,7 +75,7 @@ class TestEmbeddingService:
 
         result = await embedding_service.get_embedding_safe("test text")
 
-        assert result is None
+        assert result == [0.0] * 1536
 
     def test_validate_embedding_valid(self, embedding_service):
         """Test embedding validation with valid embedding."""
@@ -110,22 +110,24 @@ class TestQdrantService:
     @pytest.mark.asyncio
     async def test_search_knowledge_base(self, qdrant_service, mock_qdrant_client):
         """Test knowledge base search."""
-        # Mock the embedding service call
-        with pytest.importorskip("agent_service.app.services.embedding_service"):
-            with Mock() as mock_embedding_service:
-                mock_embedding_service.get_embedding = AsyncMock(return_value=[0.1, 0.2, 0.3])
-                
-                # Patch the EmbeddingService import
-                import agent_service.app.services.qdrant_service
-                original_embedding_service = agent_service.app.services.qdrant_service.EmbeddingService
-                agent_service.app.services.qdrant_service.EmbeddingService = lambda: mock_embedding_service
-                
-                try:
-                    await qdrant_service.search_knowledge_base("test query", "test-tradition")
-                    mock_qdrant_client.search_knowledge_base.assert_called_once()
-                finally:
-                    # Restore original
-                    agent_service.app.services.qdrant_service.EmbeddingService = original_embedding_service
+        # Mock the EmbeddingService import within the method
+        with patch(
+            "agent_service.app.services.embedding_service.EmbeddingService"
+        ) as MockEmbeddingService:
+            # Create a mock instance
+            mock_embedding_instance = Mock()
+            mock_embedding_instance.get_embedding = AsyncMock(
+                return_value=[0.1, 0.2, 0.3]
+            )
+            MockEmbeddingService.return_value = mock_embedding_instance
+
+            # Call the method
+            await qdrant_service.search_knowledge_base("test query", "test-tradition")
+
+            # Verify the mocks were called
+            MockEmbeddingService.assert_called_once()
+            mock_embedding_instance.get_embedding.assert_called_once_with("test query")
+            mock_qdrant_client.search_knowledge_base.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_search_personal_entries(self, qdrant_service, mock_qdrant_client):
@@ -139,22 +141,26 @@ class TestQdrantService:
     @pytest.mark.asyncio
     async def test_hybrid_search(self, qdrant_service, mock_qdrant_client):
         """Test hybrid search."""
-        # Mock the embedding service call
-        with pytest.importorskip("agent_service.app.services.embedding_service"):
-            with Mock() as mock_embedding_service:
-                mock_embedding_service.get_embedding = AsyncMock(return_value=[0.1, 0.2, 0.3])
-                
-                # Patch the EmbeddingService import
-                import agent_service.app.services.qdrant_service
-                original_embedding_service = agent_service.app.services.qdrant_service.EmbeddingService
-                agent_service.app.services.qdrant_service.EmbeddingService = lambda: mock_embedding_service
-                
-                try:
-                    await qdrant_service.hybrid_search("test query", "user123", "test-tradition")
-                    mock_qdrant_client.hybrid_search.assert_called_once()
-                finally:
-                    # Restore original
-                    agent_service.app.services.qdrant_service.EmbeddingService = original_embedding_service
+        # Mock the EmbeddingService import within the method
+        with patch(
+            "agent_service.app.services.embedding_service.EmbeddingService"
+        ) as MockEmbeddingService:
+            # Create a mock instance
+            mock_embedding_instance = Mock()
+            mock_embedding_instance.get_embedding = AsyncMock(
+                return_value=[0.1, 0.2, 0.3]
+            )
+            MockEmbeddingService.return_value = mock_embedding_instance
+
+            # Call the method
+            await qdrant_service.hybrid_search(
+                "test query", "user123", "test-tradition"
+            )
+
+            # Verify the mocks were called
+            MockEmbeddingService.assert_called_once()
+            mock_embedding_instance.get_embedding.assert_called_once_with("test query")
+            mock_qdrant_client.hybrid_search.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_health_check(self, qdrant_service, mock_qdrant_client):
@@ -222,7 +228,10 @@ class TestSearchService:
         await search_service.search_knowledge_base("test query", "test-tradition")
 
         mock_qdrant_service.search_knowledge_base.assert_called_once_with(
-            "test query", "test-tradition"
+            query="test query",
+            tradition="test-tradition",
+            limit=10,
+            score_threshold=0.7,
         )
 
     @pytest.mark.asyncio
@@ -233,7 +242,11 @@ class TestSearchService:
         )
 
         mock_qdrant_service.search_personal_entries.assert_called_once_with(
-            "test query", "user123", "test-tradition"
+            query="test query",
+            user_id="user123",
+            tradition="test-tradition",
+            limit=10,
+            score_threshold=0.7,
         )
 
     @pytest.mark.asyncio

@@ -20,16 +20,19 @@ export function InsightsSection() {
     })
     const [timedOut, setTimedOut] = useState(false)
 
+    // Get timeout from environment variable with fallback to 120 seconds
+    const timeoutMs = parseInt(process.env.NEXT_PUBLIC_INSIGHT_TIMEOUT || '120000', 10)
+
     useEffect(() => {
         if (loading) {
             setTimedOut(false); // Reset timeout on new request
             const timer = setTimeout(() => {
                 setTimedOut(true);
-            }, 20000); // 20 seconds
+            }, timeoutMs);
 
             return () => clearTimeout(timer);
         }
-    }, [loading]);
+    }, [loading, timeoutMs]);
 
 
     const handleRetry = () => {
