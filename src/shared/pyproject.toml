@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "shared"
+version = "0.1.0"
+description = "Shared components for MindMirror services"
+authors = ["MindMirror Team"]
+readme = "README.md"
+packages = [{include = "shared"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+pydantic = "^2.11.5"
+pyjwt = "^2.10.1"
+httpx = "^0.28.1"
+starlette = "^0.46.2"
+strawberry-graphql = "^0.275.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api" 
