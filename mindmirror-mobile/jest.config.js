@@ -1,17 +1,14 @@
 module.exports = {
   preset: 'jest-expo',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
-  ],
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
-  testMatch: [
-    '<rootDir>/__tests__/**/*.test.{ts,tsx}',
-    '<rootDir>/src/**/*.test.{ts,tsx}',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)'
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/*.stories.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
     '!src/**/index.ts',
   ],
   coverageThreshold: {
@@ -22,9 +19,8 @@ module.exports = {
       statements: 70,
     },
   },
-  moduleNameMapping: {
+  testEnvironment: 'node',
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testEnvironment: 'jsdom',
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
 } 
