@@ -17,8 +17,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
+          href: null,
         }}
       />
       <Tabs.Screen
