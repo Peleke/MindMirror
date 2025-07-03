@@ -1,9 +1,9 @@
 import { View, Text } from 'react-native'
 import { LoadingScreen } from '@/components/common/Loading'
-import { useAuthState } from '@/features/auth/hooks/useAuthState'
+import { useAuth } from '@/features/auth/context/AuthContext'
 
 export default function Index() {
-  const { loading } = useAuthState()
+  const { loading } = useAuth()
 
   console.log('Index render: loading =', loading)
 
@@ -11,7 +11,7 @@ export default function Index() {
     return <LoadingScreen text="Loading..." />
   }
 
-  // Let useAuthState handle the navigation
+  // AuthStateHandler in root layout will handle navigation
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Redirecting...</Text>

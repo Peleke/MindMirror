@@ -4,12 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { auth } from '@/services/supabase/client'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 
 export default function ProfileScreen() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const navigation = useNavigation()
 
   const handleSignOut = async () => {
@@ -22,8 +21,9 @@ export default function ProfileScreen() {
           text: 'Sign Out', 
           style: 'destructive', 
           onPress: async () => {
-            const { error } = await auth.signOut()
-            if (error) {
+            try {
+              await signOut()
+            } catch (error) {
               Alert.alert('Error', 'Failed to sign out')
             }
           }
