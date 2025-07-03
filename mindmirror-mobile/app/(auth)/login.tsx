@@ -237,7 +237,7 @@ const LoginWithLeftBackground = () => {
                 </Checkbox>
               )}
             />
-            <Pressable onPress={() => {}}>
+            <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
               <LinkText className="font-medium text-sm text-primary-700 group-hover/link:text-primary-600">
                 Forgot Password?
               </LinkText>
@@ -248,6 +248,19 @@ const LoginWithLeftBackground = () => {
           <Button className="w-full" onPress={handleSubmit(onSubmit)} isDisabled={loading}>
             <ButtonText className="font-medium">
               {loading ? "Signing in..." : "Log in"}
+            </ButtonText>
+          </Button>
+          <Button
+            variant="outline"
+            action="secondary"
+            className="w-full gap-1"
+            onPress={() => {
+              // TODO: Implement Google OAuth
+              console.log('Google OAuth not implemented yet');
+            }}
+          >
+            <ButtonText className="font-medium">
+              Continue with Google
             </ButtonText>
           </Button>
         </VStack>

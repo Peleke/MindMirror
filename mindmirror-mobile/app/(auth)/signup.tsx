@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
-import { HStack } from "@/components/ui/hstack";
-import { VStack } from "@/components/ui/vstack";
-import { Heading } from "@/components/ui/heading";
-import { Text } from "@/components/ui/text";
-import { LinkText } from "@/components/ui/link";
-import { useRouter } from "expo-router";
+import { Button, ButtonText } from "@/components/ui/button";
+import {
+  Checkbox,
+  CheckboxIcon,
+  CheckboxIndicator,
+  CheckboxLabel,
+} from "@/components/ui/checkbox";
 import {
   FormControl,
   FormControlError,
@@ -14,28 +13,27 @@ import {
   FormControlLabel,
   FormControlLabelText,
 } from "@/components/ui/form-control";
-import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
 import {
-  Checkbox,
-  CheckboxIcon,
-  CheckboxIndicator,
-  CheckboxLabel,
-} from "@/components/ui/checkbox";
-import {
-  ArrowLeftIcon,
   CheckIcon,
   EyeIcon,
-  EyeOffIcon,
-  Icon,
+  EyeOffIcon
 } from "@/components/ui/icon";
-import { Button, ButtonText, ButtonIcon } from "@/components/ui/button";
-import { Keyboard } from "react-native";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle } from "lucide-react-native";
+import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import { LinkText } from "@/components/ui/link";
 import { Pressable } from "@/components/ui/pressable";
+import { Text } from "@/components/ui/text";
+import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
+import { VStack } from "@/components/ui/vstack";
 import { auth } from "@/services/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
+import { AlertTriangle } from "lucide-react-native";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { Keyboard } from "react-native";
+import { z } from "zod";
 
 const signUpSchema = z.object({
   email: z.string().min(1, "Email is required").email(),
@@ -100,7 +98,7 @@ const SignUpWithLeftBackground = () => {
           placement: "bottom right",
           render: ({ id }) => {
             return (
-              <Toast nativeID={id} variant="accent" action="error">
+              <Toast nativeID={id} action="error">
                 <ToastTitle>{error.message}</ToastTitle>
               </Toast>
             );
@@ -111,7 +109,7 @@ const SignUpWithLeftBackground = () => {
           placement: "bottom right",
           render: ({ id }) => {
             return (
-              <Toast nativeID={id} variant="accent" action="success">
+              <Toast nativeID={id} action="success">
                 <ToastTitle>Account created successfully!</ToastTitle>
               </Toast>
             );
@@ -124,7 +122,7 @@ const SignUpWithLeftBackground = () => {
         placement: "bottom right",
         render: ({ id }) => {
           return (
-            <Toast nativeID={id} variant="accent" action="error">
+            <Toast nativeID={id} action="error">
               <ToastTitle>An unexpected error occurred</ToastTitle>
             </Toast>
           );
@@ -160,17 +158,6 @@ const SignUpWithLeftBackground = () => {
   return (
     <VStack className="max-w-[440px] w-full" space="md">
       <VStack className="md:items-center" space="md">
-        <Pressable
-          onPress={() => {
-            router.back();
-          }}
-        >
-          <Icon
-            as={ArrowLeftIcon}
-            className="md:hidden stroke-background-800"
-            size="xl"
-          />
-        </Pressable>
         <VStack>
           <Heading className="md:text-center" size="3xl">
             Sign up
@@ -324,7 +311,7 @@ const SignUpWithLeftBackground = () => {
               <Checkbox
                 size="sm"
                 value="Remember me"
-                isChecked={value}
+                isChecked={value || false}
                 onChange={onChange}
                 aria-label="Remember me"
               >
@@ -349,7 +336,10 @@ const SignUpWithLeftBackground = () => {
             variant="outline"
             action="secondary"
             className="w-full gap-1"
-            onPress={() => {}}
+            onPress={() => {
+              // TODO: Implement Google OAuth
+              console.log('Google OAuth not implemented yet');
+            }}
           >
             <ButtonText className="font-medium">
               Continue with Google
@@ -358,14 +348,14 @@ const SignUpWithLeftBackground = () => {
         </VStack>
         <HStack className="self-center" space="sm">
           <Text size="md">Already have an account?</Text>
-          <Link href="/(auth)/login">
+          <Pressable onPress={() => router.push('/(auth)/login')}>
             <LinkText
               className="font-medium text-primary-700 group-hover/link:text-primary-600 group-hover/pressed:text-primary-700"
               size="md"
             >
               Login
             </LinkText>
-          </Link>
+          </Pressable>
         </HStack>
       </VStack>
     </VStack>
