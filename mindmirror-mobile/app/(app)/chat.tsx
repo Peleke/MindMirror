@@ -5,6 +5,9 @@ import { Card, Button } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
 import { useQuery } from '@apollo/client'
 import { ASK_QUERY, LIST_TRADITIONS } from '@/services/api/queries'
+import { useRouter } from 'expo-router'
+import { useNavigation } from '@react-navigation/native'
+import { Ionicons } from '@expo/vector-icons'
 
 interface Message {
   id: string
@@ -25,6 +28,8 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedTradition, setSelectedTradition] = useState('')
+  const router = useRouter()
+  const navigation = useNavigation()
 
   // Fetch available traditions
   const { data: traditionsData } = useQuery(LIST_TRADITIONS, {
@@ -32,6 +37,10 @@ export default function ChatScreen() {
   })
 
   const traditions = traditionsData?.listTraditions || []
+
+  const handleMenuPress = () => {
+    ;(navigation as any).openDrawer()
+  }
 
   const sendMessage = async () => {
     if (!inputText.trim()) return
@@ -68,11 +77,22 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>AI Chat</Text>
-        <Text style={styles.subtitle}>Your personal AI assistant</Text>
+      {/* App Bar */}
+      <View style={styles.appBar}>
+        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
+          <Ionicons name="menu" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        
+        <Text style={styles.appBarTitle}>AI Chat</Text>
+        
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => router.push('/(app)/profile')}
+        >
+          <Ionicons name="person-circle" size={28} color={colors.text.primary} />
+        </TouchableOpacity>
       </View>
-      
+
       <ScrollView style={styles.messagesContainer}>
         {messages.map((message) => (
           <View
@@ -124,6 +144,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
+  },
+  menuButton: {
+    padding: spacing.sm,
+  },
+  appBarTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.text.primary,
+  },
+  profileButton: {
+    padding: spacing.sm,
   },
   header: {
     padding: spacing.lg,
