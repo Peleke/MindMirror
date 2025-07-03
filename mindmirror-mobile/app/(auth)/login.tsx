@@ -1,19 +1,38 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Input, Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
+import { useRouter } from 'expo-router'
+import { auth } from '@/services/supabase/client'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields')
+      return
+    }
+
     setLoading(true)
-    // TODO: Implement login logic
-    console.log('Login:', { email, password })
-    setLoading(false)
+    try {
+      const { data, error } = await auth.signIn(email, password)
+      
+      if (error) {
+        Alert.alert('Login Failed', error.message)
+      } else {
+        // Success - useAuthState will handle navigation
+        console.log('Login successful:', data.user?.email)
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -44,6 +63,13 @@ export default function LoginScreen() {
             title="Sign In"
             onPress={handleLogin}
             loading={loading}
+            style={styles.button}
+          />
+          
+          <Button
+            title="Create Account"
+            onPress={() => router.push('/(auth)/signup')}
+            variant="outline"
             style={styles.button}
           />
         </Card>

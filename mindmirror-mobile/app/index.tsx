@@ -1,6 +1,20 @@
-import { Redirect } from 'expo-router'
+import { View, Text } from 'react-native'
+import { LoadingScreen } from '@/components/common/Loading'
+import { useAuthState } from '@/features/auth/hooks/useAuthState'
 
 export default function Index() {
-  // For now, redirect to auth. Later we'll add authentication logic
-  return <Redirect href="/(auth)/login" />
+  const { loading } = useAuthState()
+
+  console.log('Index render: loading =', loading)
+
+  if (loading) {
+    return <LoadingScreen text="Loading..." />
+  }
+
+  // Let useAuthState handle the navigation
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Redirecting...</Text>
+    </View>
+  )
 } 

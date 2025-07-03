@@ -1,10 +1,34 @@
 import React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { auth } from '@/services/supabase/client'
 
 export default function ProfileScreen() {
+  const { user } = useAuth()
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive', 
+          onPress: async () => {
+            const { error } = await auth.signOut()
+            if (error) {
+              Alert.alert('Error', 'Failed to sign out')
+            }
+          }
+        },
+      ]
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -14,6 +38,11 @@ export default function ProfileScreen() {
         </View>
         
         <View style={styles.content}>
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>Account Info</Text>
+            <Text style={styles.userEmail}>{user?.email}</Text>
+          </Card>
+          
           <Card style={styles.card}>
             <Text style={styles.cardTitle}>Account Settings</Text>
             <Button
@@ -64,7 +93,7 @@ export default function ProfileScreen() {
           
           <Button
             title="Sign Out"
-            onPress={() => console.log('Sign out')}
+            onPress={handleSignOut}
             variant="ghost"
             style={styles.signOutButton}
           />
@@ -114,5 +143,10 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     marginTop: spacing.lg,
+  },
+  userEmail: {
+    fontSize: typography.sizes.base,
+    color: colors.text.secondary,
+    fontFamily: typography.fonts.regular,
   },
 }) 
