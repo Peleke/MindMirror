@@ -1,13 +1,16 @@
 
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { auth } from '@/services/supabase/client'
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from '@react-navigation/native'
 
 export default function ProfileScreen() {
   const { user } = useAuth()
+  const navigation = useNavigation()
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -29,12 +32,27 @@ export default function ProfileScreen() {
     )
   }
 
+  const handleMenuPress = () => {
+    ;(navigation as any).openDrawer()
+  }
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* App Bar */}
+      <View style={styles.appBar}>
+        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
+          <Ionicons name="menu" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        
+        <Text style={styles.appBarTitle}>Profile</Text>
+        
+        <View style={styles.appBarRight} />
+      </View>
+
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
-          <Text style={styles.subtitle}>Manage your account</Text>
+          <Text style={styles.title}>Manage Your Account</Text>
+          <Text style={styles.subtitle}>Update your profile and preferences</Text>
         </View>
         
         <View style={styles.content}>
@@ -107,6 +125,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
+  },
+  menuButton: {
+    padding: spacing.sm,
+  },
+  appBarTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.text.primary,
+  },
+  appBarRight: {
+    width: 44, // Same width as menuButton for balance
   },
   scrollView: {
     flex: 1,

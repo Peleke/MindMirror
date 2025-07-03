@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Input, Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
 import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function ReflectionJournalScreen() {
   const [wins, setWins] = useState('')
@@ -37,10 +38,21 @@ export default function ReflectionJournalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* App Bar */}
+      <View style={styles.appBar}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        
+        <Text style={styles.appBarTitle}>Daily Reflection</Text>
+        
+        <View style={styles.appBarRight} />
+      </View>
+
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.title}>Reflection Journal</Text>
-          <Text style={styles.subtitle}>Reflect on your day</Text>
+          <Text style={styles.title}>Look back on your day</Text>
+          <Text style={styles.subtitle}>Reflect on your experiences and insights</Text>
         </View>
         
         <View style={styles.content}>
@@ -90,6 +102,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.primary,
+  },
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.primary,
+  },
+  backButton: {
+    padding: spacing.sm,
+  },
+  appBarTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.text.primary,
+  },
+  appBarRight: {
+    width: 44, // Same width as backButton for balance
   },
   scrollView: {
     flex: 1,

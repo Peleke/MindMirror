@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Card } from '@/components/common'
 import { colors, spacing, typography } from '@/theme'
@@ -34,16 +35,21 @@ const JOURNAL_TYPES = [
 
 export default function JournalScreen() {
   const router = useRouter()
+  const navigation = useNavigation()
 
   const handleJournalPress = (route: string) => {
     router.push(route as any)
+  }
+
+  const handleMenuPress = () => {
+    ;(navigation as any).openDrawer()
   }
 
   return (
     <SafeAreaView style={styles.container}>
       {/* App Bar */}
       <View style={styles.appBar}>
-        <TouchableOpacity style={styles.menuButton}>
+        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
           <Ionicons name="menu" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
@@ -51,7 +57,7 @@ export default function JournalScreen() {
         
         <TouchableOpacity 
           style={styles.profileButton}
-          onPress={() => router.push('/profile')}
+          onPress={() => router.push('/(app)/profile')}
         >
           <Ionicons name="person-circle" size={28} color={colors.text.primary} />
         </TouchableOpacity>
