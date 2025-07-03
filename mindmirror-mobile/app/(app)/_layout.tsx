@@ -15,12 +15,6 @@ export default function AppLayout() {
       }}
     >
       <Tabs.Screen
-        name="dashboard"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="journal"
         options={{
           title: 'Journal',

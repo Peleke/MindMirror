@@ -8,9 +8,12 @@ export function useAuthState() {
   const router = useRouter()
 
   useEffect(() => {
-    console.log("Auth state changed:", { user: !!user, loading, segments })
+    console.log("Auth state changed:", { user: !!user, loading, segments, userEmail: user?.email })
     
-    if (loading) return;
+    if (loading) {
+      console.log("Still loading, skipping navigation")
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)'
     const inAppGroup = segments[0] === '(app)'
@@ -22,8 +25,8 @@ export function useAuthState() {
       console.log('Redirecting to login')
       router.replace('/(auth)/login')
     } else if (user && (inAuthGroup || atRoot)) {
-      console.log('Redirecting to dashboard')
-      router.replace('/(app)/dashboard')
+      console.log('Redirecting to journal')
+      router.replace('/(app)/journal')
     } else {
       console.log('No redirect needed')
     }

@@ -27,6 +27,11 @@ export default function LoginScreen() {
       } else {
         // Success - useAuthState will handle navigation
         console.log('Login successful:', data.user?.email)
+        console.log('Login data:', data)
+        // Force a small delay to ensure auth state is updated
+        setTimeout(() => {
+          console.log('Login timeout completed')
+        }, 1000)
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred')
