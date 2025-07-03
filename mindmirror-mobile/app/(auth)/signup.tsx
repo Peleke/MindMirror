@@ -1,132 +1,381 @@
-import { useState } from 'react'
-import { View, Text, StyleSheet, Alert } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, Input, Card } from '@/components/common'
-import { colors, spacing, typography } from '@/theme'
-import { useRouter } from 'expo-router'
-import { auth } from '@/services/supabase/client'
+import { useState } from "react";
+import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
+import { HStack } from "@/components/ui/hstack";
+import { VStack } from "@/components/ui/vstack";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
+import { LinkText } from "@/components/ui/link";
+import { useRouter } from "expo-router";
+import {
+  FormControl,
+  FormControlError,
+  FormControlErrorIcon,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText,
+} from "@/components/ui/form-control";
+import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import {
+  Checkbox,
+  CheckboxIcon,
+  CheckboxIndicator,
+  CheckboxLabel,
+} from "@/components/ui/checkbox";
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  EyeIcon,
+  EyeOffIcon,
+  Icon,
+} from "@/components/ui/icon";
+import { Button, ButtonText, ButtonIcon } from "@/components/ui/button";
+import { Keyboard } from "react-native";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle } from "lucide-react-native";
+import { Pressable } from "@/components/ui/pressable";
+import { auth } from "@/services/supabase/client";
 
-export default function SignupScreen() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
+const signUpSchema = z.object({
+  email: z.string().min(1, "Email is required").email(),
+  password: z
+    .string()
+    .min(6, "Must be at least 6 characters in length")
+    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+    .regex(new RegExp(".*\\d.*"), "One number")
+    .regex(
+      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+      "One special character"
+    ),
+  confirmpassword: z
+    .string()
+    .min(6, "Must be at least 6 characters in length")
+    .regex(new RegExp(".*[A-Z].*"), "One uppercase character")
+    .regex(new RegExp(".*[a-z].*"), "One lowercase character")
+    .regex(new RegExp(".*\\d.*"), "One number")
+    .regex(
+      new RegExp(".*[`~<>?,./!@#$%^&*()\\-_+=\"'|{}\\[\\];:\\\\].*"),
+      "One special character"
+    ),
+  rememberme: z.boolean().optional(),
+});
 
-  const handleSignup = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields')
-      return
+type SignUpSchemaType = z.infer<typeof signUpSchema>;
+
+const SignUpWithLeftBackground = () => {
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SignUpSchemaType>({
+    resolver: zodResolver(signUpSchema),
+  });
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (data: SignUpSchemaType) => {
+    if (data.password !== data.confirmpassword) {
+              toast.show({
+          placement: "bottom right",
+          render: ({ id }) => {
+            return (
+              <Toast nativeID={id} action="error">
+                <ToastTitle>Passwords do not match</ToastTitle>
+              </Toast>
+            );
+          },
+        });
+      return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match')
-      return
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters')
-      return
-    }
-
-    setLoading(true)
+    setLoading(true);
     try {
-      const { data, error } = await auth.signUp(email, password)
+      const { data: authData, error } = await auth.signUp(data.email, data.password);
       
       if (error) {
-        Alert.alert('Signup Failed', error.message)
+        toast.show({
+          placement: "bottom right",
+          render: ({ id }) => {
+            return (
+              <Toast nativeID={id} variant="accent" action="error">
+                <ToastTitle>{error.message}</ToastTitle>
+              </Toast>
+            );
+          },
+        });
       } else {
-        Alert.alert(
-          'Success', 
-          'Account created! Please check your email to verify your account.',
-          [{ text: 'OK', onPress: () => router.push('/(auth)/login') }]
-        )
+        toast.show({
+          placement: "bottom right",
+          render: ({ id }) => {
+            return (
+              <Toast nativeID={id} variant="accent" action="success">
+                <ToastTitle>Account created successfully!</ToastTitle>
+              </Toast>
+            );
+          },
+        });
+        reset();
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred')
+      toast.show({
+        placement: "bottom right",
+        render: ({ id }) => {
+          return (
+            <Toast nativeID={id} variant="accent" action="error">
+              <ToastTitle>An unexpected error occurred</ToastTitle>
+            </Toast>
+          );
+        },
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleState = () => {
+    setShowPassword((showState) => {
+      return !showState;
+    });
+  };
+
+  const handleConfirmPwState = () => {
+    setShowConfirmPassword((showState) => {
+      return !showState;
+    });
+  };
+
+  const handleKeyPress = () => {
+    Keyboard.dismiss();
+    handleSubmit(onSubmit)();
+  };
+
+  const router = useRouter();
+  
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Start your mindful journey today</Text>
-        
-        <Card style={styles.form}>
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+    <VStack className="max-w-[440px] w-full" space="md">
+      <VStack className="md:items-center" space="md">
+        <Pressable
+          onPress={() => {
+            router.back();
+          }}
+        >
+          <Icon
+            as={ArrowLeftIcon}
+            className="md:hidden stroke-background-800"
+            size="xl"
           />
+        </Pressable>
+        <VStack>
+          <Heading className="md:text-center" size="3xl">
+            Sign up
+          </Heading>
+          <Text>Sign up and start using MindMirror</Text>
+        </VStack>
+      </VStack>
+      <VStack className="w-full">
+        <VStack space="xl" className="w-full">
+          <FormControl isInvalid={!!errors.email}>
+            <FormControlLabel>
+              <FormControlLabelText>Email</FormControlLabelText>
+            </FormControlLabel>
+            <Controller
+              name="email"
+              defaultValue=""
+              control={control}
+              rules={{
+                validate: async (value) => {
+                  try {
+                    await signUpSchema.parseAsync({ email: value });
+                    return true;
+                  } catch (error: any) {
+                    return error.message;
+                  }
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input>
+                  <InputField
+                    className="text-sm"
+                    placeholder="Email"
+                    type="text"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onSubmitEditing={handleKeyPress}
+                    returnKeyType="done"
+                  />
+                </Input>
+              )}
+            />
+            <FormControlError>
+              <FormControlErrorIcon size="md" as={AlertTriangle} />
+              <FormControlErrorText>
+                {errors?.email?.message}
+              </FormControlErrorText>
+            </FormControlError>
+          </FormControl>
           
-          <Input
-            label="Password"
-            placeholder="Create a password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <FormControl isInvalid={!!errors.password}>
+            <FormControlLabel>
+              <FormControlLabelText>Password</FormControlLabelText>
+            </FormControlLabel>
+            <Controller
+              defaultValue=""
+              name="password"
+              control={control}
+              rules={{
+                validate: async (value) => {
+                  try {
+                    await signUpSchema.parseAsync({
+                      password: value,
+                    });
+                    return true;
+                  } catch (error: any) {
+                    return error.message;
+                  }
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input>
+                  <InputField
+                    className="text-sm"
+                    placeholder="Password"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onSubmitEditing={handleKeyPress}
+                    returnKeyType="done"
+                    type={showPassword ? "text" : "password"}
+                  />
+                  <InputSlot onPress={handleState} className="pr-3">
+                    <InputIcon as={showPassword ? EyeIcon : EyeOffIcon} />
+                  </InputSlot>
+                </Input>
+              )}
+            />
+            <FormControlError>
+              <FormControlErrorIcon size="sm" as={AlertTriangle} />
+              <FormControlErrorText>
+                {errors?.password?.message}
+              </FormControlErrorText>
+            </FormControlError>
+          </FormControl>
           
-          <Input
-            label="Confirm Password"
-            placeholder="Confirm your password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-          
-          <Button
-            title="Create Account"
-            onPress={handleSignup}
-            loading={loading}
-            style={styles.button}
-          />
-          
-          <Button
-            title="Back to Login"
-            onPress={() => router.push('/(auth)/login')}
-            variant="ghost"
-            style={styles.button}
-          />
-        </Card>
-      </View>
-    </SafeAreaView>
-  )
-}
+          <FormControl isInvalid={!!errors.confirmpassword}>
+            <FormControlLabel>
+              <FormControlLabelText>Confirm Password</FormControlLabelText>
+            </FormControlLabel>
+            <Controller
+              defaultValue=""
+              name="confirmpassword"
+              control={control}
+              rules={{
+                validate: async (value) => {
+                  try {
+                    await signUpSchema.parseAsync({
+                      password: value,
+                    });
+                    return true;
+                  } catch (error: any) {
+                    return error.message;
+                  }
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input>
+                  <InputField
+                    placeholder="Confirm Password"
+                    className="text-sm"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    onSubmitEditing={handleKeyPress}
+                    returnKeyType="done"
+                    type={showConfirmPassword ? "text" : "password"}
+                  />
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.lg,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: typography.sizes['3xl'],
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  form: {
-    padding: spacing.lg,
-  },
-  button: {
-    marginTop: spacing.md,
-  },
-}) 
+                  <InputSlot onPress={handleConfirmPwState} className="pr-3">
+                    <InputIcon
+                      as={showConfirmPassword ? EyeIcon : EyeOffIcon}
+                    />
+                  </InputSlot>
+                </Input>
+              )}
+            />
+            <FormControlError>
+              <FormControlErrorIcon size="sm" as={AlertTriangle} />
+              <FormControlErrorText>
+                {errors?.confirmpassword?.message}
+              </FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+
+          <Controller
+            name="rememberme"
+            defaultValue={false}
+            control={control}
+            render={({ field: { onChange, value } }) => (
+              <Checkbox
+                size="sm"
+                value="Remember me"
+                isChecked={value}
+                onChange={onChange}
+                aria-label="Remember me"
+              >
+                <CheckboxIndicator>
+                  <CheckboxIcon as={CheckIcon} />
+                </CheckboxIndicator>
+                <CheckboxLabel>
+                  I accept the Terms of Use & Privacy Policy
+                </CheckboxLabel>
+              </Checkbox>
+            )}
+          />
+        </VStack>
+
+        <VStack className="w-full my-7" space="lg">
+          <Button className="w-full" onPress={handleSubmit(onSubmit)} isDisabled={loading}>
+            <ButtonText className="font-medium">
+              {loading ? "Creating account..." : "Sign up"}
+            </ButtonText>
+          </Button>
+          <Button
+            variant="outline"
+            action="secondary"
+            className="w-full gap-1"
+            onPress={() => {}}
+          >
+            <ButtonText className="font-medium">
+              Continue with Google
+            </ButtonText>
+          </Button>
+        </VStack>
+        <HStack className="self-center" space="sm">
+          <Text size="md">Already have an account?</Text>
+          <Link href="/(auth)/login">
+            <LinkText
+              className="font-medium text-primary-700 group-hover/link:text-primary-600 group-hover/pressed:text-primary-700"
+              size="md"
+            >
+              Login
+            </LinkText>
+          </Link>
+        </HStack>
+      </VStack>
+    </VStack>
+  );
+};
+
+export default function SignUpScreen() {
+  return (
+    <VStack className="flex-1 justify-center items-center p-6">
+      <SignUpWithLeftBackground />
+    </VStack>
+  );
+} 

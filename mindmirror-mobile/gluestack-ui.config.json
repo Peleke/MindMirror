@@ -5,6 +5,6 @@
   },
   "app": {
     "entry": "__tests__/App.test.tsx",
-    "components": "components/ui"
+    "components": "./src/components/ui"
   }
 }
