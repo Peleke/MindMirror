@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
-import { HStack } from "@/components/ui/hstack";
-import { VStack } from "@/components/ui/vstack";
-import { Heading } from "@/components/ui/heading";
-import { Text } from "@/components/ui/text";
-import { LinkText } from "@/components/ui/link";
+import { Button, ButtonText } from "@/components/ui/button";
+import {
+  Checkbox,
+  CheckboxIcon,
+  CheckboxIndicator,
+  CheckboxLabel,
+} from "@/components/ui/checkbox";
 import {
   FormControl,
   FormControlError,
@@ -13,29 +13,27 @@ import {
   FormControlLabel,
   FormControlLabelText,
 } from "@/components/ui/form-control";
-import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
 import {
-  Checkbox,
-  CheckboxIcon,
-  CheckboxIndicator,
-  CheckboxLabel,
-} from "@/components/ui/checkbox";
-import {
-  ArrowLeftIcon,
   CheckIcon,
   EyeIcon,
-  EyeOffIcon,
-  Icon,
+  EyeOffIcon
 } from "@/components/ui/icon";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Keyboard } from "react-native";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle } from "lucide-react-native";
+import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import { LinkText } from "@/components/ui/link";
 import { Pressable } from "@/components/ui/pressable";
-import { useRouter } from "expo-router";
+import { Text } from "@/components/ui/text";
+import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
+import { VStack } from "@/components/ui/vstack";
 import { auth } from "@/services/supabase/client";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
+import { AlertTriangle } from "lucide-react-native";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { Keyboard } from "react-native";
+import { z } from "zod";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email(),
@@ -122,17 +120,6 @@ const LoginWithLeftBackground = () => {
   return (
     <VStack className="max-w-[440px] w-full" space="md">
       <VStack className="md:items-center" space="md">
-        <Pressable
-          onPress={() => {
-            router.back();
-          }}
-        >
-          <Icon
-            as={ArrowLeftIcon}
-            className="md:hidden text-background-800"
-            size="xl"
-          />
-        </Pressable>
         <VStack>
           <Heading className="md:text-center" size="3xl">
             Log in
