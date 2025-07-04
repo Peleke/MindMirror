@@ -1,168 +1,184 @@
-import { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, Input, Card } from '@/components/common'
-import { colors, spacing, typography } from '@/theme'
-import { useRouter } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallbackText,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { Box } from "@/components/ui/box";
+import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
+import { ChevronLeftIcon, Icon } from "@/components/ui/icon";
+import { Input, InputField } from "@/components/ui/input";
+import { Pressable } from "@/components/ui/pressable";
+import { SafeAreaView } from "@/components/ui/safe-area-view";
+import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
+import { Textarea, TextareaInput } from "@/components/ui/textarea";
+import { VStack } from "@/components/ui/vstack";
+import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert } from 'react-native';
+
+function AppBar() {
+  const router = useRouter();
+  const navigation = useNavigation();
+
+  const handleBackPress = () => {
+    router.back();
+  };
+
+  const handleProfilePress = () => {
+    router.push('/(app)/profile');
+  };
+
+  return (
+    <HStack
+      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
+      space="md"
+    >
+      <HStack className="items-center" space="sm">
+        <Pressable onPress={handleBackPress}>
+          <Icon as={ChevronLeftIcon} />
+        </Pressable>
+        <Text className="text-xl">Gratitude Journal</Text>
+      </HStack>
+      
+      <Pressable onPress={handleProfilePress}>
+        <Avatar className="h-9 w-9">
+          <AvatarFallbackText>U</AvatarFallbackText>
+          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
+          <AvatarBadge />
+        </Avatar>
+      </Pressable>
+    </HStack>
+  );
+}
 
 export default function GratitudeJournalScreen() {
-  const [gratefulFor, setGratefulFor] = useState('')
-  const [excitedAbout, setExcitedAbout] = useState('')
-  const [focus, setFocus] = useState('')
-  const [mood, setMood] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [gratefulFor, setGratefulFor] = useState('');
+  const [excitedAbout, setExcitedAbout] = useState('');
+  const [focus, setFocus] = useState('');
+  const [mood, setMood] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async () => {
     if (!gratefulFor.trim()) {
-      Alert.alert('Error', 'Please fill in what you are grateful for')
-      return
+      Alert.alert('Error', 'Please fill in what you are grateful for');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
       // TODO: Implement GraphQL mutation to save gratitude journal entry
-      console.log('Saving gratitude entry:', { gratefulFor, excitedAbout, focus, mood })
+      console.log('Saving gratitude entry:', { gratefulFor, excitedAbout, focus, mood });
       
       Alert.alert(
         'Success',
         'Your gratitude entry has been saved!',
         [{ text: 'OK', onPress: () => router.back() }]
-      )
+      );
     } catch (error) {
-      Alert.alert('Error', 'Failed to save your entry')
+      Alert.alert('Error', 'Failed to save your entry');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* App Bar */}
-      <View style={styles.appBar}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
+    <SafeAreaView className="h-full w-full">
+      <VStack className="h-full w-full bg-background-0">
+        <AppBar />
         
-        <Text style={styles.appBarTitle}>Gratitude Journal</Text>
-        
-        <View style={styles.appBarRight} />
-      </View>
-
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>What are you grateful for today?</Text>
-          <Text style={styles.subtitle}>Reflect on the positive aspects of your life</Text>
-        </View>
-        
-        <View style={styles.content}>
-          <Card style={styles.card}>
-            <Input
-              label="I am grateful for..."
-              placeholder="What are you grateful for today?"
-              value={gratefulFor}
-              onChangeText={setGratefulFor}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
-            
-            <Input
-              label="I am excited about..."
-              placeholder="What are you looking forward to?"
-              value={excitedAbout}
-              onChangeText={setExcitedAbout}
-              multiline
-              numberOfLines={3}
-              style={styles.input}
-            />
-            
-            <Input
-              label="My focus for today..."
-              placeholder="What will you focus on today?"
-              value={focus}
-              onChangeText={setFocus}
-              multiline
-              numberOfLines={2}
-              style={styles.input}
-            />
-            
-            <Input
-              label="How are you feeling?"
-              placeholder="Describe your mood"
-              value={mood}
-              onChangeText={setMood}
-              style={styles.input}
-            />
-            
-            <Button
-              title="Save Entry"
-              onPress={handleSubmit}
-              loading={loading}
-              style={styles.button}
-            />
-          </Card>
-        </View>
-      </ScrollView>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          className="flex-1"
+        >
+          {/* Header */}
+          <VStack className="px-6 py-6" space="xs">
+            <Heading size="2xl" className="font-roboto text-typography-900 dark:text-white">
+              What are you grateful for today?
+            </Heading>
+            <Text className="text-typography-600 dark:text-gray-200">
+              Reflect on the positive aspects of your life
+            </Text>
+          </VStack>
+          
+          {/* Content */}
+          <VStack className="px-6 pb-6" space="md">
+            <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+              <VStack space="md">
+                <VStack space="xs">
+                  <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                    I am grateful for...
+                  </Text>
+                  <Textarea className="bg-background-0 dark:bg-background-50">
+                    <TextareaInput
+                      placeholder="What are you grateful for today?"
+                      value={gratefulFor}
+                      onChangeText={setGratefulFor}
+                      numberOfLines={3}
+                    />
+                  </Textarea>
+                </VStack>
+                
+                <VStack space="xs">
+                  <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                    I am excited about...
+                  </Text>
+                  <Textarea className="bg-background-0 dark:bg-background-50">
+                    <TextareaInput
+                      placeholder="What are you looking forward to?"
+                      value={excitedAbout}
+                      onChangeText={setExcitedAbout}
+                      numberOfLines={3}
+                    />
+                  </Textarea>
+                </VStack>
+                
+                <VStack space="xs">
+                  <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                    My focus for today...
+                  </Text>
+                  <Textarea className="bg-background-0 dark:bg-background-50">
+                    <TextareaInput
+                      placeholder="What will you focus on today?"
+                      value={focus}
+                      onChangeText={setFocus}
+                      numberOfLines={2}
+                    />
+                  </Textarea>
+                </VStack>
+                
+                <VStack space="xs">
+                  <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                    How are you feeling?
+                  </Text>
+                  <Input className="bg-background-0 dark:bg-background-50">
+                    <InputField
+                      placeholder="Describe your mood"
+                      value={mood}
+                      onChangeText={setMood}
+                    />
+                  </Input>
+                </VStack>
+                
+                <Button
+                  onPress={handleSubmit}
+                  disabled={loading}
+                  className="mt-4"
+                >
+                  <ButtonText>
+                    {loading ? 'Saving...' : 'Save Entry'}
+                  </ButtonText>
+                </Button>
+              </VStack>
+            </Box>
+          </VStack>
+        </ScrollView>
+      </VStack>
     </SafeAreaView>
-  )
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.primary,
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  appBarTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-  },
-  appBarRight: {
-    width: 44, // Same width as backButton for balance
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    padding: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  title: {
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-  card: {
-    padding: spacing.lg,
-  },
-  input: {
-    marginBottom: spacing.md,
-  },
-  button: {
-    marginTop: spacing.md,
-  },
-}) 
+  );
+} 
