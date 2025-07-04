@@ -108,13 +108,13 @@ export default function GratitudeJournalScreen() {
           
           {/* Content */}
           <VStack className="px-6 pb-6" space="md">
-            <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+            <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-border-200 dark:border-border-700">
               <VStack space="md">
                 <VStack space="xs">
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     I am grateful for...
                   </Text>
-                  <Textarea className="bg-background-0 dark:bg-background-50">
+                  <Textarea className="bg-white dark:bg-gray-100">
                     <TextareaInput
                       placeholder="What are you grateful for today?"
                       value={gratefulFor}
@@ -128,7 +128,7 @@ export default function GratitudeJournalScreen() {
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     I am excited about...
                   </Text>
-                  <Textarea className="bg-background-0 dark:bg-background-50">
+                  <Textarea className="bg-white dark:bg-gray-100">
                     <TextareaInput
                       placeholder="What are you looking forward to?"
                       value={excitedAbout}
@@ -142,7 +142,7 @@ export default function GratitudeJournalScreen() {
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     My focus for today...
                   </Text>
-                  <Textarea className="bg-background-0 dark:bg-background-50">
+                  <Textarea className="bg-white dark:bg-gray-100">
                     <TextareaInput
                       placeholder="What will you focus on today?"
                       value={focus}
@@ -156,7 +156,7 @@ export default function GratitudeJournalScreen() {
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     How are you feeling?
                   </Text>
-                  <Input className="bg-background-0 dark:bg-background-50">
+                  <Input className="bg-white dark:bg-gray-100">
                     <InputField
                       placeholder="Describe your mood"
                       value={mood}
