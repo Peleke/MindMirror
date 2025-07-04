@@ -14,52 +14,52 @@ import { SafeAreaView } from "@/components/ui/safe-area-view"
 import { ScrollView } from "@/components/ui/scroll-view"
 import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
+import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
+import { useQuery } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { Heart, Lightbulb, PenTool } from "lucide-react-native"
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
-interface JournalEntry {
-  id: string
-  type: JournalType
-  title: string
-  content: string
-  date: string
+// TypeScript Interfaces Matching GraphQL Schema
+interface GratitudePayload {
+  gratefulFor: string[]
+  excitedAbout: string[]
+  focus: string
+  affirmation: string
+  mood?: string | null
 }
 
-// Mock data for now
-const mockEntries: JournalEntry[] = [
-  {
-    id: '1',
-    type: 'gratitude',
-    title: 'Grateful for today',
-    content: 'I am grateful for the beautiful weather and the opportunity to spend time with family...',
-    date: '2024-01-15',
-  },
-  {
-    id: '2',
-    type: 'reflection',
-    title: 'Daily reflection',
-    content: 'Today was productive. I accomplished my main goals and learned something new...',
-    date: '2024-01-14',
-  },
-  {
-    id: '3',
-    type: 'freeform',
-    title: 'Random thoughts',
-    content: 'Sometimes I wonder about the nature of consciousness and how we perceive reality...',
-    date: '2024-01-13',
-  },
-  {
-    id: '4',
-    type: 'gratitude',
-    title: 'Thankful for health',
-    content: 'I am grateful for my health and the ability to move freely...',
-    date: '2024-01-12',
-  },
-]
+interface ReflectionPayload {
+  wins: string[]
+  improvements: string[]
+  mood?: string | null
+}
+
+interface GratitudeJournalEntry {
+  __typename: 'GratitudeJournalEntry'
+  id: string
+  createdAt: string
+  payload: GratitudePayload
+}
+
+interface ReflectionJournalEntry {
+  __typename: 'ReflectionJournalEntry'
+  id: string
+  createdAt: string
+  payload: ReflectionPayload
+}
+
+interface FreeformJournalEntry {
+  __typename: 'FreeformJournalEntry'
+  id: string
+  createdAt: string
+  content: string
+}
+
+type JournalEntry = GratitudeJournalEntry | ReflectionJournalEntry | FreeformJournalEntry
 
 const typeOptions: { value: JournalType; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -107,12 +107,45 @@ export default function ArchiveScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<JournalType>('all')
 
-  const filteredEntries = mockEntries.filter(entry => {
-    const matchesSearch = entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         entry.content.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = selectedType === 'all' || entry.type === selectedType
-    return matchesSearch && matchesType
+  const { data, loading, error, refetch } = useQuery(GET_JOURNAL_ENTRIES, {
+    errorPolicy: 'all',
   })
+
+  const getEntryType = (entry: JournalEntry): string => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry': return 'gratitude'
+      case 'ReflectionJournalEntry': return 'reflection'
+      case 'FreeformJournalEntry': return 'freeform'
+      default: return 'unknown'
+    }
+  }
+
+  const filteredEntries = useMemo(() => {
+    if (!data?.journalEntries) return []
+    
+    let entries: JournalEntry[] = [...data.journalEntries]
+    
+    // Filter by type
+    if (selectedType !== 'all') {
+      entries = entries.filter(entry => getEntryType(entry) === selectedType)
+    }
+    
+    // Search in content
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase()
+      entries = entries.filter(entry => {
+        let contentToSearch = ''
+        if (entry.__typename === 'FreeformJournalEntry') {
+          contentToSearch = entry.content
+        } else {
+          contentToSearch = JSON.stringify(entry.payload)
+        }
+        return contentToSearch.toLowerCase().includes(searchLower)
+      })
+    }
+    
+    return entries.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [data?.journalEntries, selectedType, searchQuery])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -123,42 +156,70 @@ export default function ArchiveScreen() {
     })
   }
 
-  const getTypeIcon = (type: JournalType) => {
-    switch (type) {
-      case 'gratitude':
+  const getTypeIcon = (entry: JournalEntry) => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry':
         return Heart
-      case 'reflection':
+      case 'ReflectionJournalEntry':
         return Lightbulb
-      case 'freeform':
+      case 'FreeformJournalEntry':
         return PenTool
       default:
         return Heart
     }
   }
 
-  const getTypeColor = (type: JournalType) => {
-    switch (type) {
-      case 'gratitude':
+  const getTypeColor = (entry: JournalEntry) => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry':
         return 'bg-blue-50 dark:bg-blue-950'
-      case 'reflection':
+      case 'ReflectionJournalEntry':
         return 'bg-indigo-50 dark:bg-indigo-950'
-      case 'freeform':
+      case 'FreeformJournalEntry':
         return 'bg-purple-50 dark:bg-purple-950'
       default:
         return 'bg-gray-50 dark:bg-gray-950'
     }
   }
 
-  const getTypeIconColor = (type: JournalType) => {
-    switch (type) {
-      case 'gratitude':
+  const getTypeIconColor = (entry: JournalEntry) => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry':
         return 'text-blue-600 dark:text-blue-400'
-      case 'reflection':
+      case 'ReflectionJournalEntry':
         return 'text-indigo-600 dark:text-indigo-400'
-      case 'freeform':
+      case 'FreeformJournalEntry':
         return 'text-purple-600 dark:text-purple-400'
       default:
         return 'text-gray-600 dark:text-gray-400'
+    }
+  }
+
+  const getEntryTitle = (entry: JournalEntry): string => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry':
+        return `Grateful for ${entry.payload.gratefulFor[0] || 'today'}`
+      case 'ReflectionJournalEntry':
+        return `Reflection on ${entry.payload.wins[0] || 'today'}`
+      case 'FreeformJournalEntry':
+        return entry.content.slice(0, 50) + (entry.content.length > 50 ? '...' : '')
+      default:
+        return 'Journal Entry'
+    }
+  }
+
+  const getEntryContent = (entry: JournalEntry): string => {
+    switch (entry.__typename) {
+      case 'GratitudeJournalEntry':
+        const gratefulItems = entry.payload.gratefulFor.slice(0, 2).join(', ')
+        return `Grateful for: ${gratefulItems}${entry.payload.gratefulFor.length > 2 ? '...' : ''}`
+      case 'ReflectionJournalEntry':
+        const wins = entry.payload.wins.slice(0, 2).join(', ')
+        return `Wins: ${wins}${entry.payload.wins.length > 2 ? '...' : ''}`
+      case 'FreeformJournalEntry':
+        return entry.content.slice(0, 150) + (entry.content.length > 150 ? '...' : '')
+      default:
+        return 'Journal Entry'
     }
   }
 
@@ -222,66 +283,100 @@ export default function ArchiveScreen() {
           {/* Divider */}
           <Box className="h-px bg-border-200 dark:bg-border-700 mx-6" />
 
-          {/* Journal Entries */}
-          <VStack className="px-6 py-6" space="md">
-            {filteredEntries.length === 0 ? (
+          {/* Loading State */}
+          {loading && (
+            <VStack className="px-6 py-6" space="md">
               <VStack className="items-center justify-center py-12" space="md">
                 <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
+                <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
+                  Loading journal entries...
+                </Text>
+              </VStack>
+            </VStack>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <VStack className="px-6 py-6" space="md">
+              <VStack className="items-center justify-center py-12" space="md">
+                <Icon as={PenTool} size="xl" className="text-red-500" />
                 <VStack className="items-center" space="xs">
-                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">
-                    No entries found
+                  <Text className="text-lg font-semibold text-red-600 dark:text-red-400">
+                    Failed to load entries
                   </Text>
                   <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
-                    Try adjusting your search or filter criteria
+                    Please check your connection and try again
                   </Text>
                 </VStack>
               </VStack>
-            ) : (
-              filteredEntries.map((entry) => (
-                <Pressable key={entry.id} className="mb-4">
-                  <Box 
-                    className={`p-6 min-h-[120px] rounded-lg ${getTypeColor(entry.type)} border border-border-200 dark:border-border-700`}
-                  >
-                    {/* Card Header */}
-                    <HStack className="justify-between items-center mb-4">
-                      <HStack className="items-center" space="sm">
-                        <Icon 
-                          as={getTypeIcon(entry.type)}
-                          size="md"
-                          className={getTypeIconColor(entry.type)}
-                        />
-                        <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
-                          {entry.type.charAt(0).toUpperCase() + entry.type.slice(1)}
+            </VStack>
+          )}
+
+          {/* Journal Entries */}
+          {!loading && !error && (
+            <VStack className="px-6 py-6" space="md">
+              {filteredEntries.length === 0 ? (
+                <VStack className="items-center justify-center py-12" space="md">
+                  <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
+                  <VStack className="items-center" space="xs">
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                      No entries found
+                    </Text>
+                    <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
+                      {searchQuery || selectedType !== 'all'
+                        ? "Try adjusting your search or filter criteria"
+                        : "You haven't written any journal entries yet. Start today!"
+                      }
+                    </Text>
+                  </VStack>
+                </VStack>
+              ) : (
+                filteredEntries.map((entry) => (
+                  <Pressable key={entry.id} className="mb-4">
+                    <Box 
+                      className={`p-6 min-h-[120px] rounded-lg ${getTypeColor(entry)} border border-border-200 dark:border-border-700`}
+                    >
+                      {/* Card Header */}
+                      <HStack className="justify-between items-center mb-4">
+                        <HStack className="items-center" space="sm">
+                          <Icon 
+                            as={getTypeIcon(entry)}
+                            size="md"
+                            className={getTypeIconColor(entry)}
+                          />
+                          <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                            {getEntryType(entry).charAt(0).toUpperCase() + getEntryType(entry).slice(1)}
+                          </Text>
+                        </HStack>
+                        <Text className="text-sm text-typography-500 dark:text-gray-400">
+                          {formatDate(entry.createdAt)}
                         </Text>
                       </HStack>
-                      <Text className="text-sm text-typography-500 dark:text-gray-400">
-                        {formatDate(entry.date)}
+                      
+                      {/* Card Title */}
+                      <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
+                        {getEntryTitle(entry)}
                       </Text>
-                    </HStack>
-                    
-                    {/* Card Title */}
-                    <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
-                      {entry.title}
-                    </Text>
-                    
-                    {/* Card Description */}
-                    <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
-                      {entry.content}
-                    </Text>
-                    
-                    {/* Card Footer */}
-                    <Box className="items-end">
-                      <Icon 
-                        as={ChevronRightIcon}
-                        size="sm"
-                        className="text-typography-400 dark:text-typography-500"
-                      />
+                      
+                      {/* Card Description */}
+                      <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
+                        {getEntryContent(entry)}
+                      </Text>
+                      
+                      {/* Card Footer */}
+                      <Box className="items-end">
+                        <Icon 
+                          as={ChevronRightIcon}
+                          size="sm"
+                          className="text-typography-400 dark:text-typography-500"
+                        />
+                      </Box>
                     </Box>
-                  </Box>
-                </Pressable>
-              ))
-            )}
-          </VStack>
+                  </Pressable>
+                ))
+              )}
+            </VStack>
+          )}
         </ScrollView>
       </VStack>
     </SafeAreaView>
