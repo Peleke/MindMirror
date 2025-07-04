@@ -122,9 +122,9 @@ const LoginWithLeftBackground = () => {
       <VStack className="md:items-center" space="md">
         <VStack>
           <Heading className="md:text-center" size="3xl">
-            Log in
+            Welcome Back
           </Heading>
-          <Text>Login to start using MindMirror</Text>
+          <Text>Login to get started with MindMirror.</Text>
         </VStack>
       </VStack>
       <VStack className="w-full">
