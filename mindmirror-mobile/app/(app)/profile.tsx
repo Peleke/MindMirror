@@ -62,7 +62,7 @@ import { useMutation, useQuery } from '@apollo/client';
 import { cn } from "@gluestack-ui/nativewind-utils/cn";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigation } from '@react-navigation/native';
-import { AlertCircle, type LucideIcon } from "lucide-react-native";
+import { AlertCircle, CheckCircle, type LucideIcon } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard, Platform } from "react-native";
@@ -635,6 +635,9 @@ const ModalComponent = ({
   setShowModal: any;
 }) => {
   const ref = useRef(null);
+  const { user } = useAuth();
+  const toast = useToast();
+  
   const {
     control,
     formState: { errors },
@@ -644,14 +647,66 @@ const ModalComponent = ({
     resolver: zodResolver(userSchema),
   });
 
+  // Update user metadata mutation
+  const [updateUserMetadata, { loading: updateLoading }] = useMutation(UPDATE_USER_METADATA, {
+    onCompleted: (data) => {
+      setShowSuccess(true);
+      setShowError(false);
+      toast.show({
+        title: "Success",
+        description: "Profile updated successfully.",
+      });
+      // Auto-close modal after 2 seconds
+      setTimeout(() => {
+        setShowModal(false);
+        setShowSuccess(false);
+        reset();
+      }, 2000);
+    },
+    onError: (error) => {
+      setShowError(true);
+      setShowSuccess(false);
+      console.error('Update profile error:', error);
+      toast.show({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        action: "error",
+      });
+    }
+  });
+
   const handleKeyPress = () => {
     Keyboard.dismiss();
   };
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isNameFocused, setIsNameFocused] = useState(false);
-  const onSubmit = (_data: userSchemaDetails) => {
-    setShowModal(false);
-    reset();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  
+  const onSubmit = (data: userSchemaDetails) => {
+    // Get current metadata and merge with new profile data
+    const currentMetadata = user?.user_metadata || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      full_name: `${data.firstName} ${data.lastName}`,
+      profile: {
+        ...currentMetadata.profile,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        gender: data.gender,
+        phoneNumber: data.phoneNumber,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        zipcode: data.zipcode,
+      }
+    };
+
+    updateUserMetadata({
+      variables: {
+        metadata: updatedMetadata
+      }
+    });
   };
 
   return (
@@ -1079,13 +1134,41 @@ const ModalComponent = ({
                 </FormControlError>
               </FormControl>
             </HStack>
+            
+            {/* Success Indicator */}
+            {showSuccess && (
+              <Box className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
+                <HStack className="items-center" space="sm">
+                  <Icon as={CheckCircle} size="md" className="text-green-600 dark:text-green-400" />
+                  <Text className="text-green-700 dark:text-green-300 font-medium">
+                    Profile updated successfully!
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+            
+            {/* Error Indicator */}
+            {showError && (
+              <Box className="p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-700">
+                <HStack className="items-center" space="sm">
+                  <Icon as={AlertCircle} size="md" className="text-red-600 dark:text-red-400" />
+                  <Text className="text-red-700 dark:text-red-300 font-medium">
+                    Failed to update profile. Please try again.
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+            
             <Button
               onPress={() => {
                 handleSubmit(onSubmit)();
               }}
+              disabled={updateLoading}
               className="flex-1 p-2"
             >
-              <ButtonText>Save Changes</ButtonText>
+              <ButtonText>
+                {updateLoading ? 'Saving...' : 'Save Changes'}
+              </ButtonText>
             </Button>
           </VStack>
         </ModalBody>
