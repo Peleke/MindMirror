@@ -14,6 +14,9 @@ import { SafeAreaView } from "@/components/ui/safe-area-view"
 import { ScrollView } from "@/components/ui/scroll-view"
 import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
+import { SUMMARIZE_JOURNALS_QUERY } from '../../src/services/api/queries'
+import { GENERATE_REVIEW } from '../../src/services/api/mutations'
+import { useQuery, useMutation } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { BarChart3, Lightbulb, Star, TrendingUp, Trophy } from "lucide-react-native"
@@ -61,37 +64,54 @@ function AppBar() {
 }
 
 export default function InsightsScreen() {
-  const [summarizeLoading, setSummarizeLoading] = useState(false)
-  const [reviewLoading, setReviewLoading] = useState(false)
+  const [selectedTradition, setSelectedTradition] = useState('canon-default')
   const [summarizeResult, setSummarizeResult] = useState<string | null>(null)
   const [reviewResult, setReviewResult] = useState<PerformanceReview | null>(null)
 
+  // Summarize journals query
+  const { data: summarizeData, loading: summarizeLoading, error: summarizeError, refetch: refetchSummarize } = useQuery(SUMMARIZE_JOURNALS_QUERY, {
+    fetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+    onCompleted: (data) => {
+      if (data?.summarizeJournals?.summary) {
+        setSummarizeResult(data.summarizeJournals.summary)
+        setReviewResult(null) // Clear review results when summary completes
+      }
+    },
+    onError: (error) => {
+      console.error('Summarize error:', error)
+      setSummarizeResult(null)
+    }
+  })
+
+  // Generate review mutation
+  const [generateReview, { loading: reviewLoading, error: reviewError }] = useMutation(GENERATE_REVIEW, {
+    onCompleted: (data) => {
+      if (data?.generateReview) {
+        setReviewResult(data.generateReview)
+        setSummarizeResult(null) // Clear summary results when review completes
+      }
+    },
+    onError: (error) => {
+      console.error('Review error:', error)
+      setReviewResult(null)
+    }
+  })
+
   const handleSummarizeJournals = async () => {
-    setSummarizeLoading(true)
     setSummarizeResult(null)
-    setReviewResult(null) // Clear review results when starting summary
-    
-    // Mock API call
-    setTimeout(() => {
-      setSummarizeResult("Based on your recent journal entries, I notice a positive trend in your gratitude practice. You've been consistently reflecting on meaningful relationships and personal growth. Your entries show increasing self-awareness and a balanced perspective on challenges. The frequency of your journaling has been steady, which is excellent for building this habit.")
-      setSummarizeLoading(false)
-    }, 2000)
+    setReviewResult(null)
+    refetchSummarize()
   }
 
   const handlePerformanceReview = async () => {
-    setReviewLoading(true)
     setReviewResult(null)
-    setSummarizeResult(null) // Clear summary results when starting review
-    
-    // Mock API call
-    setTimeout(() => {
-      setReviewResult({
-        keySuccess: "You've shown remarkable consistency in your journaling practice over the past two weeks. Your ability to find gratitude in daily moments has improved significantly, and you're developing deeper self-reflection skills.",
-        improvementArea: "Consider exploring more specific goals and action plans in your entries. While reflection is strong, actionable next steps could enhance your personal growth journey.",
-        journalPrompt: "Reflect on a recent challenge you faced and write about how you can apply the lessons learned to create a specific action plan for future similar situations."
-      })
-      setReviewLoading(false)
-    }, 3000)
+    setSummarizeResult(null)
+    generateReview({
+      variables: {
+        tradition: selectedTradition,
+      },
+    })
   }
 
   return (
@@ -109,8 +129,71 @@ export default function InsightsScreen() {
               Generate and view insights into your journaling patterns
             </Heading>
             <Text className="text-typography-600 dark:text-gray-200 leading-6">
-              Use AI-powered analysis to understand your journaling habits, identify patterns, and get personalized recommendations for your personal growth journey.
+              Use AI-powered analysis to understand your journaling habits, identify patterns, and get personalized recommendations for your personal growth journey. Select a tradition to customize the analysis approach.
             </Text>
+          </VStack>
+
+          {/* Tradition Selector */}
+          <VStack className="px-6 pb-4" space="sm">
+            <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+              Select Tradition
+            </Text>
+            <HStack space="sm">
+              <Pressable
+                onPress={() => setSelectedTradition('canon-default')}
+                className={`flex-1 py-3 px-4 rounded-lg border ${
+                  selectedTradition === 'canon-default'
+                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
+                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Text
+                  className={`text-center text-sm font-medium ${
+                    selectedTradition === 'canon-default'
+                      ? 'text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  Default
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setSelectedTradition('canon-stoic')}
+                className={`flex-1 py-3 px-4 rounded-lg border ${
+                  selectedTradition === 'canon-stoic'
+                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
+                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Text
+                  className={`text-center text-sm font-medium ${
+                    selectedTradition === 'canon-stoic'
+                      ? 'text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  Stoic
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setSelectedTradition('canon-buddhist')}
+                className={`flex-1 py-3 px-4 rounded-lg border ${
+                  selectedTradition === 'canon-buddhist'
+                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
+                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <Text
+                  className={`text-center text-sm font-medium ${
+                    selectedTradition === 'canon-buddhist'
+                      ? 'text-indigo-700 dark:text-indigo-300'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  Buddhist
+                </Text>
+              </Pressable>
+            </HStack>
           </VStack>
 
           {/* Action Buttons */}
@@ -144,6 +227,36 @@ export default function InsightsScreen() {
 
           {/* Results Section */}
           <VStack className="px-6 pb-6" space="md">
+            {/* Summarize Error */}
+            {summarizeError && (
+              <Box className="p-6 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-700">
+                <HStack className="items-center mb-4" space="sm">
+                  <Icon as={BarChart3} size="md" className="text-red-600 dark:text-red-400" />
+                  <Text className="text-lg font-semibold text-red-700 dark:text-red-300">
+                    Summary Error
+                  </Text>
+                </HStack>
+                <Text className="text-base text-red-600 dark:text-red-400 leading-6">
+                  {summarizeError.message}
+                </Text>
+              </Box>
+            )}
+
+            {/* Review Error */}
+            {reviewError && (
+              <Box className="p-6 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-700">
+                <HStack className="items-center mb-4" space="sm">
+                  <Icon as={Trophy} size="md" className="text-red-600 dark:text-red-400" />
+                  <Text className="text-lg font-semibold text-red-700 dark:text-red-300">
+                    Review Error
+                  </Text>
+                </HStack>
+                <Text className="text-base text-red-600 dark:text-red-400 leading-6">
+                  {reviewError.message}
+                </Text>
+              </Box>
+            )}
+
             {/* Summarize Results */}
             {summarizeResult && (
               <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-border-200 dark:border-border-700">

@@ -56,6 +56,9 @@ import { Text } from "@/components/ui/text";
 import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
 import { VStack } from "@/components/ui/vstack";
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { UPDATE_USER_METADATA } from '../../src/services/api/mutations';
+import { LIST_TRADITIONS } from '../../src/services/api/queries';
+import { useMutation, useQuery } from '@apollo/client';
 import { cn } from "@gluestack-ui/nativewind-utils/cn";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigation } from '@react-navigation/native';
@@ -270,27 +273,16 @@ const Sidebar = () => {
 };
 
 const DashboardLayout = (props: any) => {
-  const [isSidebarVisible, setIsSidebarVisible] = useState(props.isSidebarVisible);
-  
-  function toggleSidebar() {
-    setIsSidebarVisible(!isSidebarVisible);
-  }
-
   return (
     <VStack className="h-full w-full bg-background-0">
       <Box className="md:hidden">
         <MobileHeader title={props.title} />
       </Box>
       <Box className="hidden md:flex">
-        <WebHeader toggleSidebar={toggleSidebar} title={props.title} />
+        <WebHeader title={props.title} />
       </Box>
       <VStack className="h-full w-full">
-        <HStack className="h-full w-full">
-          <Box className="hidden md:flex h-full">
-            {isSidebarVisible && <Sidebar />}
-          </Box>
-          <VStack className="w-full flex-1">{props.children}</VStack>
-        </HStack>
+        <VStack className="w-full flex-1">{props.children}</VStack>
       </VStack>
     </VStack>
   );
@@ -331,12 +323,18 @@ function MobileFooter({ footerIcons }: { footerIcons: any }) {
   );
 }
 
-function WebHeader(props: { toggleSidebar: () => void; title: string }) {
+function WebHeader(props: { title: string }) {
+  const navigation = useNavigation();
+  
   return (
     <HStack className="pt-4 pr-10 pb-3 bg-background-0 items-center justify-between border-b border-border-300">
       <HStack className="items-center">
-        <Pressable onPress={props.toggleSidebar}>
-          <Icon as={MenuIcon} size="lg" className="mx-5" />
+        <Pressable
+          onPress={() => {
+            navigation.goBack();
+          }}
+        >
+          <Icon as={ChevronLeftIcon} size="lg" className="mx-5" />
         </Pressable>
         <Text className="text-2xl">{props.title}</Text>
       </HStack>
@@ -424,20 +422,63 @@ const accountData: AccountCardType[] = [
 
 const MainContent = () => {
   const [showModal, setShowModal] = useState(false);
+  const [selectedTradition, setSelectedTradition] = useState('canon-default');
   const { user, signOut } = useAuth();
   const toast = useToast();
+  
+  const {
+    control,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      tradition: 'canon-default'
+    }
+  });
 
-  const handleSettingsPress = () => {
-    console.log("Settings button pressed!");
-    toast.show({
-      placement: "bottom right",
-      render: ({ id }) => {
-        return (
-          <Toast nativeID={id} action="info">
-            <ToastTitle>Coming soon!</ToastTitle>
-          </Toast>
-        );
-      },
+  // Fetch available traditions
+  const { data: traditionsData, loading: traditionsLoading, error: traditionsError } = useQuery(LIST_TRADITIONS);
+
+  // Get current tradition from user metadata
+  React.useEffect(() => {
+    const currentTradition = user?.user_metadata?.journal_preferences?.tradition || 'canon-default';
+    setSelectedTradition(currentTradition);
+  }, [user]);
+
+  // Update user metadata mutation
+  const [updateUserMetadata, { loading: updateLoading }] = useMutation(UPDATE_USER_METADATA, {
+    onCompleted: (data) => {
+      toast.show({
+        title: "Success",
+        description: "Tradition preference updated successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error('Update metadata error:', error);
+      toast.show({
+        title: "Feature Not Available",
+        description: "Tradition preference saving is not yet implemented. Your selection will be remembered for this session.",
+        action: "warning",
+      });
+    }
+  });
+
+  const handleTraditionChange = (tradition: string) => {
+    setSelectedTradition(tradition);
+    
+    // Update user metadata with new tradition preference
+    const currentMetadata = user?.user_metadata || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      journal_preferences: {
+        ...currentMetadata.journal_preferences,
+        tradition: tradition
+      }
+    };
+
+    updateUserMetadata({
+      variables: {
+        metadata: updatedMetadata
+      }
     });
   };
 
@@ -515,18 +556,61 @@ const MainContent = () => {
             <Heading className="font-roboto" size="xl">
               Account
             </Heading>
-            <Button
-              variant="outline"
-              action="secondary"
-              onPress={handleSettingsPress}
-              className="py-4 px-6 border rounded-xl border-border-300 bg-gray-50 justify-between min-h-[60px]"
-            >
-              <HStack className="items-center" space="md">
-                <Icon as={InboxIcon} className="stroke-[#747474]" />
-                <Text size="lg">Settings</Text>
-              </HStack>
-              <Icon as={ChevronRightIcon} />
-            </Button>
+            <VStack space="sm">
+              <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                Journal Tradition
+              </Text>
+              <Text className="text-xs text-typography-500 dark:text-gray-400">
+                Determines the set of texts from which the AI derives knowledge and advice for your journaling experience.
+              </Text>
+              <Controller
+                name="tradition"
+                control={control}
+                defaultValue={selectedTradition}
+                render={({ field: { onChange, value } }) => (
+                  <Select 
+                    onValueChange={(newValue) => {
+                      onChange(newValue);
+                      handleTraditionChange(newValue);
+                    }} 
+                    selectedValue={value}
+                  >
+                    <SelectTrigger variant="outline" size="md">
+                      <SelectInput placeholder="Select tradition" />
+                      <SelectIcon className="mr-3" as={ChevronDownIcon} />
+                    </SelectTrigger>
+                    <SelectPortal>
+                      <SelectBackdrop />
+                      <SelectContent>
+                        <SelectDragIndicatorWrapper>
+                          <SelectDragIndicator />
+                        </SelectDragIndicatorWrapper>
+                        {traditionsLoading ? (
+                          <SelectItem label="Loading..." value="" />
+                        ) : traditionsError ? (
+                          <SelectItem label="Error loading traditions" value="" />
+                        ) : traditionsData?.listTraditions ? (
+                          traditionsData.listTraditions.map((tradition: string) => (
+                            <SelectItem 
+                              key={tradition} 
+                              label={tradition} 
+                              value={tradition} 
+                            />
+                          ))
+                        ) : (
+                          <SelectItem label="canon-default" value="canon-default" />
+                        )}
+                      </SelectContent>
+                    </SelectPortal>
+                  </Select>
+                )}
+              />
+              {updateLoading && (
+                <Text className="text-xs text-gray-500 text-center">
+                  Updating preference...
+                </Text>
+              )}
+            </VStack>
             
             <Button
               variant="outline"
@@ -1013,7 +1097,7 @@ const ModalComponent = ({
 export default function ProfileScreen() {
   return (
     <SafeAreaView className="h-full w-full">
-      <DashboardLayout title="MindMirror" isSidebarVisible={true}>
+      <DashboardLayout title="MindMirror">
         <MainContent />
       </DashboardLayout>
     </SafeAreaView>

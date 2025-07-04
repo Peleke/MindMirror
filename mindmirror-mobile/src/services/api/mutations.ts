@@ -47,4 +47,14 @@ export const GENERATE_REVIEW = gql`
       journalPrompt
     }
   }
+`
+
+// User metadata update mutation
+export const UPDATE_USER_METADATA = gql`
+  mutation UpdateUserMetadata($metadata: JSON!) {
+    updateUserMetadata(metadata: $metadata) {
+      id
+      user_metadata
+    }
+  }
 ` 
