@@ -146,9 +146,9 @@ export default function InsightsScreen() {
           <VStack className="px-6 pb-6" space="md">
             {/* Summarize Results */}
             {summarizeResult && (
-              <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+              <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-border-200 dark:border-border-700">
                 <HStack className="items-center mb-4" space="sm">
-                  <Icon as={BarChart3} size="md" className="text-primary-600 dark:text-primary-400" />
+                  <Icon as={BarChart3} size="md" className="text-blue-600 dark:text-blue-400" />
                   <Text className="text-lg font-semibold text-typography-900 dark:text-white">
                     Journal Summary
                   </Text>
@@ -162,9 +162,9 @@ export default function InsightsScreen() {
             {/* Performance Review Results */}
             {reviewResult && (
               <VStack space="md">
-                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                <Box className="p-6 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-border-200 dark:border-border-700">
                   <HStack className="items-center mb-4" space="sm">
-                    <Icon as={Trophy} size="md" className="text-primary-600 dark:text-primary-400" />
+                    <Icon as={Trophy} size="md" className="text-indigo-600 dark:text-indigo-400" />
                     <Text className="text-lg font-semibold text-typography-900 dark:text-white">
                       Performance Review
                     </Text>
@@ -172,7 +172,7 @@ export default function InsightsScreen() {
                 </Box>
 
                 {/* Key Success */}
-                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                <Box className="p-6 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-border-200 dark:border-border-700">
                   <HStack className="items-center mb-4" space="sm">
                     <Icon as={Star} size="md" className="text-yellow-500" />
                     <Text className="text-lg font-semibold text-typography-900 dark:text-white">
@@ -185,9 +185,9 @@ export default function InsightsScreen() {
                 </Box>
 
                 {/* Improvement Area */}
-                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                <Box className="p-6 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-border-200 dark:border-border-700">
                   <HStack className="items-center mb-4" space="sm">
-                    <Icon as={TrendingUp} size="md" className="text-primary-500" />
+                    <Icon as={TrendingUp} size="md" className="text-indigo-500" />
                     <Text className="text-lg font-semibold text-typography-900 dark:text-white">
                       Area for Improvement
                     </Text>
@@ -198,7 +198,7 @@ export default function InsightsScreen() {
                 </Box>
 
                 {/* Journal Prompt */}
-                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                <Box className="p-6 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-border-200 dark:border-border-700">
                   <HStack className="items-center mb-4" space="sm">
                     <Icon as={Lightbulb} size="md" className="text-indigo-500" />
                     <Text className="text-lg font-semibold text-typography-900 dark:text-white">
