@@ -15,6 +15,9 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { Text } from '@/components/ui/text'
 import { Textarea, TextareaInput } from '@/components/ui/textarea'
 import { VStack } from '@/components/ui/vstack'
+import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations'
+import { JOURNAL_ENTRY_EXISTS_TODAY, GET_JOURNAL_ENTRIES } from '@/services/api/queries'
+import { useMutation, useQuery } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -57,31 +60,44 @@ function AppBar() {
 
 export default function FreeformJournalScreen() {
   const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Check if entry exists for today (optional for freeform since multiple entries are allowed)
+  const { data: existsData, loading: existsLoading } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
+    variables: { entryType: 'freeform' }
+  });
+
+  // Create freeform entry mutation
+  const [createEntry, { loading: creating, error }] = useMutation(CREATE_FREEFORM_JOURNAL_ENTRY, {
+    refetchQueries: [{ query: GET_JOURNAL_ENTRIES }],
+    onCompleted: () => {
+      setIsSubmitted(true);
+      setSubmitError(null);
+    },
+    onError: (error) => {
+      setSubmitError(`GraphQL Error: ${error.message}`);
+    }
+  });
 
   const handleSubmit = async () => {
     if (!content.trim()) {
-      Alert.alert('Error', 'Please write something in your journal')
-      return
+      setSubmitError('Please write something in your journal');
+      return;
     }
 
-    setLoading(true)
     try {
-      // TODO: Implement GraphQL mutation to save freeform journal entry
-      console.log('Saving freeform entry:', { content })
-      
-      Alert.alert(
-        'Success',
-        'Your journal entry has been saved!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      )
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save your entry')
-    } finally {
-      setLoading(false)
+      setSubmitError(null);
+      await createEntry({
+        variables: {
+          input: { content: content.trim() }
+        }
+      });
+    } catch (err: any) {
+      setSubmitError(`Submission failed: ${err.message}`);
     }
-  }
+  };
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -92,15 +108,38 @@ export default function FreeformJournalScreen() {
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Header */}
-          <VStack className="px-6 py-6" space="xs">
-            <Heading size="2xl" className="font-roboto text-typography-900 dark:text-white">
-              Express your thoughts freely
-            </Heading>
-            <Text className="text-typography-600 dark:text-gray-200">
-              Write whatever comes to mind
-            </Text>
-          </VStack>
+          {/* Success State */}
+          {isSubmitted && (
+            <VStack className="px-6 py-6" space="md">
+              <Box className="p-6 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
+                <Text className="text-green-700 dark:text-green-300 text-center font-semibold mb-2">
+                  Entry Saved!
+                </Text>
+                <Text className="text-green-600 dark:text-green-400 text-center text-sm mb-4">
+                  Your thoughts have been recorded.
+                </Text>
+                <Button
+                  onPress={() => router.push('/(app)')}
+                  className="mt-4"
+                >
+                  <ButtonText>Go to Home</ButtonText>
+                </Button>
+              </Box>
+            </VStack>
+          )}
+
+          {/* Main Form - Only show if not submitted */}
+          {!isSubmitted && (
+            <>
+              {/* Header */}
+              <VStack className="px-6 py-6" space="xs">
+                <Heading size="2xl" className="font-roboto text-typography-900 dark:text-white">
+                  Express your thoughts freely
+                </Heading>
+                <Text className="text-typography-600 dark:text-gray-200">
+                  Write whatever comes to mind
+                </Text>
+              </VStack>
           
           {/* Content */}
           <VStack className="px-6 pb-6" space="md">
@@ -122,18 +161,28 @@ export default function FreeformJournalScreen() {
                   </Textarea>
                 </VStack>
                 
+                {(submitError || error) && (
+                  <Box className="p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-700">
+                    <Text className="text-red-700 dark:text-red-300 text-sm">
+                      {submitError || error?.message}
+                    </Text>
+                  </Box>
+                )}
+
                 <Button
                   onPress={handleSubmit}
-                  disabled={loading}
+                  disabled={creating || existsLoading}
                   className="mt-4"
                 >
                   <ButtonText>
-                    {loading ? 'Saving...' : 'Save Entry'}
+                    {creating ? 'Saving...' : 'Save Entry'}
                   </ButtonText>
                 </Button>
               </VStack>
             </Box>
           </VStack>
+            </>
+          )}
         </ScrollView>
       </VStack>
     </SafeAreaView>

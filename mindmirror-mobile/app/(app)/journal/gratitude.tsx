@@ -16,6 +16,9 @@ import { Slider, SliderFilledTrack, SliderThumb, SliderTrack } from "@/component
 import { Text } from "@/components/ui/text";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { VStack } from "@/components/ui/vstack";
+import { CREATE_GRATITUDE_JOURNAL_ENTRY } from '@/services/api/mutations';
+import { JOURNAL_ENTRY_EXISTS_TODAY, GET_JOURNAL_ENTRIES } from '@/services/api/queries';
+import { useMutation, useQuery } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -60,30 +63,76 @@ export default function GratitudeJournalScreen() {
   const [gratefulFor, setGratefulFor] = useState('');
   const [excitedAbout, setExcitedAbout] = useState('');
   const [focus, setFocus] = useState('');
+  const [affirmation, setAffirmation] = useState('');
   const [mood, setMood] = useState(5);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Check if entry exists for today
+  const { data: existsData, loading: existsLoading } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
+    variables: { entryType: 'gratitude' }
+  });
+
+  // Create gratitude entry mutation
+  const [createEntry, { loading: creating, error }] = useMutation(CREATE_GRATITUDE_JOURNAL_ENTRY, {
+    refetchQueries: [{ query: GET_JOURNAL_ENTRIES }],
+    onCompleted: () => {
+      setIsSubmitted(true);
+      setSubmitError(null);
+    },
+    onError: (error) => {
+      setSubmitError(`GraphQL Error: ${error.message}`);
+    }
+  });
+
+  const getMoodText = (mood: number) => {
+    if (mood >= 8) return 'Excellent';
+    if (mood >= 7) return 'Great';
+    if (mood >= 6) return 'Good';
+    if (mood >= 5) return 'Okay';
+    if (mood >= 4) return 'Meh';
+    if (mood >= 3) return 'Not great';
+    return 'Struggling';
+  };
+
   const handleSubmit = async () => {
+    // Validation
     if (!gratefulFor.trim()) {
-      Alert.alert('Error', 'Please fill in what you are grateful for');
+      setSubmitError('Please fill in what you are grateful for');
+      return;
+    }
+    if (!excitedAbout.trim()) {
+      setSubmitError('Please fill in what you are excited about');
+      return;
+    }
+    if (!focus.trim()) {
+      setSubmitError('Please fill in your focus for today');
+      return;
+    }
+    if (!affirmation.trim()) {
+      setSubmitError('Please add your daily affirmation');
       return;
     }
 
-    setLoading(true);
+    // Prepare data matching GraphQL schema
+    const inputData = {
+      gratefulFor: [gratefulFor.trim()],
+      excitedAbout: [excitedAbout.trim()],
+      focus: focus.trim(),
+      affirmation: affirmation.trim(),
+      mood: getMoodText(mood)
+    };
+
     try {
-      // TODO: Implement GraphQL mutation to save gratitude journal entry
-      console.log('Saving gratitude entry:', { gratefulFor, excitedAbout, focus, mood });
-      
-      Alert.alert(
-        'Success',
-        'Your gratitude entry has been saved!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save your entry');
-    } finally {
-      setLoading(false);
+      setSubmitError(null);
+      await createEntry({
+        variables: {
+          input: inputData
+        }
+      });
+    } catch (err: any) {
+      setSubmitError(`Submission failed: ${err.message}`);
     }
   };
 
@@ -96,15 +145,69 @@ export default function GratitudeJournalScreen() {
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Header */}
-          <VStack className="px-6 py-6" space="xs">
-            <Heading size="2xl" className="font-roboto text-typography-900 dark:text-white">
-              What are you grateful for today?
-            </Heading>
-            <Text className="text-typography-600 dark:text-gray-200">
-              Reflect on the positive aspects of your life
-            </Text>
-          </VStack>
+          {/* Loading State */}
+          {existsLoading && (
+            <VStack className="px-6 py-6" space="md">
+              <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-700">
+                <Text className="text-blue-700 dark:text-blue-300 text-center">
+                  Checking today's entry...
+                </Text>
+              </Box>
+            </VStack>
+          )}
+
+          {/* Already Completed State */}
+          {!existsLoading && existsData?.journalEntryExistsToday && (
+            <VStack className="px-6 py-6" space="md">
+              <Box className="p-6 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
+                <Text className="text-green-700 dark:text-green-300 text-center font-semibold mb-2">
+                  Already completed today!
+                </Text>
+                <Text className="text-green-600 dark:text-green-400 text-center text-sm">
+                  You've already recorded your gratitude for today. Come back tomorrow for a fresh start!
+                </Text>
+                <Button
+                  onPress={() => router.back()}
+                  className="mt-4"
+                >
+                  <ButtonText>Go Back</ButtonText>
+                </Button>
+              </Box>
+            </VStack>
+          )}
+
+          {/* Success State */}
+          {isSubmitted && (
+            <VStack className="px-6 py-6" space="md">
+              <Box className="p-6 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
+                <Text className="text-green-700 dark:text-green-300 text-center font-semibold mb-2">
+                  Gratitude saved successfully!
+                </Text>
+                <Text className="text-green-600 dark:text-green-400 text-center text-sm mb-4">
+                  Thank you for taking time to reflect. Your gratitude has been recorded for today.
+                </Text>
+                <Button
+                  onPress={() => router.push('/(app)')}
+                  className="mt-4"
+                >
+                  <ButtonText>Go to Home</ButtonText>
+                </Button>
+              </Box>
+            </VStack>
+          )}
+
+          {/* Main Form - Only show if not loading, not already completed, and not submitted */}
+          {!existsLoading && !existsData?.journalEntryExistsToday && !isSubmitted && (
+            <>
+              {/* Header */}
+              <VStack className="px-6 py-6" space="xs">
+                <Heading size="2xl" className="font-roboto text-typography-900 dark:text-white">
+                  What are you grateful for today?
+                </Heading>
+                <Text className="text-typography-600 dark:text-gray-200">
+                  Reflect on the positive aspects of your life
+                </Text>
+              </VStack>
           
           {/* Content */}
           <VStack className="px-6 pb-6" space="md">
@@ -154,6 +257,20 @@ export default function GratitudeJournalScreen() {
                 
                 <VStack space="xs">
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                    Daily affirmation...
+                  </Text>
+                  <Textarea className="bg-white dark:bg-gray-100">
+                    <TextareaInput
+                      placeholder="I am confident, capable, and ready to..."
+                      value={affirmation}
+                      onChangeText={setAffirmation}
+                      numberOfLines={3}
+                    />
+                  </Textarea>
+                </VStack>
+                
+                <VStack space="xs">
+                  <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     How are you feeling? (1-10)
                   </Text>
                   <VStack space="sm" className="py-2">
@@ -166,7 +283,7 @@ export default function GratitudeJournalScreen() {
                     </HStack>
                     <Slider
                       value={[mood]}
-                      onValueChange={(values) => setMood(values[0])}
+                      onValueChange={(values: number[]) => setMood(values[0] || 5)}
                       minValue={1}
                       maxValue={10}
                       step={1}
@@ -180,18 +297,28 @@ export default function GratitudeJournalScreen() {
                   </VStack>
                 </VStack>
                 
+                {(submitError || error) && (
+                  <Box className="p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-700">
+                    <Text className="text-red-700 dark:text-red-300 text-sm">
+                      {submitError || error?.message}
+                    </Text>
+                  </Box>
+                )}
+
                 <Button
                   onPress={handleSubmit}
-                  disabled={loading}
+                  disabled={creating || existsLoading}
                   className="mt-4"
                 >
                   <ButtonText>
-                    {loading ? 'Saving...' : 'Save Entry'}
+                    {creating ? 'Saving...' : 'Save Entry'}
                   </ButtonText>
                 </Button>
               </VStack>
             </Box>
           </VStack>
+            </>
+          )}
         </ScrollView>
       </VStack>
     </SafeAreaView>

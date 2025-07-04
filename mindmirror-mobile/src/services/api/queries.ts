@@ -62,4 +62,14 @@ export const GET_MEAL_SUGGESTION = gql`
       reasoning
     }
   }
-` 
+`
+
+// Journal summarization query
+export const SUMMARIZE_JOURNALS_QUERY = gql`
+  query SummarizeJournals {
+    summarizeJournals {
+      summary
+      generatedAt
+    }
+  }
+`
