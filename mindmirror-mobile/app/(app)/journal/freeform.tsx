@@ -110,13 +110,14 @@ export default function FreeformJournalScreen() {
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                     Your Thoughts
                   </Text>
-                  <Textarea className="bg-white dark:bg-gray-100 min-h-[200px]">
+                  <Textarea className="bg-white dark:bg-gray-100 flex-1">
                     <TextareaInput
                       placeholder="Write whatever comes to mind..."
                       value={content}
                       onChangeText={setContent}
                       numberOfLines={12}
                       textAlignVertical="top"
+                      style={{ flex: 1, minHeight: 500 }}
                     />
                   </Textarea>
                 </VStack>
