@@ -1,11 +1,23 @@
-import { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Card } from '@/components/common'
-import { colors, spacing, typography } from '@/theme'
-import { useRouter } from 'expo-router'
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallbackText,
+  AvatarImage,
+} from "@/components/ui/avatar"
+import { Box } from "@/components/ui/box"
+import { Button, ButtonText } from "@/components/ui/button"
+import { Heading } from "@/components/ui/heading"
+import { HStack } from "@/components/ui/hstack"
+import { Icon, MenuIcon } from "@/components/ui/icon"
+import { Pressable } from "@/components/ui/pressable"
+import { SafeAreaView } from "@/components/ui/safe-area-view"
+import { ScrollView } from "@/components/ui/scroll-view"
+import { Text } from "@/components/ui/text"
+import { VStack } from "@/components/ui/vstack"
 import { useNavigation } from '@react-navigation/native'
-import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import { BarChart3, Lightbulb, Star, TrendingUp, Trophy } from "lucide-react-native"
+import { useState } from 'react'
 
 interface PerformanceReview {
   keySuccess: string
@@ -13,21 +25,51 @@ interface PerformanceReview {
   journalPrompt: string
 }
 
+function AppBar() {
+  const router = useRouter()
+  const navigation = useNavigation()
+
+  const handleMenuPress = () => {
+    (navigation as any).openDrawer()
+  }
+
+  const handleProfilePress = () => {
+    router.push('/(app)/profile')
+  }
+
+  return (
+    <HStack
+      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
+      space="md"
+    >
+      <HStack className="items-center" space="sm">
+        <Pressable onPress={handleMenuPress}>
+          <Icon as={MenuIcon} />
+        </Pressable>
+        <Text className="text-xl">Insights</Text>
+      </HStack>
+      
+      <Pressable onPress={handleProfilePress}>
+        <Avatar className="h-9 w-9">
+          <AvatarFallbackText>U</AvatarFallbackText>
+          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
+          <AvatarBadge />
+        </Avatar>
+      </Pressable>
+    </HStack>
+  )
+}
+
 export default function InsightsScreen() {
   const [summarizeLoading, setSummarizeLoading] = useState(false)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [summarizeResult, setSummarizeResult] = useState<string | null>(null)
   const [reviewResult, setReviewResult] = useState<PerformanceReview | null>(null)
-  const router = useRouter()
-  const navigation = useNavigation()
-
-  const handleMenuPress = () => {
-    ;(navigation as any).openDrawer()
-  }
 
   const handleSummarizeJournals = async () => {
     setSummarizeLoading(true)
     setSummarizeResult(null)
+    setReviewResult(null) // Clear review results when starting summary
     
     // Mock API call
     setTimeout(() => {
@@ -39,6 +81,7 @@ export default function InsightsScreen() {
   const handlePerformanceReview = async () => {
     setReviewLoading(true)
     setReviewResult(null)
+    setSummarizeResult(null) // Clear summary results when starting review
     
     // Mock API call
     setTimeout(() => {
@@ -52,218 +95,125 @@ export default function InsightsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* App Bar */}
-      <View style={styles.appBar}>
-        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
-          <Ionicons name="menu" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
+    <SafeAreaView className="h-full w-full">
+      <VStack className="h-full w-full bg-background-0">
+        <AppBar />
         
-        <Text style={styles.appBarTitle}>Insights</Text>
-        
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => router.push('/(app)/profile')}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          className="flex-1"
         >
-          <Ionicons name="person-circle" size={28} color={colors.text.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollView}>
-        {/* Overview Section */}
-        <View style={styles.overviewSection}>
-          <Text style={styles.overviewTitle}>Generate and view insights into your journaling patterns</Text>
-          <Text style={styles.overviewSubtitle}>
-            Use AI-powered analysis to understand your journaling habits, identify patterns, and get personalized recommendations for your personal growth journey.
-          </Text>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, summarizeLoading && styles.actionButtonDisabled]}
-            onPress={handleSummarizeJournals}
-            disabled={summarizeLoading}
-          >
-            <Ionicons name="analytics" size={24} color={summarizeLoading ? colors.text.tertiary : colors.text.inverse} />
-            <Text style={[styles.actionButtonText, summarizeLoading && styles.actionButtonTextDisabled]}>
-              {summarizeLoading ? 'Generating...' : 'Summarize Journals'}
+          {/* Overview Section */}
+          <VStack className="px-6 py-6" space="xs">
+            <Heading size="xl" className="font-roboto text-typography-900 dark:text-white">
+              Generate and view insights into your journaling patterns
+            </Heading>
+            <Text className="text-typography-600 dark:text-gray-200 leading-6">
+              Use AI-powered analysis to understand your journaling habits, identify patterns, and get personalized recommendations for your personal growth journey.
             </Text>
-          </TouchableOpacity>
+          </VStack>
 
-          <TouchableOpacity
-            style={[styles.actionButton, reviewLoading && styles.actionButtonDisabled]}
-            onPress={handlePerformanceReview}
-            disabled={reviewLoading}
-          >
-            <Ionicons name="trophy" size={24} color={reviewLoading ? colors.text.tertiary : colors.text.inverse} />
-            <Text style={[styles.actionButtonText, reviewLoading && styles.actionButtonTextDisabled]}>
-              {reviewLoading ? 'Analyzing...' : 'Performance Review'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          {/* Action Buttons */}
+          <HStack className="px-6 pb-6" space="md">
+            <Button
+              onPress={handleSummarizeJournals}
+              disabled={summarizeLoading}
+              className="flex-1 py-6"
+            >
+              <VStack className="items-center" space="sm">
+                <Icon as={BarChart3} size="md" className="text-white" />
+                <ButtonText>
+                  {summarizeLoading ? 'Generating...' : 'Summarize Journals'}
+                </ButtonText>
+              </VStack>
+            </Button>
 
-        {/* Results Section */}
-        <View style={styles.resultsSection}>
-          {/* Summarize Results */}
-          {summarizeResult && (
-            <Card style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Ionicons name="analytics" size={20} color={colors.primary[600]} />
-                <Text style={styles.resultTitle}>Journal Summary</Text>
-              </View>
-              <Text style={styles.resultText}>{summarizeResult}</Text>
-            </Card>
-          )}
+            <Button
+              onPress={handlePerformanceReview}
+              disabled={reviewLoading}
+              className="flex-1 py-6"
+            >
+              <VStack className="items-center" space="sm">
+                <Icon as={Trophy} size="md" className="text-white" />
+                <ButtonText>
+                  {reviewLoading ? 'Analyzing...' : 'Performance Review'}
+                </ButtonText>
+              </VStack>
+            </Button>
+          </HStack>
 
-          {/* Performance Review Results */}
-          {reviewResult && (
-            <View style={styles.reviewResults}>
-              <Card style={styles.resultCard}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="trophy" size={20} color={colors.primary[600]} />
-                  <Text style={styles.resultTitle}>Performance Review</Text>
-                </View>
-              </Card>
+          {/* Results Section */}
+          <VStack className="px-6 pb-6" space="md">
+            {/* Summarize Results */}
+            {summarizeResult && (
+              <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                <HStack className="items-center mb-4" space="sm">
+                  <Icon as={BarChart3} size="md" className="text-primary-600 dark:text-primary-400" />
+                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                    Journal Summary
+                  </Text>
+                </HStack>
+                <Text className="text-base text-typography-600 dark:text-gray-200 leading-6">
+                  {summarizeResult}
+                </Text>
+              </Box>
+            )}
 
-              {/* Key Success */}
-              <Card style={styles.resultCard}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="star" size={20} color={colors.warning[500]} />
-                  <Text style={styles.resultTitle}>Key Success</Text>
-                </View>
-                <Text style={styles.resultText}>{reviewResult.keySuccess}</Text>
-              </Card>
+            {/* Performance Review Results */}
+            {reviewResult && (
+              <VStack space="md">
+                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                  <HStack className="items-center mb-4" space="sm">
+                    <Icon as={Trophy} size="md" className="text-primary-600 dark:text-primary-400" />
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                      Performance Review
+                    </Text>
+                  </HStack>
+                </Box>
 
-              {/* Improvement Area */}
-              <Card style={styles.resultCard}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="trending-up" size={20} color={colors.primary[500]} />
-                  <Text style={styles.resultTitle}>Area for Improvement</Text>
-                </View>
-                <Text style={styles.resultText}>{reviewResult.improvementArea}</Text>
-              </Card>
+                {/* Key Success */}
+                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                  <HStack className="items-center mb-4" space="sm">
+                    <Icon as={Star} size="md" className="text-yellow-500" />
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                      Key Success
+                    </Text>
+                  </HStack>
+                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6">
+                    {reviewResult.keySuccess}
+                  </Text>
+                </Box>
 
-              {/* Journal Prompt */}
-              <Card style={styles.resultCard}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="bulb" size={20} color={colors.secondary[500]} />
-                  <Text style={styles.resultTitle}>Personalized Journal Prompt</Text>
-                </View>
-                <Text style={[styles.resultText, styles.promptText]}>"{reviewResult.journalPrompt}"</Text>
-              </Card>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+                {/* Improvement Area */}
+                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                  <HStack className="items-center mb-4" space="sm">
+                    <Icon as={TrendingUp} size="md" className="text-primary-500" />
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                      Area for Improvement
+                    </Text>
+                  </HStack>
+                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6">
+                    {reviewResult.improvementArea}
+                  </Text>
+                </Box>
+
+                {/* Journal Prompt */}
+                <Box className="p-6 bg-background-50 dark:bg-background-100 rounded-lg border border-border-200 dark:border-border-700">
+                  <HStack className="items-center mb-4" space="sm">
+                    <Icon as={Lightbulb} size="md" className="text-indigo-500" />
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                      Personalized Journal Prompt
+                    </Text>
+                  </HStack>
+                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 italic">
+                    "{reviewResult.journalPrompt}"
+                  </Text>
+                </Box>
+              </VStack>
+            )}
+          </VStack>
+        </ScrollView>
+      </VStack>
     </SafeAreaView>
   )
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.primary,
-  },
-  menuButton: {
-    padding: spacing.sm,
-  },
-  appBarTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-  },
-  profileButton: {
-    padding: spacing.sm,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  overviewSection: {
-    padding: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  overviewTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  overviewSubtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-    lineHeight: 22,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: colors.primary[600],
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    elevation: 2,
-    shadowColor: colors.primary[600],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  actionButtonDisabled: {
-    backgroundColor: colors.gray[300],
-  },
-  actionButtonText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
-    color: colors.text.inverse,
-  },
-  actionButtonTextDisabled: {
-    color: colors.text.tertiary,
-  },
-  resultsSection: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  resultCard: {
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  resultTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.text.primary,
-  },
-  resultText: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-    lineHeight: 22,
-  },
-  promptText: {
-    fontStyle: 'italic',
-  },
-  reviewResults: {
-    gap: spacing.md,
-  },
-}) 
+} 
