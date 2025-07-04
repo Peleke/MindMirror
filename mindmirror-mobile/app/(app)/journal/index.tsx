@@ -1,174 +1,157 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
-import { useNavigation } from '@react-navigation/native'
-import { Ionicons } from '@expo/vector-icons'
-import { Card } from '@/components/common'
-import { colors, spacing, typography } from '@/theme'
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallbackText,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { Box } from "@/components/ui/box";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
+import { ChevronRightIcon, Icon, MenuIcon } from "@/components/ui/icon";
+import { Pressable } from "@/components/ui/pressable";
+import { SafeAreaView } from "@/components/ui/safe-area-view";
+import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
+import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { Heart, Lightbulb, PenTool } from "lucide-react-native";
 
 const JOURNAL_TYPES = [
   {
     id: 'gratitude',
     title: 'Gratitude Journal',
     description: 'Reflect on what you\'re grateful for today',
-    icon: 'heart',
-    color: colors.primary[100],
+    icon: Heart,
+    color: 'bg-blue-50 dark:bg-blue-950',
+    iconColor: 'text-blue-600 dark:text-blue-400',
     route: '/journal/gratitude'
   },
   {
     id: 'reflection',
     title: 'Daily Reflection',
     description: 'Look back on your day and insights',
-    icon: 'bulb',
-    color: colors.secondary[100],
+    icon: Lightbulb,
+    color: 'bg-indigo-50 dark:bg-indigo-950',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
     route: '/journal/reflection'
   },
   {
     id: 'freeform',
     title: 'Freeform Writing',
     description: 'Express your thoughts freely',
-    icon: 'create',
-    color: colors.primary[200],
+    icon: PenTool,
+    color: 'bg-purple-50 dark:bg-purple-950',
+    iconColor: 'text-purple-600 dark:text-purple-400',
     route: '/journal/freeform'
   }
-]
+];
 
-export default function JournalScreen() {
-  const router = useRouter()
-  const navigation = useNavigation()
-
-  const handleJournalPress = (route: string) => {
-    router.push(route as any)
-  }
+function AppBar() {
+  const router = useRouter();
+  const navigation = useNavigation();
 
   const handleMenuPress = () => {
-    ;(navigation as any).openDrawer()
-  }
+    (navigation as any).openDrawer();
+  };
+
+  const handleProfilePress = () => {
+    router.push('/(app)/profile');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* App Bar */}
-      <View style={styles.appBar}>
-        <TouchableOpacity style={styles.menuButton} onPress={handleMenuPress}>
-          <Ionicons name="menu" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        
-        <Text style={styles.appBarTitle}>Journal</Text>
-        
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => router.push('/(app)/profile')}
-        >
-          <Ionicons name="person-circle" size={28} color={colors.text.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Start Your Journal</Text>
-          <Text style={styles.subtitle}>Choose the type of entry you'd like to create</Text>
-        </View>
-        
-        <View style={styles.content}>
-          {JOURNAL_TYPES.map((journalType) => (
-            <TouchableOpacity
-              key={journalType.id}
-              onPress={() => handleJournalPress(journalType.route)}
-              style={styles.cardTouchable}
-            >
-              <Card style={{ ...styles.card, backgroundColor: journalType.color }}>
-                <View style={styles.cardHeader}>
-                  <Ionicons 
-                    name={journalType.icon as any} 
-                    size={32} 
-                    color={colors.primary[600]} 
-                  />
-                </View>
-                <Text style={styles.cardTitle}>{journalType.title}</Text>
-                <Text style={styles.cardDescription}>{journalType.description}</Text>
-                <View style={styles.cardFooter}>
-                  <Ionicons name="arrow-forward" size={20} color={colors.text.secondary} />
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  )
+    <HStack
+      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
+      space="md"
+    >
+      <HStack className="items-center" space="sm">
+        <Pressable onPress={handleMenuPress}>
+          <Icon as={MenuIcon} />
+        </Pressable>
+        <Text className="text-xl">Journal</Text>
+      </HStack>
+      
+      <Pressable onPress={handleProfilePress}>
+        <Avatar className="h-9 w-9">
+          <AvatarFallbackText>U</AvatarFallbackText>
+          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
+          <AvatarBadge />
+        </Avatar>
+      </Pressable>
+    </HStack>
+  );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-    backgroundColor: colors.background.primary,
-  },
-  menuButton: {
-    padding: spacing.sm,
-  },
-  appBarTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-  },
-  profileButton: {
-    padding: spacing.sm,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    padding: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  title: {
-    fontSize: typography.sizes['2xl'],
-    fontWeight: typography.weights.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-  cardTouchable: {
-    marginBottom: spacing.md,
-  },
-  card: {
-    padding: spacing.lg,
-    minHeight: 120,
-  },
-  cardHeader: {
-    marginBottom: spacing.md,
-  },
-  cardTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  cardDescription: {
-    fontSize: typography.sizes.base,
-    color: colors.text.secondary,
-    lineHeight: 22,
-    flex: 1,
-  },
-  cardFooter: {
-    marginTop: spacing.md,
-    alignItems: 'flex-end',
-  },
-}) 
+export default function JournalScreen() {
+  const router = useRouter();
+
+  const handleJournalPress = (route: string) => {
+    router.push(route as any);
+  };
+
+  return (
+    <SafeAreaView className="h-full w-full">
+      <VStack className="h-full w-full bg-background-0">
+        <AppBar />
+        
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          className="flex-1"
+        >
+          {/* Header */}
+          <VStack className="px-6 py-6" space="xs">
+            <Heading size="2xl" className="font-roboto text-typography-900">
+              Start Your Journal
+            </Heading>
+            <Text className="text-typography-600">
+              Choose the type of entry you'd like to create
+            </Text>
+          </VStack>
+          
+          {/* Content */}
+          <VStack className="px-6 pb-6" space="md">
+            {JOURNAL_TYPES.map((journalType) => (
+              <Pressable
+                key={journalType.id}
+                onPress={() => handleJournalPress(journalType.route)}
+                className="mb-4"
+              >
+                <Box 
+                  className={`p-6 min-h-[120px] rounded-lg ${journalType.color} border border-border-200 dark:border-border-700`}
+                >
+                  {/* Card Header */}
+                  <Box className="mb-4">
+                    <Icon 
+                      as={journalType.icon}
+                      size="lg"
+                      className={journalType.iconColor}
+                    />
+                  </Box>
+                  
+                  {/* Card Title */}
+                  <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
+                    {journalType.title}
+                  </Text>
+                  
+                  {/* Card Description */}
+                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
+                    {journalType.description}
+                  </Text>
+                  
+                  {/* Card Footer */}
+                  <Box className="items-end">
+                    <Icon 
+                      as={ChevronRightIcon}
+                      size="sm"
+                      className="text-typography-400 dark:text-typography-500"
+                    />
+                  </Box>
+                </Box>
+              </Pressable>
+            ))}
+          </VStack>
+        </ScrollView>
+      </VStack>
+    </SafeAreaView>
+  );
+} 
