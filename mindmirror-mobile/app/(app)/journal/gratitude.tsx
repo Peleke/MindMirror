@@ -9,10 +9,10 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import { ChevronLeftIcon, Icon } from "@/components/ui/icon";
-import { Input, InputField } from "@/components/ui/input";
 import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Slider, SliderFilledTrack, SliderThumb, SliderTrack } from "@/components/ui/slider";
 import { Text } from "@/components/ui/text";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { VStack } from "@/components/ui/vstack";
@@ -60,7 +60,7 @@ export default function GratitudeJournalScreen() {
   const [gratefulFor, setGratefulFor] = useState('');
   const [excitedAbout, setExcitedAbout] = useState('');
   const [focus, setFocus] = useState('');
-  const [mood, setMood] = useState('');
+  const [mood, setMood] = useState(5);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -154,15 +154,30 @@ export default function GratitudeJournalScreen() {
                 
                 <VStack space="xs">
                   <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
-                    How are you feeling?
+                    How are you feeling? (1-10)
                   </Text>
-                  <Input className="bg-white dark:bg-gray-100">
-                    <InputField
-                      placeholder="Describe your mood"
-                      value={mood}
-                      onChangeText={setMood}
-                    />
-                  </Input>
+                  <VStack space="sm" className="py-2">
+                    <HStack className="justify-between items-center">
+                      <Text className="text-xs text-typography-500 dark:text-gray-400">1</Text>
+                      <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                        {mood}
+                      </Text>
+                      <Text className="text-xs text-typography-500 dark:text-gray-400">10</Text>
+                    </HStack>
+                    <Slider
+                      value={[mood]}
+                      onValueChange={(values) => setMood(values[0])}
+                      minValue={1}
+                      maxValue={10}
+                      step={1}
+                      size="md"
+                    >
+                      <SliderTrack>
+                        <SliderFilledTrack />
+                      </SliderTrack>
+                      <SliderThumb />
+                    </Slider>
+                  </VStack>
                 </VStack>
                 
                 <Button
