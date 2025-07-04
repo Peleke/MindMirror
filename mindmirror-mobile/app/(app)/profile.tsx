@@ -338,10 +338,6 @@ function WebHeader(props: { title: string }) {
         </Pressable>
         <Text className="text-2xl">{props.title}</Text>
       </HStack>
-
-      <Avatar className="h-9 w-9">
-        <AvatarBadge />
-      </Avatar>
     </HStack>
   );
 }
@@ -531,13 +527,12 @@ const MainContent = () => {
                   width={"100%"}
                   source={{ uri: "https://i.pravatar.cc/300" }}
                 />
-                <AvatarBadge />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
-                <Text size="2xl" className="font-roboto text-white dark:text-gray-900">
+                <Text size="2xl" className="font-roboto text-white dark:text-gray-800">
                   {user?.user_metadata?.full_name || user?.email || "User"}
                 </Text>
-                <Text className="font-roboto text-sm text-white dark:text-gray-700 opacity-80">
+                <Text className="font-roboto text-sm text-white dark:text-gray-600 opacity-80">
                   United States
                 </Text>
               </VStack>
@@ -723,11 +718,8 @@ const ModalComponent = ({
         <Box className={"w-full h-[215px] "}>
           <Box className="w-full h-full bg-gradient-to-b from-primary-600 to-primary-800" />
         </Box>
-        <Pressable className="absolute bg-background-500 rounded-full items-center justify-center h-8 w-8 right-6 top-44">
-          <Icon as={CameraSparklesIcon} />
-        </Pressable>
         <ModalHeader className="absolute w-full">
-          <Heading size="2xl" className="text-typography-800 pt-4 pl-4">
+          <Heading size="2xl" className="text-typography-800 dark:text-gray-900 pt-4 pl-4">
             Edit Profile
           </Heading>
           <ModalCloseButton>
@@ -739,13 +731,17 @@ const ModalComponent = ({
           </ModalCloseButton>
         </ModalHeader>
         <Center className="w-full absolute top-16">
-          <Avatar size="2xl">
+          <Avatar size="2xl" className="bg-primary-600">
+            <AvatarFallbackText>
+              {user?.user_metadata?.full_name || user?.email || "User"}
+            </AvatarFallbackText>
             <AvatarImage
-              source={{ uri: "https://via.placeholder.com/150" }}
+              alt="Profile Image"
+              height={"100%"}
+              width={"100%"}
+              source={{ uri: "https://i.pravatar.cc/300" }}
             />
-            <AvatarBadge className="justify-center items-center bg-background-500">
-              <Icon as={EditPhotoIcon} />
-            </AvatarBadge>
+            <AvatarBadge />
           </Avatar>
         </Center>
         <ModalBody className="px-10 py-6">
