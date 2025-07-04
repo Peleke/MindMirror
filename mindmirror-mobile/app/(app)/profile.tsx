@@ -519,8 +519,8 @@ const MainContent = () => {
             </Text>
             <Text className="font-semibold text-typography-900 ">profile</Text>
           </HStack>
-          <Center className="absolute mt-6 w-full pt-6 pb-4">
-            <VStack space="lg" className="items-center">
+          <Center className="absolute mt-6 w-full pt-6 pb-8">
+            <VStack space="md" className="items-center">
               <Avatar size="2xl" className="bg-primary-600">
                 <AvatarFallbackText>
                   {user?.user_metadata?.full_name || user?.email || "User"}
@@ -534,10 +534,10 @@ const MainContent = () => {
                 <AvatarBadge />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
-                <Text size="2xl" className="font-roboto text-white">
+                <Text size="2xl" className="font-roboto text-white dark:text-gray-900">
                   {user?.user_metadata?.full_name || user?.email || "User"}
                 </Text>
-                <Text className="font-roboto text-sm text-white opacity-80">
+                <Text className="font-roboto text-sm text-white dark:text-gray-700 opacity-80">
                   United States
                 </Text>
               </VStack>
@@ -545,9 +545,9 @@ const MainContent = () => {
                 variant="outline"
                 action="secondary"
                 onPress={() => setShowModal(true)}
-                className="gap-3 relative bg-white"
+                className="gap-3 relative bg-white dark:bg-gray-100"
               >
-                <ButtonText className="text-dark">Edit Profile</ButtonText>
+                <ButtonText className="text-dark dark:text-gray-900">Edit Profile</ButtonText>
                 <ButtonIcon as={EditIcon} />
               </Button>
             </VStack>
