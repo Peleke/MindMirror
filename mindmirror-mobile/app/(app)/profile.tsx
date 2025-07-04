@@ -2,7 +2,7 @@ import {
     Avatar,
     AvatarBadge,
     AvatarFallbackText,
-    AvatarImage,
+    AvatarImage
 } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
@@ -53,7 +53,7 @@ import {
     SelectTrigger,
 } from "@/components/ui/select";
 import { Text } from "@/components/ui/text";
-import { useToast } from "@/components/ui/toast";
+import { Toast, ToastTitle, useToast } from "@/components/ui/toast";
 import { VStack } from "@/components/ui/vstack";
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { cn } from "@gluestack-ui/nativewind-utils/cn";
@@ -342,7 +342,7 @@ function WebHeader(props: { toggleSidebar: () => void; title: string }) {
       </HStack>
 
       <Avatar className="h-9 w-9">
-        <AvatarFallbackText className="font-light">A</AvatarFallbackText>
+        <AvatarBadge />
       </Avatar>
     </HStack>
   );
@@ -430,8 +430,14 @@ const MainContent = () => {
   const handleSettingsPress = () => {
     console.log("Settings button pressed!");
     toast.show({
-      title: "Coming soon!",
-      description: "Settings will be available in a future update.",
+      placement: "bottom right",
+      render: ({ id }) => {
+        return (
+          <Toast nativeID={id} action="info">
+            <ToastTitle>Coming soon!</ToastTitle>
+          </Toast>
+        );
+      },
     });
   };
 
@@ -475,12 +481,16 @@ const MainContent = () => {
           <Center className="absolute mt-6 w-full pt-6 pb-4">
             <VStack space="lg" className="items-center">
               <Avatar size="2xl" className="bg-primary-600">
+                <AvatarFallbackText>
+                  {user?.user_metadata?.full_name || user?.email || "User"}
+                </AvatarFallbackText>
                 <AvatarImage
                   alt="Profile Image"
                   height={"100%"}
                   width={"100%"}
-                  source={{ uri: "https://via.placeholder.com/150" }}
+                  source={{ uri: "https://i.pravatar.cc/300" }}
                 />
+                <AvatarBadge />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
                 <Text size="2xl" className="font-roboto text-white">
