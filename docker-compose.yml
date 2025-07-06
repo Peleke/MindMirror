@@ -34,7 +34,7 @@ services:
     env_file: .env
     environment:
       # Prompt Storage Configuration
-      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-yaml}
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-gcs}
       - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
@@ -104,7 +104,7 @@ services:
     env_file: .env
     environment:
       # Prompt Storage Configuration
-      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-yaml}
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-gcs}
       - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
