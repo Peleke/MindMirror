@@ -314,68 +314,68 @@ export default function ArchiveScreen() {
 
           {/* Journal Entries */}
           {!loading && !error && (
-            <VStack className="px-6 py-6" space="md">
-              {filteredEntries.length === 0 ? (
-                <VStack className="items-center justify-center py-12" space="md">
-                  <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
-                  <VStack className="items-center" space="xs">
-                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">
-                      No entries found
-                    </Text>
-                    <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
+          <VStack className="px-6 py-6" space="md">
+            {filteredEntries.length === 0 ? (
+              <VStack className="items-center justify-center py-12" space="md">
+                <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
+                <VStack className="items-center" space="xs">
+                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">
+                    No entries found
+                  </Text>
+                  <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
                       {searchQuery || selectedType !== 'all'
                         ? "Try adjusting your search or filter criteria"
                         : "You haven't written any journal entries yet. Start today!"
                       }
-                    </Text>
-                  </VStack>
+                  </Text>
                 </VStack>
-              ) : (
-                filteredEntries.map((entry) => (
-                  <Pressable key={entry.id} className="mb-4">
-                    <Box 
+              </VStack>
+            ) : (
+              filteredEntries.map((entry) => (
+                <Pressable key={entry.id} className="mb-4">
+                  <Box 
                       className={`p-6 min-h-[120px] rounded-lg ${getTypeColor(entry)} border border-border-200 dark:border-border-700`}
-                    >
-                      {/* Card Header */}
-                      <HStack className="justify-between items-center mb-4">
-                        <HStack className="items-center" space="sm">
-                          <Icon 
+                  >
+                    {/* Card Header */}
+                    <HStack className="justify-between items-center mb-4">
+                      <HStack className="items-center" space="sm">
+                        <Icon 
                             as={getTypeIcon(entry)}
-                            size="md"
+                          size="md"
                             className={getTypeIconColor(entry)}
-                          />
-                          <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
+                        />
+                        <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
                             {getEntryType(entry).charAt(0).toUpperCase() + getEntryType(entry).slice(1)}
                           </Text>
                         </HStack>
                         <Text className="text-sm text-typography-500 dark:text-gray-400">
                           {formatDate(entry.createdAt)}
-                        </Text>
-                      </HStack>
-                      
-                      {/* Card Title */}
-                      <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
+                      </Text>
+                    </HStack>
+                    
+                    {/* Card Title */}
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
                         {getEntryTitle(entry)}
-                      </Text>
-                      
-                      {/* Card Description */}
-                      <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
+                    </Text>
+                    
+                    {/* Card Description */}
+                    <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
                         {getEntryContent(entry)}
-                      </Text>
-                      
-                      {/* Card Footer */}
-                      <Box className="items-end">
-                        <Icon 
-                          as={ChevronRightIcon}
-                          size="sm"
-                          className="text-typography-400 dark:text-typography-500"
-                        />
-                      </Box>
+                    </Text>
+                    
+                    {/* Card Footer */}
+                    <Box className="items-end">
+                      <Icon 
+                        as={ChevronRightIcon}
+                        size="sm"
+                        className="text-typography-400 dark:text-typography-500"
+                      />
                     </Box>
-                  </Pressable>
-                ))
-              )}
-            </VStack>
+                  </Box>
+                </Pressable>
+              ))
+            )}
+          </VStack>
           )}
         </ScrollView>
       </VStack>

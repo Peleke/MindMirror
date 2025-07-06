@@ -16,7 +16,7 @@ import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
 import { SUMMARIZE_JOURNALS_QUERY } from '../../src/services/api/queries'
 import { GENERATE_REVIEW } from '../../src/services/api/mutations'
-import { useQuery, useMutation } from '@apollo/client'
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { BarChart3, Lightbulb, Star, TrendingUp, Trophy } from "lucide-react-native"
@@ -68,8 +68,8 @@ export default function InsightsScreen() {
   const [summarizeResult, setSummarizeResult] = useState<string | null>(null)
   const [reviewResult, setReviewResult] = useState<PerformanceReview | null>(null)
 
-  // Summarize journals query
-  const { data: summarizeData, loading: summarizeLoading, error: summarizeError, refetch: refetchSummarize } = useQuery(SUMMARIZE_JOURNALS_QUERY, {
+  // Summarize journals query - using useLazyQuery to prevent automatic execution
+  const [summarizeJournals, { data: summarizeData, loading: summarizeLoading, error: summarizeError }] = useLazyQuery(SUMMARIZE_JOURNALS_QUERY, {
     fetchPolicy: 'network-only',
     notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
@@ -101,7 +101,7 @@ export default function InsightsScreen() {
   const handleSummarizeJournals = async () => {
     setSummarizeResult(null)
     setReviewResult(null)
-    refetchSummarize()
+    summarizeJournals()
   }
 
   const handlePerformanceReview = async () => {
@@ -133,68 +133,7 @@ export default function InsightsScreen() {
             </Text>
           </VStack>
 
-          {/* Tradition Selector */}
-          <VStack className="px-6 pb-4" space="sm">
-            <Text className="text-sm font-medium text-typography-700 dark:text-gray-300">
-              Select Tradition
-            </Text>
-            <HStack space="sm">
-              <Pressable
-                onPress={() => setSelectedTradition('canon-default')}
-                className={`flex-1 py-3 px-4 rounded-lg border ${
-                  selectedTradition === 'canon-default'
-                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <Text
-                  className={`text-center text-sm font-medium ${
-                    selectedTradition === 'canon-default'
-                      ? 'text-indigo-700 dark:text-indigo-300'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  Default
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setSelectedTradition('canon-stoic')}
-                className={`flex-1 py-3 px-4 rounded-lg border ${
-                  selectedTradition === 'canon-stoic'
-                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <Text
-                  className={`text-center text-sm font-medium ${
-                    selectedTradition === 'canon-stoic'
-                      ? 'text-indigo-700 dark:text-indigo-300'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  Stoic
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setSelectedTradition('canon-buddhist')}
-                className={`flex-1 py-3 px-4 rounded-lg border ${
-                  selectedTradition === 'canon-buddhist'
-                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <Text
-                  className={`text-center text-sm font-medium ${
-                    selectedTradition === 'canon-buddhist'
-                      ? 'text-indigo-700 dark:text-indigo-300'
-                      : 'text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  Buddhist
-                </Text>
-              </Pressable>
-            </HStack>
-          </VStack>
+
 
           {/* Action Buttons */}
           <HStack className="px-6 pb-6" space="md">
