@@ -1,0 +1,61 @@
+name: Build and Push Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/agent_service/**"
+      - "src/journal_service/**"
+      - "mesh/**"
+      - "celery-worker/**"
+      - ".github/workflows/**"
+
+  workflow_dispatch:  # allow manual trigger
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-east4
+  REPO_NAME: mindmirror
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/mindmirror
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service: [agent_service, journal_service, mesh, celery-worker]
+
+    if: |
+      contains(github.event.head_commit.message, matrix.service) ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker auth
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      - name: Build and push ${{ matrix.service }}
+        run: |
+          if [[ "${{ matrix.service }}" == "agent_service" ]]; then
+            docker build -t $ARTIFACT_REGISTRY/agent_service:latest -f src/agent_service/Dockerfile .
+            docker push $ARTIFACT_REGISTRY/agent_service:latest
+          elif [[ "${{ matrix.service }}" == "journal_service" ]]; then
+            docker build -t $ARTIFACT_REGISTRY/journal_service:latest -f src/journal_service/Dockerfile .
+            docker push $ARTIFACT_REGISTRY/journal_service:latest
+          elif [[ "${{ matrix.service }}" == "mesh" ]]; then
+            docker build -t $ARTIFACT_REGISTRY/mesh:latest -f mesh/Dockerfile .
+            docker push $ARTIFACT_REGISTRY/mesh:latest
+          elif [[ "${{ matrix.service }}" == "celery-worker" ]]; then
+            docker build -t $ARTIFACT_REGISTRY/celery-worker:latest -f celery-worker/Dockerfile .
+            docker push $ARTIFACT_REGISTRY/celery-worker:latest
+          fi

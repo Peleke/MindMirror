@@ -1,0 +1,42 @@
+name: Local Build Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to build (agent_service, journal_service, celery-worker, mesh, all)"
+        required: true
+        default: "all"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Build Target
+        id: select
+        run: |
+          echo "service=${{ github.event.inputs.service }}" >> $GITHUB_ENV
+          echo "tag=${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - name: Docker build agent_service
+        if: env.service == 'agent_service' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:${{ env.tag }} -f src/agent_service/Dockerfile .
+
+      - name: Docker build journal_service
+        if: env.service == 'journal_service' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:${{ env.tag }} -f src/journal_service/Dockerfile .
+
+      - name: Docker build celery-worker
+        if: env.service == 'celery-worker' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:${{ env.tag }} -f celery-worker/Dockerfile .
+
+      - name: Docker build mesh
+        if: env.service == 'mesh' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:${{ env.tag }} -f mesh/Dockerfile ./mesh
