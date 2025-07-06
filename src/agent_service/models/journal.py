@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 class GratitudePayload(BaseModel):
     """Data for a morning gratitude entry."""
 
-    grateful_for: List[str]
-    excited_about: List[str]
+    gratefulFor: List[str]
+    excitedAbout: List[str]
     focus: str
     affirmation: str
     mood: Optional[str] = None
