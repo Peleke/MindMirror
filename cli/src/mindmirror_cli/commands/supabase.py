@@ -15,30 +15,41 @@ from alembic_config import (
     get_database_url,
     is_supabase_environment,
     set_environment,
-    get_current_environment
+    get_current_environment,
+    get_schema_name
 )
 
 console = Console()
 app = typer.Typer(name="supabase", help="Supabase database management")
 
 
-def _set_environment(env: str) -> None:
-    """Set the environment for Alembic operations."""
+def _set_environment(env: str, schema: str = None) -> None:
+    """Set the environment and schema for Alembic operations."""
     if env:
         set_environment(env)
         console.print(f"[blue]Using environment: {env}[/blue]")
     else:
         current_env = get_current_environment()
         console.print(f"[blue]Using environment: {current_env}[/blue]")
+    
+    if schema:
+        # Set schema via environment variable
+        import os
+        os.environ["DB_SCHEMA"] = schema
+        console.print(f"[blue]Using schema: {schema}[/blue]")
+    else:
+        current_schema = get_schema_name()
+        console.print(f"[blue]Using schema: {current_schema}[/blue]")
 
 
 @app.command()
 def init(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Initialize Alembic for database migrations."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print("[bold blue]Initializing Alembic...[/bold blue]")
     
     with Progress(
@@ -65,9 +76,10 @@ def revision(
     message: str = typer.Argument(..., help="Migration message"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Create a new migration revision."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print(f"[bold blue]Creating migration: {message}[/bold blue]")
     
     with Progress(
@@ -94,9 +106,10 @@ def upgrade(
     target: str = typer.Option("head", "--target", "-t", help="Target revision"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Upgrade database to target revision."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print(f"[bold blue]Upgrading database to {target}...[/bold blue]")
     
     with Progress(
@@ -122,9 +135,10 @@ def downgrade(
     target: str = typer.Argument(..., help="Target revision to downgrade to"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Downgrade database to target revision."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print(f"[bold blue]Downgrading database to {target}...[/bold blue]")
     
     with Progress(
@@ -149,9 +163,10 @@ def downgrade(
 def status(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Show current migration status."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print("[bold blue]Checking migration status...[/bold blue]")
     
     # Get current revision
@@ -168,9 +183,10 @@ def status(
 def history(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Show migration history."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print("[bold blue]Retrieving migration history...[/bold blue]")
     
     result = run_alembic_command("history")
@@ -186,9 +202,10 @@ def history(
 def health(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Check database and migration health."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print("[bold blue]Checking database health...[/bold blue]")
     
     with Progress(
@@ -233,9 +250,10 @@ def health(
 def reset(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (supabase, local)"),
+    schema: str = typer.Option(None, "--schema", "-s", help="Database schema name"),
 ):
     """Reset database by downgrading to base and upgrading to head."""
-    _set_environment(env)
+    _set_environment(env, schema)
     console.print("[bold red]⚠️  This will reset the database![/bold red]")
     
     result = reset_database()

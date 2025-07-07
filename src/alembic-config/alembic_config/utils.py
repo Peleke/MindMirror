@@ -79,4 +79,5 @@ def is_supabase_environment() -> bool:
 
 def get_schema_name() -> str:
     """Get the schema name for migrations."""
-    return os.getenv("DB_SCHEMA", "mindmirror") 
+    # Use service-based schemas - 'journal' for journal service
+    return os.getenv("DB_SCHEMA", "journal") 

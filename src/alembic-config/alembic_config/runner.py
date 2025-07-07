@@ -20,6 +20,10 @@ def run_alembic_command(cmd: str, *args: str, **kwargs) -> int:
     if cmd_func is None:
         raise ValueError(f"Unknown Alembic command: {cmd}")
     
+    # Debug: Check if there's a --sql flag in the args
+    if "--sql" in args:
+        print(f"DEBUG: Found --sql flag in args: {args}", file=sys.stderr)
+    
     # Run the command
     try:
         cmd_func(config, *args, **kwargs)
@@ -32,21 +36,26 @@ def run_alembic_command(cmd: str, *args: str, **kwargs) -> int:
 def run_migration(action: str, revision: Optional[str] = None, **kwargs) -> int:
     """Run a migration action (upgrade, downgrade, etc.)."""
     if action == "upgrade":
-        return run_alembic_command("upgrade", revision or "head", **kwargs)
+        return run_alembic_command("upgrade", revision or "head")
     elif action == "downgrade":
         if not revision:
             raise ValueError("Revision required for downgrade")
-        return run_alembic_command("downgrade", revision, **kwargs)
+        return run_alembic_command("downgrade", revision)
     elif action == "revision":
-        return run_alembic_command("revision", "--autogenerate", "-m", revision or "Auto-generated migration", **kwargs)
+        # For revision, we need to handle autogenerate properly
+        return run_alembic_command(
+            "revision",
+            message="revision" or "Auto-generated migration",
+            autogenerate=True,
+        )
     elif action == "current":
-        return run_alembic_command("current", **kwargs)
+        return run_alembic_command("current")
     elif action == "history":
-        return run_alembic_command("history", **kwargs)
+        return run_alembic_command("history")
     elif action == "show":
         if not revision:
             raise ValueError("Revision required for show")
-        return run_alembic_command("show", revision, **kwargs)
+        return run_alembic_command("show", revision)
     else:
         raise ValueError(f"Unknown migration action: {action}")
 
