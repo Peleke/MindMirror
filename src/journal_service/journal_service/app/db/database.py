@@ -28,8 +28,6 @@ if ssl_required:
 else:
     connect_args = {}
 
-logger.info(f"Database connection: {host} (SSL: {ssl_required})")
-
 # Create async engine
 engine = create_async_engine(
     clean_url,
