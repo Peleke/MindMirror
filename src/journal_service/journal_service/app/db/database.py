@@ -1,7 +1,6 @@
 import logging
 import os
 import ssl
-from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
@@ -13,9 +12,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Determine if SSL is required (for Supabase connections)
-parsed_url = urlparse(settings.database_url)
-host = parsed_url.hostname or ""
-ssl_required = "supabase" in host or "flycast" in host or "render" in host
+ssl_required = "supabase" in settings.database_url
 
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
