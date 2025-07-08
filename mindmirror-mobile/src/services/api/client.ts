@@ -8,9 +8,9 @@ import Constants from 'expo-constants'
 const isDevelopment = __DEV__
 
 // Gateway URL based on environment
-const GATEWAY_URL = isDevelopment 
-  ? 'http://localhost:4000/graphql' // Local development
-  : 'http://localhost:4000/graphql' // Production (update with actual URL)
+const GATEWAY_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || (isDevelopment 
+  ? 'http://localhost:4000/graphql' // Local development fallback
+  : 'http://localhost:4000/graphql') // Production fallback (update with actual URL)
 
 // HTTP Link for GraphQL endpoint
 const httpLink = createHttpLink({

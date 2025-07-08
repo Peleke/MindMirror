@@ -31,6 +31,16 @@
       "gatewayUrl": "http://localhost:4000/graphql",
       "supabaseUrl": "your-supabase-url",
       "supabaseAnonKey": "your-supabase-anon-key"
-    }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ]
   }
 }
