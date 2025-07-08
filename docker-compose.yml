@@ -42,13 +42,14 @@ services:
       - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
-      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-mindmirror-69}
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
-      # For production GCS, mount credentials:
-      # - ./credentials:/app/credentials:ro
+      # Mount local Google Cloud credentials for real GCS access
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     command: uvicorn agent_service.app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - mindmirror-network
@@ -75,11 +76,13 @@ services:
     environment:
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
-      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
     volumes:
       - ./src/journal_service:/app/journal_service
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
+      # Mount local Google Cloud credentials for real GCS access
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     command: uvicorn journal_service.journal_service.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
@@ -116,12 +119,14 @@ services:
       - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY:-dev-secret-key}
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
-      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
     volumes:
       - ./celery-worker:/app
       - ./ingestion:/app/ingestion
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
+      # Mount local Google Cloud credentials for real GCS access
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     networks:
       - mindmirror-network
     depends_on:

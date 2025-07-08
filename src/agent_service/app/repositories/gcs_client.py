@@ -34,15 +34,15 @@ class GCSClient:
         self._ensure_bucket_exists()
 
     def _ensure_bucket_exists(self):
-        """Ensure the bucket exists, create if necessary."""
+        """Ensure the bucket exists, fail fast if not found."""
         try:
             self.bucket = self.client.bucket(self.bucket_name)
             # Check if bucket exists
             self.bucket.reload()
             logger.info(f"Using existing bucket: {self.bucket_name}")
         except NotFound:
-            logger.info(f"Creating bucket: {self.bucket_name}")
-            self.bucket = self.client.create_bucket(self.bucket_name)
+            logger.error(f"Bucket '{self.bucket_name}' does not exist")
+            raise NotFound(f"Bucket '{self.bucket_name}' does not exist")
 
     def list_traditions(self) -> List[str]:
         """List all traditions available in GCS."""
