@@ -47,7 +47,14 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
 # Copy the application source code
-COPY src /app/src
+COPY src/agent_service /app/agent_service
+
+# Download the CA during build
+ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/supabase-rds-ca.pem
+ENV SUPABASE_CA_CERT_PATH=/etc/ssl/certs/supabase-rds-ca.pem
+
+# Add src to Python path
+ENV PYTHONPATH=/app/src
 
 # Expose the port the app runs on
 EXPOSE 8000
