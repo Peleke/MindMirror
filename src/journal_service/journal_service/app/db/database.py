@@ -18,7 +18,7 @@ ssl_required = "supabase" in host or "flycast" in host or "render" in host
 
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
-connect_args = {"ssl": ssl.create_default_context()} if ssl_required else {}
+connect_args = {"ssl": ssl.create_default_context(cafile=os.environ["SUPABASE_CA_CERT_PATH"])} if ssl_required else {}
 
 logger.info(f"Database connection: {host} (SSL: {ssl_required})")
 
