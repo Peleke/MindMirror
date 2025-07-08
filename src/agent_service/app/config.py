@@ -133,6 +133,10 @@ class Settings(BaseSettings):
     jwt_secret: Optional[str] = Field(default=None, env="JWT_SECRET")
     reindex_secret_key: Optional[str] = Field(default=None, env="REINDEX_SECRET_KEY")
 
+    # Service URLs
+    celery_worker_url: Optional[str] = Field(default=None, env="CELERY_WORKER_URL")
+    journal_service_url: Optional[str] = Field(default=None, env="JOURNAL_SERVICE_URL")
+
     # Storage settings
     prompt_storage_type: Optional[str] = Field(default=None, env="PROMPT_STORAGE_TYPE")
     use_gcs_emulator: Optional[str] = Field(default=None, env="USE_GCS_EMULATOR")

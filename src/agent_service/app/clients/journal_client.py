@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 import logging
+import os
 
 from shared.clients import AuthContext, JournalServiceClient, create_journal_client
 
@@ -23,8 +24,13 @@ class JournalClient:
     expected interface and data models.
     """
 
-    def __init__(self, base_url: str = "http://journal_service:8001"):
-        self._http_client = create_journal_client(base_url=base_url)
+    def __init__(self, base_url: str = None):
+        if base_url:
+            self._base_url = base_url
+        else:
+            # Use environment variable or fallback to local development
+            self._base_url = os.getenv("JOURNAL_SERVICE_URL", "http://journal_service:8001")
+        self._http_client = create_journal_client(base_url=self._base_url)
 
     async def list_by_user_for_period(
         self, user_id: str, start_date: datetime, end_date: datetime

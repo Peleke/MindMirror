@@ -37,7 +37,7 @@ class SearchResult:
 class QdrantClient:
     """Production-ready Qdrant client for vector operations."""
 
-    def __init__(self, url: str = None):
+    def __init__(self, url: str = None, api_key: str = None):
         """Initialize Qdrant client."""
         if url:
             self.url = url
@@ -45,12 +45,25 @@ class QdrantClient:
             # Auto-detect environment
             self.url = os.getenv("QDRANT_URL", "http://qdrant:6333")
 
+        if api_key:
+            self.api_key = api_key
+        else:
+            # Use environment-aware API key
+            self.api_key = os.getenv("QDRANT_API_KEY")
+
         # For local development, try localhost if qdrant hostname fails
         if "qdrant:" in self.url and not self._is_docker_environment():
             self.url = self.url.replace("qdrant:", "localhost:")
 
         logger.info(f"Qdrant client initialized with URL: {self.url}")
-        self.client = QdrantClientBase(url=self.url)
+        
+        # Initialize client with API key if provided
+        if self.api_key:
+            self.client = QdrantClientBase(url=self.url, api_key=self.api_key)
+            logger.info("Qdrant client initialized with API key authentication")
+        else:
+            self.client = QdrantClientBase(url=self.url)
+            logger.info("Qdrant client initialized without authentication (local mode)")
 
     def _is_docker_environment(self) -> bool:
         """Check if running inside Docker container."""
