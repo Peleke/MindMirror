@@ -115,3 +115,12 @@ resource "google_cloud_run_service" "journal_service" {
   }
 }
 
+# Allow unauthenticated access to the Cloud Run service
+resource "google_cloud_run_service_iam_member" "public_access" {
+  location = google_cloud_run_service.journal_service.location
+  project  = google_cloud_run_service.journal_service.project
+  service  = google_cloud_run_service.journal_service.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
