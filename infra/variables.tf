@@ -22,6 +22,16 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "journal_service_container_image" {
+  description = "Journal service container image"
+  type        = string
+}
+
+variable "agent_service_container_image" {
+  description = "Agent service container image"
+  type        = string
+}
+
 variable "gcs_bucket_name" {
   description = "GCS bucket name for storage"
   type        = string
@@ -52,4 +62,32 @@ variable "supabase_service_role_key" {
 variable "supabase_jwt_secret" {
   description = "Supabase JWT secret"
   type        = string
+}
+
+variable "faux_mesh_user_id" {
+  description = "Fake user ID for mesh fallback"
+  type        = string
+}
+
+variable "faux_mesh_supabase_id" {
+  description = "Fake supabase ID for mesh fallback"
+  type        = string
+}
+
+variable "log_level" {
+  description = "Log level (e.g., INFO, DEBUG)"
+  type        = string
+  default     = "INFO"
+}
+
+variable "environment" {
+  description = "Environment name (e.g., development, production)"
+  type        = string
+  default     = "production"
+}
+
+variable "debug" {
+  description = "Debug mode enabled (true/false)"
+  type        = string
+  default     = "false"
 }
