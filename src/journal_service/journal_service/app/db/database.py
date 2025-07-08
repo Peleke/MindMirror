@@ -15,17 +15,12 @@ settings = get_settings()
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
 
-if os.environ.get("ENVIRONMENT") not in ["development", "staging"]:
-    logger.info("SSL is required")
-    ca_path = os.environ.get("SUPABASE_CA_CERT_PATH")
-    logger.info(f"Using CA cert at: {ca_path}")
-    if not ca_path or not os.path.exists(ca_path):
-        raise FileNotFoundError(f"CA cert not found at {ca_path}")
-    ssl_context = ssl.create_default_context(cafile=ca_path)
-    connect_args = {"ssl": ssl_context}
-else:
-    logger.info("SSL is not required")
-    connect_args = {}
+# Simple SSL context that doesn't verify certificates (for now)
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+connect_args = {"ssl": ssl_context}
 
 # Create async engine
 engine = create_async_engine(
