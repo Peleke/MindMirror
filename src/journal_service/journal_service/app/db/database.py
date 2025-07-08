@@ -1,6 +1,9 @@
 import logging
+import ssl
+from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import text
 from journal_service.journal_service.app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -8,15 +11,24 @@ logger = logging.getLogger(__name__)
 # Get settings
 settings = get_settings()
 
+# Determine if SSL is required (for Supabase connections)
+parsed_url = urlparse(settings.database_url)
+host = parsed_url.hostname or ""
+ssl_required = "supabase" in host or "flycast" in host or "render" in host
+
+# Strip any SSL mode parameters from URL and add SSL context if needed
+clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
+connect_args = {"ssl": ssl.create_default_context()} if ssl_required else {}
+
+logger.info(f"Database connection: {host} (SSL: {ssl_required})")
+
 # Create async engine
 engine = create_async_engine(
-    settings.database_url,
+    clean_url,
     echo=False,  # Set to True for SQL logging
     pool_pre_ping=True,
     pool_recycle=300,
-    connect_args={
-        "options": "-c search_path=journal"
-    } if settings.environment != "development" else {}
+    connect_args=connect_args,
 )
 
 # Create async session factory
@@ -29,11 +41,17 @@ async_session_maker = async_sessionmaker(
 # Base class for models
 Base = declarative_base()
 
+# Set the schema for all tables
+Base.metadata.schema = "journal"
+
 
 async def init_db():
     """Initialize database tables."""
     try:
         async with engine.begin() as conn:
+            # Create the journal schema if it doesn't exist
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS journal"))
+            
             # Import models here to ensure they're registered
             from journal_service.journal_service.app.db.models.journal import JournalEntry
             
