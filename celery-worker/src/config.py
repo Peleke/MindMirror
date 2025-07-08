@@ -32,6 +32,11 @@ class Config:
         "JOURNAL_SERVICE_URL", "http://journal_service:8001"
     )
 
+    # Agent service configuration
+    AGENT_SERVICE_URL: str = os.getenv(
+        "AGENT_SERVICE_URL", "http://agent_service:8000"
+    )
+
     # Embedding service configuration
     EMBEDDING_SERVICE: str = os.getenv("EMBEDDING_SERVICE", "ollama")
     OLLAMA_BASE_URL: str = os.getenv(
