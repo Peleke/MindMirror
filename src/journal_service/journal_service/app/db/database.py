@@ -7,12 +7,13 @@ from sqlalchemy import text
 from journal_service.journal_service.app.config import get_settings
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Get settings
 settings = get_settings()
 
 # Determine if SSL is required (for Supabase connections)
-ssl_required = "supabase" in settings.database_url
+ssl_required = os.environ.get("ENVIRONMENT") not in ["development", "staging"]
 logger.info(f"SSL required: {ssl_required}")
 logger.info(f"Database URL: {settings.database_url}")
 
@@ -67,7 +68,7 @@ async def init_db():
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Failed to initialize database: {e}", exc_info=True)
         raise
 
 
