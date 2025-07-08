@@ -13,12 +13,14 @@ settings = get_settings()
 
 # Determine if SSL is required (for Supabase connections)
 ssl_required = "supabase" in settings.database_url
+logger.info(f"SSL required: {ssl_required}")
+logger.info(f"Database URL: {settings.database_url}")
 
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
 
 if ssl_required:
-    logging.info("SSL is required")
+    logger.info("SSL is required")
     ca_path = os.environ.get("SUPABASE_CA_CERT_PATH")
     logger.info(f"Using CA cert at: {ca_path}")
     if not ca_path or not os.path.exists(ca_path):
