@@ -12,11 +12,22 @@ from rich.table import Table
 from mindmirror_cli.core.builder import QdrantKnowledgeBaseBuilder
 from mindmirror_cli.core.client import QdrantClient
 from mindmirror_cli.core.tradition_loader import create_tradition_loader
+from mindmirror_cli.core.utils import set_environment, get_current_environment, is_live_environment
 
 console = Console()
 logger = logging.getLogger(__name__)
 
 app = typer.Typer(name="qdrant", help="Qdrant knowledge base operations")
+
+
+def _set_environment(env: str) -> None:
+    """Set the environment for Qdrant operations."""
+    if env:
+        set_environment(env)
+        console.print(f"[blue]Using environment: {env}[/blue]")
+    else:
+        current_env = get_current_environment()
+        console.print(f"[blue]Using environment: {current_env}[/blue]")
 
 
 @app.command()
@@ -25,8 +36,11 @@ def build(
     source_dirs: List[str] = typer.Option(["local_gcs_bucket", "pdfs"], "--source-dirs", "-s", help="Source directories"),
     clear_existing: bool = typer.Option(False, "--clear-existing", help="Clear existing knowledge base"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
 ):
     """Build knowledge base from documents."""
+    _set_environment(env)
+    
     if verbose:
         logging.basicConfig(level=logging.INFO)
     else:
@@ -96,9 +110,91 @@ def build(
 
 
 @app.command()
-def health():
+def seed(
+    tradition: Optional[str] = typer.Option(None, "--tradition", "-t", help="Specific tradition to seed"),
+    source_dirs: List[str] = typer.Option(["local_gcs_bucket", "pdfs"], "--source-dirs", "-s", help="Source directories"),
+    clear_existing: bool = typer.Option(False, "--clear-existing", help="Clear existing knowledge base"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    env: str = typer.Option("live", "--env", "-e", help="Environment (local, live)"),
+):
+    """Seed live knowledge base from documents."""
+    _set_environment(env)
+    
+    if verbose:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    async def _seed():
+        console.print(f"[bold blue]Seeding live knowledge base...[/bold blue]")
+        console.print(f"Source directories: {source_dirs}")
+        if tradition:
+            console.print(f"Tradition: {tradition}")
+        if clear_existing:
+            console.print("[yellow]Clearing existing knowledge base[/yellow]")
+
+        builder = QdrantKnowledgeBaseBuilder()
+
+        # Health check
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Checking Qdrant connection...", total=None)
+            if not await builder.health_check():
+                console.print("[red]❌ Qdrant connection failed[/red]")
+                raise typer.Exit(1)
+            progress.update(task, description="✅ Qdrant connected")
+
+        # Seed knowledge base
+        try:
+            result = await builder.build_all_traditions(
+                source_dirs=source_dirs,
+                specific_tradition=tradition,
+                clear_existing=clear_existing,
+            )
+
+            # Display results
+            table = Table(title="Knowledge Base Seed Results")
+            table.add_column("Tradition", style="cyan")
+            table.add_column("Files Processed", style="green")
+            table.add_column("Chunks Created", style="blue")
+            table.add_column("Status", style="yellow")
+
+            for tradition_name, stats in result.get("traditions", {}).items():
+                status = "✅ Success" if stats.get("status") == "success" else "❌ Failed"
+                table.add_row(
+                    tradition_name,
+                    str(stats.get("processed_files", 0)),
+                    str(stats.get("processed_chunks", 0)),
+                    status,
+                )
+
+            console.print(table)
+            
+            if result.get("status") == "success":
+                console.print(f"[green]✅ Seed completed successfully![/green]")
+                console.print(f"📊 Total chunks: {result.get('total_chunks', 0)}")
+                console.print(f"⏱️  Duration: {result.get('duration_seconds', 0):.2f}s")
+            else:
+                console.print(f"[red]❌ Seed failed: {result.get('message', 'Unknown error')}[/red]")
+                raise typer.Exit(1)
+
+        except Exception as e:
+            console.print(f"[red]❌ Seed failed: {e}[/red]")
+            raise typer.Exit(1)
+
+    asyncio.run(_seed())
+
+
+@app.command()
+def health(
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+):
     """Check Qdrant service health."""
     async def _health():
+        _set_environment(env)
         console.print("[bold blue]Health Check[/bold blue]")
 
         qdrant_client = QdrantClient()
@@ -195,9 +291,12 @@ def list_traditions(
 
 
 @app.command()
-def list_collections():
+def list_collections(
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+):
     """List Qdrant collections."""
     async def _list():
+        _set_environment(env)
         console.print("[bold blue]Qdrant Collections[/bold blue]")
 
         qdrant_client = QdrantClient()

@@ -14,6 +14,7 @@ from langchain_core.documents import Document
 from mindmirror_cli.core.client import QdrantClient
 from mindmirror_cli.core.embedding import get_embedding
 from mindmirror_cli.core.tradition_loader import create_tradition_loader, TraditionLoader
+from mindmirror_cli.core.utils import get_qdrant_url, get_qdrant_api_key
 
 logger = logging.getLogger(__name__)
 
