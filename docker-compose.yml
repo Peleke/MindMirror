@@ -40,8 +40,8 @@ services:
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
       - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
-      # GCS Configuration
-      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./src/agent_service:/app/agent_service
@@ -73,8 +73,8 @@ services:
     container_name: journal_service
     env_file: ${ENV_FILE:-.env}
     environment:
-      # GCS Configuration
-      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./src/journal_service:/app/journal_service
@@ -114,8 +114,8 @@ services:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-http://journal_service:8001}
       - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY:-dev-secret-key}
-      # GCS Configuration
-      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
+      # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-gcs-first}
     volumes:
       - ./celery-worker:/app
