@@ -1,4 +1,5 @@
 import logging
+import os
 import ssl
 from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -18,7 +19,16 @@ ssl_required = "supabase" in host or "flycast" in host or "render" in host
 
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
-connect_args = {"ssl": ssl.create_default_context(cafile=os.environ["SUPABASE_CA_CERT_PATH"])} if ssl_required else {}
+
+if ssl_required:
+    ca_path = os.environ.get("SUPABASE_CA_CERT_PATH")
+    logger.info(f"Using CA cert at: {ca_path}")
+    if not ca_path or not os.path.exists(ca_path):
+        raise FileNotFoundError(f"CA cert not found at {ca_path}")
+    ssl_context = ssl.create_default_context(cafile=ca_path)
+    connect_args = {"ssl": ssl_context}
+else:
+    connect_args = {}
 
 logger.info(f"Database connection: {host} (SSL: {ssl_required})")
 

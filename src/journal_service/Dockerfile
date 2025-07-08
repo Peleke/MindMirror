@@ -51,6 +51,7 @@ COPY src/journal_service /app/journal_service
 
 # Download the CA during build
 ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/supabase-rds-ca.pem
+ENV SUPABASE_CA_CERT_PATH=/etc/ssl/certs/supabase-rds-ca.pem
 
 # Set Python path to include src directory
 ENV PYTHONPATH=/app/src
