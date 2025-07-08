@@ -14,6 +14,9 @@ engine = create_async_engine(
     echo=False,  # Set to True for SQL logging
     pool_pre_ping=True,
     pool_recycle=300,
+    connect_args={
+        "options": "-c search_path=journal"
+    } if settings.environment != "development" else {}
 )
 
 # Create async session factory

@@ -1,11 +1,12 @@
 services:
   # --- Frontend ---
+  # --- DEPRECATED ---
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
     container_name: web
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:4000/graphql
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
@@ -31,7 +32,7 @@ services:
       context: .
       dockerfile: src/agent_service/Dockerfile
     container_name: agent_service
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       # Prompt Storage Configuration
       - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-gcs}
@@ -70,7 +71,7 @@ services:
       context: .
       dockerfile: src/journal_service/Dockerfile
     container_name: journal_service
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       # GCS Configuration
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-gcs-emulator:4443}
@@ -101,7 +102,7 @@ services:
       context: .
       dockerfile: celery-worker/Dockerfile
     container_name: celery-worker
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     environment:
       # Prompt Storage Configuration
       - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-gcs}
@@ -142,7 +143,7 @@ services:
     container_name: celery_flower
     environment:
       - CELERY_BROKER_URL=${REDIS_URL}
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     networks:
       - mindmirror-network
     ports:
@@ -240,7 +241,7 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
     env_file:
-      - .env
+      - ${ENV_FILE:-.env}
     volumes:
       - ./mesh/gateway.config.ts:/app/gateway.config.ts
       - ./mesh/build:/app/build
