@@ -7,7 +7,7 @@ from sqlalchemy import text
 from journal_service.journal_service.app.config import get_settings
 
 logger = logging.getLogger(__name__)
-logger.basicConfig(level=logging.INFO)
+logger.setLevel(logging.INFO)
 
 # Get settings
 settings = get_settings()
