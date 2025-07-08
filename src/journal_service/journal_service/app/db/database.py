@@ -7,20 +7,15 @@ from sqlalchemy import text
 from journal_service.journal_service.app.config import get_settings
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.basicConfig(level=logging.INFO)
 
 # Get settings
 settings = get_settings()
 
-# Determine if SSL is required (for Supabase connections)
-ssl_required = os.environ.get("ENVIRONMENT") not in ["development", "staging"]
-logger.info(f"SSL required: {ssl_required}")
-logger.info(f"Database URL: {settings.database_url}")
-
 # Strip any SSL mode parameters from URL and add SSL context if needed
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
 
-if ssl_required:
+if os.environ.get("ENVIRONMENT") not in ["development", "staging"]:
     logger.info("SSL is required")
     ca_path = os.environ.get("SUPABASE_CA_CERT_PATH")
     logger.info(f"Using CA cert at: {ca_path}")
@@ -29,6 +24,7 @@ if ssl_required:
     ssl_context = ssl.create_default_context(cafile=ca_path)
     connect_args = {"ssl": ssl_context}
 else:
+    logger.info("SSL is not required")
     connect_args = {}
 
 # Create async engine
