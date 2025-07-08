@@ -35,6 +35,36 @@ data "google_secret_manager_secret_version" "supabase_ca_cert_path" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "qdrant_url" {
+  secret  = "QDRANT_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "qdrant_api_key" {
+  secret  = "QDRANT_API_KEY"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "openai_api_key" {
+  secret  = "OPENAI_API_KEY"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "agent_service_url" {
+  secret  = "AGENT_SERVICE_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "journal_service_url" {
+  secret  = "JOURNAL_SERVICE_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "celery_worker_url" {
+  secret  = "CELERY_WORKER_URL"
+  project = var.project_id
+}
+
 module "journal_service" {
   source                = "./modules/journal_service"
   project_id            = var.project_id
@@ -61,27 +91,46 @@ module "journal_service" {
   log_level             = var.log_level
   environment           = var.environment
   debug                 = var.debug
+  
+  # Service URLs (from secrets)
+  agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
 }
 
-# module "agent_service" {
-#   source  = "./modules/agent_service"
-# 
-#   project_id  = var.project_id
-#   region      = var.region
-#   container_image = var.agent_service_container_image
-#   agent_service_env_vars = {
-#     PROMPT_STORAGE_TYPE    = "gcs"
-#     YAML_STORAGE_PATH      = "/app/prompts"
-#     STORAGE_EMULATOR_HOST  = "" # leave blank for prod
-#     TRADITION_DISCOVERY_MODE = "gcs-first"
-#     GCS_BUCKET_NAME = var.gcs_bucket_name
-#     GCS_CREDENTIAL_FILE = var.gcs_credential_file
-#     GCS_EMULATOR_HOST=""
-#     TRADITION_DISCOVERY_MODE = var.tradition_discovery_mode
-#     SUPABASE_ANON_KEY = var.supabase_anon_key
-#     SUPABASE_SERVICE_ROLE_KEY = var.supabase_service_role_key
-#     SUPABASE_JWT_SECRET = var.supabase_jwt_secret
-#   }
-# }
-# 
-# 
+module "agent_service" {
+  source  = "./modules/agent_service"
+  
+  project_id  = var.project_id
+  region      = var.region
+  agent_service_container_image = var.agent_service_container_image
+  service_account_email = module.base.agent_service_sa_email
+  gcs_bucket_name = module.base.traditions_bucket_name
+  
+  # Database and Redis (from secrets)
+  database_url          = data.google_secret_manager_secret_version.database_url.secret_data
+  redis_url             = data.google_secret_manager_secret_version.redis_url.secret_data
+  
+  # Vector database (from secrets)
+  qdrant_url            = data.google_secret_manager_secret_version.qdrant_url.secret_data
+  qdrant_api_key        = data.google_secret_manager_secret_version.qdrant_api_key.secret_data
+  
+  # LLM configuration (from secrets)
+  openai_api_key        = data.google_secret_manager_secret_version.openai_api_key.secret_data
+  
+  # Supabase configuration (from secrets)
+  supabase_url          = data.google_secret_manager_secret_version.supabase_url.secret_data
+  supabase_anon_key     = data.google_secret_manager_secret_version.supabase_anon_key.secret_data
+  supabase_service_role_key = data.google_secret_manager_secret_version.supabase_service_role_key.secret_data
+  
+  # Mesh configuration
+  faux_mesh_user_id     = var.faux_mesh_user_id
+  faux_mesh_supabase_id = var.faux_mesh_supabase_id
+  
+  # Service URLs (from secrets)
+  celery_worker_url     = data.google_secret_manager_secret_version.celery_worker_url.secret_data
+  journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+  
+  # Logging and environment
+  log_level             = var.log_level
+  environment           = var.environment
+  debug                 = var.debug
+}

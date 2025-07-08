@@ -2,6 +2,10 @@ output "journal_service_sa_email" {
   value = google_service_account.journal_service.email
 }
 
+output "agent_service_sa_email" {
+  value = google_service_account.agent_service.email
+}
+
 output "traditions_bucket_name" {
   value = google_storage_bucket.traditions.name
 }

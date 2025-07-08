@@ -75,3 +75,8 @@ variable "supabase_ca_cert_path" {
   description = "Supabase CA certificate path"
   type        = string
 }
+
+variable "agent_service_url" {
+  description = "Agent service URL"
+  type        = string
+}

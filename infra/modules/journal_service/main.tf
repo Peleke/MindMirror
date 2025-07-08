@@ -102,6 +102,11 @@ resource "google_cloud_run_service" "journal_service" {
           name  = "DEBUG"
           value = var.debug
         }
+
+        env {
+          name  = "AGENT_SERVICE_URL"
+          value = var.agent_service_url
+        }
       }
 
 

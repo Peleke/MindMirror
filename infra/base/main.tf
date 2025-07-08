@@ -30,6 +30,30 @@ resource "google_project_iam_member" "journal_sa_secret_access" {
   member  = "serviceAccount:${google_service_account.journal_service.email}"
 }
 
+resource "google_service_account" "agent_service" {
+  account_id   = "agent-service"
+  display_name = "Service Account for Agent Service"
+  project      = var.project_id
+}
+
+resource "google_storage_bucket_iam_member" "agent_sa_gcs_access" {
+  bucket = google_storage_bucket.traditions.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.agent_service.email}"
+}
+
+resource "google_storage_bucket_iam_member" "agent_sa_bucket_access" {
+  bucket = google_storage_bucket.traditions.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.agent_service.email}"
+}
+
+resource "google_project_iam_member" "agent_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.agent_service.email}"
+}
+
 # Existing secrets — just referencing
 data "google_secret_manager_secret" "reindex" {
   secret_id = "REINDEX_SECRET_KEY"
