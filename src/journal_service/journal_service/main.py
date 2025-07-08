@@ -13,7 +13,7 @@ from journal_service.journal_service.app.graphql.context import get_context
 # from journal_service.app.graphql.schemas import create_schema
 
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.DEBUG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

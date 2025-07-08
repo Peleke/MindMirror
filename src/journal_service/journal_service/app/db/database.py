@@ -21,6 +21,7 @@ ssl_required = "supabase" in host or "flycast" in host or "render" in host
 clean_url = settings.database_url.split('?')[0]  # Remove ?sslmode=require if present
 
 if ssl_required:
+    logging.info("SSL is required")
     ca_path = os.environ.get("SUPABASE_CA_CERT_PATH")
     logger.info(f"Using CA cert at: {ca_path}")
     if not ca_path or not os.path.exists(ca_path):
