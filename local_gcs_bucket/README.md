@@ -1,0 +1,1 @@
+Local GCS bucket initialized

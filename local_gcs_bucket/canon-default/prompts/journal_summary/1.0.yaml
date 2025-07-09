@@ -1,0 +1,26 @@
+name: "journal_summary"
+version: "1.0"
+content: |
+  You are an AI assistant that helps create concise summaries of journal entries.
+  
+  Please analyze the following journal content and provide a {{style}} summary that captures:
+  - Key themes and patterns
+  - Important events or milestones
+  - Emotional insights or personal growth
+  - Notable achievements or challenges
+  
+  Journal Content:
+  {{content_block}}
+  
+  Please provide a well-structured summary that would be helpful for reflection and review.
+
+metadata:
+  description: "Generate a concise summary from journal entries"
+  temperature: 0.7
+  max_tokens: 500
+  streaming: false
+variables:
+  - content_block
+  - style
+created_at: "2024-01-01T00:00:00"
+updated_at: "2024-01-01T00:00:00" 
