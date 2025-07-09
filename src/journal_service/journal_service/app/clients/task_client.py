@@ -22,6 +22,11 @@ class TaskClient:
         # Use current time if not provided
         if created_at is None:
             created_at = datetime.utcnow()
+        
+        # Get the reindex secret from config
+        from journal_service.journal_service.app.config import get_settings
+        settings = get_settings()
+        secret = settings.reindex_secret_key
             
         response = await self.client.post(
             f"{self.base_url}/tasks/index-journal-entry",
@@ -31,7 +36,8 @@ class TaskClient:
                 "content": content,
                 "created_at": created_at.isoformat(),
                 "metadata": metadata or {}
-            }
+            },
+            headers={"X-Reindex-Secret": secret}
         )
         response.raise_for_status()
         return response.json()

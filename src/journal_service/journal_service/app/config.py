@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # Auth
     jwt_secret: str = os.getenv('JWT_SECRET', "your-secret-key")
     jwt_algorithm: str = os.getenv('JWT_ALGORITHM', "HS256")
+    reindex_secret_key: str = os.getenv('REINDEX_SECRET_KEY')
     
     # Dummy UUIDs for mesh introspection and fallback users
     # These are obviously fake UUIDs (all 0s except last character)
