@@ -80,3 +80,8 @@ variable "agent_service_url" {
   description = "Agent service URL"
   type        = string
 }
+
+variable "celery_worker_url" {
+  description = "Celery worker URL"
+  type        = string
+}

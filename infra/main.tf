@@ -104,6 +104,7 @@ module "journal_service" {
   
   # Service URLs (from secrets)
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
+  celery_worker_url     = data.google_secret_manager_secret_version.celery_worker_url.secret_data
 }
 
 module "agent_service" {
