@@ -1,9 +1,13 @@
 import httpx
 from typing import Optional
 from datetime import datetime
+from journal_service.journal_service.app.config import get_settings
 
 class TaskClient:
-    def __init__(self, base_url: str = "http://celery-worker:8000"):
+    def __init__(self, base_url: Optional[str] = None):
+        if base_url is None:
+            settings = get_settings()
+            base_url = settings.celery_worker_url
         self.base_url = base_url
         self.client = httpx.AsyncClient()
     
