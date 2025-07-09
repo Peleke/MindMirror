@@ -17,8 +17,8 @@ import { Text } from "@/components/ui/text";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { VStack } from "@/components/ui/vstack";
 import { CREATE_GRATITUDE_JOURNAL_ENTRY } from '@/services/api/mutations';
-import { JOURNAL_ENTRY_EXISTS_TODAY, GET_JOURNAL_ENTRIES } from '@/services/api/queries';
-import { useMutation, useQuery } from '@apollo/client';
+import { GET_JOURNAL_ENTRIES } from '@/services/api/queries';
+import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -69,10 +69,7 @@ export default function GratitudeJournalScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Check if entry exists for today
-  const { data: existsData, loading: existsLoading } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
-    variables: { entryType: 'gratitude' }
-  });
+
 
   // Create gratitude entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_GRATITUDE_JOURNAL_ENTRY, {
@@ -145,37 +142,6 @@ export default function GratitudeJournalScreen() {
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Loading State */}
-          {existsLoading && (
-            <VStack className="px-6 py-6" space="md">
-              <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-700">
-                <Text className="text-blue-700 dark:text-blue-300 text-center">
-                  Checking today's entry...
-                </Text>
-              </Box>
-            </VStack>
-          )}
-
-          {/* Already Completed State */}
-          {!existsLoading && existsData?.journalEntryExistsToday && (
-            <VStack className="px-6 py-6" space="md">
-              <Box className="p-6 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
-                <Text className="text-green-700 dark:text-green-300 text-center font-semibold mb-2">
-                  Already completed today!
-                </Text>
-                <Text className="text-green-600 dark:text-green-400 text-center text-sm">
-                  You've already recorded your gratitude for today. Come back tomorrow for a fresh start!
-                </Text>
-                <Button
-                  onPress={() => router.back()}
-                  className="mt-4"
-                >
-                  <ButtonText>Go Back</ButtonText>
-                </Button>
-              </Box>
-            </VStack>
-          )}
-
           {/* Success State */}
           {isSubmitted && (
             <VStack className="px-6 py-6" space="md">
@@ -184,7 +150,7 @@ export default function GratitudeJournalScreen() {
                   Gratitude saved successfully!
                 </Text>
                 <Text className="text-green-600 dark:text-green-400 text-center text-sm mb-4">
-                  Thank you for taking time to reflect. Your gratitude has been recorded for today.
+                  Thank you for taking time to reflect. Your gratitude has been recorded!
                 </Text>
                 <Button
                   onPress={() => router.push('/(app)')}
@@ -196,8 +162,8 @@ export default function GratitudeJournalScreen() {
             </VStack>
           )}
 
-          {/* Main Form - Only show if not loading, not already completed, and not submitted */}
-          {!existsLoading && !existsData?.journalEntryExistsToday && !isSubmitted && (
+          {/* Main Form - Only show if not submitted */}
+          {!isSubmitted && (
             <>
               {/* Header */}
               <VStack className="px-6 py-6" space="xs">
@@ -307,7 +273,7 @@ export default function GratitudeJournalScreen() {
 
                 <Button
                   onPress={handleSubmit}
-                  disabled={creating || existsLoading}
+                  disabled={creating}
                   className="mt-4"
                 >
                   <ButtonText>

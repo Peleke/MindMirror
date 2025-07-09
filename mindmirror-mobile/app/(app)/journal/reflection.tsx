@@ -67,10 +67,7 @@ export default function ReflectionJournalScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Check if entry exists for today
-  const { data: existsData, loading: existsLoading } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
-    variables: { entryType: 'reflection' }
-  });
+
 
   // Create reflection entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_REFLECTION_JOURNAL_ENTRY, {
@@ -133,37 +130,6 @@ export default function ReflectionJournalScreen() {
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Loading State */}
-          {existsLoading && (
-            <VStack className="px-6 py-6" space="md">
-              <Box className="p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-700">
-                <Text className="text-blue-700 dark:text-blue-300 text-center">
-                  Checking today's entry...
-                </Text>
-              </Box>
-            </VStack>
-          )}
-
-          {/* Already Completed State */}
-          {!existsLoading && existsData?.journalEntryExistsToday && (
-            <VStack className="px-6 py-6" space="md">
-              <Box className="p-6 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-700">
-                <Text className="text-green-700 dark:text-green-300 text-center font-semibold mb-2">
-                  You've already reflected today!
-                </Text>
-                <Text className="text-green-600 dark:text-green-400 text-center text-sm">
-                  Your evening reflection is complete. See you tomorrow!
-                </Text>
-                <Button
-                  onPress={() => router.back()}
-                  className="mt-4"
-                >
-                  <ButtonText>Go Back</ButtonText>
-                </Button>
-              </Box>
-            </VStack>
-          )}
-
           {/* Success State */}
           {isSubmitted && (
             <VStack className="px-6 py-6" space="md">
@@ -184,8 +150,8 @@ export default function ReflectionJournalScreen() {
             </VStack>
           )}
 
-          {/* Main Form - Only show if not loading, not already completed, and not submitted */}
-          {!existsLoading && !existsData?.journalEntryExistsToday && !isSubmitted && (
+          {/* Main Form - Only show if not submitted */}
+          {!isSubmitted && (
             <>
               {/* Header */}
               <VStack className="px-6 py-6" space="xs">
@@ -267,7 +233,7 @@ export default function ReflectionJournalScreen() {
 
                 <Button
                   onPress={handleSubmit}
-                  disabled={creating || existsLoading}
+                  disabled={creating}
                   className="mt-4"
                 >
                   <ButtonText>

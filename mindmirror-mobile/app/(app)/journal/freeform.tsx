@@ -16,8 +16,8 @@ import { Text } from '@/components/ui/text'
 import { Textarea, TextareaInput } from '@/components/ui/textarea'
 import { VStack } from '@/components/ui/vstack'
 import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations'
-import { JOURNAL_ENTRY_EXISTS_TODAY, GET_JOURNAL_ENTRIES } from '@/services/api/queries'
-import { useMutation, useQuery } from '@apollo/client'
+import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
+import { useMutation } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -64,10 +64,7 @@ export default function FreeformJournalScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Check if entry exists for today (optional for freeform since multiple entries are allowed)
-  const { data: existsData, loading: existsLoading } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
-    variables: { entryType: 'freeform' }
-  });
+
 
   // Create freeform entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_FREEFORM_JOURNAL_ENTRY, {
@@ -171,7 +168,7 @@ export default function FreeformJournalScreen() {
 
                 <Button
                   onPress={handleSubmit}
-                  disabled={creating || existsLoading}
+                  disabled={creating}
                   className="mt-4"
                 >
                   <ButtonText>
