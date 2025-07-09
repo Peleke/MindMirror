@@ -6,6 +6,12 @@ gcs_bucket_name   = "mindmirror-gcs-bucket"
 gcs_credential_file = "/path/to/credentials.json"
 tradition_discovery_mode = "gcs-first"
 
+# Container images
+journal_service_container_image = "gcr.io/mindmirror-69/journal-service:latest"
+agent_service_container_image   = "gcr.io/mindmirror-69/agent-service:latest"
+gateway_container_image         = "gcr.io/mindmirror-69/gateway:latest"
+celery_worker_container_image   = "gcr.io/mindmirror-69/celery-worker:latest"
+
 supabase_anon_key           = "YOUR_SUPABASE_ANON_KEY"
 supabase_service_role_key   = "YOUR_SUPABASE_SERVICE_ROLE_KEY"
 supabase_jwt_secret         = "YOUR_SUPABASE_JWT_SECRET"

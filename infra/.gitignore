@@ -1,2 +1,4 @@
 default.tfvars
 .terraform
+*.binary
+*.plan
