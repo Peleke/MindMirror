@@ -22,6 +22,7 @@ output "secret_names" {
     SUPABASE_ANON_KEY       = data.google_secret_manager_secret.supabase_anon.name,
     SUPABASE_JWT_SECRET     = data.google_secret_manager_secret.supabase_jwt.name,
     SUPABASE_SERVICE_ROLE_KEY = data.google_secret_manager_secret.supabase_service_role_key.name,
-    REINDEX_SECRET_KEY      = data.google_secret_manager_secret.reindex.name
+    REINDEX_SECRET_KEY      = data.google_secret_manager_secret.reindex.name,
+
   }
 }

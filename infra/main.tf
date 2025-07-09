@@ -25,6 +25,11 @@ data "google_secret_manager_secret_version" "supabase_anon_key" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "supabase_jwt_secret" {
+  secret  = "SUPABASE_JWT_SECRET"
+  project = var.project_id
+}
+
 data "google_secret_manager_secret_version" "supabase_service_role_key" {
   secret  = "SUPABASE_SERVICE_ROLE_KEY"
   project = var.project_id
@@ -62,6 +67,11 @@ data "google_secret_manager_secret_version" "journal_service_url" {
 
 data "google_secret_manager_secret_version" "celery_worker_url" {
   secret  = "CELERY_WORKER_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "reindex_secret_key" {
+  secret  = "REINDEX_SECRET_KEY"
   project = var.project_id
 }
 
@@ -131,6 +141,56 @@ module "agent_service" {
   
   # Logging and environment
   log_level             = var.log_level
+  environment           = var.environment
+  debug                 = var.debug
+}
+
+module "gateway" {
+  source  = "./modules/gateway"
+  
+  project_id  = var.project_id
+  region      = var.region
+  gateway_container_image = var.gateway_container_image
+  
+  # Supabase configuration (from secrets)
+  supabase_anon_key     = data.google_secret_manager_secret_version.supabase_anon_key.secret_data
+  supabase_jwt_secret   = data.google_secret_manager_secret_version.supabase_jwt_secret.secret_data
+  
+  # Service URLs (from secrets)
+  agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
+  journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+  
+  # Environment
+  environment           = var.environment
+  debug                 = var.debug
+}
+
+module "celery_worker" {
+  source  = "./modules/celery-worker"
+  
+  project_id  = var.project_id
+  region      = var.region
+  celery_worker_container_image = var.celery_worker_container_image
+  
+  # Database and Redis (from secrets)
+  database_url          = data.google_secret_manager_secret_version.database_url.secret_data
+  redis_url             = data.google_secret_manager_secret_version.redis_url.secret_data
+  
+  # Vector database (from secrets)
+  qdrant_url            = data.google_secret_manager_secret_version.qdrant_url.secret_data
+  qdrant_api_key        = data.google_secret_manager_secret_version.qdrant_api_key.secret_data
+  
+  # LLM configuration (from secrets)
+  openai_api_key        = data.google_secret_manager_secret_version.openai_api_key.secret_data
+  
+  # Security (from secrets)
+  reindex_secret_key    = data.google_secret_manager_secret_version.reindex_secret_key.secret_data
+  
+  # Service URLs (from secrets)
+  journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+  agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
+  
+  # Environment
   environment           = var.environment
   debug                 = var.debug
 }

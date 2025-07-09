@@ -35,6 +35,19 @@ variable "journal_service_container_image" {
 variable "agent_service_container_image" {
   description = "Agent service container image"
   type        = string
+  default     = "gcr.io/mindmirror-69/agent-service:latest"
+}
+
+variable "gateway_container_image" {
+  description = "Gateway container image"
+  type        = string
+  default     = "gcr.io/mindmirror-69/gateway:latest"
+}
+
+variable "celery_worker_container_image" {
+  description = "Celery worker container image"
+  type        = string
+  default     = "gcr.io/mindmirror-69/celery-worker:latest"
 }
 
 variable "gcs_bucket_name" {
