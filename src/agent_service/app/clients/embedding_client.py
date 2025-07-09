@@ -34,7 +34,7 @@ class EmbeddingClient:
             from agent_service.app.config import get_settings
 
             settings = get_settings()
-            base_url = settings.ollama_base_url
+            base_url = settings.embedding_base_url
 
         self.base_url = base_url
         self.client = httpx.AsyncClient(timeout=30.0)
@@ -57,23 +57,49 @@ class EmbeddingClient:
             from agent_service.app.config import get_settings
 
             settings = get_settings()
-            model = settings.ollama_embedding_model
+            model = settings.embedding_model
+            provider = settings.embedding_provider
 
-            response = await self.client.post(
-                f"{self.base_url}/api/embeddings",
-                json={"model": model, "prompt": text},
-            )
+            if provider == "openai":
+                # Use OpenAI's embedding API
+                headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
+                response = await self.client.post(
+                    "https://api.openai.com/v1/embeddings",
+                    headers=headers,
+                    json={"model": model, "input": text},
+                )
+            elif provider == "ollama":
+                # Use Ollama's embedding API
+                response = await self.client.post(
+                    f"{self.base_url}/api/embeddings",
+                    json={"model": model, "prompt": text},
+                )
+            else:
+                self.logger.error(f"Unsupported embedding provider: {provider}")
+                return None
 
             response.raise_for_status()
             data = response.json()
 
-            if "embedding" in data:
-                embedding = data["embedding"]
-                self.logger.debug(f"Received embedding of length {len(embedding)}")
-                return embedding
+            # Extract embedding based on provider
+            if provider == "openai":
+                if "data" in data and len(data["data"]) > 0:
+                    embedding = data["data"][0]["embedding"]
+                else:
+                    self.logger.error("No embedding data in OpenAI response")
+                    return None
+            elif provider == "ollama":
+                if "embedding" in data:
+                    embedding = data["embedding"]
+                else:
+                    self.logger.error("No embedding in Ollama response")
+                    return None
             else:
-                self.logger.error("No embedding in response")
+                self.logger.error(f"Unsupported embedding provider: {provider}")
                 return None
+
+            self.logger.debug(f"Received embedding of length {len(embedding)}")
+            return embedding
 
         except httpx.HTTPStatusError as e:
             self.logger.error(f"HTTP error getting embedding: {e.response.status_code}")
@@ -130,9 +156,22 @@ class EmbeddingClient:
             True if healthy, False otherwise
         """
         try:
-            response = await self.client.get(f"{self.base_url}/api/tags")
-            response.raise_for_status()
-            return True
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            provider = settings.embedding_provider
+
+            if provider == "openai":
+                # For OpenAI, we can't easily health check without making an API call
+                # Just return True since the API key validation will happen on actual requests
+                return True
+            elif provider == "ollama":
+                # Check Ollama's health endpoint
+                response = await self.client.get(f"{self.base_url}/api/tags")
+                response.raise_for_status()
+                return True
+            else:
+                self.logger.error(f"Unsupported embedding provider for health check: {provider}")
+                return False
         except Exception as e:
             self.logger.error(f"Embedding service health check failed: {e}")
             return False
