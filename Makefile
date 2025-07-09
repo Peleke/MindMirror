@@ -1,169 +1,131 @@
-# MindMirror Development Commands
+# =============================================================================
+# MindMirror Development & Deployment Makefile
+# =============================================================================
 
-.PHONY: demo clean logs help init-storage health-check
+.PHONY: help local staging production clean logs
 
 # Default target
-.DEFAULT_GOAL := help
-
-# Demo environment - launches the full stack
-demo:
-	@echo "🚀 Launching MindMirror Demo Environment..."
-	@echo "📋 This will start all services:"
-	@echo "   - Next.js Web App (http://localhost:3001) ✨ PRIMARY INTERFACE"
-	@echo "   - GraphQL Gateway (http://localhost:4000/graphql)"
-	@echo "   - Task Monitoring (http://localhost:5555)"
-	@echo "   - GCS Emulator (http://localhost:4443)"
+help:
+	@echo "MindMirror Development & Deployment Commands"
+	@echo "============================================="
 	@echo ""
-	@if [ ! -f .env ]; then \
-		echo "❌ .env file not found. Creating from template..."; \
-		cp env.example .env; \
-		echo "✅ .env file created. Please edit it to add your OpenAI API key or configure Ollama."; \
-		echo ""; \
-	fi
-	@echo "📁 Creating necessary directories..."
-	@mkdir -p prompts credentials local_gcs_bucket
-	@echo "🔧 Installing MindMirror CLI..."
-	@if [ -f cli/pyproject.toml ]; then \
-		cd cli && poetry install; \
-	fi
-	@echo "🧠 Building knowledge base..."
-	@make build-knowledge-base
-	@echo "🐳 Starting Docker containers..."
-	docker-compose up --build -d
+	@echo "Environment Commands:"
+	@echo "  make local      - Start with local environment (Docker Compose)"
+	@echo "  make staging    - Start with staging environment (Live DBs)"
+	@echo "  make production - Start with production environment"
 	@echo ""
-	@echo "⏳ Waiting for services to start..."
-	@sleep 10
-	@echo "🔧 Initializing storage..."
-	@make init-storage
+	@echo "Utility Commands:"
+	@echo "  make clean      - Stop and remove all containers"
+	@echo "  make logs       - Show logs from all services"
+	@echo "  make build      - Build all services"
+	@echo "  make down       - Stop all services"
 	@echo ""
-	@echo "✅ MindMirror is starting up!"
-	@echo "🔍 Monitor startup progress with: make logs"
-	@echo "🏥 Check health with: make health-check"
-	@echo "🚀 When ready, visit: http://localhost:3001"
 
-# Build knowledge base
-build-knowledge-base:
-	@echo "🧠 Building Qdrant knowledge base..."
-	@if [ -f cli/pyproject.toml ]; then \
-		echo "📚 Running MindMirror CLI..."; \
-		cd cli && poetry run mindmirror qdrant build --tradition canon-default --verbose || echo "⚠️  Knowledge base build failed or skipped"; \
-	else \
-		echo "⚠️  MindMirror CLI not found, falling back to script..."; \
-		poetry run python scripts/build_qdrant_knowledge_base.py || echo "⚠️  Knowledge base build failed or skipped"; \
-	fi
-	@echo "✅ Knowledge base build complete!"
+# Local Development (Docker Compose with local databases)
+local:
+	@echo "🚀 Starting MindMirror in LOCAL mode..."
+	@echo "   - PostgreSQL: Local Docker container"
+	@echo "   - Qdrant: Local Docker container"
+	@echo "   - Redis: Local Docker container"
+	@echo "   - GCS: Local emulator"
+	ENV_FILE=env.local docker-compose up --build
 
-# Initialize storage (GCS bucket, prompts directory)
-init-storage:
-	@echo "🔧 Initializing storage..."
-	@if [ -f scripts/init-gcs-bucket.sh ]; then \
-		echo "📦 Setting up GCS bucket..."; \
-		docker-compose exec -T gcs-emulator sh -c "sleep 5" 2>/dev/null || true; \
-		./scripts/init-gcs-bucket.sh 2>/dev/null || echo "⚠️  GCS initialization skipped (emulator may not be ready)"; \
-	else \
-		echo "📁 Creating prompts directory..."; \
-		mkdir -p prompts; \
-	fi
-	@echo "✅ Storage initialization complete!"
+# Staging Environment (Live databases, local services)
+staging:
+	@echo "🚀 Starting MindMirror in STAGING mode..."
+	@echo "   - PostgreSQL: Live Supabase"
+	@echo "   - Qdrant: Live Qdrant Cloud"
+	@echo "   - Redis: Local Docker container"
+	@echo "   - GCS: Live GCS bucket"
+	ENV_FILE=env.staging docker-compose up --build
 
-# Health check for all services
-health-check:
-	@echo "🏥 Running health checks..."
-	@if [ -f scripts/health-check.sh ]; then \
-		./scripts/health-check.sh; \
-	else \
-		echo "📊 Checking service status..."; \
-		docker-compose ps; \
-		echo ""; \
-		echo "🔍 Manual health checks:"; \
-		echo "  - Web App: curl http://localhost:3001/api/health"; \
-		echo "  - Agent Service: curl http://localhost:8000/health"; \
-		echo "  - Gateway: curl http://localhost:4000/healthcheck"; \
-	fi
+# Production Environment (Live everything)
+production:
+	@echo "🚀 Starting MindMirror in PRODUCTION mode..."
+	@echo "   - PostgreSQL: Live Supabase"
+	@echo "   - Qdrant: Live Qdrant Cloud"
+	@echo "   - Redis: Live Redis Cloud"
+	@echo "   - GCS: Live GCS bucket"
+	ENV_FILE=env.production docker-compose up --build
+
+# Build all services
+build:
+	@echo "🔨 Building all services..."
+	docker-compose build
 
 # Stop all services
-stop:
-	@echo "🛑 Stopping MindMirror services..."
+down:
+	@echo "🛑 Stopping all services..."
 	docker-compose down
 
-# View logs from all services
-logs:
-	@echo "📋 Showing logs from all services (Ctrl+C to exit)..."
-	docker-compose logs -f
-
-# Clean up everything (containers, volumes, networks)
+# Clean everything
 clean:
-	@echo "🧹 Cleaning up MindMirror environment..."
+	@echo "🧹 Cleaning up..."
 	docker-compose down -v --remove-orphans
 	docker system prune -f
-	@echo "✅ Cleanup complete!"
 
-# Show service status
-status:
-	@echo "📊 MindMirror Service Status:"
+# Show logs
+logs:
+	@echo "📋 Showing logs..."
+	docker-compose logs -f
+
+# Health check
+health:
+	@echo "🏥 Checking service health..."
 	docker-compose ps
-
-# Rebuild and restart a specific service
-rebuild:
-	@if [ -z "$(service)" ]; then \
-		echo "❌ Please specify a service: make rebuild service=<service_name>"; \
-		echo "Available services: web, agent_service, journal_service, ui, gateway"; \
-	else \
-		echo "🔄 Rebuilding $(service)..."; \
-		docker-compose up --build -d $(service); \
-	fi
-
-# Open GraphQL playground
-playground:
-	@echo "🎮 Opening GraphQL Playground..."
-	@echo "Gateway: http://localhost:4000/graphql"
-	@echo "Agent Service: http://localhost:8000/graphql"
-	@echo "Journal Service: http://localhost:8001/graphql"
-
-# Run tests
-test:
-	@echo "🧪 Running tests..."
-	docker-compose exec agent_service pytest
-	docker-compose exec journal_service pytest
-
-# Switch storage backend
-switch-storage:
-	@if [ -z "$(type)" ]; then \
-		echo "❌ Please specify storage type: make switch-storage type=<yaml|gcs|memory>"; \
-		echo "Available types: yaml, gcs, memory"; \
-	else \
-		echo "🔄 Switching to $(type) storage..."; \
-		export PROMPT_STORAGE_TYPE=$(type); \
-		docker-compose up -d agent_service celery_worker; \
-		echo "✅ Switched to $(type) storage"; \
-	fi
-
-# Show help
-help:
-	@echo "🧠 MindMirror Development Commands"
 	@echo ""
-	@echo "Main Commands:"
-	@echo "  make demo        Launch the full MindMirror stack"
-	@echo "  make stop        Stop all running services"
-	@echo "  make clean       Stop and remove all containers/volumes"
-	@echo ""
-	@echo "Development:"
-	@echo "  make logs        View logs from all services"
-	@echo "  make status      Show current service status"
-	@echo "  make rebuild service=<name>  Rebuild specific service"
-	@echo "  make test        Run test suites"
-	@echo "  make health-check Check health of all services"
-	@echo ""
-	@echo "Storage Management:"
-	@echo "  make init-storage Initialize storage (GCS bucket, prompts)"
-	@echo "  make switch-storage type=<yaml|gcs|memory>  Switch storage backend"
-	@echo "  make build-knowledge-base Build Qdrant knowledge base"
-	@echo ""
-	@echo "Quick Access:"
-	@echo "  make playground  Show GraphQL endpoint URLs"
-	@echo ""
-	@echo "URLs after 'make demo':"
-	@echo "  📱 Web App:      http://localhost:3001 ✨ PRIMARY"
-	@echo "  🌐 Gateway:      http://localhost:4000/graphql"
-	@echo "  📊 Monitoring:   http://localhost:5555"
-	@echo "  ☁️  GCS Emulator: http://localhost:4443" 
+	@echo "Service URLs:"
+	@echo "  - Web UI: http://localhost:3001"
+	@echo "  - Gateway: http://localhost:4000"
+	@echo "  - Agent Service: http://localhost:8000"
+	@echo "  - Journal Service: http://localhost:8001"
+	@echo "  - Celery Worker: http://localhost:8002"
+	@echo "  - Flower (Celery): http://localhost:5555"
+	@echo "  - PostgreSQL: localhost:5432"
+	@echo "  - Redis: localhost:6379"
+	@echo "  - Qdrant: http://localhost:6333"
+	@echo "  - GCS Emulator: http://localhost:4443"
+
+# GCS Configuration Commands
+local-gcs-emulator:
+	@echo "🔧 Switching to LOCAL GCS emulator..."
+	@sed -i 's/USE_GCS_EMULATOR=false/USE_GCS_EMULATOR=true/' env.local
+	@sed -i 's/STORAGE_EMULATOR_HOST=.*/STORAGE_EMULATOR_HOST=gcs-emulator:4443/' env.local
+	@echo "✅ Switched to GCS emulator. Restart services with: make local"
+
+local-gcs-real:
+	@echo "🔧 Switching to REAL GCS (requires credentials)..."
+	@echo "⚠️  Make sure you have:"
+	@echo "   1. GCS service account credentials in ./credentials/"
+	@echo "   2. Updated GCS_BUCKET_NAME in env.local"
+	@echo "   3. Set GOOGLE_CLOUD_PROJECT in env.local"
+	@sed -i 's/USE_GCS_EMULATOR=true/USE_GCS_EMULATOR=false/' env.local
+	@sed -i 's/STORAGE_EMULATOR_HOST=.*/STORAGE_EMULATOR_HOST=/' env.local
+	@echo "✅ Switched to real GCS. Restart services with: make local"
+
+# CLI Commands
+cli-local:
+	@echo "🔧 Running CLI in LOCAL mode..."
+	cd cli && poetry run mindmirror qdrant health --env local
+
+cli-staging:
+	@echo "🔧 Running CLI in STAGING mode..."
+	cd cli && poetry run mindmirror qdrant health --env live
+
+# Database Commands
+db-migrate-local:
+	@echo "🗄️ Running migrations in LOCAL mode..."
+	cd cli && poetry run mindmirror supabase upgrade --env local
+
+db-migrate-staging:
+	@echo "🗄️ Running migrations in STAGING mode..."
+	cd cli && poetry run mindmirror supabase upgrade --env supabase
+
+# Qdrant Commands
+qdrant-seed-local:
+	@echo "🌱 Seeding Qdrant in LOCAL mode..."
+	cd cli && poetry run mindmirror qdrant build --env local
+
+qdrant-seed-staging:
+	@echo "🌱 Seeding Qdrant in STAGING mode..."
+	cd cli && poetry run mindmirror qdrant seed --env live 
