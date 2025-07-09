@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # Embedding provider - REQUIRED
     embedding_provider: str = Field(env="EMBEDDING_PROVIDER")
 
+    # Embedding vector size - REQUIRED
+    embedding_vector_size: int = Field(env="EMBEDDING_VECTOR_SIZE")
+
     # Data directory
     data_dir: str = Field(default="./data", env="DATA_DIR")
 

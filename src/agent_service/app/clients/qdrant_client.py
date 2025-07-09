@@ -118,11 +118,16 @@ class QdrantClient:
                 logger.info(f"Collection {collection_name} already exists")
                 return True
 
+            # Get vector size from configuration
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            vector_size = settings.embedding_vector_size
+
             # Create new collection with vector configuration
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
-                    size=768, distance=Distance.COSINE  # nomic-embed-text dimension
+                    size=vector_size, distance=Distance.COSINE
                 ),
             )
 
@@ -192,6 +197,18 @@ class QdrantClient:
         point_id = str(uuid.uuid4())
 
         try:
+            # Validate embedding vector size
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            expected_size = settings.embedding_vector_size
+            
+            if len(embedding) != expected_size:
+                logger.error(
+                    f"Vector dimension mismatch: expected {expected_size}, got {len(embedding)}. "
+                    f"Check EMBEDDING_VECTOR_SIZE environment variable and embedding model configuration."
+                )
+                raise ValueError(f"Embedding vector size mismatch: expected {expected_size}, got {len(embedding)}")
+
             # Create point with embedding and metadata
             point = PointStruct(
                 id=point_id, vector=embedding, payload={"text": text, **metadata}
@@ -216,6 +233,18 @@ class QdrantClient:
     ) -> List[SearchResult]:
         """Search for similar documents in a collection."""
         try:
+            # Validate embedding vector size
+            from agent_service.app.config import get_settings
+            settings = get_settings()
+            expected_size = settings.embedding_vector_size
+            
+            if len(query_embedding) != expected_size:
+                logger.error(
+                    f"Vector dimension mismatch: expected {expected_size}, got {len(query_embedding)}. "
+                    f"Check EMBEDDING_VECTOR_SIZE environment variable and embedding model configuration."
+                )
+                return []
+
             # Build filter if metadata filtering is requested
             search_filter = None
             if metadata_filter:
