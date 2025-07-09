@@ -1,5 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from journal_service.journal_service.app.db.repositories.base import BaseRepository

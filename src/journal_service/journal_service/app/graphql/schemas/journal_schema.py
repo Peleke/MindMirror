@@ -216,6 +216,20 @@ class Query:
                 ))
         return result
 
+    @strawberry.field
+    async def journal_entry_exists_today(
+        self,
+        info,
+        entry_type: str,
+    ) -> bool:
+        """Check if user has an entry of the specified type today (for UI purposes only)."""
+        current_user = get_current_user_from_context(info)
+        service = get_journal_service_from_context(info)
+        return await service.check_for_entry_today(
+            user_id=str(current_user.id),
+            entry_type=entry_type
+        )
+
 
 @strawberry.type
 class Mutation:
