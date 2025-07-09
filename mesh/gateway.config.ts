@@ -36,7 +36,7 @@ export const gatewayConfig = defineConfig({
     tokenVerification: {
       issuer: ['https://gaitofyakycvpwqfoevq.supabase.co/auth/v1'],
       audience: ['authenticated'],
-      algorithms: ['HS256'],  // Supabase uses HS257
+      algorithms: ['HS256'],  // Supabase uses HS256
     },
     reject: {
       missingToken: true,
