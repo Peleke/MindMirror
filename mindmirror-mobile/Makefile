@@ -39,13 +39,13 @@ local:
 		exit 1; \
 	fi
 	@echo "🔧 Starting Expo development server..."
-	npx expo start
+	npx expo start --tunnel --clear
 
 # Staging Environment
 staging:
 	@echo "🚀 Starting MindMirror Mobile in STAGING mode..."
 	@echo "   - Supabase: Live project"
-	@echo "   - Gateway: Live staging URL"
+	@echo "   - Gateway: https://gateway-3858903851.us-east4.run.app/graphql"
 	@echo "   - Debug: Disabled"
 	@if [ -f env.staging ]; then \
 		echo "📋 Loading staging environment..."; \
@@ -55,13 +55,13 @@ staging:
 		exit 1; \
 	fi
 	@echo "🔧 Starting Expo development server..."
-	npx expo start
+	npx expo start --tunnel --clear
 
 # Production Environment
 production:
 	@echo "🚀 Starting MindMirror Mobile in PRODUCTION mode..."
 	@echo "   - Supabase: Live production project"
-	@echo "   - Gateway: Live production URL"
+	@echo "   - Gateway: https://gateway-3858903851.us-east4.run.app/graphql"
 	@echo "   - Debug: Disabled"
 	@if [ -f env.production ]; then \
 		echo "📋 Loading production environment..."; \
@@ -71,12 +71,12 @@ production:
 		exit 1; \
 	fi
 	@echo "🔧 Starting Expo development server..."
-	npx expo start
+	npx expo start --tunnel --clear
 
 # Start Expo development server
 start:
 	@echo "🔧 Starting Expo development server..."
-	npx expo start
+	npx expo start --tunnel --clear
 
 # Clean build artifacts
 clean:
