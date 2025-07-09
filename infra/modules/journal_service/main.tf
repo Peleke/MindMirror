@@ -112,6 +112,11 @@ resource "google_cloud_run_service" "journal_service" {
           name  = "CELERY_WORKER_URL"
           value = var.celery_worker_url
         }
+
+        env {
+          name  = "REINDEX_SECRET_KEY"
+          value = var.reindex_secret_key
+        }
       }
 
 

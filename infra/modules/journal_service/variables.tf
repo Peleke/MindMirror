@@ -85,3 +85,8 @@ variable "celery_worker_url" {
   description = "Celery worker URL"
   type        = string
 }
+
+variable "reindex_secret_key" {
+  description = "Reindex secret key for celery worker authentication"
+  type        = string
+}

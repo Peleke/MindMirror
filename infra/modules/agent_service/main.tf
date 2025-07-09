@@ -87,6 +87,11 @@ resource "google_cloud_run_service" "agent_service" {
           value = "openai"
         }
 
+        env {
+          name  = "EMBEDDING_VECTOR_SIZE"
+          value = "768"
+        }
+
         # Supabase Configuration
         env {
           name  = "SUPABASE_URL"

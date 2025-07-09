@@ -117,6 +117,17 @@ resource "google_cloud_run_service" "celery_worker" {
   }
 }
 
+# Data sources for service accounts from base module
+data "google_service_account" "journal_service" {
+  account_id = "journal-service"
+  project    = var.project_id
+}
+
+data "google_service_account" "agent_service" {
+  account_id = "agent-service"
+  project    = var.project_id
+}
+
 # Service account for celery worker
 resource "google_service_account" "celery_worker" {
   account_id   = "celery-worker"
@@ -136,4 +147,22 @@ resource "google_project_iam_member" "celery_worker_sa_run_invoker" {
   project = var.project_id
   role    = "roles/run.invoker"
   member  = "serviceAccount:${google_service_account.celery_worker.email}"
+}
+
+# Allow journal service to invoke celery worker
+resource "google_cloud_run_service_iam_member" "journal_service_invoker" {
+  location = google_cloud_run_service.celery_worker.location
+  project  = google_cloud_run_service.celery_worker.project
+  service  = google_cloud_run_service.celery_worker.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_service_account.journal_service.email}"
+}
+
+# Allow agent service to invoke celery worker
+resource "google_cloud_run_service_iam_member" "agent_service_invoker" {
+  location = google_cloud_run_service.celery_worker.location
+  project  = google_cloud_run_service.celery_worker.project
+  service  = google_cloud_run_service.celery_worker.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_service_account.agent_service.email}"
 } 
