@@ -11,6 +11,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    env:
+      # Default production service URLs (can be overridden)
+      JOURNAL_SERVICE_URL: https://journal-service-3858903851.us-east4.run.app
+      AGENT_SERVICE_URL: https://agent-service-3858903851.us-east4.run.app
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +41,24 @@ jobs:
         run: |
           docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:${{ env.tag }} -f celery-worker/Dockerfile .
 
-      - name: Docker build mesh
+      - name: Build supergraph with mesh-compose
         if: env.service == 'mesh' || env.service == 'all'
         run: |
+          # Build supergraph with production URLs (can be overridden with env vars)
+          docker build \
+            -f mesh/Dockerfile.mesh-compose \
+            --build-arg JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-https://journal-service-3858903851.us-east4.run.app} \
+            --build-arg AGENT_SERVICE_URL=${AGENT_SERVICE_URL:-https://agent-service-3858903851.us-east4.run.app} \
+            -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }} \
+            ./mesh
+
+      - name: Docker build mesh (with generated supergraph)
+        if: env.service == 'mesh' || env.service == 'all'
+        run: |
+          # Copy the generated supergraph from mesh-compose container
+          docker create --name temp-mesh-compose us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }}
+          docker cp temp-mesh-compose:/app/supergraph.graphql ./mesh/build/supergraph.graphql
+          docker rm temp-mesh-compose
+          
+          # Build the final mesh container with the production supergraph
           docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:${{ env.tag }} -f mesh/Dockerfile ./mesh
