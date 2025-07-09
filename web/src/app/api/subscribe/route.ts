@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
-import { WelcomeEmail } from '../../../../emails/welcome-email';
+import { WelcomeEmail } from '../../../../emails/0-welcome-email';
 import { createServiceRoleClient } from '../../../../lib/supabase/server';
 
 const resend = new Resend(process.env.RESEND_API_KEY);

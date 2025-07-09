@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS waitlist.subscribers (
   subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   source VARCHAR(50) DEFAULT 'landing_page',
   status VARCHAR(20) DEFAULT 'active',
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  drip_day_sent INTEGER DEFAULT 0
 );
 
 -- email_events table (engagement tracking)
@@ -79,6 +80,7 @@ CREATE POLICY "Admins can manage admin users" ON waitlist.admin_users
 -- Insert indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_subscribers_email ON waitlist.subscribers(email);
 CREATE INDEX IF NOT EXISTS idx_subscribers_subscribed_at ON waitlist.subscribers(subscribed_at);
+CREATE INDEX IF NOT EXISTS idx_subscribers_drip_day_sent ON waitlist.subscribers(drip_day_sent);
 CREATE INDEX IF NOT EXISTS idx_email_events_subscriber_id ON waitlist.email_events(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_email_events_created_at ON waitlist.email_events(created_at);
 CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON waitlist.admin_users(user_id);
