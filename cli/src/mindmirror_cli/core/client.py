@@ -11,7 +11,7 @@ from qdrant_client import QdrantClient as QdrantClientBase
 from qdrant_client.http.exceptions import ResponseHandlingException
 from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
                                   PointStruct, Range, SearchRequest,
-                                  VectorParams)
+                                  VectorParams, PayloadSchemaType)
 
 from .utils import get_qdrant_url, get_qdrant_api_key
 
@@ -251,4 +251,35 @@ class QdrantClient:
             }
         except Exception as e:
             logger.error(f"Failed to get collection info for {collection_name}: {e}")
-            return None 
+            return None
+
+    async def create_field_index(
+        self, 
+        collection_name: str, 
+        field_name: str, 
+        field_type: str = "keyword"
+    ) -> bool:
+        """Create a field index for filtering in a collection."""
+        try:
+            # Map field_type to PayloadSchemaType
+            schema_type_map = {
+                "keyword": PayloadSchemaType.KEYWORD,
+                "integer": PayloadSchemaType.INTEGER,
+                "float": PayloadSchemaType.FLOAT,
+                "geo": PayloadSchemaType.GEO,
+                "text": PayloadSchemaType.TEXT,
+            }
+            
+            schema_type = schema_type_map.get(field_type, PayloadSchemaType.KEYWORD)
+            
+            # Create payload index for filtering
+            self.client.create_payload_index(
+                collection_name=collection_name,
+                field_name=field_name,
+                field_schema=schema_type
+            )
+            logger.info(f"Created {field_type} index on field '{field_name}' in collection '{collection_name}'")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create index on field '{field_name}' in collection '{collection_name}': {e}")
+            return False 

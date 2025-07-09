@@ -329,4 +329,79 @@ def list_collections(
             console.print(f"[red]❌ Failed to list collections: {e}[/red]")
             raise typer.Exit(1)
 
-    asyncio.run(_list()) 
+    asyncio.run(_list())
+
+
+@app.command()
+def create_index(
+    field: str = typer.Argument(..., help="Field name to create index on"),
+    collection: Optional[str] = typer.Option(None, "--collection", "-c", help="Collection name (defaults to all collections)"),
+    field_type: str = typer.Option("keyword", "--type", "-t", help="Field type (keyword, integer, float, geo, text)"),
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+):
+    """Create a field index for filtering in Qdrant collections."""
+    async def _create_index():
+        _set_environment(env)
+        console.print(f"[bold blue]Creating Index[/bold blue]")
+        console.print(f"Field: {field}")
+        console.print(f"Type: {field_type}")
+        if collection:
+            console.print(f"Collection: {collection}")
+
+        qdrant_client = QdrantClient()
+
+        # Health check
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Checking Qdrant connection...", total=None)
+            if not await qdrant_client.health_check():
+                console.print("[red]❌ Qdrant connection failed[/red]")
+                raise typer.Exit(1)
+            progress.update(task, description="✅ Qdrant connected")
+
+        try:
+            if collection:
+                # Create index on specific collection
+                success = await qdrant_client.create_field_index(collection, field, field_type)
+                if success:
+                    console.print(f"[green]✅ Created {field_type} index on field '{field}' in collection '{collection}'[/green]")
+                else:
+                    console.print(f"[red]❌ Failed to create index on field '{field}' in collection '{collection}'[/red]")
+                    raise typer.Exit(1)
+            else:
+                # Create index on all collections
+                collections = await qdrant_client.list_collections()
+                if not collections:
+                    console.print("[yellow]No collections found[/yellow]")
+                    return
+
+                table = Table(title="Index Creation Results")
+                table.add_column("Collection", style="cyan")
+                table.add_column("Field", style="green")
+                table.add_column("Type", style="blue")
+                table.add_column("Status", style="yellow")
+
+                success_count = 0
+                for coll in collections:
+                    try:
+                        success = await qdrant_client.create_field_index(coll, field, field_type)
+                    except Exception as e:
+                        console.print(f"[red]❌ Failed for {coll}: {e}[/red]")
+                        success = False
+                    
+                    status = "✅ Success" if success else "❌ Failed"
+                    if success:
+                        success_count += 1
+                    table.add_row(coll, field, field_type, status)
+
+                console.print(table)
+                console.print(f"[green]✅ Created index on {success_count}/{len(collections)} collections[/green]")
+
+        except Exception as e:
+            console.print(f"[red]❌ Failed to create index: {e}[/red]")
+            raise typer.Exit(1)
+
+    asyncio.run(_create_index()) 
