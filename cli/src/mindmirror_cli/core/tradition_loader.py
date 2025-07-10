@@ -27,7 +27,7 @@ class TraditionLoader(ABC):
         pass
 
 class GCSTraditionLoader(TraditionLoader):
-    def __init__(self, bucket_name: str = None):
+    def __init__(self, bucket_name: str = None, project: str = None):
         self.bucket_name = bucket_name or os.getenv("GCS_BUCKET_NAME", "canon-default")
         self.client = None
         if storage is not None:
@@ -44,7 +44,11 @@ class GCSTraditionLoader(TraditionLoader):
                 logger.warning("STORAGE_EMULATOR_HOST not set, will try real GCS")
             
             try:
-                self.client = storage.Client()
+                # Pass project if provided
+                if project:
+                    self.client = storage.Client(project=project)
+                else:
+                    self.client = storage.Client()
                 # Test connection by listing buckets
                 buckets = list(self.client.list_buckets())
                 logger.info(f"GCS client initialized successfully. Found buckets: {[b.name for b in buckets]}")
@@ -222,8 +226,8 @@ class LocalTraditionLoader(TraditionLoader):
             return False
 
 class HybridTraditionLoader(TraditionLoader):
-    def __init__(self, gcs_loader: GCSTraditionLoader = None, local_loader: LocalTraditionLoader = None):
-        self.gcs_loader = gcs_loader or GCSTraditionLoader()
+    def __init__(self, gcs_loader: GCSTraditionLoader = None, local_loader: LocalTraditionLoader = None, project: str = None):
+        self.gcs_loader = gcs_loader or GCSTraditionLoader(project=project)
         self.local_loader = local_loader or LocalTraditionLoader()
 
     def list_traditions(self) -> List[str]:
@@ -247,13 +251,13 @@ class HybridTraditionLoader(TraditionLoader):
     def health_check(self) -> bool:
         return self.gcs_loader.health_check() or self.local_loader.health_check()
 
-def create_tradition_loader(mode: str = None) -> TraditionLoader:
+def create_tradition_loader(mode: str = None, project: str = None) -> TraditionLoader:
     mode = mode or os.getenv("TRADITION_DISCOVERY_MODE", "gcs-first")
     if mode == "gcs-only":
-        return GCSTraditionLoader()
+        return GCSTraditionLoader(project=project)
     elif mode == "local-only":
         return LocalTraditionLoader()
     elif mode == "gcs-first":
-        return HybridTraditionLoader()
+        return HybridTraditionLoader(project=project)
     else:
-        return HybridTraditionLoader() 
+        return HybridTraditionLoader(project=project) 

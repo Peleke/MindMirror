@@ -251,14 +251,29 @@ def health(
 
 @app.command()
 def list_traditions(
-    source_dirs: List[str] = typer.Option(["local_gcs_bucket", "pdfs"], "--source-dirs", "-s", help="Source directories to scan")
+    source_dirs: List[str] = typer.Option(["local_gcs_bucket", "pdfs"], "--source-dirs", "-s", help="Source directories to scan"),
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    project: str = typer.Option(None, "--project", "-p", help="GCP project for GCS client (optional)"),
 ):
-    """List available traditions and their document sources."""
+    """List available traditions and their document sources. Supports --env for local/live selection and --project for GCS."""
+    def _set_environment(env: str) -> None:
+        if env:
+            set_environment(env)
+            console.print(f"[blue]Using environment: {env}[/blue]")
+        else:
+            current_env = get_current_environment()
+            console.print(f"[blue]Using environment: {current_env}[/blue]")
+
     async def _list():
+        _set_environment(env)
         console.print("[bold blue]Available Traditions[/bold blue]")
 
-        # Use the tradition loader to discover traditions
-        tradition_loader = create_tradition_loader()
+        # Use the tradition loader to discover traditions, passing project if provided
+        from mindmirror_cli.core.tradition_loader import create_tradition_loader
+        loader_kwargs = {}
+        if project:
+            loader_kwargs['project'] = project
+        tradition_loader = create_tradition_loader(**loader_kwargs)
         traditions = tradition_loader.list_traditions()
 
         if not traditions:
@@ -271,13 +286,9 @@ def list_traditions(
         table.add_column("Document Count", style="blue")
 
         for tradition in traditions:
-            # Get document count for this tradition
             documents = tradition_loader.get_tradition_documents(tradition)
             doc_count = len(documents)
-            
-            # Determine source (GCS or local)
             source = "GCS Emulator" if tradition_loader.health_check() else "Local Files"
-
             table.add_row(
                 tradition,
                 source,
