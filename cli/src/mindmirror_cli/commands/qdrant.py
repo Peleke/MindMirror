@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import List, Optional
+import os
 
 import typer
 from rich.console import Console
@@ -37,9 +38,13 @@ def build(
     clear_existing: bool = typer.Option(False, "--clear-existing", help="Clear existing knowledge base"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    embedding_model: str = typer.Option("text-embedding-3-small", "--embedding-model", help="Embedding model to use"),
 ):
     """Build knowledge base from documents."""
     _set_environment(env)
+    
+    # Set embedding model environment variable
+    os.environ["EMBEDDING_MODEL"] = embedding_model
     
     if verbose:
         logging.basicConfig(level=logging.INFO)
@@ -116,9 +121,13 @@ def seed(
     clear_existing: bool = typer.Option(False, "--clear-existing", help="Clear existing knowledge base"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     env: str = typer.Option("live", "--env", "-e", help="Environment (local, live)"),
+    embedding_model: str = typer.Option("text-embedding-3-small", "--embedding-model", help="Embedding model to use"),
 ):
     """Seed live knowledge base from documents."""
     _set_environment(env)
+    
+    # Set embedding model environment variable
+    os.environ["EMBEDDING_MODEL"] = embedding_model
     
     if verbose:
         logging.basicConfig(level=logging.INFO)
@@ -341,6 +350,53 @@ def list_collections(
             raise typer.Exit(1)
 
     asyncio.run(_list())
+
+
+@app.command()
+def delete_collection(
+    collection: str = typer.Argument(..., help="Collection name to delete"),
+    env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+):
+    """Delete a Qdrant collection."""
+    async def _delete():
+        _set_environment(env)
+        console.print(f"[bold blue]Deleting Collection[/bold blue]")
+        console.print(f"Collection: {collection}")
+
+        qdrant_client = QdrantClient()
+
+        # Health check
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Checking Qdrant connection...", total=None)
+            if not await qdrant_client.health_check():
+                console.print("[red]❌ Qdrant connection failed[/red]")
+                raise typer.Exit(1)
+            progress.update(task, description="✅ Qdrant connected")
+
+        try:
+            # Check if collection exists
+            collections = await qdrant_client.list_collections()
+            if collection not in collections:
+                console.print(f"[red]❌ Collection '{collection}' not found[/red]")
+                raise typer.Exit(1)
+
+            # Delete the collection
+            success = await qdrant_client.delete_collection(collection)
+            if success:
+                console.print(f"[green]✅ Successfully deleted collection '{collection}'[/green]")
+            else:
+                console.print(f"[red]❌ Failed to delete collection '{collection}'[/red]")
+                raise typer.Exit(1)
+
+        except Exception as e:
+            console.print(f"[red]❌ Failed to delete collection: {e}[/red]")
+            raise typer.Exit(1)
+
+    asyncio.run(_delete())
 
 
 @app.command()
