@@ -117,6 +117,15 @@ resource "google_cloud_run_service" "celery_worker" {
   }
 }
 
+# Allow unauthenticated access to the Cloud Run service
+resource "google_cloud_run_service_iam_member" "public_access" {
+  location = google_cloud_run_service.celery_worker.location
+  project  = google_cloud_run_service.celery_worker.project
+  service  = google_cloud_run_service.celery_worker.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # Data sources for service accounts from base module
 data "google_service_account" "journal_service" {
   account_id = "journal-service"
