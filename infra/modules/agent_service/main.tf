@@ -88,8 +88,13 @@ resource "google_cloud_run_service" "agent_service" {
         }
 
         env {
+          name  = "EMBEDDING_MODEL"
+          value = "text-embedding-3-small"
+        }
+
+        env {
           name  = "EMBEDDING_VECTOR_SIZE"
-          value = "768"
+          value = "1536"
         }
 
         # Supabase Configuration
