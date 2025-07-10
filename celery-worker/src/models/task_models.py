@@ -16,7 +16,7 @@ class IndexJournalEntryRequest(BaseModel):
 class ReindexTraditionRequest(BaseModel):
     """Request model for reindexing a tradition's knowledge base."""
 
-    tradition_name: str
+    tradition: str
     collection_name: Optional[str] = None
 
 

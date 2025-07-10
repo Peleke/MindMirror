@@ -10,7 +10,15 @@ app = FastAPI()
 
 
 @app.post("/tasks/index-journal-entry")
-async def submit_index_task(request: IndexJournalEntryRequest):
+async def submit_index_task(
+    request: IndexJournalEntryRequest, 
+    x_reindex_secret: str = Header(...)
+):
+    # Validate the secret
+    secret = os.getenv("REINDEX_SECRET_KEY")
+    if not secret or x_reindex_secret != secret:
+        raise HTTPException(status_code=401, detail="Invalid secret")
+    
     try:
         logger.info(
             f"Received indexing request for entry {request.entry_id}, user {request.user_id}"
