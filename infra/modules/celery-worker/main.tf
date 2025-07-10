@@ -54,7 +54,7 @@ resource "google_cloud_run_service" "celery_worker" {
 
         env {
           name  = "EMBEDDING_VECTOR_SIZE"
-          value = "768"
+          value = "1536"
         }
 
         # Service URLs
