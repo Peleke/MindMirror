@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # Embedding provider - REQUIRED
     embedding_provider: str = Field(env="EMBEDDING_PROVIDER")
 
+    # Embedding model - configurable
+    embedding_model: Optional[str] = Field(default=None, env="EMBEDDING_MODEL")
+
     # Embedding vector size - REQUIRED
     embedding_vector_size: int = Field(env="EMBEDDING_VECTOR_SIZE")
 
@@ -192,8 +195,12 @@ class Settings(BaseSettings):
             raise ValueError(f"Unknown LLM provider: {self.llm_provider}")
 
     @property
-    def embedding_model(self) -> str:
+    def embedding_model_name(self) -> str:
         """Get the embedding model for the configured embedding provider."""
+        # If explicitly set via environment variable, use that
+        if self.embedding_model is not None:
+            return self.embedding_model
+            
         if self.embedding_provider == "openai":
             # OpenAI embeddings use a different model naming
             return "text-embedding-3-small"  # This is their standard embedding model

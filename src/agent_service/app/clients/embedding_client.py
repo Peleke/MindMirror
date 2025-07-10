@@ -57,7 +57,7 @@ class EmbeddingClient:
             from agent_service.app.config import get_settings
 
             settings = get_settings()
-            model = settings.embedding_model
+            model = settings.embedding_model_name
             provider = settings.embedding_provider
 
             if provider == "openai":
