@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 app = FastAPI()
+logging.info(app.user_middleware)
 
 
 @app.post("/tasks/index-journal-entry")
