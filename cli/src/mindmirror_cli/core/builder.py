@@ -260,6 +260,11 @@ class QdrantKnowledgeBaseBuilder:
                     logger.error(f"Failed to generate embedding for chunk")
                     continue
 
+                # Debug: Log embedding dimensions
+                logger.info(f"Generated embedding with {len(embedding)} dimensions")
+                if len(embedding) != 768 and len(embedding) != 1536:
+                    logger.warning(f"Unexpected embedding dimension: {len(embedding)}")
+
                 # Prepare metadata
                 metadata = self.prepare_metadata(doc, tradition)
 

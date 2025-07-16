@@ -96,11 +96,15 @@ class QdrantClient:
                 logger.info(f"Collection {collection_name} already exists")
                 return True
 
+            # Get vector size from environment or default to 768
+            vector_size = int(os.getenv("EMBEDDING_VECTOR_SIZE", "768"))
+            logger.info(f"Creating collection '{collection_name}' with vector size: {vector_size}")
+
             # Create new collection with vector configuration
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
-                    size=768, distance=Distance.COSINE  # nomic-embed-text dimension
+                    size=vector_size, distance=Distance.COSINE
                 ),
             )
 
@@ -154,6 +158,9 @@ class QdrantClient:
         point_id = str(uuid.uuid4())
 
         try:
+            # Debug: Log embedding dimensions
+            logger.info(f"Indexing document with {len(embedding)} dimensions to collection '{collection_name}'")
+            
             # Create point with embedding and metadata
             point = PointStruct(
                 id=point_id, vector=embedding, payload={"text": text, **metadata}
@@ -244,6 +251,12 @@ class QdrantClient:
         """Get information about a collection."""
         try:
             info = self.client.get_collection(collection_name=collection_name)
+            
+            # Debug: Log vector configuration
+            if hasattr(info, 'config') and hasattr(info.config, 'params') and hasattr(info.config.params, 'vectors'):
+                vector_size = info.config.params.vectors.size
+                logger.info(f"Collection '{collection_name}' has vector size: {vector_size}")
+            
             return {
                 "name": collection_name,
                 "vectors_count": info.vectors_count if hasattr(info, "vectors_count") else 0,

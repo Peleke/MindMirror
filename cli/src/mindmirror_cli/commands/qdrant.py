@@ -12,6 +12,7 @@ from rich.table import Table
 
 from mindmirror_cli.core.builder import QdrantKnowledgeBaseBuilder
 from mindmirror_cli.core.client import QdrantClient
+from mindmirror_cli.core.config import set_embedding_environment
 from mindmirror_cli.core.tradition_loader import create_tradition_loader
 from mindmirror_cli.core.utils import set_environment, get_current_environment, is_live_environment
 
@@ -44,7 +45,7 @@ def build(
     _set_environment(env)
     
     # Set embedding model environment variable
-    os.environ["EMBEDDING_MODEL"] = embedding_model
+    set_embedding_environment(embedding_model)
     
     if verbose:
         logging.basicConfig(level=logging.INFO)
@@ -127,7 +128,7 @@ def seed(
     _set_environment(env)
     
     # Set embedding model environment variable
-    os.environ["EMBEDDING_MODEL"] = embedding_model
+    set_embedding_environment(embedding_model)
     
     if verbose:
         logging.basicConfig(level=logging.INFO)
@@ -313,10 +314,17 @@ def list_traditions(
 @app.command()
 def list_collections(
     env: str = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
 ):
     """List Qdrant collections."""
     async def _list():
         _set_environment(env)
+        
+        if verbose:
+            logging.basicConfig(level=logging.INFO)
+        else:
+            logging.basicConfig(level=logging.WARNING)
+            
         console.print("[bold blue]Qdrant Collections[/bold blue]")
 
         qdrant_client = QdrantClient()

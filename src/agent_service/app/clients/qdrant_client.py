@@ -122,6 +122,7 @@ class QdrantClient:
             from agent_service.app.config import get_settings
             settings = get_settings()
             vector_size = settings.embedding_vector_size
+            logger.info(f"Creating collection '{collection_name}' with expected vector size: {vector_size}")
 
             # Create new collection with vector configuration
             self.client.create_collection(
@@ -201,6 +202,7 @@ class QdrantClient:
             from agent_service.app.config import get_settings
             settings = get_settings()
             expected_size = settings.embedding_vector_size
+            logger.info(f"Validating embedding: expected {expected_size}, got {len(embedding)}")
             
             if len(embedding) != expected_size:
                 logger.error(
@@ -237,6 +239,7 @@ class QdrantClient:
             from agent_service.app.config import get_settings
             settings = get_settings()
             expected_size = settings.embedding_vector_size
+            logger.info(f"Validating search embedding: expected {expected_size}, got {len(query_embedding)}")
             
             if len(query_embedding) != expected_size:
                 logger.error(
