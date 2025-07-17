@@ -6,7 +6,11 @@ from celery import current_app
 
 from celery.exceptions import Retry
 
-from src.celery_app import celery_app
+# Lazy import to avoid circular dependencies and initialization issues
+def get_celery_app():
+    from src.celery_app import celery_app
+    return celery_app
+
 from src.clients.journal_client import create_celery_journal_client
 from src.clients.qdrant_client import get_celery_qdrant_client
 from src.utils.embedding import get_embedding
@@ -32,7 +36,7 @@ def run_async_in_sync(coro):
 
 
 # NOTE: Use task routes instead of queue kwarg: <https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-routes>
-@celery_app.task(
+@get_celery_app().task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 3, "countdown": 60},
@@ -74,7 +78,7 @@ def index_journal_entry_task(
         raise self.retry(exc=exc)
 
 
-@celery_app.task(
+@get_celery_app().task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2, "countdown": 120},
@@ -109,7 +113,7 @@ def batch_index_journal_entries_task(self, entries_data: List[Dict[str, Any]]):
         raise self.retry(exc=exc)
 
 
-@celery_app.task(
+@get_celery_app().task(
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2, "countdown": 300},

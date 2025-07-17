@@ -102,6 +102,51 @@ services:
       start_period: 5s
       
   # --- Workers ---
+  celery-worker-web:
+    build:
+      context: .
+      dockerfile: celery-worker/Dockerfile
+    container_name: celery-worker-web
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      # Prompt Storage Configuration
+      - PROMPT_STORAGE_TYPE=${PROMPT_STORAGE_TYPE:-gcs}
+      - YAML_STORAGE_PATH=${YAML_STORAGE_PATH:-/app/prompts}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
+      - GCS_CREDENTIALS_FILE=${GCS_CREDENTIALS_FILE:-}
+      - GCS_EMULATOR_HOST=${GCS_EMULATOR_HOST:-}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-http://journal_service:8001}
+      - REINDEX_SECRET_KEY=${REINDEX_SECRET_KEY:-dev-secret-key}
+      # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
+      - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
+      - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
+      - RUN_MODE=web
+    volumes:
+      - ./celery-worker:/app
+      - ./ingestion:/app/ingestion
+      - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
+      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
+      # Mount local Google Cloud credentials for real GCS access
+      - ~/.config/gcloud:/root/.config/gcloud:ro
+    command: ["./start-web.sh"]
+    networks:
+      - mindmirror-network
+    depends_on:
+      - redis
+      - postgres
+      - qdrant
+      - journal_service
+      - gcs-emulator
+    ports:
+      - "8002:8000" # Expose for direct access during dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   celery-worker:
     build:
       context: .
@@ -122,6 +167,7 @@ services:
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
+      - RUN_MODE=worker
     volumes:
       - ./celery-worker:/app
       - ./ingestion:/app/ingestion
@@ -129,6 +175,7 @@ services:
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
+    command: ["./start-worker.sh"]
     networks:
       - mindmirror-network
     depends_on:
@@ -137,13 +184,6 @@ services:
       - qdrant
       - journal_service
       - gcs-emulator
-    ports:
-      - "8002:8000" # Expose for direct access during dev
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   celery_flower:
     image: mher/flower:2.0

@@ -32,11 +32,11 @@ RUN pip install ./shared/dist/*.whl
 # Copy application code
 COPY celery-worker .
 
-# Make startup script executable
-RUN chmod +x start.sh
+# Make startup scripts executable
+RUN chmod +x start.sh start-web.sh start-worker.sh
 
 # Expose port
 EXPOSE 8000
 
-# Use the startup script
-CMD ["./start.sh"] 
+# Default to web mode, but can be overridden
+CMD ["./start-web.sh"] 
