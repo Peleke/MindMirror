@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     
     # Service URLs
     agent_service_url: str = os.getenv('AGENT_SERVICE_URL', "http://agent_service:8000")
-    celery_worker_url: str = os.getenv('CELERY_WORKER_URL', "http://celery-worker:8000")
+    celery_worker_url: str = os.getenv('CELERY_WORKER_URL', "http://celery-worker-web:8000")
     
     # Auth
     jwt_secret: str = os.getenv('JWT_SECRET', "your-secret-key")

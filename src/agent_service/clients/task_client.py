@@ -11,7 +11,7 @@ class TaskClient:
             self.base_url = base_url
         else:
             # Use environment variable or fallback to local development
-            self.base_url = os.getenv("CELERY_WORKER_URL", "http://celery-worker:8000")
+            self.base_url = os.getenv("CELERY_WORKER_URL", "http://celery-worker-web:8000")
         self.client = httpx.AsyncClient()
 
     async def queue_journal_indexing(
