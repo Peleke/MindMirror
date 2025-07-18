@@ -293,3 +293,38 @@ async def user():
         "id": str(UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6")),
         "roles": [{"role": "user", "domain": "coaching"}],
     }
+
+
+@pytest.fixture
+def mock_pubsub_client():
+    """Mock Pub/Sub client for testing."""
+    mock_client = MagicMock()
+    mock_client.publish_message.return_value = "test-message-id"
+    mock_client.publish_journal_indexing.return_value = "test-message-id"
+    mock_client.publish_journal_batch_indexing.return_value = "test-message-id"
+    mock_client.publish_journal_reindex.return_value = "test-message-id"
+    mock_client.publish_tradition_rebuild.return_value = "test-message-id"
+    mock_client.publish_health_check.return_value = "test-message-id"
+    return mock_client
+
+
+@pytest.fixture
+def sample_pubsub_message():
+    """Sample Pub/Sub message data for testing."""
+    return {
+        "entry_id": "test-entry-123",
+        "user_id": "test-user-456",
+        "tradition": "canon-default",
+        "task_type": "journal_indexing",
+        "metadata": {"source": "test"},
+    }
+
+
+@pytest.fixture
+def sample_pubsub_attributes():
+    """Sample Pub/Sub message attributes for testing."""
+    return {
+        "message_id": "test-message-id-123",
+        "publish_time": "2024-01-01T00:00:00Z",
+        "x-goog-version": "v1",
+    }

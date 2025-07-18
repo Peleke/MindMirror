@@ -8,6 +8,7 @@ and handle push subscription messages from Cloud Run endpoints.
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from google.cloud import pubsub_v1
@@ -193,7 +194,7 @@ class PubSubClient:
         
         data = {
             "task_type": "health_check",
-            "timestamp": str(pubsub_v1.time_helpers.utcnow())
+            "timestamp": str(datetime.utcnow().isoformat())
         }
         
         return self.publish_message(topic_name, data)

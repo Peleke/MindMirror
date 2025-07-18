@@ -1,3 +1,13 @@
+"""
+DEPRECATED: This test file tests the old Celery task architecture.
+
+The new architecture uses Pub/Sub and task processors instead of Celery tasks.
+See test_task_processors.py, test_pubsub_client.py, and test_message_processor.py
+for tests of the new architecture.
+
+This file is kept for backward compatibility but will be removed in a future version.
+"""
+
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -336,10 +346,13 @@ class TestTaskIntegration:
 class TestConvenienceFunctions:
     """Test convenience functions for queueing tasks."""
 
-    @patch("src.tasks.journal_tasks.current_app")
-    def test_queue_journal_entry_indexing(self, mock_current_app, sample_journal_data):
-        """Test queueing individual journal entry for indexing."""
-        mock_current_app.send_task.return_value = MagicMock()
+    @patch("src.clients.pubsub_client.get_pubsub_client")
+    def test_queue_journal_entry_indexing(self, mock_get_pubsub_client, sample_journal_data):
+        """Test queueing individual journal entry for indexing (now publishes to Pub/Sub)."""
+        # Setup mock
+        mock_pubsub_client = MagicMock()
+        mock_pubsub_client.publish_journal_indexing.return_value = "test-message-id"
+        mock_get_pubsub_client.return_value = mock_pubsub_client
 
         result = queue_journal_entry_indexing(
             sample_journal_data["entry_id"],
@@ -347,51 +360,71 @@ class TestConvenienceFunctions:
             sample_journal_data["tradition"],
         )
 
-        mock_current_app.send_task.assert_called_once_with(
-            "celery_worker.tasks.index_journal_entry_task",
-            args=[
-                sample_journal_data["entry_id"],
-                sample_journal_data["user_id"],
-                sample_journal_data["tradition"],
-            ],
+        # Verify it publishes to Pub/Sub instead of calling Celery
+        mock_pubsub_client.publish_journal_indexing.assert_called_once_with(
+            entry_id=sample_journal_data["entry_id"],
+            user_id=sample_journal_data["user_id"],
+            tradition=sample_journal_data["tradition"],
         )
+        
+        # Verify it returns a mock task object for compatibility
+        assert result.id == "test-message-id"
+        assert result.state == "PENDING"
 
-    @patch("src.tasks.journal_tasks.current_app")
-    def test_queue_batch_indexing(self, mock_current_app, sample_batch_data):
-        """Test queueing batch indexing."""
-        mock_current_app.send_task.return_value = MagicMock()
+    @patch("src.clients.pubsub_client.get_pubsub_client")
+    def test_queue_batch_indexing(self, mock_get_pubsub_client, sample_batch_data):
+        """Test queueing batch indexing (now publishes to Pub/Sub)."""
+        # Setup mock
+        mock_pubsub_client = MagicMock()
+        mock_pubsub_client.publish_journal_batch_indexing.return_value = "test-message-id"
+        mock_get_pubsub_client.return_value = mock_pubsub_client
 
         result = queue_batch_indexing(sample_batch_data)
 
-        mock_current_app.send_task.assert_called_once_with(
-            "celery_worker.tasks.batch_index_journal_entries_task",
-            args=[sample_batch_data],
-        )
+        # Verify it publishes to Pub/Sub instead of calling Celery
+        mock_pubsub_client.publish_journal_batch_indexing.assert_called_once()
+        
+        # Verify it returns a mock task object for compatibility
+        assert result.id == "test-message-id"
+        assert result.state == "PENDING"
 
-    @patch("src.tasks.journal_tasks.current_app")
-    def test_queue_user_reindex(self, mock_current_app, sample_journal_data):
-        """Test queueing user reindex."""
-        mock_current_app.send_task.return_value = MagicMock()
+    @patch("src.clients.pubsub_client.get_pubsub_client")
+    def test_queue_user_reindex(self, mock_get_pubsub_client, sample_journal_data):
+        """Test queueing user reindex (now publishes to Pub/Sub)."""
+        # Setup mock
+        mock_pubsub_client = MagicMock()
+        mock_pubsub_client.publish_journal_reindex.return_value = "test-message-id"
+        mock_get_pubsub_client.return_value = mock_pubsub_client
 
         result = queue_user_reindex(
             sample_journal_data["user_id"], sample_journal_data["tradition"]
         )
 
-        mock_current_app.send_task.assert_called_once_with(
-            "celery_worker.tasks.reindex_user_entries_task",
-            args=[sample_journal_data["user_id"], sample_journal_data["tradition"]],
+        # Verify it publishes to Pub/Sub instead of calling Celery
+        mock_pubsub_client.publish_journal_reindex.assert_called_once_with(
+            tradition=sample_journal_data["tradition"]
         )
+        
+        # Verify it returns a mock task object for compatibility
+        assert result.id == "test-message-id"
+        assert result.state == "PENDING"
 
-    @patch("src.tasks.health_tasks.current_app")
-    def test_queue_health_check(self, mock_current_app):
-        """Test queueing health check."""
-        mock_current_app.send_task.return_value = MagicMock()
+    @patch("src.clients.pubsub_client.get_pubsub_client")
+    def test_queue_health_check(self, mock_get_pubsub_client):
+        """Test queueing health check (now publishes to Pub/Sub)."""
+        # Setup mock
+        mock_pubsub_client = MagicMock()
+        mock_pubsub_client.publish_health_check.return_value = "test-message-id"
+        mock_get_pubsub_client.return_value = mock_pubsub_client
 
         result = queue_health_check()
 
-        mock_current_app.send_task.assert_called_once_with(
-            "celery_worker.tasks.health_check_task"
-        )
+        # Verify it publishes to Pub/Sub instead of calling Celery
+        mock_pubsub_client.publish_health_check.assert_called_once()
+        
+        # Verify it returns a mock task object for compatibility
+        assert result.id == "test-message-id"
+        assert result.state == "PENDING"
 
 
 class TestTaskConfiguration:

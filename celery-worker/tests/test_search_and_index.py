@@ -15,27 +15,33 @@ from src.tasks.journal_tasks import (
 
 
 @pytest.mark.asyncio
-@patch("src.tasks.journal_tasks.current_app.send_task", new_callable=MagicMock)
-async def test_journal_entry_creation_triggers_indexing(mock_send_task, client, user):
+@patch("src.clients.pubsub_client.get_pubsub_client")
+async def test_journal_entry_creation_triggers_indexing(mock_get_pubsub_client, client, user):
     """
     Given a new journal entry is created,
     when the appropriate hook is called,
-    it verifies that an indexing task *would* be queued via Celery.
+    it verifies that an indexing message *would* be published to Pub/Sub.
 
-    Note: This test does not execute the task, only checks if it's sent.
+    Note: This test does not execute the task, only checks if it's published.
     """
     entry_id = str(uuid4())
     test_user = user  # user is already a dict, not awaitable
     user_id = test_user["id"]
     tradition = "canon-default"
 
+    # Setup mock
+    mock_pubsub_client = MagicMock()
+    mock_pubsub_client.publish_journal_indexing.return_value = "test-message-id"
+    mock_get_pubsub_client.return_value = mock_pubsub_client
+
     # Simulate a webhook or API call that triggers indexing
     queue_journal_entry_indexing(entry_id, user_id, tradition)
 
-    # Assert that a task was sent to Celery
-    mock_send_task.assert_called_once_with(
-        "celery_worker.tasks.index_journal_entry_task",
-        args=[entry_id, user_id, tradition],
+    # Assert that a message was published to Pub/Sub
+    mock_pubsub_client.publish_journal_indexing.assert_called_once_with(
+        entry_id=entry_id,
+        user_id=user_id,
+        tradition=tradition,
     )
 
 
