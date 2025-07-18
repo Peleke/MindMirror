@@ -8,16 +8,8 @@ from uuid import UUID
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from pytest_celery import (
-    CeleryBackendCluster,
-    CeleryBrokerCluster,
-    RedisTestBackend,
-    RedisTestBroker,
-)
-from celery import Celery
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.celery_app import create_celery_app
 from src.config import Config
 
 # Test configuration for celery-worker
@@ -28,7 +20,6 @@ TEST_QDRANT_URL = f"http://localhost:{TEST_QDRANT_PORT}"
 os.environ["TESTING"] = "true"
 os.environ["QDRANT_HOST"] = "localhost"
 os.environ["QDRANT_PORT"] = "6333"
-os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_mindmirror"
 
 logging.basicConfig(level=logging.INFO)
@@ -76,17 +67,7 @@ def mock_embedding_service():
     return mock_service
 
 
-@pytest.fixture
-def test_celery_app():
-    """Create a test Celery app."""
-    app = Celery("test_worker")
-    app.conf.update(
-        broker_url="memory://",
-        result_backend="cache+memory://",
-        task_always_eager=True,
-        task_eager_propagates=True,
-    )
-    return app
+
 
 
 @pytest.fixture
@@ -111,53 +92,7 @@ def mock_vector_embedding():
     )
 
 
-@pytest.fixture
-def celery_config():
-    """Celery configuration for tests."""
-    return {
-        "broker_url": "memory://",
-        "result_backend": "cache+memory://",
-        "task_always_eager": True,  # Execute tasks synchronously
-        "task_eager_propagates": True,  # Propagate exceptions in eager mode
-        "task_track_started": True,
-        "broker_connection_retry_on_startup": True,
-        "include": [
-            "src.tasks.journal_tasks",
-            "src.tasks.tradition_tasks",
-            "src.tasks.health_tasks",
-        ],
-    }
 
-
-@pytest.fixture
-def celery_app(celery_config):
-    """
-    Creates a Celery app for testing with proper configuration.
-    """
-    app = create_celery_app()
-    app.conf.update(celery_config)
-
-    # Apply task routes for testing
-    app.conf.task_routes = {
-        "celery_worker.tasks.index_journal_entry_task": {
-            "priority": 5,
-            "routing_key": "indexing",
-        },
-        "celery_worker.tasks.batch_index_journal_entries_task": {
-            "priority": 3,
-            "routing_key": "indexing",
-        },
-        "celery_worker.tasks.health_check_task": {
-            "priority": 7,
-            "routing_key": "monitoring",
-        },
-        "celery_worker.tasks.reindex_user_entries_task": {
-            "priority": 2,
-            "routing_key": "maintenance",
-        },
-    }
-
-    return app
 
 
 @pytest.fixture(scope="session")

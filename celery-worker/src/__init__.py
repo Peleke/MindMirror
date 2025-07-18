@@ -1,4 +1,3 @@
 # Celery Worker Service
-from .celery_app import celery_app
-
-__all__ = ["celery_app"]
+# Task processor service - no Celery dependencies
+__all__ = []

@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.applications import FastAPI as FastAPIBase
 from src.models.task_models import IndexJournalEntryRequest, ReindexTraditionRequest
-from src.tasks.journal_tasks import queue_journal_entry_indexing
-from src.tasks.tradition_tasks import queue_tradition_reindex
 from src.tasks.task_processors import get_journal_processor, get_tradition_processor, get_health_processor
 from src.clients.pubsub_client import parse_push_message, get_pubsub_client
 import os
@@ -45,18 +43,16 @@ def create_app() -> FastAPI:
             )
             logger.info(f"Using tradition: {tradition}")
 
-            logger.info("About to queue journal entry indexing task...")
-            logger.info(
-                f"Calling queue_journal_entry_indexing with args: entry_id={request.entry_id}, user_id={request.user_id}, tradition={tradition}"
-            )
-
-            task = queue_journal_entry_indexing(
-                request.entry_id, request.user_id, tradition
-            )
-            logger.info(f"Successfully queued task with ID: {task.id}")
-            logger.info(f"Task object: {task}")
-            logger.info(f"Task state: {task.state}")
-            return {"task_id": task.id, "status": "queued"}
+            # Process directly using task processor
+            journal_processor = get_journal_processor()
+            success = journal_processor.process_journal_indexing(request.entry_id, request.user_id, tradition)
+            
+            if success:
+                logger.info(f"Successfully processed journal indexing for entry: {request.entry_id}")
+                return {"status": "success", "entry_id": request.entry_id}
+            else:
+                logger.error(f"Failed to process journal indexing for entry: {request.entry_id}")
+                raise HTTPException(status_code=500, detail="Failed to process journal indexing")
         except Exception as e:
             logger.error(f"Error in submit_index_task: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
@@ -77,9 +73,14 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=401, detail="Invalid secret")
 
         try:
-            task = queue_tradition_reindex(request.tradition)
-            return {"task_id": task.id, "status": "queued"}
+            # Process directly using task processor
+            tradition_processor = get_tradition_processor()
+            result = tradition_processor.process_tradition_rebuild(request.tradition)
+            
+            logger.info(f"Successfully processed tradition rebuild: {result}")
+            return {"status": "success", "result": result}
         except Exception as e:
+            logger.error(f"Error in submit_reindex_task: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/health")
@@ -226,9 +227,5 @@ def create_app() -> FastAPI:
 
     return app
 
-# Only create the app if we're running in web mode
-# This prevents FastAPI initialization when running as Celery worker
-if os.environ.get("RUN_MODE", "web") == "web":
-    app = create_app()
-else:
-    app = None
+# Create the FastAPI app
+app = create_app()
