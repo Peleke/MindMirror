@@ -153,40 +153,102 @@ def reindex_user_entries_task(self, user_id: str, tradition: str = "canon-defaul
 def queue_journal_entry_indexing(
     entry_id: str, user_id: str, tradition: str = "canon-default"
 ):
-    """Queue a journal entry for indexing."""
+    """Queue a journal entry for indexing using Pub/Sub."""
     logger.info(
         f"queue_journal_entry_indexing called with entry_id={entry_id}, user_id={user_id}, tradition={tradition}"
     )
     try:
-        logger.info("About to send task to celery...")
-        logger.info(f"Task name: celery_worker.tasks.index_journal_entry_task")
-        logger.info(f"Task args: [{entry_id}, {user_id}, {tradition}]")
-
-        task = current_app.send_task(
-            "celery_worker.tasks.index_journal_entry_task",
-            args=[entry_id, user_id, tradition],
+        from src.clients.pubsub_client import get_pubsub_client
+        
+        pubsub_client = get_pubsub_client()
+        message_id = pubsub_client.publish_journal_indexing(
+            entry_id=entry_id,
+            user_id=user_id,
+            tradition=tradition
         )
-        logger.info(f"Successfully sent task to celery: {task.id}")
-        logger.info(f"Task state: {task.state}")
-        logger.info(f"Task info: {task.info}")
-        return task
+        
+        logger.info(f"Successfully published journal indexing message: {message_id}")
+        
+        # Return a mock task object for compatibility
+        class MockTask:
+            def __init__(self, message_id: str):
+                self.id = message_id
+                self.state = "PENDING"
+                self.info = {"message_id": message_id}
+        
+        return MockTask(message_id)
+        
     except Exception as e:
         logger.error(f"Error in queue_journal_entry_indexing: {e}", exc_info=True)
         raise
 
 
 def queue_batch_indexing(entries_data: List[Dict[str, Any]]):
-    """Queue multiple entries for batch indexing."""
-    return current_app.send_task(
-        "celery_worker.tasks.batch_index_journal_entries_task", args=[entries_data]
-    )
+    """Queue multiple entries for batch indexing using Pub/Sub."""
+    try:
+        from src.clients.pubsub_client import get_pubsub_client
+        
+        if not entries_data:
+            raise ValueError("No entries provided for batch indexing")
+        
+        # Extract common fields from first entry
+        first_entry = entries_data[0]
+        user_id = first_entry.get("user_id")
+        tradition = first_entry.get("tradition", "canon-default")
+        
+        # Extract entry IDs
+        entry_ids = [entry.get("entry_id") for entry in entries_data if entry.get("entry_id")]
+        
+        if not user_id or not entry_ids:
+            raise ValueError("Missing required fields in entries data")
+        
+        pubsub_client = get_pubsub_client()
+        message_id = pubsub_client.publish_journal_batch_indexing(
+            entry_ids=entry_ids,
+            user_id=user_id,
+            tradition=tradition
+        )
+        
+        logger.info(f"Successfully published batch indexing message: {message_id}")
+        
+        # Return a mock task object for compatibility
+        class MockTask:
+            def __init__(self, message_id: str):
+                self.id = message_id
+                self.state = "PENDING"
+                self.info = {"message_id": message_id}
+        
+        return MockTask(message_id)
+        
+    except Exception as e:
+        logger.error(f"Error in queue_batch_indexing: {e}", exc_info=True)
+        raise
 
 
 def queue_user_reindex(user_id: str, tradition: str = "canon-default"):
-    """Queue all user entries for reindexing."""
-    return current_app.send_task(
-        "celery_worker.tasks.reindex_user_entries_task", args=[user_id, tradition]
-    )
+    """Queue all user entries for reindexing using Pub/Sub."""
+    try:
+        from src.clients.pubsub_client import get_pubsub_client
+        
+        pubsub_client = get_pubsub_client()
+        message_id = pubsub_client.publish_journal_reindex(
+            tradition=tradition
+        )
+        
+        logger.info(f"Successfully published user reindex message: {message_id}")
+        
+        # Return a mock task object for compatibility
+        class MockTask:
+            def __init__(self, message_id: str):
+                self.id = message_id
+                self.state = "PENDING"
+                self.info = {"message_id": message_id}
+        
+        return MockTask(message_id)
+        
+    except Exception as e:
+        logger.error(f"Error in queue_user_reindex: {e}", exc_info=True)
+        raise
 
 
 # Helper functions for journal indexing

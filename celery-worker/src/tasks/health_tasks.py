@@ -63,5 +63,24 @@ def health_check_task(self):
 
 
 def queue_health_check():
-    """Queue a health check task."""
-    return current_app.send_task("celery_worker.tasks.health_check_task")
+    """Queue a health check task using Pub/Sub."""
+    try:
+        from src.clients.pubsub_client import get_pubsub_client
+        
+        pubsub_client = get_pubsub_client()
+        message_id = pubsub_client.publish_health_check()
+        
+        logger.info(f"Successfully published health check message: {message_id}")
+        
+        # Return a mock task object for compatibility
+        class MockTask:
+            def __init__(self, message_id: str):
+                self.id = message_id
+                self.state = "PENDING"
+                self.info = {"message_id": message_id}
+        
+        return MockTask(message_id)
+        
+    except Exception as e:
+        logger.error(f"Error in queue_health_check: {e}", exc_info=True)
+        raise

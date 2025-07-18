@@ -106,8 +106,26 @@ async def rebuild_tradition_knowledge_base(self, tradition: str):
 
 
 def queue_tradition_reindex(tradition: str):
-    """Queue a tradition reindexing task."""
-    return current_app.send_task(
-        "celery_worker.tasks.rebuild_tradition_knowledge_base",
-        args=[tradition],
-    )
+    """Queue a tradition reindexing task using Pub/Sub."""
+    try:
+        from src.clients.pubsub_client import get_pubsub_client
+        
+        pubsub_client = get_pubsub_client()
+        message_id = pubsub_client.publish_tradition_rebuild(
+            tradition=tradition
+        )
+        
+        logger.info(f"Successfully published tradition rebuild message: {message_id}")
+        
+        # Return a mock task object for compatibility
+        class MockTask:
+            def __init__(self, message_id: str):
+                self.id = message_id
+                self.state = "PENDING"
+                self.info = {"message_id": message_id}
+        
+        return MockTask(message_id)
+        
+    except Exception as e:
+        logger.error(f"Error in queue_tradition_reindex: {e}", exc_info=True)
+        raise
