@@ -173,6 +173,7 @@ module "celery_worker" {
   source  = "./modules/celery-worker"
   
   project_id  = var.project_id
+  project_numerical_id = var.project_numerical_id
   region      = var.region
   celery_worker_container_image = var.celery_worker_container_image
   
