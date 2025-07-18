@@ -106,7 +106,15 @@ async def rebuild_tradition_knowledge_base(self, tradition: str):
 
 
 def queue_tradition_reindex(tradition: str):
-    """Queue a tradition reindexing task using Pub/Sub."""
+    """Queue a tradition reindexing task using Pub/Sub.
+    
+    DEPRECATED: This function will be removed in a future version.
+    Use direct Pub/Sub publishing instead.
+    """
+    logger.warning(
+        "DEPRECATED: queue_tradition_reindex is deprecated. "
+        "Use direct Pub/Sub publishing to tradition-rebuild topic instead."
+    )
     try:
         from src.clients.pubsub_client import get_pubsub_client
         

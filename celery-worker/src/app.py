@@ -3,6 +3,7 @@ from fastapi.applications import FastAPI as FastAPIBase
 from src.models.task_models import IndexJournalEntryRequest, ReindexTraditionRequest
 from src.tasks.journal_tasks import queue_journal_entry_indexing
 from src.tasks.tradition_tasks import queue_tradition_reindex
+from src.tasks.task_processors import get_journal_processor, get_tradition_processor, get_health_processor
 from src.clients.pubsub_client import parse_push_message, get_pubsub_client
 import os
 import logging
@@ -18,6 +19,13 @@ def create_app() -> FastAPI:
         request: IndexJournalEntryRequest, 
         x_reindex_secret: str = Header(...)
     ):
+        # DEPRECATED: This endpoint will be removed in a future version.
+        # Use direct Pub/Sub publishing instead.
+        logger.warning(
+            "DEPRECATED: /tasks/index-journal-entry endpoint is deprecated. "
+            "Use direct Pub/Sub publishing to journal-indexing topic instead."
+        )
+        
         # Validate the secret
         secret = os.getenv("REINDEX_SECRET_KEY")
         if not secret or x_reindex_secret != secret:
@@ -57,6 +65,13 @@ def create_app() -> FastAPI:
     async def submit_reindex_task(
         request: ReindexTraditionRequest, x_reindex_secret: str = Header(...)
     ):
+        # DEPRECATED: This endpoint will be removed in a future version.
+        # Use direct Pub/Sub publishing instead.
+        logger.warning(
+            "DEPRECATED: /tasks/reindex-tradition endpoint is deprecated. "
+            "Use direct Pub/Sub publishing to tradition-rebuild topic instead."
+        )
+        
         secret = os.getenv("REINDEX_SECRET_KEY")
         if not secret or x_reindex_secret != secret:
             raise HTTPException(status_code=401, detail="Invalid secret")
@@ -93,11 +108,16 @@ def create_app() -> FastAPI:
             if not entry_id or not user_id:
                 raise HTTPException(status_code=400, detail="Missing required fields")
             
-            # Queue the indexing task
-            task = queue_journal_entry_indexing(entry_id, user_id, tradition)
+            # Process the indexing task directly
+            journal_processor = get_journal_processor()
+            success = journal_processor.process_journal_indexing(entry_id, user_id, tradition)
             
-            logger.info(f"Successfully queued journal indexing task: {task.id}")
-            return {"status": "success", "task_id": task.id}
+            if success:
+                logger.info(f"Successfully processed journal indexing for entry: {entry_id}")
+                return {"status": "success", "entry_id": entry_id}
+            else:
+                logger.error(f"Failed to process journal indexing for entry: {entry_id}")
+                raise HTTPException(status_code=500, detail="Failed to process journal indexing")
             
         except Exception as e:
             logger.error(f"Error handling journal indexing message: {e}", exc_info=True)
@@ -119,14 +139,19 @@ def create_app() -> FastAPI:
             if not entry_ids or not user_id:
                 raise HTTPException(status_code=400, detail="Missing required fields")
             
-            # For now, queue individual tasks (we'll optimize this later)
-            task_ids = []
-            for entry_id in entry_ids:
-                task = queue_journal_entry_indexing(entry_id, user_id, tradition)
-                task_ids.append(task.id)
+            # Process batch indexing directly
+            journal_processor = get_journal_processor()
             
-            logger.info(f"Successfully queued {len(task_ids)} batch indexing tasks")
-            return {"status": "success", "task_ids": task_ids}
+            # Convert to the format expected by the processor
+            entries_data = [
+                {"entry_id": entry_id, "user_id": user_id, "tradition": tradition}
+                for entry_id in entry_ids
+            ]
+            
+            result = journal_processor.process_batch_indexing(entries_data)
+            
+            logger.info(f"Successfully processed batch indexing: {result}")
+            return {"status": "success", "result": result}
             
         except Exception as e:
             logger.error(f"Error handling batch journal indexing message: {e}", exc_info=True)
@@ -143,11 +168,12 @@ def create_app() -> FastAPI:
             
             tradition = message.data.get("tradition", "canon-default")
             
-            # Queue the reindex task
-            task = queue_tradition_reindex(tradition)
+            # Process the reindex task directly
+            journal_processor = get_journal_processor()
+            result = journal_processor.process_user_reindex("all", tradition)
             
-            logger.info(f"Successfully queued journal reindex task: {task.id}")
-            return {"status": "success", "task_id": task.id}
+            logger.info(f"Successfully processed journal reindex: {result}")
+            return {"status": "success", "result": result}
             
         except Exception as e:
             logger.error(f"Error handling journal reindex message: {e}", exc_info=True)
@@ -167,11 +193,12 @@ def create_app() -> FastAPI:
             if not tradition:
                 raise HTTPException(status_code=400, detail="Missing tradition field")
             
-            # Queue the tradition rebuild task
-            task = queue_tradition_reindex(tradition)
+            # Process the tradition rebuild task directly
+            tradition_processor = get_tradition_processor()
+            result = tradition_processor.process_tradition_rebuild(tradition)
             
-            logger.info(f"Successfully queued tradition rebuild task: {task.id}")
-            return {"status": "success", "task_id": task.id}
+            logger.info(f"Successfully processed tradition rebuild: {result}")
+            return {"status": "success", "result": result}
             
         except Exception as e:
             logger.error(f"Error handling tradition rebuild message: {e}", exc_info=True)
@@ -186,9 +213,12 @@ def create_app() -> FastAPI:
             
             logger.info(f"Received health check message: {message.data}")
             
-            # For now, just log the health check
-            # We can add more sophisticated health checking later
-            return {"status": "healthy", "message": "Health check processed"}
+            # Process the health check directly
+            health_processor = get_health_processor()
+            result = health_processor.process_health_check()
+            
+            logger.info(f"Health check result: {result}")
+            return {"status": "success", "result": result}
             
         except Exception as e:
             logger.error(f"Error handling health check message: {e}", exc_info=True)

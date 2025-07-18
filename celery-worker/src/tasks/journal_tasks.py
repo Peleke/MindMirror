@@ -153,7 +153,15 @@ def reindex_user_entries_task(self, user_id: str, tradition: str = "canon-defaul
 def queue_journal_entry_indexing(
     entry_id: str, user_id: str, tradition: str = "canon-default"
 ):
-    """Queue a journal entry for indexing using Pub/Sub."""
+    """Queue a journal entry for indexing using Pub/Sub.
+    
+    DEPRECATED: This function will be removed in a future version.
+    Use direct Pub/Sub publishing instead.
+    """
+    logger.warning(
+        "DEPRECATED: queue_journal_entry_indexing is deprecated. "
+        "Use direct Pub/Sub publishing to journal-indexing topic instead."
+    )
     logger.info(
         f"queue_journal_entry_indexing called with entry_id={entry_id}, user_id={user_id}, tradition={tradition}"
     )
