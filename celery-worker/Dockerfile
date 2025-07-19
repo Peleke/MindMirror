@@ -30,6 +30,7 @@ WORKDIR /app
 RUN pip install ./shared/dist/*.whl
 
 # Copy application code
+RUN find /app -name '*.pyc' -delete || true
 COPY celery-worker .
 
 # Make startup script executable
