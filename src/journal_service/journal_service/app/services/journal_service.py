@@ -34,6 +34,12 @@ class JournalService:
             logger.error(f"Failed to trigger reindexing for entry {entry_id}: {e}")
             # Don't raise - this is fire-and-forget
     
+    def _prepare_reindexing_callback(self, entry_id: str, user_id: str, content: str, created_at: datetime, tradition: str = "canon-default"):
+        """Prepare a callback for reindexing that can be executed after transaction commit."""
+        async def _reindex_callback():
+            await self._trigger_reindexing(entry_id, user_id, content, created_at, tradition)
+        return _reindex_callback
+    
     def _extract_content_for_reindexing(self, entry_type: str, payload: Dict[str, Any]) -> str:
         """Extract text content from journal entry payload for reindexing."""
         if entry_type == "FREEFORM":
@@ -67,7 +73,7 @@ class JournalService:
         self, 
         user: CurrentUser, 
         content: str
-    ) -> JournalEntryResponse:
+    ) -> tuple[JournalEntryResponse, callable]:
         """Create a freeform journal entry."""
         payload = {"content": content}
         entry = await self.repository.create(
@@ -78,15 +84,15 @@ class JournalService:
         
         logger.info(f"Created freeform entry {entry.id} for user {user.id}")
         
-        # Trigger reindexing
-        await self._trigger_reindexing(
+        # Prepare reindexing callback (to be executed after transaction commit)
+        reindex_callback = self._prepare_reindexing_callback(
             entry_id=str(entry.id),
             user_id=str(user.id),
             content=content,
             created_at=entry.created_at
         )
         
-        return JournalEntryResponse.from_orm(entry)
+        return JournalEntryResponse.from_orm(entry), reindex_callback
     
     async def create_gratitude_entry(
         self, 
@@ -96,7 +102,7 @@ class JournalService:
         focus: Optional[str] = None,
         affirmation: Optional[str] = None,
         mood: Optional[str] = None,
-    ) -> JournalEntryResponse:
+    ) -> tuple[JournalEntryResponse, callable]:
         """Create a gratitude journal entry."""
         payload = {
             "gratefulFor": gratefulFor,
@@ -116,15 +122,15 @@ class JournalService:
         # Extract content for reindexing
         content = self._extract_content_for_reindexing("GRATITUDE", payload)
         
-        # Trigger reindexing
-        await self._trigger_reindexing(
+        # Prepare reindexing callback (to be executed after transaction commit)
+        reindex_callback = self._prepare_reindexing_callback(
             entry_id=str(entry.id),
             user_id=user_id,
             content=content,
             created_at=entry.created_at
         )
         
-        return JournalEntryResponse.from_orm(entry)
+        return JournalEntryResponse.from_orm(entry), reindex_callback
     
     async def create_reflection_entry(
         self,
@@ -132,7 +138,7 @@ class JournalService:
         wins: List[str],
         improvements: List[str],
         mood: Optional[str] = None,
-    ) -> JournalEntryResponse:
+    ) -> tuple[JournalEntryResponse, callable]:
         """Create a reflection journal entry."""
         payload = {
             "wins": wins,
@@ -150,15 +156,15 @@ class JournalService:
         # Extract content for reindexing
         content = self._extract_content_for_reindexing("REFLECTION", payload)
         
-        # Trigger reindexing
-        await self._trigger_reindexing(
+        # Prepare reindexing callback (to be executed after transaction commit)
+        reindex_callback = self._prepare_reindexing_callback(
             entry_id=str(entry.id),
             user_id=user_id,
             content=content,
             created_at=entry.created_at
         )
         
-        return JournalEntryResponse.from_orm(entry)
+        return JournalEntryResponse.from_orm(entry), reindex_callback
     
     async def get_entries_for_user(
         self, 

@@ -288,7 +288,7 @@ class Mutation:
         service = get_journal_service_from_context(info)
         session = get_session_from_context(info)
         
-        entry = await service.create_gratitude_entry(
+        entry, reindex_callback = await service.create_gratitude_entry(
             user_id=current_user.id,
             gratefulFor=input.gratefulFor,
             excitedAbout=input.excitedAbout,
@@ -297,6 +297,9 @@ class Mutation:
             mood=input.mood,
         )
         await session.commit()
+        
+        # Execute reindexing callback after transaction commit
+        await reindex_callback()
         
         # Convert service response to GraphQL type with proper field mapping
         payload = GratitudePayloadType(**entry.payload)
@@ -320,13 +323,16 @@ class Mutation:
         service = get_journal_service_from_context(info)
         session = get_session_from_context(info)
         
-        entry = await service.create_reflection_entry(
+        entry, reindex_callback = await service.create_reflection_entry(
             user_id=current_user.id,
             wins=input.wins,
             improvements=input.improvements,
             mood=input.mood,
         )
         await session.commit()
+        
+        # Execute reindexing callback after transaction commit
+        await reindex_callback()
         
         # Convert service response to GraphQL type with proper field mapping
         payload = ReflectionPayloadType(**entry.payload)
@@ -350,11 +356,15 @@ class Mutation:
         service = get_journal_service_from_context(info)
         session = get_session_from_context(info)
         
-        entry = await service.create_freeform_entry(
+        entry, reindex_callback = await service.create_freeform_entry(
             user=current_user,
             content=input.content,
         )
         await session.commit()
+        
+        # Execute reindexing callback after transaction commit
+        await reindex_callback()
+        
         return FreeformJournalEntry(
             id=str(entry.id),
             userId=str(entry.user_id),
