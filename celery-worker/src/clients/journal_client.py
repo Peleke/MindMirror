@@ -125,12 +125,13 @@ class CeleryJournalClient:
             variables = {"id": entry_id}
 
             logger.info(
-                f"Executing GraphQL query for entry {entry_id} with variables: {variables}"
+                f"Executing GraphQL query for entry {entry_id} with variables: {variables}, user_id: {user_id}"
             )
 
             data = await self._execute_query(query, variables, user_id)
 
             logger.info(f"GraphQL response data: {data}")
+            logger.info(f"Headers sent: x-internal-id={user_id}")
 
             entry_data = data.get("journalEntry")
             if not entry_data:
