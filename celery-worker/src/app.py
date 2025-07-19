@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
             
             # Process the indexing
             processor = get_journal_processor()
-            success = processor.process_journal_indexing(entry_id, user_id, tradition)
+            success = await processor.process_journal_indexing(entry_id, user_id, tradition)
             
             if success:
                 return {"status": "success", "message": f"Indexed entry {entry_id}"}
@@ -78,7 +78,7 @@ def create_app() -> FastAPI:
             
             # Process the rebuild
             processor = get_tradition_processor()
-            result = processor.process_tradition_rebuild(tradition)
+            result = await processor.process_tradition_rebuild(tradition)
             
             return {"status": "success", "result": result}
                 
@@ -92,7 +92,7 @@ def create_app() -> FastAPI:
         try:
             # Process the health check
             processor = get_health_processor()
-            result = processor.process_health_check()
+            result = await processor.process_health_check()
             
             return {"status": "success", "result": result}
                 
@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
             
             # Process the indexing
             processor = get_journal_processor()
-            success = processor.process_journal_indexing(entry_id, user_id, tradition)
+            success = await processor.process_journal_indexing(entry_id, user_id, tradition)
             
             if success:
                 return {"status": "success", "task_id": f"http_{entry_id}"}
@@ -144,7 +144,7 @@ def create_app() -> FastAPI:
             
             # Process the rebuild
             processor = get_tradition_processor()
-            result = processor.process_tradition_rebuild(tradition)
+            result = await processor.process_tradition_rebuild(tradition)
             
             return {"status": "success", "task_id": f"http_{tradition}", "result": result}
                 

@@ -18,7 +18,6 @@ from src.clients.journal_client import create_celery_journal_client
 from src.clients.qdrant_client import get_celery_qdrant_client
 from src.clients.gcs_client import get_gcs_client
 from src.utils.embedding import get_embedding, get_embeddings
-from src.utils.async_utils import run_async_in_sync
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ class JournalIndexingProcessor:
         self.journal_client = create_celery_journal_client()
         self.qdrant_client = get_celery_qdrant_client()
 
-    def process_journal_indexing(
+    async def process_journal_indexing(
         self, entry_id: str, user_id: str, tradition: str = "canon-default"
     ) -> bool:
         """Process a single journal entry indexing request."""
@@ -39,7 +38,7 @@ class JournalIndexingProcessor:
             logger.info(f"Processing journal indexing for entry {entry_id}")
             
             # Get journal entry with retry logic for race conditions
-            entry_data = self._get_journal_entry_with_retry(entry_id, user_id)
+            entry_data = await self._get_journal_entry_with_retry(entry_id, user_id)
             
             if not entry_data:
                 logger.warning(f"Journal entry {entry_id} not found after retries")
@@ -52,16 +51,19 @@ class JournalIndexingProcessor:
                 return False
 
             # Get embedding
-            embedding = get_embedding(text_content)
+            embedding = await get_embedding(text_content)
             
             # Index in Qdrant
-            self.qdrant_client.index_journal_entry(
-                entry_id=entry_id,
-                user_id=user_id,
+            await self.qdrant_client.index_personal_document(
                 tradition=tradition,
-                content=text_content,
+                user_id=user_id,
+                text=text_content,
                 embedding=embedding,
-                metadata=entry_data
+                metadata={
+                    **entry_data,
+                    "entry_id": entry_id,
+                    "entry_type": entry_data.get("entry_type", "UNKNOWN")
+                }
             )
             
             logger.info(f"Successfully indexed entry {entry_id}")
@@ -71,7 +73,7 @@ class JournalIndexingProcessor:
             logger.error(f"Error processing journal indexing for entry {entry_id}: {e}")
             return False
 
-    def process_batch_indexing(self, entries_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def process_batch_indexing(self, entries_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Process batch journal indexing."""
         try:
             logger.info(f"Processing batch indexing for {len(entries_data)} entries")
@@ -88,7 +90,7 @@ class JournalIndexingProcessor:
                     tradition = entry_data.get("tradition", "canon-default")
                     
                     if entry_id and user_id:
-                        success = self.process_journal_indexing(entry_id, user_id, tradition)
+                        success = await self.process_journal_indexing(entry_id, user_id, tradition)
                         if success:
                             indexed += 1
                         else:
@@ -109,7 +111,7 @@ class JournalIndexingProcessor:
             logger.error(f"Error processing batch indexing: {e}")
             return {"indexed": 0, "failed": len(entries_data), "total": len(entries_data)}
 
-    def process_user_reindex(self, user_id: str, tradition: str = "canon-default", lookback_days: int = 30) -> Dict[str, Any]:
+    async def process_user_reindex(self, user_id: str, tradition: str = "canon-default", lookback_days: int = 30) -> Dict[str, Any]:
         """Process user reindexing."""
         try:
             logger.info(f"Processing user reindex for user {user_id}, tradition {tradition}, lookback {lookback_days} days")
@@ -119,12 +121,10 @@ class JournalIndexingProcessor:
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=lookback_days)
             
-            entries = run_async_in_sync(
-                self.journal_client.list_by_user_for_period(
-                    user_id, 
-                    start_date.isoformat(), 
-                    end_date.isoformat()
-                )
+            entries = await self.journal_client.list_by_user_for_period(
+                user_id, 
+                start_date.isoformat(), 
+                end_date.isoformat()
             )
             
             if not entries:
@@ -136,7 +136,7 @@ class JournalIndexingProcessor:
             failed = 0
             
             for entry in entries:
-                success = self.process_journal_indexing(
+                success = await self.process_journal_indexing(
                     entry["id"], user_id, tradition
                 )
                 if success:
@@ -194,41 +194,37 @@ class JournalIndexingProcessor:
         
         return ""
 
-    def _get_journal_entry_with_retry(self, entry_id: str, user_id: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
+    async def _get_journal_entry_with_retry(self, entry_id: str, user_id: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
         """Get journal entry with retry logic for race conditions."""
         import asyncio
         
-        async def _retry_async():
-            for attempt in range(max_retries + 1):  # +1 for initial attempt
-                try:
-                    entry_data = await self.journal_client.get_entry_by_id(entry_id, user_id)
+        for attempt in range(max_retries + 1):  # +1 for initial attempt
+            try:
+                entry_data = await self.journal_client.get_entry_by_id(entry_id, user_id)
+                
+                if entry_data:
+                    if attempt > 0:
+                        logger.info(f"Journal entry {entry_id} found on attempt {attempt + 1}")
+                    return entry_data
+                
+                if attempt < max_retries:
+                    # Exponential backoff: 100ms, 200ms, 400ms
+                    delay = 0.1 * (2 ** attempt)
+                    logger.info(f"Journal entry {entry_id} not found, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning(f"Journal entry {entry_id} not found after {max_retries + 1} attempts")
                     
-                    if entry_data:
-                        if attempt > 0:
-                            logger.info(f"Journal entry {entry_id} found on attempt {attempt + 1}")
-                        return entry_data
-                    
-                    if attempt < max_retries:
-                        # Exponential backoff: 100ms, 200ms, 400ms
-                        delay = 0.1 * (2 ** attempt)
-                        logger.info(f"Journal entry {entry_id} not found, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
-                        await asyncio.sleep(delay)
-                    else:
-                        logger.warning(f"Journal entry {entry_id} not found after {max_retries + 1} attempts")
-                        
-                except Exception as e:
-                    if attempt < max_retries:
-                        delay = 0.1 * (2 ** attempt)
-                        logger.warning(f"Error fetching journal entry {entry_id} (attempt {attempt + 1}), retrying in {delay:.1f}s: {e}")
-                        await asyncio.sleep(delay)
-                    else:
-                        logger.error(f"Failed to fetch journal entry {entry_id} after {max_retries + 1} attempts: {e}")
-                        raise
-            
-            return None
+            except Exception as e:
+                if attempt < max_retries:
+                    delay = 0.1 * (2 ** attempt)
+                    logger.warning(f"Error fetching journal entry {entry_id} (attempt {attempt + 1}), retrying in {delay:.1f}s: {e}")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Failed to fetch journal entry {entry_id} after {max_retries + 1} attempts: {e}")
+                    raise
         
-        # Run the async retry logic
-        return run_async_in_sync(_retry_async())
+        return None
 
 
 class TraditionRebuildProcessor:
@@ -239,7 +235,7 @@ class TraditionRebuildProcessor:
         self.gcs_client = get_gcs_client()
         self.qdrant_client = get_celery_qdrant_client()
 
-    def process_tradition_rebuild(self, tradition: str) -> Dict[str, Any]:
+    async def process_tradition_rebuild(self, tradition: str) -> Dict[str, Any]:
         """Process tradition rebuild request."""
         try:
             logger.info(f"Processing tradition rebuild for {tradition}")
@@ -272,17 +268,21 @@ class TraditionRebuildProcessor:
                         
                         # Get embeddings for chunks
                         texts = [chunk.page_content for chunk in chunks]
-                        embeddings = get_embeddings(texts)
+                        embeddings = await get_embeddings(texts)
                         
                         # Index chunks in Qdrant
                         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
                             chunk_id = f"{doc['name']}_chunk_{i}"
-                            self.qdrant_client.index_tradition_chunk(
-                                chunk_id=chunk_id,
-                                tradition=tradition,
-                                content=chunk.page_content,
+                            await self.qdrant_client.index_document(
+                                collection_name=self.qdrant_client.get_knowledge_collection_name(tradition),
+                                text=chunk.page_content,
                                 embedding=embedding,
-                                metadata={"source": doc["name"], "page": chunk.metadata.get("page", 0)}
+                                metadata={
+                                    "source": doc["name"], 
+                                    "page": chunk.metadata.get("page", 0),
+                                    "chunk_id": chunk_id,
+                                    "tradition": tradition
+                                }
                             )
                         
                         indexed += len(chunks)
@@ -307,21 +307,21 @@ class HealthCheckProcessor:
         """Initialize the processor with required clients."""
         self.qdrant_client = get_celery_qdrant_client()
 
-    def process_health_check(self) -> Dict[str, Any]:
+    async def process_health_check(self) -> Dict[str, Any]:
         """Process health check request."""
         try:
             logger.info("Processing health check")
             
             # Check Qdrant health
-            qdrant_health = self.qdrant_client.health_check()
+            qdrant_healthy = await self.qdrant_client.health_check()
             
             # Determine overall status
-            if qdrant_health.get("status") == "healthy":
+            if qdrant_healthy:
                 status = "healthy"
-            elif qdrant_health.get("status") == "degraded":
-                status = "degraded"
+                qdrant_health = {"status": "healthy"}
             else:
                 status = "unhealthy"
+                qdrant_health = {"status": "unhealthy"}
             
             result = {
                 "status": status,
