@@ -12,7 +12,7 @@ from typing import Dict, List, Any, Optional
 from uuid import uuid4
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 
 from src.clients.journal_client import create_celery_journal_client
 from src.clients.qdrant_client import get_celery_qdrant_client
