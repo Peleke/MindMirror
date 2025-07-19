@@ -12,12 +12,11 @@ class TestConfig:
 
     def test_config_defaults(self):
         """Test default configuration values."""
-        assert Config.VECTOR_SIZE == 768
-        assert Config.QDRANT_HOST == "qdrant"
-        assert Config.QDRANT_PORT == 6333
+        assert Config.VECTOR_SIZE == 1536
+        assert Config.QDRANT_URL == "http://qdrant:6333"
         assert Config.REDIS_URL == "redis://redis:6379/0"
         assert Config.JOURNAL_SERVICE_URL == "http://journal_service:8001"
-        assert Config.EMBEDDING_SERVICE == "ollama"
+        assert Config.EMBEDDING_SERVICE == "openai"
         assert Config.TASK_DEFAULT_RETRY_DELAY == 60
         assert Config.TASK_MAX_RETRIES == 3
         assert Config.TASK_TIME_LIMIT == 300
@@ -26,8 +25,7 @@ class TestConfig:
         os.environ,
         {
             "EMBEDDING_VECTOR_SIZE": "1024",
-            "QDRANT_HOST": "test-qdrant",
-            "QDRANT_PORT": "9999",
+            "QDRANT_URL": "http://test-qdrant:9999",
             "REDIS_URL": "redis://test-redis:6379/1",
             "JOURNAL_SERVICE_URL": "http://test-journal:8001",
             "EMBEDDING_SERVICE": "openai",
@@ -43,22 +41,20 @@ class TestConfig:
 
         # Create a new config class to test with the new environment
         class TestConfig:
-            VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "768"))
-            QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
-            QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+            VECTOR_SIZE = int(os.getenv("EMBEDDING_VECTOR_SIZE", "1536"))
+            QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
             REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
             JOURNAL_SERVICE_URL = os.getenv(
                 "JOURNAL_SERVICE_URL", "http://journal_service:8001"
             )
-            EMBEDDING_SERVICE = os.getenv("EMBEDDING_SERVICE", "ollama")
+            EMBEDDING_SERVICE = os.getenv("EMBEDDING_SERVICE", "openai")
             TASK_DEFAULT_RETRY_DELAY = int(os.getenv("TASK_DEFAULT_RETRY_DELAY", "60"))
             TASK_MAX_RETRIES = int(os.getenv("TASK_MAX_RETRIES", "3"))
             TASK_TIME_LIMIT = int(os.getenv("TASK_TIME_LIMIT", "300"))
             TESTING = os.getenv("TESTING", "false").lower() == "true"
 
         assert TestConfig.VECTOR_SIZE == 1024
-        assert TestConfig.QDRANT_HOST == "test-qdrant"
-        assert TestConfig.QDRANT_PORT == 9999
+        assert TestConfig.QDRANT_URL == "http://test-qdrant:9999"
         assert TestConfig.REDIS_URL == "redis://test-redis:6379/1"
         assert TestConfig.JOURNAL_SERVICE_URL == "http://test-journal:8001"
         assert TestConfig.EMBEDDING_SERVICE == "openai"
@@ -70,23 +66,22 @@ class TestConfig:
     def test_get_qdrant_url(self):
         """Test get_qdrant_url method."""
         url = Config.get_qdrant_url()
-        assert url == f"http://{Config.QDRANT_HOST}:{Config.QDRANT_PORT}"
+        assert url == Config.QDRANT_URL
         assert url == "http://qdrant:6333"  # Default values
 
     @patch.dict(
-        os.environ, {"QDRANT_HOST": "custom-host", "QDRANT_PORT": "7777"}, clear=False
+        os.environ, {"QDRANT_URL": "http://custom-host:7777"}, clear=False
     )
     def test_get_qdrant_url_custom(self):
         """Test get_qdrant_url with custom values."""
 
         # Create a new config class to test with the new environment
         class TestConfig:
-            QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
-            QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+            QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
 
             @classmethod
             def get_qdrant_url(cls):
-                return f"http://{cls.QDRANT_HOST}:{cls.QDRANT_PORT}"
+                return cls.QDRANT_URL
 
         url = TestConfig.get_qdrant_url()
         assert url == "http://custom-host:7777"
@@ -159,7 +154,6 @@ class TestConfig:
     def test_integer_parsing(self):
         """Test that integer environment variables are parsed correctly."""
         assert isinstance(Config.VECTOR_SIZE, int)
-        assert isinstance(Config.QDRANT_PORT, int)
         assert isinstance(Config.TASK_DEFAULT_RETRY_DELAY, int)
         assert isinstance(Config.TASK_MAX_RETRIES, int)
         assert isinstance(Config.TASK_TIME_LIMIT, int)

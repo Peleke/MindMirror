@@ -20,27 +20,22 @@ class TestCeleryQdrantClient:
         """Test Qdrant client initialization with default values."""
         client = CeleryQdrantClient()
 
-        # In test environment, QDRANT_HOST is set to localhost in conftest.py
-        # Check what the actual config value is, which reflects environment variables
-        expected_host = "localhost"  # As set in conftest.py
-        expected_port = Config.QDRANT_PORT
-
-        assert client.host == expected_host
-        assert client.port == expected_port
+        assert client.url == Config.QDRANT_URL
+        assert client.api_key == Config.QDRANT_API_KEY
         assert client.client is not None
-        mock_qdrant_base.assert_called_once_with(host=expected_host, port=expected_port)
+        mock_qdrant_base.assert_called_once_with(url=Config.QDRANT_URL, api_key=Config.QDRANT_API_KEY)
 
     @patch("src.clients.qdrant_client.QdrantClientBase")
     def test_init_custom_values(self, mock_qdrant_base):
         """Test client initialization with custom values."""
-        custom_host = "custom-qdrant"
-        custom_port = 9999
+        custom_url = "http://custom-qdrant:9999"
+        custom_api_key = "test-api-key"
 
-        client = CeleryQdrantClient(host=custom_host, port=custom_port)
+        client = CeleryQdrantClient(url=custom_url, api_key=custom_api_key)
 
-        assert client.host == custom_host
-        assert client.port == custom_port
-        mock_qdrant_base.assert_called_once_with(host=custom_host, port=custom_port)
+        assert client.url == custom_url
+        assert client.api_key == custom_api_key
+        mock_qdrant_base.assert_called_once_with(url=custom_url, api_key=custom_api_key)
 
     @patch("src.clients.qdrant_client.QdrantClientBase")
     @pytest.mark.asyncio

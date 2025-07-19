@@ -18,8 +18,7 @@ TEST_QDRANT_URL = f"http://localhost:{TEST_QDRANT_PORT}"
 
 # Set environment variables for the application's config
 os.environ["TESTING"] = "true"
-os.environ["QDRANT_HOST"] = "localhost"
-os.environ["QDRANT_PORT"] = "6333"
+os.environ["QDRANT_URL"] = f"http://localhost:{TEST_QDRANT_PORT}"
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_mindmirror"
 
 logging.basicConfig(level=logging.INFO)
@@ -185,7 +184,7 @@ async def qdrant_client(docker_services):
 
     from src.clients.qdrant_client import CeleryQdrantClient
 
-    client = CeleryQdrantClient(host="localhost", port=TEST_QDRANT_PORT)
+    client = CeleryQdrantClient(url=f"http://localhost:{TEST_QDRANT_PORT}")
 
     # Verify connection
     health = await client.health_check()

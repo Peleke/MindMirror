@@ -43,11 +43,22 @@ class SearchResult:
 class CeleryQdrantClient:
     """Qdrant client for celery-worker operations."""
 
-    def __init__(self, url: str = None):
+    def __init__(self, url: str = None, api_key: str = None):
         """Initialize Qdrant client."""
         self.url = url or Config.QDRANT_URL
-        self.client = QdrantClientBase(url=self.url)
-        logger.info(f"Initialized CeleryQdrantClient with {self.url}")
+        self.api_key = api_key or Config.QDRANT_API_KEY
+        
+        # Debug logging
+        logger.debug(f"Qdrant URL: {self.url}")
+        logger.debug(f"Qdrant API key present: {bool(self.api_key)}")
+        
+        # Initialize client with API key if provided
+        if self.api_key:
+            self.client = QdrantClientBase(url=self.url, api_key=self.api_key)
+            logger.info(f"Initialized CeleryQdrantClient with {self.url} (with API key)")
+        else:
+            self.client = QdrantClientBase(url=self.url)
+            logger.warning(f"Initialized CeleryQdrantClient with {self.url} (no API key - may cause auth issues)")
 
     async def health_check(self) -> bool:
         """Check if Qdrant is healthy and reachable."""
@@ -265,5 +276,5 @@ def get_celery_qdrant_client() -> CeleryQdrantClient:
     """Create or get the global Celery Qdrant client instance."""
     global _celery_qdrant_client
     if _celery_qdrant_client is None:
-        _celery_qdrant_client = CeleryQdrantClient()
+        _celery_qdrant_client = CeleryQdrantClient()  # Will use Config.QDRANT_URL and Config.QDRANT_API_KEY
     return _celery_qdrant_client
