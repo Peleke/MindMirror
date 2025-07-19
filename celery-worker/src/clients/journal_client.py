@@ -133,7 +133,7 @@ class CeleryJournalClient:
             logger.info(f"GraphQL response data: {data}")
             logger.info(f"Headers sent: x-internal-id={user_id}")
 
-            entry_data = data.get("journalEntry")
+            entry_data = data.get("journalEntrySystem")
             if not entry_data:
                 logger.warning(
                     f"Journal entry {entry_id} not found - GraphQL returned: {data}"
