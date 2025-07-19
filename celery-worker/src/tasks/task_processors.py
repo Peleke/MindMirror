@@ -40,7 +40,7 @@ class JournalIndexingProcessor:
             
             # Get journal entry
             entry_data = run_async_in_sync(
-                self.journal_client.get_journal_entry(entry_id)
+                self.journal_client.get_entry_by_id(entry_id, user_id)
             )
             
             if not entry_data:
@@ -78,14 +78,32 @@ class JournalIndexingProcessor:
         try:
             logger.info(f"Processing batch indexing for {len(entries_data)} entries")
             
-            # Use JournalIndexer for batch processing
-            from src.tasks.journal_tasks import JournalIndexer
-            indexer = JournalIndexer()
+            # NOTE: Recursion exercise for readers?
+            # Process each entry individually
+            indexed = 0
+            failed = 0
             
-            result = run_async_in_sync(
-                indexer.batch_index_entries(entries_data)
-            )
+            for entry_data in entries_data:
+                try:
+                    entry_id = entry_data.get("entry_id")
+                    user_id = entry_data.get("user_id")
+                    tradition = entry_data.get("tradition", "canon-default")
+                    
+                    if entry_id and user_id:
+                        success = self.process_journal_indexing(entry_id, user_id, tradition)
+                        if success:
+                            indexed += 1
+                        else:
+                            failed += 1
+                    else:
+                        failed += 1
+                        logger.warning(f"Missing entry_id or user_id in entry data: {entry_data}")
+                        
+                except Exception as e:
+                    failed += 1
+                    logger.error(f"Error processing entry in batch: {e}")
             
+            result = {"indexed": indexed, "failed": failed, "total": len(entries_data)}
             logger.info(f"Batch indexing completed: {result}")
             return result
             
@@ -93,14 +111,22 @@ class JournalIndexingProcessor:
             logger.error(f"Error processing batch indexing: {e}")
             return {"indexed": 0, "failed": len(entries_data), "total": len(entries_data)}
 
-    def process_user_reindex(self, user_id: str, tradition: str = "canon-default") -> Dict[str, Any]:
+    def process_user_reindex(self, user_id: str, tradition: str = "canon-default", lookback_days: int = 30) -> Dict[str, Any]:
         """Process user reindexing."""
         try:
-            logger.info(f"Processing user reindex for user {user_id}, tradition {tradition}")
+            logger.info(f"Processing user reindex for user {user_id}, tradition {tradition}, lookback {lookback_days} days")
             
-            # Get all user entries
+            # Get all user entries within lookback period
+            from datetime import datetime, timedelta
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=lookback_days)
+            
             entries = run_async_in_sync(
-                self.journal_client.get_user_entries(user_id)
+                self.journal_client.list_by_user_for_period(
+                    user_id, 
+                    start_date.isoformat(), 
+                    end_date.isoformat()
+                )
             )
             
             if not entries:
