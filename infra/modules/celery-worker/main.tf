@@ -179,7 +179,7 @@ resource "google_cloud_run_service" "celery_worker_web" {
     spec {
       containers {
         image = var.celery_worker_container_image
-        command = ["./start-web.sh"]
+        command = ["./start.sh"]
 
         ports {
           container_port = 8000
