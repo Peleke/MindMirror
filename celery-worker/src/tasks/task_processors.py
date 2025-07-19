@@ -157,13 +157,14 @@ class JournalIndexingProcessor:
     def _extract_text_from_entry(self, entry_data: Dict[str, Any]) -> str:
         """Extract text content from journal entry data."""
         entry_type = entry_data.get("entry_type", "")
-        payload = entry_data.get("payload", {})
         
+        # Handle aliased payload fields from GraphQL
         if entry_type == "FREEFORM":
-            # For freeform, payload is the content string
+            payload = entry_data.get("freeform_payload", "")
             return str(payload) if payload else ""
             
         elif entry_type == "GRATITUDE":
+            payload = entry_data.get("gratitude_payload", {})
             parts = []
             if payload.get("grateful_for"):
                 parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
@@ -178,6 +179,7 @@ class JournalIndexingProcessor:
             return "\n".join(parts)
             
         elif entry_type == "REFLECTION":
+            payload = entry_data.get("reflection_payload", {})
             parts = []
             if payload.get("wins"):
                 parts.append(f"Wins: {', '.join(payload['wins'])}")
@@ -187,8 +189,12 @@ class JournalIndexingProcessor:
                 parts.append(f"Mood: {payload['mood']}")
             return "\n".join(parts)
         
-        # Fallback: convert payload to string
-        return str(payload) if payload else ""
+        # Fallback: try to find any payload field
+        for field in ["payload", "freeform_payload", "gratitude_payload", "reflection_payload"]:
+            if field in entry_data:
+                return str(entry_data[field])
+        
+        return ""
 
 
 class TraditionRebuildProcessor:

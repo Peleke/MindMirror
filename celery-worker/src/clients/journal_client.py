@@ -89,7 +89,7 @@ class CeleryJournalClient:
             Journal entry dictionary if found, None otherwise
         """
         try:
-            # GraphQL query for journal entry with proper schema
+            # GraphQL query for journal entry with proper schema and aliases
             query = """
                 query GetJournalEntry($id: UUID!) {
                     journalEntry(entryId: $id) {
@@ -100,10 +100,10 @@ class CeleryJournalClient:
                         createdAt
                         modifiedAt
                         ... on FreeformJournalEntry {
-                            payload
+                            freeformPayload: payload
                         }
                         ... on GratitudeJournalEntry {
-                            payload {
+                            gratitudePayload: payload {
                                 gratefulFor
                                 excitedAbout
                                 focus
@@ -112,7 +112,7 @@ class CeleryJournalClient:
                             }
                         }
                         ... on ReflectionJournalEntry {
-                            payload {
+                            reflectionPayload: payload {
                                 wins
                                 improvements
                                 mood
