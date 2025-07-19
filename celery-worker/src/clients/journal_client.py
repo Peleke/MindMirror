@@ -89,17 +89,34 @@ class CeleryJournalClient:
             Journal entry dictionary if found, None otherwise
         """
         try:
-            # Simple GraphQL query for journal entry
+            # GraphQL query for journal entry with proper schema
             query = """
                 query GetJournalEntry($id: UUID!) {
                     journalEntry(entryId: $id) {
+                        __typename
                         id
-                        content
+                        userId
                         entryType
                         createdAt
                         modifiedAt
-                        user {
-                            id
+                        ... on FreeformJournalEntry {
+                            payload
+                        }
+                        ... on GratitudeJournalEntry {
+                            payload {
+                                gratefulFor
+                                excitedAbout
+                                focus
+                                affirmation
+                                mood
+                            }
+                        }
+                        ... on ReflectionJournalEntry {
+                            payload {
+                                wins
+                                improvements
+                                mood
+                            }
                         }
                     }
                 }
@@ -126,8 +143,9 @@ class CeleryJournalClient:
 
             # Convert to snake_case and add user_id for convenience
             converted_data = self._convert_to_snake_case(entry_data)
-            if "user" in converted_data and "id" in converted_data["user"]:
-                converted_data["user_id"] = converted_data["user"]["id"]
+            # userId is already in the data, just ensure it's accessible as user_id
+            if "user_id" not in converted_data and "user_id" in entry_data:
+                converted_data["user_id"] = entry_data["userId"]
 
             logger.info(f"Retrieved journal entry {entry_id} for user {user_id}")
             return converted_data

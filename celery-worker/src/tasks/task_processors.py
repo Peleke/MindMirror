@@ -156,26 +156,39 @@ class JournalIndexingProcessor:
 
     def _extract_text_from_entry(self, entry_data: Dict[str, Any]) -> str:
         """Extract text content from journal entry data."""
-        parts = []
+        entry_type = entry_data.get("entry_type", "")
+        payload = entry_data.get("payload", {})
         
-        # Add title if present
-        if entry_data.get("title"):
-            parts.append(f"Title: {entry_data['title']}")
+        if entry_type == "FREEFORM":
+            # For freeform, payload is the content string
+            return str(payload) if payload else ""
+            
+        elif entry_type == "GRATITUDE":
+            parts = []
+            if payload.get("grateful_for"):
+                parts.append(f"Grateful for: {', '.join(payload['grateful_for'])}")
+            if payload.get("excited_about"):
+                parts.append(f"Excited about: {', '.join(payload['excited_about'])}")
+            if payload.get("focus"):
+                parts.append(f"Focus: {payload['focus']}")
+            if payload.get("affirmation"):
+                parts.append(f"Affirmation: {payload['affirmation']}")
+            if payload.get("mood"):
+                parts.append(f"Mood: {payload['mood']}")
+            return "\n".join(parts)
+            
+        elif entry_type == "REFLECTION":
+            parts = []
+            if payload.get("wins"):
+                parts.append(f"Wins: {', '.join(payload['wins'])}")
+            if payload.get("improvements"):
+                parts.append(f"Improvements: {', '.join(payload['improvements'])}")
+            if payload.get("mood"):
+                parts.append(f"Mood: {payload['mood']}")
+            return "\n".join(parts)
         
-        # Add content
-        if entry_data.get("content"):
-            parts.append(entry_data["content"])
-        
-        # Add tags if present
-        if entry_data.get("tags"):
-            tags_str = ", ".join(entry_data["tags"])
-            parts.append(f"Tags: {tags_str}")
-        
-        # Add summary if present
-        if entry_data.get("summary"):
-            parts.append(f"Summary: {entry_data['summary']}")
-        
-        return "\n\n".join(parts) if parts else ""
+        # Fallback: convert payload to string
+        return str(payload) if payload else ""
 
 
 class TraditionRebuildProcessor:
