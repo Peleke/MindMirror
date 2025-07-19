@@ -68,9 +68,7 @@ class OpenAIEmbeddingService:
 
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = model or os.getenv(
-            "OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"
-        )
+        self.model = model or os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         self.client = httpx.AsyncClient()
 
         if not self.api_key:
@@ -259,7 +257,7 @@ def set_embedding_service(service: EmbeddingService):
 # Convenience functions for backward compatibility
 async def get_embedding(text: str) -> List[float]:
     """
-    Generate embedding for a single text using Ollama.
+    Generate embedding for a single text using the configured service.
 
     Args:
         text: The text to embed
@@ -268,19 +266,10 @@ async def get_embedding(text: str) -> List[float]:
         List of floats representing the embedding vector
     """
     try:
-        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-        model = os.getenv("OLLAMA_MODEL", "nomic-embed-text")
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{ollama_url}/api/embeddings", json={"model": model, "prompt": text}
-            )
-            response.raise_for_status()
-            result = response.json()
-            embedding = result["embedding"]
-
-            logger.debug(f"Generated embedding for text (length: {len(text)})")
-            return embedding
+        service = get_embedding_service()
+        embedding = await service.get_embedding(text)
+        logger.debug(f"Generated embedding for text (length: {len(text)})")
+        return embedding
 
     except Exception as e:
         logger.error(f"Failed to generate embedding: {e}")
@@ -290,7 +279,7 @@ async def get_embedding(text: str) -> List[float]:
 
 async def get_embeddings(texts: List[str]) -> List[List[float]]:
     """
-    Generate embeddings for multiple texts using Ollama.
+    Generate embeddings for multiple texts using the configured service.
 
     Args:
         texts: List of texts to embed
@@ -299,11 +288,8 @@ async def get_embeddings(texts: List[str]) -> List[List[float]]:
         List of embedding vectors
     """
     try:
-        embeddings = []
-        for text in texts:
-            embedding = await get_embedding(text)
-            embeddings.append(embedding)
-
+        service = get_embedding_service()
+        embeddings = await service.get_embeddings(texts)
         logger.info(f"Generated {len(embeddings)} embeddings")
         return embeddings
 

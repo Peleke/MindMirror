@@ -43,12 +43,11 @@ class SearchResult:
 class CeleryQdrantClient:
     """Qdrant client for celery-worker operations."""
 
-    def __init__(self, host: str = None, port: int = None):
+    def __init__(self, url: str = None):
         """Initialize Qdrant client."""
-        self.host = host or os.getenv("QDRANT_HOST", Config.QDRANT_HOST)
-        self.port = port or int(os.getenv("QDRANT_PORT", str(Config.QDRANT_PORT)))
-        self.client = QdrantClientBase(host=self.host, port=self.port)
-        logger.info(f"Initialized CeleryQdrantClient with {self.host}:{self.port}")
+        self.url = url or Config.QDRANT_URL
+        self.client = QdrantClientBase(url=self.url)
+        logger.info(f"Initialized CeleryQdrantClient with {self.url}")
 
     async def health_check(self) -> bool:
         """Check if Qdrant is healthy and reachable."""

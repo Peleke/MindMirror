@@ -11,8 +11,8 @@ class Config:
 
     # Vector embedding configuration
     VECTOR_SIZE: int = int(
-        os.getenv("EMBEDDING_VECTOR_SIZE", "768")
-    )  # nomic-embed-text dimension
+        os.getenv("EMBEDDING_VECTOR_SIZE", "1536")
+    )  # text-embedding-3-small dimension
 
     # Database configuration
     POSTGRES_URL: str = os.getenv(
@@ -23,9 +23,8 @@ class Config:
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
     # Qdrant configuration
-    QDRANT_HOST: str = os.getenv("QDRANT_HOST", "qdrant")
-    QDRANT_PORT: int = int(os.getenv("QDRANT_PORT", "6333"))
-    QDRANT_URL: str = f"http://{QDRANT_HOST}:{QDRANT_PORT}"
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "http://qdrant:6333")
+    QDRANT_API_KEY: Optional[str] = os.getenv("QDRANT_API_KEY")
 
     # Journal service configuration
     JOURNAL_SERVICE_URL: str = os.getenv(
@@ -39,6 +38,7 @@ class Config:
 
     # Embedding service configuration
     EMBEDDING_SERVICE: str = os.getenv("EMBEDDING_SERVICE", "ollama")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     OLLAMA_BASE_URL: str = os.getenv(
         "OLLAMA_BASE_URL", "http://host.docker.internal:11434"
     )
@@ -57,7 +57,7 @@ class Config:
     @classmethod
     def get_qdrant_url(cls) -> str:
         """Get the full Qdrant URL."""
-        return f"http://{cls.QDRANT_HOST}:{cls.QDRANT_PORT}"
+        return cls.QDRANT_URL
 
     @classmethod
     def is_testing(cls) -> bool:
