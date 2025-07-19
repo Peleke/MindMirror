@@ -14,7 +14,7 @@ from uuid import uuid4
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader
 
-from src.clients.journal_service_client import create_celery_journal_client
+from src.clients.journal_client import create_celery_journal_client
 from src.clients.qdrant_client import get_celery_qdrant_client
 from src.clients.gcs_client import get_gcs_client
 from src.utils.embedding import get_embedding, get_embeddings
