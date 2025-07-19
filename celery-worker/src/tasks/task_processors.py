@@ -38,13 +38,11 @@ class JournalIndexingProcessor:
         try:
             logger.info(f"Processing journal indexing for entry {entry_id}")
             
-            # Get journal entry
-            entry_data = run_async_in_sync(
-                self.journal_client.get_entry_by_id(entry_id, user_id)
-            )
+            # Get journal entry with retry logic for race conditions
+            entry_data = self._get_journal_entry_with_retry(entry_id, user_id)
             
             if not entry_data:
-                logger.warning(f"Journal entry {entry_id} not found")
+                logger.warning(f"Journal entry {entry_id} not found after retries")
                 return False
 
             # Extract text content
@@ -195,6 +193,40 @@ class JournalIndexingProcessor:
                 return str(entry_data[field])
         
         return ""
+
+    def _get_journal_entry_with_retry(self, entry_id: str, user_id: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
+        """Get journal entry with retry logic for race conditions."""
+        import time
+        
+        for attempt in range(max_retries + 1):  # +1 for initial attempt
+            try:
+                entry_data = run_async_in_sync(
+                    self.journal_client.get_entry_by_id(entry_id, user_id)
+                )
+                
+                if entry_data:
+                    if attempt > 0:
+                        logger.info(f"Journal entry {entry_id} found on attempt {attempt + 1}")
+                    return entry_data
+                
+                if attempt < max_retries:
+                    # Exponential backoff: 100ms, 200ms, 400ms
+                    delay = 0.1 * (2 ** attempt)
+                    logger.info(f"Journal entry {entry_id} not found, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                    time.sleep(delay)
+                else:
+                    logger.warning(f"Journal entry {entry_id} not found after {max_retries + 1} attempts")
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    delay = 0.1 * (2 ** attempt)
+                    logger.warning(f"Error fetching journal entry {entry_id} (attempt {attempt + 1}), retrying in {delay:.1f}s: {e}")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Failed to fetch journal entry {entry_id} after {max_retries + 1} attempts: {e}")
+                    raise
+        
+        return None
 
 
 class TraditionRebuildProcessor:
