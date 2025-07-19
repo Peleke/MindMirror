@@ -125,6 +125,50 @@ class Query:
         return None
 
     @strawberry.field
+    async def journal_entry_system(
+        self,
+        info,
+        entry_id: UUID,
+    ) -> Optional[JournalEntryInterface]:
+        """Get a specific journal entry (system-level, no user permission check)."""
+        service = get_journal_service_from_context(info)
+        entry = await service.get_entry_system(entry_id=entry_id)
+        if not entry:
+            return None
+            
+        # Convert to proper GraphQL type
+        if entry.entry_type == "GRATITUDE":
+            payload = GratitudePayloadType(**entry.payload)
+            return GratitudeJournalEntry(
+                id=str(entry.id),
+                userId=str(entry.user_id),
+                entryType=entry.entry_type,
+                createdAt=entry.created_at,
+                modifiedAt=entry.modified_at,
+                payload=payload
+            )
+        elif entry.entry_type == "REFLECTION":
+            payload = ReflectionPayloadType(**entry.payload)
+            return ReflectionJournalEntry(
+                id=str(entry.id),
+                userId=str(entry.user_id),
+                entryType=entry.entry_type,
+                createdAt=entry.created_at,
+                modifiedAt=entry.modified_at,
+                payload=payload
+            )
+        elif entry.entry_type == "FREEFORM":
+            return FreeformJournalEntry(
+                id=str(entry.id),
+                userId=str(entry.user_id),
+                entryType=entry.entry_type,
+                createdAt=entry.created_at,
+                modifiedAt=entry.modified_at,
+                payload=entry.payload["content"]
+            )
+        return None
+
+    @strawberry.field
     async def gratitude_entries(
         self,
         info,

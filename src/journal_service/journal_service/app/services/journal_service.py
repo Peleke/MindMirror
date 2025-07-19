@@ -196,4 +196,11 @@ class JournalService:
         entry = await self.repository.get(str(entry_id))
         if entry and str(entry.user_id) == user_id:
             return JournalEntryResponse.from_orm(entry)
+        return None
+    
+    async def get_entry_system(self, entry_id: UUID) -> Optional[JournalEntryResponse]:
+        """Get a specific journal entry (system-level, no user permission check)."""
+        entry = await self.repository.get(str(entry_id))
+        if entry:
+            return JournalEntryResponse.from_orm(entry)
         return None 

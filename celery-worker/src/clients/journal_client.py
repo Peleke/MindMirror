@@ -89,10 +89,10 @@ class CeleryJournalClient:
             Journal entry dictionary if found, None otherwise
         """
         try:
-            # GraphQL query for journal entry with proper schema and aliases
+            # GraphQL query for journal entry with proper schema and aliases (system-level)
             query = """
-                query GetJournalEntry($id: UUID!) {
-                    journalEntry(entryId: $id) {
+                query GetJournalEntrySystem($id: UUID!) {
+                    journalEntrySystem(entryId: $id) {
                         __typename
                         id
                         userId
