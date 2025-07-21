@@ -87,7 +87,7 @@ jest.mock('@supabase/supabase-js', () => ({
   })),
 }))
 
-// Mock UI components - simplified approach
+// Mock UI components - simplified approach that works with Jest
 jest.mock('@/components/ui/text', () => ({
   Text: 'Text',
 }))
