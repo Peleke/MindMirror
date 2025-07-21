@@ -5,9 +5,8 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import { ChevronRightIcon, Icon, MenuIcon } from "@/components/ui/icon";
+import { Icon, MenuIcon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -15,37 +14,13 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Heart, Lightbulb, PenTool } from "lucide-react-native";
-
-const JOURNAL_TYPES = [
-  {
-    id: 'gratitude',
-    title: 'Gratitude Journal',
-    description: 'Reflect on what you\'re grateful for today',
-    icon: Heart,
-    color: 'bg-blue-50 dark:bg-blue-950',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    route: '/journal/gratitude'
-  },
-  {
-    id: 'reflection',
-    title: 'Daily Reflection',
-    description: 'Look back on your day and insights',
-    icon: Lightbulb,
-    color: 'bg-indigo-50 dark:bg-indigo-950',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
-    route: '/journal/reflection'
-  },
-  {
-    id: 'freeform',
-    title: 'Freeform Writing',
-    description: 'Express your thoughts freely',
-    icon: PenTool,
-    color: 'bg-purple-50 dark:bg-purple-950',
-    iconColor: 'text-purple-600 dark:text-purple-400',
-    route: '/journal/freeform'
-  }
-];
+import { Heart, Lightbulb } from "lucide-react-native";
+import { useState } from 'react';
+import { UserGreeting } from '../../../src/components/journal/UserGreeting';
+import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
+import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
+import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
+import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
 
 function AppBar() {
   const router = useRouter();
@@ -84,9 +59,31 @@ function AppBar() {
 
 export default function JournalScreen() {
   const router = useRouter();
+  
+  const {
+    submitEntry,
+    transitionToChat,
+    isTransitioning: hookIsTransitioning,
+    isSubmitting,
+    error,
+    clearError
+  } = useJournalFlow();
 
-  const handleJournalPress = (route: string) => {
-    router.push(route as any);
+  const handleFormSubmit = async (entry: string) => {
+    try {
+      await submitEntry(entry);
+      // The hook will handle the transition to chat
+    } catch (error) {
+      console.error('Error submitting journal entry:', error);
+    }
+  };
+
+  const handleGratitudePress = () => {
+    router.push('/journal/gratitude');
+  };
+
+  const handleReflectionPress = () => {
+    router.push('/journal/reflection');
   };
 
   return (
@@ -98,59 +95,78 @@ export default function JournalScreen() {
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Header */}
-          <VStack className="px-6 py-6" space="xs">
-            <Heading size="2xl" className="font-roboto text-typography-900">
-              Start Your Journal
-            </Heading>
-            <Text className="text-typography-600">
-              Choose the type of entry you'd like to create
-            </Text>
+          {/* Header Section */}
+          <VStack className="px-6 py-6" space="md">
+            <UserGreeting 
+              userName="User" 
+              className="text-2xl font-semibold text-typography-900 dark:text-white"
+            />
+            
+            <AffirmationDisplay 
+              affirmation="You are capable of amazing things. Every step forward is progress."
+              className="text-lg text-typography-700 dark:text-gray-200"
+            />
           </VStack>
           
-          {/* Content */}
+          {/* Main Journal Entry Form */}
           <VStack className="px-6 pb-6" space="md">
-            {JOURNAL_TYPES.map((journalType) => (
+            <JournalEntryForm
+              onSubmit={handleFormSubmit}
+              isLoading={isSubmitting}
+              className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
+            />
+          </VStack>
+          
+          {/* Structured Journal Options */}
+          <VStack className="px-6 pb-6" space="md">
+            <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-4">
+              Or try a structured approach:
+            </Text>
+            
+            <HStack className="space-x-4">
               <Pressable
-                key={journalType.id}
-                onPress={() => handleJournalPress(journalType.route)}
-                className="mb-4"
+                onPress={handleGratitudePress}
+                className="flex-1"
               >
-                <Box 
-                  className={`p-6 min-h-[120px] rounded-lg ${journalType.color} border border-border-200 dark:border-border-700`}
-                >
-                  {/* Card Header */}
-                  <Box className="mb-4">
-                    <Icon 
-                      as={journalType.icon}
-                      size="lg"
-                      className={journalType.iconColor}
-                    />
-                  </Box>
-                  
-                  {/* Card Title */}
-                  <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
-                    {journalType.title}
+                <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
+                  <Icon 
+                    as={Heart}
+                    size="lg"
+                    className="text-blue-600 dark:text-blue-400 mb-2"
+                  />
+                  <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
+                    Gratitude
                   </Text>
-                  
-                  {/* Card Description */}
-                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
-                    {journalType.description}
-                  </Text>
-                  
-                  {/* Card Footer */}
-                  <Box className="items-end">
-                    <Icon 
-                      as={ChevronRightIcon}
-                      size="sm"
-                      className="text-typography-400 dark:text-typography-500"
-                    />
-                  </Box>
                 </Box>
               </Pressable>
-            ))}
+              
+              <Pressable
+                onPress={handleReflectionPress}
+                className="flex-1"
+              >
+                <Box className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800 items-center">
+                  <Icon 
+                    as={Lightbulb}
+                    size="lg"
+                    className="text-indigo-600 dark:text-indigo-400 mb-2"
+                  />
+                  <Text className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-center">
+                    Reflection
+                  </Text>
+                </Box>
+              </Pressable>
+            </HStack>
           </VStack>
         </ScrollView>
+        
+        {/* Transition Overlay */}
+        <TransitionOverlay 
+          isVisible={hookIsTransitioning}
+          onComplete={() => {
+            // The hook handles navigation automatically
+          }}
+          className="absolute inset-0"
+        />
       </VStack>
     </SafeAreaView>
   );
