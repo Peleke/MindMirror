@@ -87,6 +87,71 @@ jest.mock('@supabase/supabase-js', () => ({
   })),
 }))
 
+// Mock UI components - simplified approach
+jest.mock('@/components/ui/text', () => ({
+  Text: 'Text',
+}))
+
+jest.mock('@/components/ui/box', () => ({
+  Box: 'Box',
+}))
+
+jest.mock('@/components/ui/vstack', () => ({
+  VStack: 'VStack',
+}))
+
+jest.mock('@/components/ui/hstack', () => ({
+  HStack: 'HStack',
+}))
+
+jest.mock('@/components/ui/pressable', () => ({
+  Pressable: 'Pressable',
+}))
+
+jest.mock('@/components/ui/icon', () => ({
+  Icon: 'Icon',
+}))
+
+jest.mock('@/components/ui/button', () => ({
+  Button: 'Button',
+  ButtonText: 'ButtonText',
+}))
+
+jest.mock('@/components/ui/textarea', () => ({
+  Textarea: 'Textarea',
+  TextareaInput: 'TextareaInput',
+}))
+
+jest.mock('@/components/ui/input', () => ({
+  Input: 'Input',
+  InputField: 'InputField',
+}))
+
+jest.mock('@/components/ui/heading', () => ({
+  Heading: 'Heading',
+}))
+
+jest.mock('@/components/ui/scroll-view', () => ({
+  ScrollView: 'ScrollView',
+}))
+
+jest.mock('@/components/ui/safe-area-view', () => ({
+  SafeAreaView: 'SafeAreaView',
+}))
+
+// Mock lucide-react-native
+jest.mock('lucide-react-native', () => ({
+  Heart: 'Heart',
+  Lightbulb: 'Lightbulb',
+  PenTool: 'PenTool',
+  Sparkles: 'Sparkles',
+  Send: 'Send',
+  MessageCircle: 'MessageCircle',
+  ChevronRightIcon: 'ChevronRightIcon',
+  ChevronLeftIcon: 'ChevronLeftIcon',
+  MenuIcon: 'MenuIcon',
+}))
+
 // Global test setup
 global.console = {
   ...console,
