@@ -136,19 +136,16 @@ export default function ChatScreen() {
       setMessages([userMessage]);
 
       // 3. Immediately trigger the AI's response to this message.
-      // We will add the real AI call in the next step.
-      // For now, we can add a mocked response to verify the flow.
-      setTimeout(() => {
-        const aiResponse: Message = {
-          id: `ai-response-${Date.now()}`,
-          text: "Thank you for sharing. Tell me more about that.",
-          isUser: false,
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, aiResponse]);
-      }, 1000);
+      const queryWithHistory = `CONVERSATION HISTORY:\nuser: ${initialMessage}\n\nCURRENT QUERY: ${initialMessage}`;
+      askQuery({
+        variables: {
+          query: queryWithHistory,
+          tradition: selectedTradition,
+          includeJournalContext: true, // Request RAG context from the journal
+        },
+      });
     }
-  }, [initialMessage]);
+  }, [initialMessage, askQuery, selectedTradition]);
 
 
   const sendMessage = async () => {
@@ -168,11 +165,11 @@ export default function ChatScreen() {
     setMessages(updatedMessages)
     setInputText('')
 
-    // Construct the query with conversation history (similar to web app)
+    // Construct the query with conversation history
     const conversationHistory = updatedMessages.slice(-6).map(m => `${m.isUser ? 'user' : 'assistant'}: ${m.text}`).join('\n')
     const queryWithHistory = `CONVERSATION HISTORY:\n${conversationHistory}\n\nCURRENT QUERY: ${userMessageContent}`
 
-    // Send to AI
+    // Send to AI, including journal context for all subsequent messages as well
     try {
       console.log('ChatScreen: selectedTradition =', selectedTradition)
       console.log('ChatScreen: About to call askQuery with variables:', {
@@ -184,6 +181,7 @@ export default function ChatScreen() {
         variables: {
           query: queryWithHistory,
           tradition: selectedTradition,
+          includeJournalContext: true, // Continue using journal context for the conversation
         }
       })
     } catch (err) {

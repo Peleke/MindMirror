@@ -49,8 +49,8 @@ export const GET_JOURNAL_ENTRIES = gql`
 
 // Chat-related query
 export const ASK_QUERY = gql`
-  query Ask($query: String!, $tradition: String!) {
-    ask(query: $query, tradition: $tradition)
+  query Ask($query: String!, $tradition: String!, $includeJournalContext: Boolean) {
+    ask(query: $query, tradition: $tradition, includeJournalContext: $includeJournalContext)
   }
 `
 
