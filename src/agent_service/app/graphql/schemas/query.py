@@ -30,11 +30,12 @@ class Query:
     """GraphQL Query schema with all query fields."""
 
     @strawberry.field
-    def ask(
+    async def ask(
         self,
         info: Info[GraphQLContext, None],
         query: str,
         tradition: str = "canon-default",
+        include_journal_context: bool = False,  # NEW: Accept the flag
     ) -> str:
         """
         Answers a question using the underlying RAG chain for a specific tradition.
@@ -42,7 +43,7 @@ class Query:
         Args:
             query: The question to ask
             tradition: The tradition to use for answering
-
+            include_journal_context: If true, RAG will include the user's journal entries.
         Returns:
             str: The answer to the question
         """
@@ -61,11 +62,12 @@ class Query:
             # Create chat graph using ProviderManager for LLM selection
             chat_graph_builder = ChatGraphFactory.create_default_chat_graph()
 
-            # Create initial state with user context
+            # Create initial state, passing the new flag through.
             state = StateManager.create_initial_state(
                 user_id=str(current_user.id),
                 tradition_id=tradition,
                 initial_message=query,
+                include_journal_context=include_journal_context, # Pass flag to state
             )
 
             logger.info(

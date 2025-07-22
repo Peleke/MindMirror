@@ -424,45 +424,28 @@ class StateManager:
 
     @staticmethod
     def create_initial_state(
-        user_id: Optional[str] = None,
-        tradition_id: Optional[str] = None,
-        initial_message: Optional[str] = None,
+        user_id: str,
+        tradition_id: Optional[str],
+        initial_message: str,
+        include_journal_context: bool = False,
     ) -> RAGAgentState:
         """
-        Create initial state for a RAG agent.
-
-        Args:
-            user_id: User identifier
-            tradition_id: Tradition identifier
-            initial_message: Optional initial message
-
-        Returns:
-            Initial agent state
+        Creates the initial state for a new RAG agent session.
         """
-        state: RAGAgentState = {
-            "user_id": user_id,
-            "tradition_id": tradition_id,
-            "messages": [],
-            "query": None,
-            "last_response": None,
-            "retrieved_documents": [],
-            "metadata": {},
-            "error": None,
-            "error_type": None,
-        }
-
-        # Add initial message if provided
-        if initial_message:
-            state["messages"].append(
-                {
-                    "role": "user",
-                    "content": initial_message,
-                    "timestamp": StateManager._get_timestamp(),
-                }
-            )
-            state["query"] = initial_message
-
-        return state
+        now = datetime.utcnow().isoformat()
+        return RAGAgentState(
+            user_id=user_id,
+            tradition_id=tradition_id,
+            messages=[{"role": "user", "content": initial_message, "timestamp": now}],
+            query=initial_message,
+            last_response=None,
+            retrieved_documents=[],
+            metadata={
+                "include_journal_context": include_journal_context,
+            },
+            error=None,
+            error_type=None,
+        )
 
     @staticmethod
     def add_user_message(
