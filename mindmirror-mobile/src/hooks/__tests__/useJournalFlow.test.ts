@@ -46,13 +46,14 @@ describe('useJournalFlow', () => {
     });
   });
 
-  it('should transition to chat with the entry content after a successful submission', async () => {
+  it('should transition to chat when submitted with andChat: true', async () => {
     mockCreateEntry.mockResolvedValue({ data: { id: '123' } });
     const { result } = renderHook(() => useJournalFlow());
-    const testContent = 'Navigating to chat with this message.';
+    const testContent = 'This message should trigger a chat.';
 
     await act(async () => {
-      await result.current.submitEntry(testContent);
+      // Explicitly call with the andChat option
+      await result.current.submitEntry(testContent, { andChat: true });
     });
 
     // Fast-forward past the setTimeout
@@ -66,13 +67,47 @@ describe('useJournalFlow', () => {
     });
   });
 
-  it('should not transition to chat if submission fails', async () => {
+  it('should NOT transition to chat when submitted with andChat: false', async () => {
+    mockCreateEntry.mockResolvedValue({ data: { id: '123' } });
+    const { result } = renderHook(() => useJournalFlow());
+    const testContent = 'This message should only be saved.';
+
+    await act(async () => {
+      // Explicitly call with andChat: false
+      await result.current.submitEntry(testContent, { andChat: false });
+    });
+
+    act(() => {
+        jest.advanceTimersByTime(500);
+    });
+
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('should NOT transition to chat when andChat option is omitted', async () => {
+    mockCreateEntry.mockResolvedValue({ data: { id: '123' } });
+    const { result } = renderHook(() => useJournalFlow());
+    const testContent = 'This message should also only be saved.';
+
+    await act(async () => {
+      // Omit the options parameter entirely to test the default
+      await result.current.submitEntry(testContent);
+    });
+
+    act(() => {
+        jest.advanceTimersByTime(500);
+    });
+
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('should not transition to chat if submission fails, even if andChat is true', async () => {
     mockCreateEntry.mockRejectedValue(new Error('Submission failed'));
     const { result } = renderHook(() => useJournalFlow());
     const testContent = 'This submission will fail.';
 
     await act(async () => {
-      await result.current.submitEntry(testContent);
+      await result.current.submitEntry(testContent, { andChat: true });
     });
 
     act(() => {

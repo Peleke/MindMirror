@@ -21,6 +21,7 @@ import { AffirmationDisplay } from '../../../src/components/journal/AffirmationD
 import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
 import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
 import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
+import { useToast } from '@/components/ui/toast';
 
 function AppBar() {
   const router = useRouter();
@@ -59,22 +60,32 @@ function AppBar() {
 
 export default function JournalScreen() {
   const router = useRouter();
-
+  const { toast } = useToast();
+  
   const {
     submitEntry,
-    transitionToChat,
     isTransitioning: hookIsTransitioning,
     isSubmitting,
     error,
-    clearError
   } = useJournalFlow();
 
-  const handleFormSubmit = async (entry: string) => {
-    try {
-      await submitEntry(entry);
-      // The hook will handle the transition to chat
-    } catch (error) {
-      console.error('Error submitting journal entry:', error);
+  const handleSaveAndChat = async (entry: string) => {
+    // Call submitEntry with the 'andChat' flag
+    await submitEntry(entry, { andChat: true });
+  };
+
+  const handleSave = async (entry: string) => {
+    // Call submitEntry without the 'andChat' flag
+    const { success } = await submitEntry(entry, { andChat: false });
+    if (success) {
+      // Provide user feedback on successful save
+      toast({
+        title: "Entry Saved",
+        description: "Your journal entry has been saved successfully.",
+      });
+      // Here you might want to clear the form, which would require
+      // lifting the form's state up to this screen component.
+      // For now, we'll leave it as is.
     }
   };
 
@@ -111,7 +122,8 @@ export default function JournalScreen() {
           {/* Main Journal Entry Form */}
           <VStack className="px-6 pb-6" space="md">
             <JournalEntryForm
-              onSubmit={handleFormSubmit}
+              onSaveAndChat={handleSaveAndChat}
+              onSave={handleSave}
               isLoading={isSubmitting}
               className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
             />

@@ -8,22 +8,27 @@ import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { Icon } from '@/components/ui/icon';
 import { Send } from 'lucide-react-native';
 import { JournalType } from './JournalTypeSelector';
+import { FormControl, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
 
-interface JournalEntryFormProps {
-  onSubmit: (content: string) => void;
+export interface JournalEntryFormProps {
+  // The original onSubmit is now onSaveAndChat
+  onSaveAndChat: (content: string) => void;
+  // A new handler for just saving
+  onSave: (content: string) => void;
   isLoading?: boolean;
   className?: string;
 }
 
-export function JournalEntryForm({ 
-  onSubmit, 
-  isLoading = false, 
-  className = "" 
+export function JournalEntryForm({
+  onSaveAndChat,
+  onSave,
+  isLoading = false,
+  className = '',
 }: JournalEntryFormProps) {
   const [content, setContent] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  const handleSaveAndChat = () => {
     const trimmedContent = content.trim();
     
     if (!trimmedContent) {
@@ -37,7 +42,24 @@ export function JournalEntryForm({
     }
 
     setError(null);
-    onSubmit(trimmedContent);
+    onSaveAndChat(trimmedContent);
+  };
+
+  const handleSave = () => {
+    const trimmedContent = content.trim();
+    
+    if (!trimmedContent) {
+      setError('Please write something in your journal');
+      return;
+    }
+
+    if (trimmedContent.length < 10) {
+      setError('Please write at least 10 characters');
+      return;
+    }
+
+    setError(null);
+    onSave(trimmedContent);
   };
 
   const handleContentChange = (text: string) => {
@@ -84,18 +106,14 @@ export function JournalEntryForm({
             <Text className="text-xs text-typography-500 dark:text-gray-400">
               {content.length}/2000 characters
             </Text>
-            <Button
-              onPress={handleSubmit}
-              disabled={isLoading || !content.trim()}
-              className="px-6 py-2 rounded-full"
-            >
-              <HStack className="items-center space-x-2">
-                <ButtonText>
-                  {isLoading ? 'Saving...' : 'Save & Continue'}
-                </ButtonText>
-                <Icon as={Send} size="sm" className="text-white" />
-              </HStack>
-            </Button>
+            <HStack space="md" className="justify-end">
+                <Button onPress={handleSave} variant="outline" isDisabled={isLoading || !content.trim()}>
+                    <ButtonText>Save</ButtonText>
+                </Button>
+                <Button onPress={handleSaveAndChat} variant="solid" isDisabled={isLoading || !content.trim()}>
+                    <ButtonText>Save and Chat</ButtonText>
+                </Button>
+            </HStack>
           </HStack>
         </VStack>
       </Box>

@@ -3,8 +3,13 @@ import { useMutation } from '@apollo/client';
 import { useRouter } from 'expo-router';
 import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations';
 
+interface SubmitOptions {
+  andChat?: boolean;
+}
+
 interface UseJournalFlowReturn {
-  submitEntry: (content: string) => Promise<void>;
+  // Update signature to accept options
+  submitEntry: (content: string, options?: SubmitOptions) => Promise<{ success: boolean }>;
   // This function is now the primary navigation method, so we expose it.
   transitionToChat: (initialMessage?: string) => void;
   isTransitioning: boolean;
@@ -44,7 +49,11 @@ export function useJournalFlow(): UseJournalFlowReturn {
     }
   }, [router]);
 
-  const submitEntry = useCallback(async (content: string): Promise<void> => {
+  // This function now handles both "Save" and "Save and Chat" logic.
+  const submitEntry = useCallback(async (
+    content: string,
+    options: SubmitOptions = { andChat: false }
+  ): Promise<{ success: boolean }> => {
     try {
       setError(null);
       
@@ -54,20 +63,24 @@ export function useJournalFlow(): UseJournalFlowReturn {
         }
       });
 
-      if (result.data) {
+      if (result.data && options.andChat) {
+        // Only transition if the 'andChat' option is true.
         setIsTransitioning(true);
         
         setTimeout(() => {
           transitionToChat(content);
         }, 500);
-      } else {
+      } else if (!result.data) {
         throw new Error("Submission did not return data.");
       }
+      
+      return { success: !!result.data };
 
     } catch (err: any) {
       console.error('Error submitting journal entry:', err);
       setError(`Submission failed: ${err.message}`);
-      setIsTransitioning(false);
+      setIsTransitioning(false); // Ensure transition is reset on failure
+      return { success: false };
     }
   }, [createEntry, transitionToChat]);
 
