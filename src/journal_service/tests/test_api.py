@@ -10,7 +10,7 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.mark.asyncio
-async def test_list_journal_entries_for_user(client: AsyncClient, seed_db):
+async def test_list_journal_entries_for_user(client: AsyncClient, seed_db, docker_services):
     """
     Tests fetching all journal entries for the authenticated user.
     """
@@ -64,7 +64,7 @@ async def test_list_journal_entries_for_user(client: AsyncClient, seed_db):
 
 
 @pytest.mark.asyncio
-async def test_journal_entry_not_found_for_other_user(client: AsyncClient, seed_db):
+async def test_journal_entry_not_found_for_other_user(client: AsyncClient, seed_db, docker_services):
     """
     This test ensures that the authenticated user only sees their own entries.
     """
@@ -100,7 +100,7 @@ async def test_journal_entry_not_found_for_other_user(client: AsyncClient, seed_
 
 
 @pytest.mark.asyncio
-async def test_create_and_delete_reflection_entry(client: AsyncClient, seed_db):
+async def test_create_and_delete_reflection_entry(client: AsyncClient, seed_db, docker_services):
     """
     Tests the full lifecycle of creating and then deleting a structured journal entry
     for the authenticated user.
@@ -187,7 +187,7 @@ async def test_create_and_delete_reflection_entry(client: AsyncClient, seed_db):
 
 
 @pytest.mark.asyncio
-async def test_check_for_entry_today(client: AsyncClient, seed_db):
+async def test_check_for_entry_today(client: AsyncClient, seed_db, docker_services):
     """
     Tests the journal_entry_exists_today query for the authenticated user.
     """
