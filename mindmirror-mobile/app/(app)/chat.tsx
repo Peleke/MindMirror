@@ -19,7 +19,7 @@ import { VStack } from "@/components/ui/vstack"
 import { LIST_TRADITIONS, ASK_QUERY } from '@/services/api/queries'
 import { useQuery, useLazyQuery } from '@apollo/client'
 import { useNavigation } from '@react-navigation/native'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Send } from "lucide-react-native"
 import { useState, useRef, useEffect } from 'react'
 import { Alert } from 'react-native'
@@ -67,6 +67,9 @@ function AppBar() {
 }
 
 export default function ChatScreen() {
+  const router = useRouter();
+  const { initialMessage } = useLocalSearchParams<{ initialMessage?: string }>();
+
   const [selectedTradition, setSelectedTradition] = useState('canon-default')
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -117,6 +120,36 @@ export default function ChatScreen() {
       messagesEndRef.current?.scrollToEnd({ animated: true })
     }, 100)
   }, [messages])
+
+  // This effect runs only when an initialMessage is passed from the journal screen.
+  useEffect(() => {
+    if (initialMessage && initialMessage.length > 0) {
+      // 1. Create the user's message from the journal entry.
+      const userMessage: Message = {
+        id: `journal-entry-${Date.now()}`,
+        text: initialMessage,
+        isUser: true,
+        timestamp: new Date(),
+      };
+
+      // 2. Replace the default greeting with the new conversation starter.
+      setMessages([userMessage]);
+
+      // 3. Immediately trigger the AI's response to this message.
+      // We will add the real AI call in the next step.
+      // For now, we can add a mocked response to verify the flow.
+      setTimeout(() => {
+        const aiResponse: Message = {
+          id: `ai-response-${Date.now()}`,
+          text: "Thank you for sharing. Tell me more about that.",
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, aiResponse]);
+      }, 1000);
+    }
+  }, [initialMessage]);
+
 
   const sendMessage = async () => {
     if (!inputText.trim() || loading) return

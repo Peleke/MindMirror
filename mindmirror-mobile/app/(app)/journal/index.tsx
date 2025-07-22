@@ -59,7 +59,7 @@ function AppBar() {
 
 export default function JournalScreen() {
   const router = useRouter();
-  
+
   const {
     submitEntry,
     transitionToChat,
@@ -129,11 +129,11 @@ export default function JournalScreen() {
                 className="flex-1"
               >
                 <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
-                  <Icon 
+                    <Icon 
                     as={Heart}
-                    size="lg"
+                      size="lg"
                     className="text-blue-600 dark:text-blue-400 mb-2"
-                  />
+                    />
                   <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
                     Gratitude
                   </Text>

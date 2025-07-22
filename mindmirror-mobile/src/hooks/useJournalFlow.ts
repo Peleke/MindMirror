@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react';
 import { useMutation } from '@apollo/client';
 import { useRouter } from 'expo-router';
 import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations';
-import { JournalType } from '@/components/journal';
 
 interface UseJournalFlowReturn {
   submitEntry: (content: string) => Promise<void>;
+  // This function is now the primary navigation method, so we expose it.
   transitionToChat: (initialMessage?: string) => void;
   isTransitioning: boolean;
   isSubmitting: boolean;
@@ -18,7 +18,6 @@ export function useJournalFlow(): UseJournalFlowReturn {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Use the existing freeform journal entry mutation
   const [createEntry, { loading: isSubmitting }] = useMutation(CREATE_FREEFORM_JOURNAL_ENTRY, {
     onError: (error) => {
       console.error('Journal entry error:', error);
@@ -30,41 +29,13 @@ export function useJournalFlow(): UseJournalFlowReturn {
     setError(null);
   }, []);
 
-  const submitEntry = useCallback(async (content: string): Promise<void> => {
-    try {
-      setError(null);
-      
-      // Use freeform mutation for the journal entry
-      await createEntry({
-        variables: {
-          input: { content }
-        }
-      });
-
-      // Start transition to chat
-      setIsTransitioning(true);
-      
-      // Small delay to show transition animation
-      setTimeout(() => {
-        transitionToChat(content);
-      }, 500);
-
-    } catch (err: any) {
-      console.error('Error submitting journal entry:', err);
-      setError(`Submission failed: ${err.message}`);
-    }
-  }, [createEntry]);
-
+  // Define transitionToChat first so it can be used in submitEntry's useCallback dependency array.
   const transitionToChat = useCallback((initialMessage?: string) => {
     try {
-      // Navigate to chat with initial message
-      if (initialMessage) {
-        // TODO: Pass initial message to chat screen
-        // For now, we'll need to implement this in the chat screen
-        router.push('/(app)/chat' as any);
-      } else {
-        router.push('/(app)/chat' as any);
-      }
+      router.push({
+        pathname: '/(app)/chat',
+        params: { initialMessage: initialMessage || '' },
+      });
     } catch (err) {
       console.error('Error transitioning to chat:', err);
       setError('Failed to open chat');
@@ -72,6 +43,33 @@ export function useJournalFlow(): UseJournalFlowReturn {
       setIsTransitioning(false);
     }
   }, [router]);
+
+  const submitEntry = useCallback(async (content: string): Promise<void> => {
+    try {
+      setError(null);
+      
+      const result = await createEntry({
+        variables: {
+          input: { content }
+        }
+      });
+
+      if (result.data) {
+        setIsTransitioning(true);
+        
+        setTimeout(() => {
+          transitionToChat(content);
+        }, 500);
+      } else {
+        throw new Error("Submission did not return data.");
+      }
+
+    } catch (err: any) {
+      console.error('Error submitting journal entry:', err);
+      setError(`Submission failed: ${err.message}`);
+      setIsTransitioning(false);
+    }
+  }, [createEntry, transitionToChat]);
 
   return {
     submitEntry,
