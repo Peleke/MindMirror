@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+echo "--- MESH-COMPOSE ENTRYPOINT DEBUG ---"
+echo "Received JOURNAL_SERVICE_URL: [${JOURNAL_SERVICE_URL}]"
+echo "Received AGENT_SERVICE_URL: [${AGENT_SERVICE_URL}]"
+echo "--- END DEBUG ---"
+
 # This script generates the mesh configuration at runtime based on environment variables,
 # ensuring the correct service URLs are used whether running locally or in CI.
 
