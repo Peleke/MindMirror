@@ -269,7 +269,10 @@ services:
     build:
       context: ./mesh
       dockerfile: Dockerfile.mesh-compose
-    command: ["bash", "-c", "npx mesh-compose -o build/supergraph.graphql"]
+    command: ["bash", "-c", "npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql"]
+    environment:
+      - JOURNAL_SERVICE_URL=http://journal_service:8001
+      - AGENT_SERVICE_URL=http://agent_service:8000
     volumes:
       - ./mesh/build:/app/build
     networks:

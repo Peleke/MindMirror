@@ -12,28 +12,11 @@ RUN yarn install
 # Bring in your mesh config
 COPY . /app
 
-# Build arguments for service URLs (with defaults for Docker)
-ARG JOURNAL_SERVICE_URL=http://journal_service:8001
-ARG AGENT_SERVICE_URL=http://agent_service:8000
+# Copy and set the entrypoint script
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
 
-# Create dynamic mesh config with build args
-RUN echo 'import { defineConfig, loadGraphQLHTTPSubgraph } from "@graphql-mesh/compose-cli"' > mesh.config.dynamic.ts && \
-    echo '' >> mesh.config.dynamic.ts && \
-    echo 'export const composeConfig = defineConfig({' >> mesh.config.dynamic.ts && \
-    echo '  subgraphs: [' >> mesh.config.dynamic.ts && \
-    echo '    {' >> mesh.config.dynamic.ts && \
-    echo '      sourceHandler: loadGraphQLHTTPSubgraph("Journal", {' >> mesh.config.dynamic.ts && \
-    echo '        endpoint: "'${JOURNAL_SERVICE_URL}'/graphql",' >> mesh.config.dynamic.ts && \
-    echo '      }),' >> mesh.config.dynamic.ts && \
-    echo '    },' >> mesh.config.dynamic.ts && \
-    echo '    {' >> mesh.config.dynamic.ts && \
-    echo '      sourceHandler: loadGraphQLHTTPSubgraph("Agent", {' >> mesh.config.dynamic.ts && \
-    echo '        endpoint: "'${AGENT_SERVICE_URL}'/graphql",' >> mesh.config.dynamic.ts && \
-    echo '      })' >> mesh.config.dynamic.ts && \
-    echo '    },' >> mesh.config.dynamic.ts && \
-    echo '  ]' >> mesh.config.dynamic.ts && \
-    echo '})' >> mesh.config.dynamic.ts
-
-# CMD to generate supergraph at runtime
+# The command that will be executed by the entrypoint script
 CMD ["npx", "mesh-compose", "-c", "mesh.config.dynamic.ts", "-o", "supergraph.graphql"]
 

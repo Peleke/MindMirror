@@ -85,8 +85,14 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
-  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
+  AGENT @join__graph(
+    name: "Agent"
+    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
+  )
+  JOURNAL @join__graph(
+    name: "Journal"
+    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
+  )
 }
 
 """
@@ -109,11 +115,7 @@ scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL)
 scalar UUID @join__type(graph: JOURNAL) 
 
 type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
-  ask(
-    query: String!
-    tradition: String! = "canon-default"
-    includeJournalContext: Boolean! = false
-  ): String! @join__field(graph: AGENT) 
+  ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
   getMealSuggestion(mealType: String!, tradition: String!) : String! @join__field(graph: AGENT) 
   summarizeJournals: JournalSummary! @join__field(graph: AGENT) 
