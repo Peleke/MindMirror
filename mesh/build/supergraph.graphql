@@ -109,7 +109,11 @@ scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL)
 scalar UUID @join__type(graph: JOURNAL) 
 
 type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
-  ask(query: String!, tradition: String! = "canon-default") : String! @join__field(graph: AGENT) 
+  ask(
+    query: String!
+    tradition: String! = "canon-default"
+    includeJournalContext: Boolean! = false
+  ): String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
   getMealSuggestion(mealType: String!, tradition: String!) : String! @join__field(graph: AGENT) 
   summarizeJournals: JournalSummary! @join__field(graph: AGENT) 
@@ -132,9 +136,11 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   listToolNames: [String!]! @join__field(graph: AGENT) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
+  journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   gratitudeEntries(limit: Int! = 10, offset: Int! = 0) : [GratitudeJournalEntry!]! @join__field(graph: JOURNAL) 
   reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
   freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
+  journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
