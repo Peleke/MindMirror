@@ -22,6 +22,9 @@ import { JournalEntryForm } from '../../../src/components/journal/JournalEntryFo
 import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
 import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
 import { useToast } from '@/components/ui/toast';
+import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAffirmation } from '@/hooks/useAffirmation';
 
 function AppBar() {
   const router = useRouter();
@@ -60,7 +63,9 @@ function AppBar() {
 
 export default function JournalScreen() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { show } = useToast();
+  const { user } = useAuth();
+  const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   
   const {
     submitEntry,
@@ -78,10 +83,22 @@ export default function JournalScreen() {
     // Call submitEntry without the 'andChat' flag
     const { success } = await submitEntry(entry, { andChat: false });
     if (success) {
-      // Provide user feedback on successful save
-      toast({
-        title: "Entry Saved",
-        description: "Your journal entry has been saved successfully.",
+      // Use the 'show' function with the correct component structure for the toast.
+      show({
+        placement: "top",
+        render: ({ id }) => {
+          const toastId = "toast-" + id;
+          return (
+            <Toast nativeID={toastId} action="success" variant="solid">
+              <VStack space="xs">
+                <ToastTitle>Entry Saved</ToastTitle>
+                <ToastDescription>
+                  Your journal entry has been saved successfully.
+                </ToastDescription>
+              </VStack>
+            </Toast>
+          );
+        },
       });
       // Here you might want to clear the form, which would require
       // lifting the form's state up to this screen component.
@@ -97,6 +114,8 @@ export default function JournalScreen() {
     router.push('/journal/reflection');
   };
 
+  const userName = user?.user_metadata?.full_name || user?.email || "User";
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -109,43 +128,31 @@ export default function JournalScreen() {
           {/* Header Section */}
           <VStack className="px-6 py-6" space="md">
             <UserGreeting 
-              userName="User" 
+              userName={userName} 
               className="text-2xl font-semibold text-typography-900 dark:text-white"
             />
             
-            <AffirmationDisplay 
-              affirmation="You are capable of amazing things. Every step forward is progress."
-              className="text-lg text-typography-700 dark:text-gray-200"
-            />
-          </VStack>
-          
-          {/* Main Journal Entry Form */}
-          <VStack className="px-6 pb-6" space="md">
-            <JournalEntryForm
-              onSaveAndChat={handleSaveAndChat}
-              onSave={handleSave}
-              isLoading={isSubmitting}
-              className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
-            />
-          </VStack>
-          
-          {/* Structured Journal Options */}
-          <VStack className="px-6 pb-6" space="md">
-            <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-4">
-              Or try a structured approach:
+            <Text className="text-lg font-semibold text-typography-900 dark:text-white pt-4">
+              From your journals...
             </Text>
-            
+            <AffirmationDisplay 
+              affirmation={isAffirmationLoading ? "Loading..." : affirmation}
+            />
+          </VStack>
+
+          {/* MOVED: Structured Journal Options are now at the top */}
+          <VStack className="px-6 pb-6" space="md">
             <HStack className="space-x-4">
               <Pressable
                 onPress={handleGratitudePress}
                 className="flex-1"
               >
                 <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
-                    <Icon 
+                  <Icon 
                     as={Heart}
-                      size="lg"
+                    size="lg"
                     className="text-blue-600 dark:text-blue-400 mb-2"
-                    />
+                  />
                   <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
                     Gratitude
                   </Text>
@@ -169,14 +176,26 @@ export default function JournalScreen() {
               </Pressable>
             </HStack>
           </VStack>
+          
+          {/* Main Journal Entry Form */}
+          <VStack className="px-6 pb-6" space="md">
+            <JournalEntryForm
+              onSaveAndChat={handleSaveAndChat}
+              onSave={handleSave}
+              isLoading={isSubmitting}
+              className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
+            />
+          </VStack>
+          
+          {/* REMOVED: Old structured journal section */}
+          
         </ScrollView>
         
         {/* Transition Overlay */}
         <TransitionOverlay 
           isVisible={hookIsTransitioning}
-          onComplete={() => {
-            // The hook handles navigation automatically
-          }}
+          // Add the required onComplete prop back with an empty function.
+          onComplete={() => {}}
           className="absolute inset-0"
         />
       </VStack>
