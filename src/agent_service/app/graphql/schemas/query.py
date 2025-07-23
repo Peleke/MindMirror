@@ -35,7 +35,7 @@ class Query:
         info: Info[GraphQLContext, None],
         query: str,
         tradition: str = "canon-default",
-        include_journal_context: bool = False,  # NEW: Accept the flag
+        include_journal_context: bool = True,  # Defaulting to True as a workaround
     ) -> str:
         """
         Answers a question using the underlying RAG chain for a specific tradition.
