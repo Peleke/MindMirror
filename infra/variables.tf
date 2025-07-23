@@ -56,30 +56,10 @@ variable "gcs_bucket_name" {
   # default     = "traditions"
 }
 
-variable "gcs_credential_file" {
-  description = "Path to GCS credentials file"
-  type        = string
-}
-
 variable "tradition_discovery_mode" {
   description = "Mode for tradition discovery"
   type        = string
   default     = "gcs-first"
-}
-
-variable "supabase_anon_key" {
-  description = "Supabase anonymous key"
-  type        = string
-}
-
-variable "supabase_service_role_key" {
-  description = "Supabase service role key"
-  type        = string
-}
-
-variable "supabase_jwt_secret" {
-  description = "Supabase JWT secret"
-  type        = string
 }
 
 variable "faux_mesh_user_id" {
