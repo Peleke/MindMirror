@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-react-native';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { HStack } from '@/components/ui/hstack';
+import { useTypewriter } from '@/hooks/useTypewriter';
 
 export type AffirmationDisplayProps = {
   affirmation: string;
@@ -11,6 +12,8 @@ export type AffirmationDisplayProps = {
 };
 
 export function AffirmationDisplay({ affirmation, className = "" }: AffirmationDisplayProps) {
+  const animatedAffirmation = useTypewriter(affirmation, 30);
+
   return (
     <Box className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 ${className}`}>
       <HStack className="items-center space-x-3">
@@ -20,7 +23,7 @@ export function AffirmationDisplay({ affirmation, className = "" }: AffirmationD
           className="text-blue-600 dark:text-blue-400"
         />
         <Text className="text-base text-typography-800 dark:text-gray-200 flex-1">
-          {affirmation}
+          {animatedAffirmation}
         </Text>
       </HStack>
     </Box>
