@@ -34,9 +34,6 @@ RUN echo 'import { defineConfig, loadGraphQLHTTPSubgraph } from "@graphql-mesh/c
     echo '  ]' >> mesh.config.dynamic.ts && \
     echo '})' >> mesh.config.dynamic.ts
 
-# Generate supergraph during build (not at runtime)
-RUN npx mesh-compose -c mesh.config.dynamic.ts -o supergraph.graphql
-
-# Keep the CMD for backward compatibility
+# CMD to generate supergraph at runtime
 CMD ["npx", "mesh-compose", "-c", "mesh.config.dynamic.ts", "-o", "supergraph.graphql"]
 

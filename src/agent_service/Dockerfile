@@ -16,22 +16,22 @@ RUN pip install poetry
 # Copy agent_service's poetry project
 COPY src/agent_service/pyproject.toml src/agent_service/poetry.lock ./
 
+# Now, bring in the shared package
+COPY src/shared /shared
+
 # Install agent_service deps
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --only=main
 
-# Now, bring in the shared package
-COPY src/shared /app/shared
-
 # Build the shared wheel automatically
-WORKDIR /app/shared
+WORKDIR /shared
 RUN poetry build
 
 # Go back to service directory
 WORKDIR /app
 
 # Install the freshly built wheel
-RUN pip install ./shared/dist/*.whl
+RUN pip install /shared/dist/*.whl
 
 # --- Final Stage ---
 FROM python:3.11-slim

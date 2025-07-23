@@ -76,6 +76,8 @@ services:
     environment:
       # Override DATABASE_URL to use local Postgres for development
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach
+      # Explicitly set the environment to local for Docker development
+      - ENVIRONMENT=local
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
