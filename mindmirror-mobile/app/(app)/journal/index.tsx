@@ -25,6 +25,8 @@ import { useToast } from '@/components/ui/toast';
 import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useAffirmation } from '@/hooks/useAffirmation';
+import { useJournalStatus } from '@/hooks/useJournalStatus';
+import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
 
 function AppBar() {
   const router = useRouter();
@@ -66,6 +68,7 @@ export default function JournalScreen() {
   const { show } = useToast();
   const { user } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
+  const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
   
   const {
     submitEntry,
@@ -140,40 +143,52 @@ export default function JournalScreen() {
             />
           </VStack>
 
-          {/* MOVED: Structured Journal Options are now at the top */}
+          {/* Structured Journal Options */}
           <VStack className="px-6 pb-6" space="md">
             <HStack className="space-x-4">
-              <Pressable
-                onPress={handleGratitudePress}
-                className="flex-1"
-              >
-                <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
-                  <Icon 
-                    as={Heart}
-                    size="lg"
-                    className="text-blue-600 dark:text-blue-400 mb-2"
-                  />
-                  <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
-                    Gratitude
-                  </Text>
-                </Box>
-              </Pressable>
+              {isStatusLoading ? (
+                <Box className="flex-1 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
+              ) : hasCompletedGratitude ? (
+                <CompletedJournalCard journalType="Gratitude" />
+              ) : (
+                <Pressable
+                  onPress={handleGratitudePress}
+                  className="flex-1"
+                >
+                  <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
+                    <Icon 
+                      as={Heart}
+                      size="lg"
+                      className="text-blue-600 dark:text-blue-400 mb-2"
+                    />
+                    <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
+                      Morning Gratitude
+                    </Text>
+                  </Box>
+                </Pressable>
+              )}
               
-              <Pressable
-                onPress={handleReflectionPress}
-                className="flex-1"
-              >
-                <Box className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800 items-center">
-                  <Icon 
-                    as={Lightbulb}
-                    size="lg"
-                    className="text-indigo-600 dark:text-indigo-400 mb-2"
-                  />
-                  <Text className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-center">
-                    Reflection
-                  </Text>
-                </Box>
-              </Pressable>
+              {isStatusLoading ? (
+                <Box className="flex-1 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
+              ) : hasCompletedReflection ? (
+                <CompletedJournalCard journalType="Reflection" />
+              ) : (
+                <Pressable
+                  onPress={handleReflectionPress}
+                  className="flex-1"
+                >
+                  <Box className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800 items-center">
+                    <Icon 
+                      as={Lightbulb}
+                      size="lg"
+                      className="text-indigo-600 dark:text-indigo-400 mb-2"
+                    />
+                    <Text className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-center">
+                      Evening Reflection
+                    </Text>
+                  </Box>
+                </Pressable>
+              )}
             </HStack>
           </VStack>
           
