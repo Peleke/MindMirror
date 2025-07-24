@@ -18,10 +18,10 @@ import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
 import { LIST_TRADITIONS, ASK_QUERY } from '@/services/api/queries'
 import { useQuery, useLazyQuery } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Send } from "lucide-react-native"
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
 
 interface Message {
@@ -71,14 +71,7 @@ export default function ChatScreen() {
   const { initialMessage } = useLocalSearchParams<{ initialMessage?: string }>();
 
   const [selectedTradition, setSelectedTradition] = useState('canon-default')
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: `Hello! I'm your AI companion, here to chat with you about your journey, goals, and anything on your mind. I'm drawing from the ${selectedTradition} tradition to provide thoughtful guidance. What would you like to explore today?`,
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const messagesEndRef = useRef<ScrollView>(null)
 
@@ -89,30 +82,83 @@ export default function ChatScreen() {
 
   const traditions = traditionsData?.listTraditions || []
 
-  // Use lazy query for AI chat
-  const [askQuery, { loading, error }] = useLazyQuery(ASK_QUERY, {
-    onCompleted: (data) => {
-      if (data?.ask) {
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          text: data.ask,
-          isUser: false,
-          timestamp: new Date(),
-        }
-        setMessages(prev => [...prev, newMessage])
-      }
-    },
-    onError: (error) => {
-      console.error('Chat error:', error)
-      const errorMessage: Message = {
+  const onQueryCompleted = useCallback((data: any) => {
+    if (data?.ask) {
+      const newMessage: Message = {
         id: Date.now().toString(),
-        text: "I'm sorry, I encountered an error. Please try again.",
+        text: data.ask,
         isUser: false,
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => [...prev, newMessage])
     }
-  })
+  }, []);
+
+  const onQueryError = useCallback((error: any) => {
+    console.error('Chat error:', error)
+    const errorMessage: Message = {
+      id: Date.now().toString(),
+      text: "I'm sorry, I encountered an error. Please try again.",
+      isUser: false,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, errorMessage])
+  }, []);
+
+  // Use lazy query for AI chat
+  const [askQuery, { loading, error }] = useLazyQuery(ASK_QUERY, {
+    onCompleted: onQueryCompleted,
+    onError: onQueryError,
+  });
+
+  // This effect runs when the screen comes into focus.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const setupChat = () => {
+        // If a new initial message is passed, reset the chat.
+        if (initialMessage) {
+          const userMessage: Message = {
+            id: `journal-entry-${Date.now()}`,
+            text: initialMessage,
+            isUser: true,
+            timestamp: new Date(),
+          };
+          setMessages([userMessage]); // Reset with the new message
+          
+          const queryWithHistory = `CONVERSATION HISTORY:\nuser: ${initialMessage}\n\nCURRENT QUERY: ${initialMessage}`;
+          askQuery({
+            variables: {
+              query: queryWithHistory,
+              tradition: selectedTradition,
+              includeJournalContext: true,
+            },
+          });
+        } 
+        // If there's no initial message and the chat is empty, show a greeting.
+        else if (messages.length === 0) {
+          setMessages([
+            {
+              id: '1',
+              text: `Hello! I'm your AI companion, here to chat with you about your journey, goals, and anything on your mind. I'm drawing from the canon-default tradition to provide thoughtful guidance. What would you like to explore today?`,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      };
+
+      if (isActive) {
+        setupChat();
+      }
+
+      return () => {
+        isActive = false;
+      };
+    }, [initialMessage, askQuery, selectedTradition])
+  );
+
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -120,33 +166,6 @@ export default function ChatScreen() {
       messagesEndRef.current?.scrollToEnd({ animated: true })
     }, 100)
   }, [messages])
-
-  // This effect runs only when an initialMessage is passed from the journal screen.
-  useEffect(() => {
-    if (initialMessage && initialMessage.length > 0) {
-      // 1. Create the user's message from the journal entry.
-      const userMessage: Message = {
-        id: `journal-entry-${Date.now()}`,
-        text: initialMessage,
-        isUser: true,
-        timestamp: new Date(),
-      };
-
-      // 2. Replace the default greeting with the new conversation starter.
-      setMessages([userMessage]);
-
-      // 3. Immediately trigger the AI's response to this message.
-      const queryWithHistory = `CONVERSATION HISTORY:\nuser: ${initialMessage}\n\nCURRENT QUERY: ${initialMessage}`;
-      askQuery({
-        variables: {
-          query: queryWithHistory,
-          tradition: selectedTradition,
-          includeJournalContext: true, // Request RAG context from the journal
-        },
-      });
-    }
-  }, [initialMessage, askQuery, selectedTradition]);
-
 
   const sendMessage = async () => {
     if (!inputText.trim() || loading) return
