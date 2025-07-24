@@ -15,7 +15,7 @@ debug                           = "false"
 # These should point to the specific image tags you want to deploy.
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
 journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:cdc7238a1cee1b18f40dddaaa2c027c7a0b40035"
-agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:64b34eee5dbe3504c5f5b07bd4a297f067747441"
+agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
 gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:cc347db26952df8673c763d16c555282ab12994a"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
 
