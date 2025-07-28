@@ -25,7 +25,8 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "output": "static"
     },
     "extra": {
       "gatewayUrl": "http://localhost:4000/graphql",
