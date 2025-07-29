@@ -19,45 +19,13 @@ import { VStack } from "@/components/ui/vstack";
 import { CREATE_GRATITUDE_JOURNAL_ENTRY } from '@/services/api/mutations';
 import { GET_JOURNAL_ENTRIES, JOURNAL_ENTRY_EXISTS_TODAY } from '@/services/api/queries';
 import { useMutation } from '@apollo/client';
-import { useNavigation } from '@react-navigation/native';
+
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { AppBar } from '@/components/common/AppBar';
 
-function AppBar() {
-  const router = useRouter();
-  const navigation = useNavigation();
 
-  const handleBackPress = () => {
-    router.back();
-  };
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile');
-  };
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleBackPress}>
-          <Icon as={ChevronLeftIcon} />
-        </Pressable>
-        <Text className="text-xl">Gratitude Journal</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  );
-}
 
 export default function GratitudeJournalScreen() {
   const [gratefulFor, setGratefulFor] = useState('');
@@ -139,7 +107,7 @@ export default function GratitudeJournalScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Gratitude Journal" showBackButton />
         
         <ScrollView
           showsVerticalScrollIndicator={false}

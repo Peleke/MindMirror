@@ -67,6 +67,7 @@ import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard, Platform } from "react-native";
 import { z } from "zod";
+import { getAvatarUrlSync } from '@/utils/avatar';
 
 // Placeholder icons - you can replace these with actual icons
 const ProfileIcon = () => <Icon as={SettingsIcon} />;
@@ -525,7 +526,7 @@ const MainContent = () => {
                   alt="Profile Image"
                   height={"100%"}
                   width={"100%"}
-                  source={{ uri: "https://i.pravatar.cc/300" }}
+                  source={{ uri: getAvatarUrlSync(user?.email) }}
                 />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
@@ -739,7 +740,7 @@ const ModalComponent = ({
               alt="Profile Image"
               height={"100%"}
               width={"100%"}
-              source={{ uri: "https://i.pravatar.cc/300" }}
+              source={{ uri: getAvatarUrlSync(user?.email) }}
             />
             <AvatarBadge />
           </Avatar>

@@ -4,12 +4,14 @@ import { JOURNAL_ENTRY_EXISTS_TODAY } from '@/services/api/queries';
 export function useJournalStatus() {
   const { data: gratitudeData, loading: gratitudeLoading, error: gratitudeError } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
     variables: { entryType: 'GRATITUDE' },
-    fetchPolicy: 'cache-first',
+    fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   });
 
   const { data: reflectionData, loading: reflectionLoading, error: reflectionError } = useQuery(JOURNAL_ENTRY_EXISTS_TODAY, {
     variables: { entryType: 'REFLECTION' },
-    fetchPolicy: 'cache-first',
+    fetchPolicy: 'cache-and-network', 
+    notifyOnNetworkStatusChange: true,
   });
 
   return {

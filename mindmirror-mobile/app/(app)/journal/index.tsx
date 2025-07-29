@@ -1,21 +1,15 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
-import { Icon, MenuIcon } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Heart, Lightbulb } from "lucide-react-native";
 import { useState } from 'react';
+import { ActivityIndicator } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
 import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
 import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
@@ -27,41 +21,28 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useAffirmation } from '@/hooks/useAffirmation';
 import { useJournalStatus } from '@/hooks/useJournalStatus';
 import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
+import { AppBar } from '@/components/common/AppBar';
 
-function AppBar() {
-  const router = useRouter();
-  const navigation = useNavigation();
-
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer();
-  };
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile');
-  };
-
+const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
+  const isGratitude = type === 'Gratitude';
+  const bgColor = isGratitude ? 'bg-blue-50 dark:bg-blue-950' : 'bg-indigo-50 dark:bg-indigo-950';
+  const borderColor = isGratitude ? 'border-blue-200 dark:border-blue-800' : 'border-indigo-200 dark:border-indigo-800';
+  const textColor = isGratitude ? 'text-blue-900 dark:text-blue-100' : 'text-indigo-900 dark:text-indigo-100';
+  const spinnerColor = isGratitude ? '#2563eb' : '#4f46e5';
+  
   return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">Journal</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
+    <Box className={`flex-1 p-4 ${bgColor} rounded-lg border ${borderColor} items-center`}>
+      <ActivityIndicator 
+        size="small" 
+        color={spinnerColor} 
+        style={{ marginBottom: 8 }}
+      />
+      <Text className={`text-sm font-medium ${textColor} text-center`}>
+        Loading {type}...
+      </Text>
+    </Box>
   );
-}
+};
 
 export default function JournalScreen() {
   const router = useRouter();
@@ -122,7 +103,7 @@ export default function JournalScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Journal" />
         
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -147,7 +128,7 @@ export default function JournalScreen() {
           <VStack className="px-6 pb-6" space="md">
             <HStack className="space-x-4">
               {isStatusLoading ? (
-                <Box className="flex-1 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
+                <LoadingJournalCard type="Gratitude" />
               ) : hasCompletedGratitude ? (
                 <CompletedJournalCard journalType="Gratitude" />
               ) : (
@@ -169,7 +150,7 @@ export default function JournalScreen() {
               )}
               
               {isStatusLoading ? (
-                <Box className="flex-1 h-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse" />
+                <LoadingJournalCard type="Reflection" />
               ) : hasCompletedReflection ? (
                 <CompletedJournalCard journalType="Reflection" />
               ) : (

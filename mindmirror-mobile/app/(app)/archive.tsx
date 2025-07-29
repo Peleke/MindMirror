@@ -1,13 +1,7 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
 import { HStack } from "@/components/ui/hstack"
-import { ChevronRightIcon, Icon, MenuIcon } from "@/components/ui/icon"
+import { ChevronRightIcon, Icon } from "@/components/ui/icon"
 import { Input, InputField } from "@/components/ui/input"
 import { Pressable } from "@/components/ui/pressable"
 import { SafeAreaView } from "@/components/ui/safe-area-view"
@@ -16,10 +10,10 @@ import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
 import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
 import { useQuery } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { Heart, Lightbulb, PenTool } from "lucide-react-native"
 import { useState, useMemo } from 'react'
+import { AppBar } from '@/components/common/AppBar'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
@@ -68,40 +62,7 @@ const typeOptions: { value: JournalType; label: string }[] = [
   { value: 'freeform', label: 'Freeform' },
 ]
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer()
-  }
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">Archive</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
 
 export default function ArchiveScreen() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -226,7 +187,7 @@ export default function ArchiveScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Archive" />
         
         <ScrollView
           showsVerticalScrollIndicator={false}

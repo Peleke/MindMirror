@@ -1,15 +1,7 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Box } from "@/components/ui/box"
 import { Button } from "@/components/ui/button"
 import { HStack } from "@/components/ui/hstack"
-import {
-  Icon, MenuIcon,
-} from "@/components/ui/icon"
+import { Icon } from "@/components/ui/icon"
 import { Input, InputField } from "@/components/ui/input"
 import { Pressable } from "@/components/ui/pressable"
 import { SafeAreaView } from "@/components/ui/safe-area-view"
@@ -18,11 +10,12 @@ import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
 import { LIST_TRADITIONS, ASK_QUERY } from '@/services/api/queries'
 import { useQuery, useLazyQuery } from '@apollo/client'
-import { useNavigation, useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Send } from "lucide-react-native"
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
+import { AppBar } from '@/components/common/AppBar'
 
 interface Message {
   id: string
@@ -31,40 +24,7 @@ interface Message {
   timestamp: Date
 }
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer()
-  }
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">AI Chat</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -212,7 +172,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Chat" />
         
         {/* Tradition Selector */}
         {traditions.length > 0 && (
