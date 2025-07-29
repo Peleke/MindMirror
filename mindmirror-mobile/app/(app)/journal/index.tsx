@@ -22,6 +22,7 @@ import { useAffirmation } from '@/hooks/useAffirmation';
 import { useJournalStatus } from '@/hooks/useJournalStatus';
 import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
 import { AppBar } from '@/components/common/AppBar';
+import { getUserDisplayName } from '@/utils/user';
 
 const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
   const isGratitude = type === 'Gratitude';
@@ -98,7 +99,7 @@ export default function JournalScreen() {
     router.push('/journal/reflection');
   };
 
-  const userName = user?.user_metadata?.full_name || user?.email || "User";
+  const userName = getUserDisplayName(user);
 
   return (
     <SafeAreaView className="h-full w-full">

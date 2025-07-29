@@ -15,10 +15,7 @@ export function UserGreeting({
   className = "" 
 }: UserGreetingProps) {
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    return 'Welcome back';
   };
 
   const getLastEntryText = () => {
@@ -37,7 +34,7 @@ export function UserGreeting({
   return (
     <VStack className={`space-y-2 ${className}`}>
       <Text className="text-2xl font-semibold text-typography-900 dark:text-white">
-        {getGreeting()}{userName ? `, ${userName}` : ''}
+        {getGreeting()}{userName ? `, ${userName}` : ''}.
       </Text>
       <Text className="text-base text-typography-600 dark:text-gray-300 leading-6">
         {getLastEntryText()}
