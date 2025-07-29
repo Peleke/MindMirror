@@ -71,7 +71,10 @@ export default function ReflectionJournalScreen() {
 
   // Create reflection entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_REFLECTION_JOURNAL_ENTRY, {
-    refetchQueries: [{ query: GET_JOURNAL_ENTRIES }],
+    refetchQueries: [
+      { query: GET_JOURNAL_ENTRIES },
+      { query: JOURNAL_ENTRY_EXISTS_TODAY, variables: { entryType: 'REFLECTION' } }
+    ],
     onCompleted: () => {
       setIsSubmitted(true);
       setSubmitError(null);

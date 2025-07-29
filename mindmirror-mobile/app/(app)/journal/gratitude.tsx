@@ -17,7 +17,7 @@ import { Text } from "@/components/ui/text";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
 import { VStack } from "@/components/ui/vstack";
 import { CREATE_GRATITUDE_JOURNAL_ENTRY } from '@/services/api/mutations';
-import { GET_JOURNAL_ENTRIES } from '@/services/api/queries';
+import { GET_JOURNAL_ENTRIES, JOURNAL_ENTRY_EXISTS_TODAY } from '@/services/api/queries';
 import { useMutation } from '@apollo/client';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -73,7 +73,10 @@ export default function GratitudeJournalScreen() {
 
   // Create gratitude entry mutation
   const [createEntry, { loading: creating, error }] = useMutation(CREATE_GRATITUDE_JOURNAL_ENTRY, {
-    refetchQueries: [{ query: GET_JOURNAL_ENTRIES }],
+    refetchQueries: [
+      { query: GET_JOURNAL_ENTRIES },
+      { query: JOURNAL_ENTRY_EXISTS_TODAY, variables: { entryType: 'GRATITUDE' } }
+    ],
     onCompleted: () => {
       setIsSubmitted(true);
       setSubmitError(null);
@@ -249,7 +252,7 @@ export default function GratitudeJournalScreen() {
                     </HStack>
                     <Slider
                       value={[mood]}
-                      onValueChange={(values: number[]) => setMood(values[0] || 5)}
+                      onValueChange={(values: number[]) => setMood(values[0] ?? 5)}
                       minValue={1}
                       maxValue={10}
                       step={1}
