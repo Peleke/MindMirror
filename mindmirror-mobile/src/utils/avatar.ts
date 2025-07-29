@@ -1,35 +1,38 @@
-import * as Crypto from 'expo-crypto';
+const md5 = require('js-md5');
 
 export async function getAvatarUrl(email: string | null | undefined, size: number = 300): Promise<string> {
   if (!email) {
-    // Fallback for no email - use a default monsterid
     return `https://www.gravatar.com/avatar/00000000000000000000000000000000?d=monsterid&s=${size}`;
   }
   
-  // Generate MD5 hash of lowercase, trimmed email
-  const hash = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.MD5,
-    email.toLowerCase().trim()
-  );
+  const cleanEmail = email.toLowerCase().trim();
+  console.log('🎯 Real Avatar - Email:', cleanEmail);
   
-  // Return Gravatar URL with monsterid fallback
-  return `https://www.gravatar.com/avatar/${hash}?d=monsterid&s=${size}`;
+  // Use proper MD5 hash for Gravatar
+  const hash = md5(cleanEmail);
+  console.log('✅ Using js-md5 hash:', hash);
+  
+  const url = `https://www.gravatar.com/avatar/${hash}?d=monsterid&s=${size}`;
+  console.log('🎯 Final Gravatar URL:', url);
+  
+  return url;
 }
 
-// Synchronous version for immediate use (uses a simple hash fallback)
+// Synchronous version that now uses real MD5!
 export function getAvatarUrlSync(email: string | null | undefined, size: number = 300): string {
   if (!email) {
     return `https://www.gravatar.com/avatar/00000000000000000000000000000000?d=monsterid&s=${size}`;
   }
   
-  // Simple string hash for immediate use
-  let hash = 0;
-  for (let i = 0; i < email.length; i++) {
-    const char = email.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  const hashStr = Math.abs(hash).toString(16).padStart(32, '0');
+  const cleanEmail = email.toLowerCase().trim();
+  console.log('🔍 Avatar Sync - Email:', cleanEmail);
   
-  return `https://www.gravatar.com/avatar/${hashStr}?d=monsterid&s=${size}`;
+  // Now using REAL MD5 hash
+  const hash = md5(cleanEmail);
+  const url = `https://www.gravatar.com/avatar/${hash}?d=monsterid&s=${size}`;
+  
+  console.log('✅ Sync MD5 Hash:', hash);
+  console.log('🎯 Sync Gravatar URL:', url);
+  
+  return url;
 } 

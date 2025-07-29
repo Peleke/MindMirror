@@ -11,7 +11,8 @@ import { Text } from "@/components/ui/text";
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { getAvatarUrlSync } from '@/utils/avatar';
+import { getAvatarUrl, getAvatarUrlSync } from '@/utils/avatar';
+import { useState, useEffect } from 'react';
 
 interface AppBarProps {
   title: string;
@@ -29,6 +30,20 @@ export function AppBar({
   const router = useRouter();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string>(getAvatarUrlSync(user?.email));
+
+  // Load real Gravatar URL asynchronously
+  useEffect(() => {
+    const loadRealAvatar = async () => {
+      if (user?.email) {
+        console.log('🎯 Loading real Gravatar for:', user.email);
+        const realUrl = await getAvatarUrl(user.email);
+        console.log('🎯 Real Gravatar URL:', realUrl);
+        setAvatarUrl(realUrl);
+      }
+    };
+    loadRealAvatar();
+  }, [user?.email]);
 
   const handleMenuPress = () => {
     (navigation as any).openDrawer();
@@ -62,7 +77,7 @@ export function AppBar({
         <Pressable onPress={handleProfilePress}>
           <Avatar className="h-9 w-9">
             <AvatarFallbackText>U</AvatarFallbackText>
-            <AvatarImage source={{ uri: getAvatarUrlSync(user?.email) }} />
+            <AvatarImage source={{ uri: avatarUrl }} />
             <AvatarBadge />
           </Avatar>
         </Pressable>
