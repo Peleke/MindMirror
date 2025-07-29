@@ -14,23 +14,24 @@ import { AppBar } from '@/components/common/AppBar'
 
 
 
-const JournalCard = ({ title, description, icon, onPress, testID }: {
+const JournalCard = ({ title, description, icon, onPress, testID, iconColor }: {
   title: string;
   description: string;
   icon: any;
   onPress: () => void;
   testID: string;
+  iconColor: string;
 }) => (
     <Pressable
       onPress={onPress}
-      className="bg-background-50 dark:bg-background-100 p-6 rounded-lg shadow-md w-full"
+      className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-6 rounded-lg shadow-md w-full"
       testID={testID}
     >
       <HStack space="md" className="items-center">
-        <Icon as={icon} size="xl" className="text-primary-500" />
+        <Icon as={icon} size="xl" className={iconColor} />
         <VStack>
-          <Heading size="md">{title}</Heading>
-          <Text size="sm" className="text-typography-500 mt-1">
+          <Heading size="md" className="text-blue-900 dark:text-blue-100">{title}</Heading>
+          <Text size="sm" className="text-blue-700 dark:text-blue-300 mt-1">
             {description}
           </Text>
         </VStack>
@@ -71,6 +72,7 @@ export default function JournalHubScreen() {
               title="Gratitude Journal"
               description="Focus on the positive aspects of your day."
               icon={Heart}
+              iconColor="text-red-500 dark:text-red-400"
               onPress={handleGratitudePress}
               testID="gratitude-journal-button"
             />
@@ -78,6 +80,7 @@ export default function JournalHubScreen() {
               title="Daily Reflection"
               description="Review your wins and areas for growth."
               icon={Lightbulb}
+              iconColor="text-yellow-500 dark:text-yellow-400"
               onPress={handleReflectionPress}
               testID="reflection-journal-button"
             />
@@ -85,6 +88,7 @@ export default function JournalHubScreen() {
               title="Freeform Entry"
               description="Write about anything that's on your mind."
               icon={PenTool}
+              iconColor="text-indigo-500 dark:text-indigo-400"
               onPress={handleFreeformPress}
               testID="freeform-journal-button"
             />
