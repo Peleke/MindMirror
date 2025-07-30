@@ -73,3 +73,33 @@ export const SUMMARIZE_JOURNALS_QUERY = gql`
     }
   }
 `
+
+// Individual journal entry queries for detail pages
+export const GET_JOURNAL_ENTRY = gql`
+  query GetJournalEntry($entryId: UUID!) {
+    journalEntry(entryId: $entryId) {
+      __typename
+      id
+      createdAt
+      ... on FreeformJournalEntry {
+        content: payload
+      }
+      ... on GratitudeJournalEntry {
+        payload {
+          gratefulFor
+          excitedAbout
+          focus
+          affirmation
+          mood
+        }
+      }
+      ... on ReflectionJournalEntry {
+        payload {
+          wins
+          improvements
+          mood
+        }
+      }
+    }
+  }
+`

@@ -65,6 +65,7 @@ const typeOptions: { value: JournalType; label: string }[] = [
 
 
 export default function ArchiveScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<JournalType>('all')
 
@@ -184,6 +185,11 @@ export default function ArchiveScreen() {
     }
   }
 
+  const handleEntryPress = (entry: JournalEntry) => {
+    const entryType = entry.__typename.replace('JournalEntry', '').toLowerCase();
+    router.push(`/journal/detail/${entryType}/${entry.id}`);
+  };
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -293,7 +299,11 @@ export default function ArchiveScreen() {
               </VStack>
             ) : (
               filteredEntries.map((entry) => (
-                <Pressable key={entry.id} className="mb-4">
+                <Pressable 
+                  key={entry.id} 
+                  className="mb-4"
+                  onPress={() => handleEntryPress(entry)}
+                >
                   <Box 
                       className={`p-6 min-h-[120px] rounded-lg ${getTypeColor(entry)} border border-border-200 dark:border-border-700`}
                   >
