@@ -15,8 +15,8 @@ export const JOURNAL_ENTRY_EXISTS_TODAY = gql`
 `
 
 export const GET_JOURNAL_ENTRIES = gql`
-  query GetJournalEntries {
-    journalEntries {
+  query GetJournalEntries($limit: Int, $offset: Int) {
+    journalEntries(limit: $limit, offset: $offset) {
       __typename
       ... on GratitudeJournalEntry {
         id
@@ -44,6 +44,13 @@ export const GET_JOURNAL_ENTRIES = gql`
         content: payload
       }
     }
+  }
+`
+
+// Journal entries count query for pagination
+export const GET_JOURNAL_ENTRIES_COUNT = gql`
+  query GetJournalEntriesCount {
+    journalEntriesCount
   }
 `
 

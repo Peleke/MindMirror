@@ -8,12 +8,13 @@ import { SafeAreaView } from "@/components/ui/safe-area-view"
 import { ScrollView } from "@/components/ui/scroll-view"
 import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
-import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
+import { GET_JOURNAL_ENTRIES, GET_JOURNAL_ENTRIES_COUNT } from '@/services/api/queries'
 import { useQuery } from '@apollo/client'
 import { useRouter } from 'expo-router'
 import { Heart, Lightbulb, PenTool } from "lucide-react-native"
 import { useState, useMemo } from 'react'
 import { AppBar } from '@/components/common/AppBar'
+import { Pagination } from '@/components/ui/Pagination'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
@@ -68,8 +69,16 @@ export default function ArchiveScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<JournalType>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const entriesPerPage = 10
+  const offset = (currentPage - 1) * entriesPerPage
 
   const { data, loading, error, refetch } = useQuery(GET_JOURNAL_ENTRIES, {
+    variables: { limit: entriesPerPage, offset },
+    errorPolicy: 'all',
+  })
+
+  const { data: countData } = useQuery(GET_JOURNAL_ENTRIES_COUNT, {
     errorPolicy: 'all',
   })
 
@@ -87,12 +96,12 @@ export default function ArchiveScreen() {
     
     let entries: JournalEntry[] = [...data.journalEntries]
     
-    // Filter by type
+    // Filter by entry type (client-side for current page)
     if (selectedType !== 'all') {
       entries = entries.filter(entry => getEntryType(entry) === selectedType)
     }
     
-    // Search in content
+    // Search in content (client-side for current page)
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase()
       entries = entries.filter(entry => {
@@ -106,7 +115,8 @@ export default function ArchiveScreen() {
       })
     }
     
-    return entries.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    // Entries are already sorted by backend (created_at desc)
+    return entries
   }, [data?.journalEntries, selectedType, searchQuery])
 
   const formatDate = (dateString: string) => {
@@ -190,6 +200,24 @@ export default function ArchiveScreen() {
     router.push(`/journal/detail/${entryType}/${entry.id}`);
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset to page 1 when filters change
+  const handleTypeFilter = (type: JournalType) => {
+    setSelectedType(type);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setCurrentPage(1);
+  };
+
+  const totalEntries = countData?.journalEntriesCount || 0;
+  const totalPages = Math.ceil(totalEntries / entriesPerPage);
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -215,7 +243,7 @@ export default function ArchiveScreen() {
               <InputField
                 placeholder="Search journal entries..."
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={handleSearchChange}
               />
             </Input>
 
@@ -228,7 +256,7 @@ export default function ArchiveScreen() {
               {typeOptions.map((option) => (
                 <Pressable
                   key={option.value}
-                  onPress={() => setSelectedType(option.value)}
+                  onPress={() => handleTypeFilter(option.value)}
                   className={`px-4 py-2 rounded-full mr-3 border ${
                     selectedType === option.value
                       ? 'bg-primary-600 border-primary-600'
@@ -347,9 +375,17 @@ export default function ArchiveScreen() {
               ))
             )}
           </VStack>
-          )}
-        </ScrollView>
-      </VStack>
-    </SafeAreaView>
-  )
-} 
+                      )}
+          </ScrollView>
+          
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            loading={loading}
+          />
+        </VStack>
+      </SafeAreaView>
+    )
+  } 
