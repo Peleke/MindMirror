@@ -64,4 +64,12 @@ class JournalRepository(BaseRepository[JournalEntry]):
             .limit(limit)
             .offset(offset)
         )
-        return result.scalars().all() 
+        return result.scalars().all()
+    
+    async def count_entries_for_user(self, user_id: str) -> int:
+        """Count total journal entries for user."""
+        result = await self.session.execute(
+            select(func.count(JournalEntry.id))
+            .where(JournalEntry.user_id == user_id)
+        )
+        return result.scalar() or 0 

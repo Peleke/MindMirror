@@ -178,6 +178,10 @@ class JournalService:
         )
         return [JournalEntryResponse.from_orm(entry) for entry in entries]
     
+    async def count_entries_for_user(self, user_id: str) -> int:
+        """Count journal entries for user."""
+        return await self.repository.count_entries_for_user(user_id)
+    
     async def check_for_entry_today(
         self, 
         user_id: str, 
