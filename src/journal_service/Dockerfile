@@ -56,8 +56,8 @@ ENV SUPABASE_CA_CERT_PATH=/etc/ssl/certs/supabase-rds-ca.pem
 # Set Python path to include src directory
 ENV PYTHONPATH=/app/src
 
-# Expose the port the app runs on
-EXPOSE 8001
+# Expose the port the app runs on (Cloud Run will set PORT env var)
+EXPOSE 8000
 
-# Set the entrypoint
-CMD ["uvicorn", "journal_service.journal_service.main:app", "--host", "0.0.0.0", "--port", "8001"] 
+# Set the entrypoint - respects PORT environment variable set by Cloud Run
+CMD ["python", "-m", "journal_service.journal_service.main"] 
