@@ -15,6 +15,7 @@ import { Heart, Lightbulb, PenTool } from "lucide-react-native"
 import { useState, useMemo } from 'react'
 import { AppBar } from '@/components/common/AppBar'
 import { Pagination } from '@/components/ui/Pagination'
+import { ActivityIndicator } from 'react-native'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
@@ -218,18 +219,6 @@ export default function ArchiveScreen() {
   const totalEntries = countData?.journalEntriesCount || 0;
   const totalPages = Math.ceil(totalEntries / entriesPerPage);
 
-  // Debug pagination values
-  console.log('🔍 Archive Pagination Debug:', {
-    totalEntries,
-    totalPages,
-    currentPage,
-    entriesPerPage,
-    offset,
-    countData,
-    hasData: !!data?.journalEntries,
-    entriesCount: data?.journalEntries?.length || 0
-  });
-
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -291,19 +280,9 @@ export default function ArchiveScreen() {
           <Box className="h-px bg-border-200 dark:bg-border-700 mx-6" />
 
           {/* Loading State */}
-          {loading && (
-            <VStack className="px-6 py-6" space="md">
-              <VStack className="items-center justify-center py-12" space="md">
-                <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
-                <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
-                  Loading journal entries...
-                </Text>
-              </VStack>
-            </VStack>
-          )}
-
-          {/* Error State */}
-          {error && (
+          {loading && !data ? (
+            <ActivityIndicator size="large" className="mt-10" />
+          ) : error ? (
             <VStack className="px-6 py-6" space="md">
               <VStack className="items-center justify-center py-12" space="md">
                 <Icon as={PenTool} size="xl" className="text-red-500" />
@@ -317,28 +296,14 @@ export default function ArchiveScreen() {
                 </VStack>
               </VStack>
             </VStack>
-          )}
-
-          {/* Journal Entries */}
-          {!loading && !error && (
-          <VStack className="px-6 py-6" space="md">
-            {filteredEntries.length === 0 ? (
-              <VStack className="items-center justify-center py-12" space="md">
-                <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
-                <VStack className="items-center" space="xs">
-                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">
-                    No entries found
-                  </Text>
-                  <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
-                      {searchQuery || selectedType !== 'all'
-                        ? "Try adjusting your search or filter criteria"
-                        : "You haven't written any journal entries yet. Start today!"
-                      }
-                  </Text>
-                </VStack>
-              </VStack>
-            ) : (
-              filteredEntries.map((entry) => (
+          ) : (
+            <VStack space="md" className="px-6 pb-20">
+              {filteredEntries.length === 0 ? (
+                <Text className="text-center text-typography-500 dark:text-gray-400 mt-8">
+                  No journal entries found.
+                </Text>
+              ) : (
+                filteredEntries.map((entry) => (
                 <Pressable 
                   key={entry.id} 
                   className="mb-4"
@@ -390,16 +355,6 @@ export default function ArchiveScreen() {
                       )}
           </ScrollView>
           
-          {/* Debug: Always show pagination info */}
-          <Box className="p-4 bg-yellow-100 dark:bg-yellow-900">
-            <Text className="text-sm">
-              📊 Debug: Total Entries: {totalEntries} | Total Pages: {totalPages} | Current Page: {currentPage}
-            </Text>
-            <Text className="text-sm">
-              📋 Entries on this page: {filteredEntries.length} | Loading: {loading ? 'Yes' : 'No'}
-            </Text>
-          </Box>
-
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
