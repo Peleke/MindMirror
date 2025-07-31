@@ -218,6 +218,18 @@ export default function ArchiveScreen() {
   const totalEntries = countData?.journalEntriesCount || 0;
   const totalPages = Math.ceil(totalEntries / entriesPerPage);
 
+  // Debug pagination values
+  console.log('🔍 Archive Pagination Debug:', {
+    totalEntries,
+    totalPages,
+    currentPage,
+    entriesPerPage,
+    offset,
+    countData,
+    hasData: !!data?.journalEntries,
+    entriesCount: data?.journalEntries?.length || 0
+  });
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -378,6 +390,16 @@ export default function ArchiveScreen() {
                       )}
           </ScrollView>
           
+          {/* Debug: Always show pagination info */}
+          <Box className="p-4 bg-yellow-100 dark:bg-yellow-900">
+            <Text className="text-sm">
+              📊 Debug: Total Entries: {totalEntries} | Total Pages: {totalPages} | Current Page: {currentPage}
+            </Text>
+            <Text className="text-sm">
+              📋 Entries on this page: {filteredEntries.length} | Loading: {loading ? 'Yes' : 'No'}
+            </Text>
+          </Box>
+
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
