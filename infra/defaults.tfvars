@@ -14,9 +14,10 @@ debug                           = "false"
 # --- Default Container Images ---
 # These should point to the specific image tags you want to deploy.
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
-journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:2d745ec8ee7eebdd79358a3003e561a72f5e060a"
+journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
-gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:cc347db26952df8673c763d16c555282ab12994a"
+gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
+# gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:cc347db26952df8673c763d16c555282ab12994a"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
 
 # --- Mocking & Testing Fallbacks ---

@@ -118,7 +118,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   ask(
     query: String!
     tradition: String! = "canon-default"
-    includeJournalContext: Boolean! = false
+    includeJournalContext: Boolean! = true
   ): String! @join__field(graph: AGENT) 
   listTraditions: [String!]! @join__field(graph: AGENT) 
   getMealSuggestion(mealType: String!, tradition: String!) : String! @join__field(graph: AGENT) 
@@ -147,6 +147,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
   freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
   journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
+  journalEntriesCount: Int! @join__field(graph: JOURNAL) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
