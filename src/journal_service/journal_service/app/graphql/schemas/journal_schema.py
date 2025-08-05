@@ -273,6 +273,13 @@ class Query:
             user_id=str(current_user.id),
             entry_type=entry_type
         )
+    
+    @strawberry.field
+    async def journal_entries_count(self, info) -> int:
+        """Get total count of journal entries for current user."""
+        current_user = get_current_user_from_context(info)
+        service = get_journal_service_from_context(info)
+        return await service.count_entries_for_user(str(current_user.id))
 
 
 @strawberry.type

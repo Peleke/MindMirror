@@ -47,6 +47,7 @@ networkx = "^3.3"
 strawberry-graphql = "^0.275.5"
 langchain-ollama = "^0.3.3"
 pydantic-settings = "^2.10.1"
+shared = {path = "../shared"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
@@ -56,6 +57,7 @@ httpx = "^0.28.1"
 black = "^25.1.0"
 isort = "^6.0.1"
 flake8 = "^7.2.0"
+docker = "^7.1.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

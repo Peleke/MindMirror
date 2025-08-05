@@ -20,7 +20,14 @@ export default function AppLayout() {
           <Drawer.Screen
             name="journal"
             options={{
-              drawerLabel: 'Journal',
+              drawerLabel: 'Home',
+              title: 'Home',
+            }}
+          />
+          <Drawer.Screen
+            name="journal-hub"
+            options={{
+              drawerLabel: 'Journal Hub',
               title: 'Journal',
             }}
           />

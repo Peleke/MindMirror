@@ -318,6 +318,8 @@ class SearchService:
         tradition_id: Optional[str] = None,
         search_type: str = "hybrid",
         collection_name: str = "mindmirror",
+        include_personal: bool = False,
+        include_knowledge: bool = True,
     ):
         """
         Create a QdrantRetriever instance for LangChain integration.
@@ -327,9 +329,8 @@ class SearchService:
             tradition_id: Optional tradition ID for filtering
             search_type: Type of search ('vector', 'keyword', 'hybrid')
             collection_name: Name of the Qdrant collection
-
-        Returns:
-            Configured QdrantRetriever instance
+            include_personal: Whether to include personal journal entries in search
+            include_knowledge: Whether to include knowledge base documents in search
         """
         from agent_service.app.clients.qdrant_retriever import QdrantRetriever
 
@@ -340,5 +341,7 @@ class SearchService:
             user_id=user_id,
             tradition_id=tradition_id,
             search_type=search_type,
+            include_personal=include_personal,
+            include_knowledge=include_knowledge,
             k=5,
         )

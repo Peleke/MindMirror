@@ -1,156 +1,200 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import { ChevronRightIcon, Icon, MenuIcon } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Heart, Lightbulb, PenTool } from "lucide-react-native";
+import { Heart, Lightbulb } from "lucide-react-native";
+import { useState } from 'react';
+import { ActivityIndicator } from 'react-native';
+import { UserGreeting } from '../../../src/components/journal/UserGreeting';
+import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
+import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
+import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
+import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
+import { useToast } from '@/components/ui/toast';
+import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAffirmation } from '@/hooks/useAffirmation';
+import { useJournalStatus } from '@/hooks/useJournalStatus';
+import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
+import { AppBar } from '@/components/common/AppBar';
+import { getUserDisplayName } from '@/utils/user';
 
-const JOURNAL_TYPES = [
-  {
-    id: 'gratitude',
-    title: 'Gratitude Journal',
-    description: 'Reflect on what you\'re grateful for today',
-    icon: Heart,
-    color: 'bg-blue-50 dark:bg-blue-950',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    route: '/journal/gratitude'
-  },
-  {
-    id: 'reflection',
-    title: 'Daily Reflection',
-    description: 'Look back on your day and insights',
-    icon: Lightbulb,
-    color: 'bg-indigo-50 dark:bg-indigo-950',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
-    route: '/journal/reflection'
-  },
-  {
-    id: 'freeform',
-    title: 'Freeform Writing',
-    description: 'Express your thoughts freely',
-    icon: PenTool,
-    color: 'bg-purple-50 dark:bg-purple-950',
-    iconColor: 'text-purple-600 dark:text-purple-400',
-    route: '/journal/freeform'
-  }
-];
-
-function AppBar() {
-  const router = useRouter();
-  const navigation = useNavigation();
-
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer();
-  };
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile');
-  };
-
+const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
+  const isGratitude = type === 'Gratitude';
+  const bgColor = isGratitude ? 'bg-blue-50 dark:bg-blue-950' : 'bg-indigo-50 dark:bg-indigo-950';
+  const borderColor = isGratitude ? 'border-blue-200 dark:border-blue-800' : 'border-indigo-200 dark:border-indigo-800';
+  const textColor = isGratitude ? 'text-blue-900 dark:text-blue-100' : 'text-indigo-900 dark:text-indigo-100';
+  const spinnerColor = isGratitude ? '#2563eb' : '#4f46e5';
+  
   return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">Journal</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
+    <Box className={`flex-1 p-4 ${bgColor} rounded-lg border ${borderColor} items-center`}>
+      <ActivityIndicator 
+        size="small" 
+        color={spinnerColor} 
+        style={{ marginBottom: 8 }}
+      />
+      <Text className={`text-sm font-medium ${textColor} text-center`}>
+        Loading {type}...
+      </Text>
+    </Box>
   );
-}
+};
 
 export default function JournalScreen() {
   const router = useRouter();
+  const { show } = useToast();
+  const { user } = useAuth();
+  const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
+  const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
+  
+  const {
+    submitEntry,
+    isTransitioning: hookIsTransitioning,
+    isSubmitting,
+    error,
+  } = useJournalFlow();
 
-  const handleJournalPress = (route: string) => {
-    router.push(route as any);
+  const handleSaveAndChat = async (entry: string) => {
+    // Call submitEntry with the 'andChat' flag
+    await submitEntry(entry, { andChat: true });
   };
+
+  const handleSave = async (entry: string) => {
+    // Call submitEntry without the 'andChat' flag
+    const { success } = await submitEntry(entry, { andChat: false });
+    if (success) {
+      // Use the 'show' function with the correct component structure for the toast.
+      show({
+        placement: "top",
+        render: ({ id }) => {
+          const toastId = "toast-" + id;
+          return (
+            <Toast nativeID={toastId} action="success" variant="solid">
+              <VStack space="xs">
+                <ToastTitle>Entry Saved</ToastTitle>
+                <ToastDescription>
+                  Your journal entry has been saved successfully.
+                </ToastDescription>
+              </VStack>
+            </Toast>
+          );
+        },
+      });
+      // Here you might want to clear the form, which would require
+      // lifting the form's state up to this screen component.
+      // For now, we'll leave it as is.
+    }
+  };
+
+  const handleGratitudePress = () => {
+    router.push('/journal/gratitude');
+  };
+
+  const handleReflectionPress = () => {
+    router.push('/journal/reflection');
+  };
+
+  const userName = getUserDisplayName(user);
 
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Journal" />
         
         <ScrollView
           showsVerticalScrollIndicator={false}
           className="flex-1"
         >
-          {/* Header */}
-          <VStack className="px-6 py-6" space="xs">
-            <Heading size="2xl" className="font-roboto text-typography-900">
-              Start Your Journal
-            </Heading>
-            <Text className="text-typography-600">
-              Choose the type of entry you'd like to create
+          {/* Header Section */}
+          <VStack className="px-6 py-6" space="md">
+            <UserGreeting 
+              userName={userName} 
+              className="text-2xl font-semibold text-typography-900 dark:text-white"
+            />
+            
+            <Text className="text-lg font-semibold text-typography-900 dark:text-white pt-4">
+              From your journals...
             </Text>
+            <AffirmationDisplay 
+              affirmation={isAffirmationLoading ? "Loading..." : affirmation}
+            />
+          </VStack>
+
+          {/* Structured Journal Options */}
+          <VStack className="px-6 pb-6" space="md">
+            <HStack className="space-x-4">
+              {isStatusLoading ? (
+                <LoadingJournalCard type="Gratitude" />
+              ) : hasCompletedGratitude ? (
+                <CompletedJournalCard journalType="Gratitude" />
+              ) : (
+                <Pressable
+                  onPress={handleGratitudePress}
+                  className="flex-1"
+                >
+                  <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
+                    <Icon 
+                      as={Heart}
+                      size="lg"
+                      className="text-blue-600 dark:text-blue-400 mb-2"
+                    />
+                    <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
+                      Morning Gratitude
+                    </Text>
+                  </Box>
+                </Pressable>
+              )}
+              
+              {isStatusLoading ? (
+                <LoadingJournalCard type="Reflection" />
+              ) : hasCompletedReflection ? (
+                <CompletedJournalCard journalType="Reflection" />
+              ) : (
+                <Pressable
+                  onPress={handleReflectionPress}
+                  className="flex-1"
+                >
+                  <Box className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800 items-center">
+                    <Icon 
+                      as={Lightbulb}
+                      size="lg"
+                      className="text-indigo-600 dark:text-indigo-400 mb-2"
+                    />
+                    <Text className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-center">
+                      Evening Reflection
+                    </Text>
+                  </Box>
+                </Pressable>
+              )}
+            </HStack>
           </VStack>
           
-          {/* Content */}
+          {/* Main Journal Entry Form */}
           <VStack className="px-6 pb-6" space="md">
-            {JOURNAL_TYPES.map((journalType) => (
-              <Pressable
-                key={journalType.id}
-                onPress={() => handleJournalPress(journalType.route)}
-                className="mb-4"
-              >
-                <Box 
-                  className={`p-6 min-h-[120px] rounded-lg ${journalType.color} border border-border-200 dark:border-border-700`}
-                >
-                  {/* Card Header */}
-                  <Box className="mb-4">
-                    <Icon 
-                      as={journalType.icon}
-                      size="lg"
-                      className={journalType.iconColor}
-                    />
-                  </Box>
-                  
-                  {/* Card Title */}
-                  <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-2">
-                    {journalType.title}
-                  </Text>
-                  
-                  {/* Card Description */}
-                  <Text className="text-base text-typography-600 dark:text-gray-200 leading-6 flex-1 mb-4">
-                    {journalType.description}
-                  </Text>
-                  
-                  {/* Card Footer */}
-                  <Box className="items-end">
-                    <Icon 
-                      as={ChevronRightIcon}
-                      size="sm"
-                      className="text-typography-400 dark:text-typography-500"
-                    />
-                  </Box>
-                </Box>
-              </Pressable>
-            ))}
+            <JournalEntryForm
+              onSaveAndChat={handleSaveAndChat}
+              onSave={handleSave}
+              isLoading={isSubmitting}
+              className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
+            />
           </VStack>
+          
+          {/* REMOVED: Old structured journal section */}
+          
         </ScrollView>
+        
+        {/* Transition Overlay */}
+        <TransitionOverlay 
+          isVisible={hookIsTransitioning}
+          // Add the required onComplete prop back with an empty function.
+          onComplete={() => {}}
+          className="absolute inset-0"
+        />
       </VStack>
     </SafeAreaView>
   );

@@ -67,6 +67,8 @@ import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard, Platform } from "react-native";
 import { z } from "zod";
+import { getAvatarUrlSync } from '@/utils/avatar';
+import { getUserDisplayName } from '@/utils/user';
 
 // Placeholder icons - you can replace these with actual icons
 const ProfileIcon = () => <Icon as={SettingsIcon} />;
@@ -519,18 +521,18 @@ const MainContent = () => {
             <VStack space="md" className="items-center">
               <Avatar size="2xl" className="bg-primary-600">
                 <AvatarFallbackText>
-                  {user?.user_metadata?.full_name || user?.email || "User"}
+                  {getUserDisplayName(user)}
                 </AvatarFallbackText>
                 <AvatarImage
                   alt="Profile Image"
                   height={"100%"}
                   width={"100%"}
-                  source={{ uri: "https://i.pravatar.cc/300" }}
+                  source={{ uri: getAvatarUrlSync(user?.email) }}
                 />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
                 <Text size="2xl" className="font-roboto text-white dark:text-gray-800">
-                  {user?.user_metadata?.full_name || user?.email || "User"}
+                  {getUserDisplayName(user)}
                 </Text>
                 <Text className="font-roboto text-sm text-white dark:text-gray-600 opacity-80">
                   United States
@@ -739,7 +741,7 @@ const ModalComponent = ({
               alt="Profile Image"
               height={"100%"}
               width={"100%"}
-              source={{ uri: "https://i.pravatar.cc/300" }}
+              source={{ uri: getAvatarUrlSync(user?.email) }}
             />
             <AvatarBadge />
           </Avatar>

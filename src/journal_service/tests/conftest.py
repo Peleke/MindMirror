@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
 
 from journal_service.models.sql.base import Base
 from journal_service.models.sql.journal import JournalEntryModel
-from journal_service.uow import UnitOfWork, get_uow
-from journal_service.web.app import app
+from journal_service.journal_service.uow import UnitOfWork, get_uow
+from journal_service.journal_service.main import app
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 
@@ -25,7 +25,7 @@ from shared.data_models import UserRole
 TEST_DRIVER = "asyncpg"
 TEST_USER = os.getenv("POSTGRES_USER", "postgres")
 TEST_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-TEST_HOST = os.getenv("POSTGRES_HOST", "localhost")
+TEST_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
 TEST_POSTGRES_PORT = os.getenv(
     "POSTGRES_PORT", 5433
 )  # Use a different port to avoid conflicts
@@ -208,13 +208,13 @@ async def uow(
 
 @pytest_asyncio.fixture(scope="function")
 async def client(
-    test_session_maker: async_sessionmaker[AsyncSession], create_tables
+    test_session_maker: async_sessionmaker[AsyncSession], create_tables, user: CurrentUser
 ) -> AsyncGenerator[AsyncClient, None]:
     """
     Provides an HTTP client for testing the journal service GraphQL API.
     """
 
-    # Override dependencies to use test database
+    # Override dependencies to use test database and a mocked user
     async def override_get_uow() -> AsyncGenerator[UnitOfWork, None]:
         # Use the test_session_maker from the outer fixture scope
         async with test_session_maker() as session:

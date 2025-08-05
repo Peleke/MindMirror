@@ -7,14 +7,21 @@ import Constants from 'expo-constants'
 // Environment detection
 const isDevelopment = __DEV__
 
-// Gateway URL based on environment
-const GATEWAY_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || (isDevelopment 
-  ? 'http://localhost:4000/graphql' // Local development fallback
-  : 'http://localhost:4000/graphql') // Production fallback (update with actual URL)
+// More robust gateway URL loading
+const GATEWAY_BASE_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || Constants.expoConfig?.extra?.gatewayUrl
+
+if (!GATEWAY_BASE_URL) {
+  console.error("CRITICAL: Gateway URL is not configured. Check .env or app.json.")
+}
+
+// Ensure the final URI includes the /graphql path
+const finalGatewayUrl = GATEWAY_BASE_URL 
+  ? `${GATEWAY_BASE_URL.replace(/\/$/, '')}/graphql` 
+  : 'http://localhost:4000/graphql'; // Fallback for local dev if nothing is set
 
 // HTTP Link for GraphQL endpoint
 const httpLink = createHttpLink({
-  uri: GATEWAY_URL,
+  uri: finalGatewayUrl,
 })
 
 // Auth link to add JWT token and user ID headers
@@ -117,7 +124,7 @@ export function createApolloClientWithSession(session: Session | null) {
 
 // Environment info for debugging
 export const apolloConfig = {
-  gatewayUrl: GATEWAY_URL,
+  gatewayUrl: GATEWAY_BASE_URL,
   isDevelopment,
   environment: isDevelopment ? 'development' : 'production'
 } 

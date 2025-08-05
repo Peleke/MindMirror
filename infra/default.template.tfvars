@@ -5,6 +5,7 @@ image_tag         = "dev"
 gcs_bucket_name   = "mindmirror-gcs-bucket"
 gcs_credential_file = "/path/to/credentials.json"
 tradition_discovery_mode = "gcs-first"
+environment       = "production"
 
 # Container images
 journal_service_container_image = "gcr.io/mindmirror-69/journal-service:latest"

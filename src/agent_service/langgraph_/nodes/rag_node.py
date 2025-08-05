@@ -202,11 +202,24 @@ Answer:"""
                 try:
                     user_id = state.get("user_id")
                     tradition_id = state.get("tradition_id")
+                    
+                    # NEW: Read the flag from the state metadata.
+                    # Default to False if not present.
+                    metadata = state.get("metadata", {})
+                    include_journal = metadata.get("include_journal_context", False)
+
                     logger.info(
-                        f"RAG Node: Creating retriever with user_id={user_id}, tradition_id='{tradition_id}'"
+                        f"RAG Node: Creating retriever with user_id={user_id}, "
+                        f"tradition_id='{tradition_id}', include_journal={include_journal}"
                     )
+                    
+                    # Pass the flag to the search service when creating the retriever.
                     self.retriever = self.search_service.create_retriever(
-                        user_id=user_id, tradition_id=tradition_id, search_type="hybrid"
+                        user_id=user_id, 
+                        tradition_id=tradition_id, 
+                        search_type="hybrid",
+                        include_personal=include_journal, # Use the flag here
+                        include_knowledge=True, # Always include the knowledge base
                     )
                     logger.info(
                         f"Created retriever for user {user_id} with tradition {tradition_id}"
