@@ -111,6 +111,7 @@ services:
     env_file: ${ENV_FILE:-.env}
     environment:
       - ENVIRONMENT=local
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach
     volumes:
       - ./habits_service:/app/habits_service
     command: uvicorn habits_service.habits_service.app.main:app --host 0.0.0.0 --port 8003 --reload
