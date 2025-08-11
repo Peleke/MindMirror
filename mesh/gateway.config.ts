@@ -47,7 +47,7 @@ export const gatewayConfig = defineConfig({
   /** Header propagation configuration. */
   propagateHeaders: {
     fromClientToSubgraphs({ request, subgraphName }) {
-      // Propagate authentication headers to all subgraphs (Journal and Agent)
+      // Propagate authentication headers to all subgraphs (Journal, Agent, Habits)
       const headers: Record<string, string> = {};
       
       // Always propagate the x-internal-id header if present

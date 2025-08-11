@@ -85,14 +85,9 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(
-    name: "Agent"
-    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
-  )
-  JOURNAL @join__graph(
-    name: "Journal"
-    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
-  )
+  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
+  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
+  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
 }
 
 """
@@ -110,11 +105,11 @@ Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
 
-scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
+scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL) 
 
 scalar UUID @join__type(graph: JOURNAL) 
 
-type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
+type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  {
   ask(
     query: String!
     tradition: String! = "canon-default"
@@ -140,6 +135,8 @@ type Query @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
   getToolMetadata(toolName: String!, version: String = null) : ToolMetadata @join__field(graph: AGENT) 
   getToolRegistryHealth: ToolRegistryHealth! @join__field(graph: AGENT) 
   listToolNames: [String!]! @join__field(graph: AGENT) 
+  health: String! @join__field(graph: HABITS) 
+  version: String! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 

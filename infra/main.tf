@@ -199,3 +199,16 @@ module "celery_worker" {
   environment           = var.environment
   debug                 = var.debug
 }
+
+module "habits_service" {
+  source  = "./modules/habits_service"
+
+  project_id  = var.project_id
+  region      = var.region
+  habits_service_container_image = var.habits_service_container_image
+  service_account_email = module.base.journal_service_sa_email
+
+  # Logging and environment
+  log_level   = var.log_level
+  environment = var.environment
+}

@@ -4,6 +4,7 @@ set -e
 echo "--- MESH-COMPOSE ENTRYPOINT DEBUG ---"
 echo "Received JOURNAL_SERVICE_URL: [${JOURNAL_SERVICE_URL}]"
 echo "Received AGENT_SERVICE_URL: [${AGENT_SERVICE_URL}]"
+echo "Received HABITS_SERVICE_URL: [${HABITS_SERVICE_URL}]"
 echo "--- END DEBUG ---"
 
 # This script generates the mesh configuration at runtime based on environment variables,
@@ -12,6 +13,7 @@ echo "--- END DEBUG ---"
 echo "Generating mesh config with the following URLs:"
 echo "JOURNAL_SERVICE_URL: ${JOURNAL_SERVICE_URL}"
 echo "AGENT_SERVICE_URL: ${AGENT_SERVICE_URL}"
+echo "HABITS_SERVICE_URL: ${HABITS_SERVICE_URL}"
 
 # Generate the dynamic mesh config file.
 # It uses the environment variables passed to the container, with sensible defaults for local development.
@@ -27,6 +29,11 @@ export const composeConfig = defineConfig({
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Agent', {
         endpoint: '${AGENT_SERVICE_URL:-http://agent_service:8000}/graphql',
+      })
+    },
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Habits', {
+        endpoint: '${HABITS_SERVICE_URL:-http://habits_service:8003}/graphql',
       })
     },
   ]

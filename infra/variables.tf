@@ -44,6 +44,12 @@ variable "gateway_container_image" {
   default     = "gcr.io/mindmirror-69/gateway:latest"
 }
 
+variable "habits_service_container_image" {
+  description = "Habits service container image"
+  type        = string
+  default     = "gcr.io/mindmirror-69/habits-service:latest"
+}
+
 variable "celery_worker_container_image" {
   description = "Celery worker container image"
   type        = string
