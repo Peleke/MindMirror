@@ -10,6 +10,7 @@ from alembic import context
 
 from habits_service.habits_service.app.config import get_settings
 from habits_service.habits_service.app.db.models import Base
+from habits_service.habits_service.app.db import tables  # noqa: F401 ensure models are imported
 
 
 settings = get_settings()
