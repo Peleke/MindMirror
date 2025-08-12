@@ -22,7 +22,7 @@ async def test_template_write_repos_crud(db_session):
     program_slug = f"eating-7x7-{uuid.uuid4().hex[:8]}"
 
     habit = await hrepo.create(slug=habit_slug, title="Eat Slowly")
-    lesson = await lrepo.create(slug=lesson_slug, title="Why slow?", markdown_content="# md", content_hash="h1")
+    lesson = await lrepo.create(slug=lesson_slug, title="Why slow?", markdown_content="# md")
     program = await prepo.create(slug=program_slug, title="Eating 7x7")
 
     await session.commit()

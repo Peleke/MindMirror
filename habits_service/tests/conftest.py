@@ -43,6 +43,12 @@ async def db_session() -> AsyncSession:
     )
     session_module.engine = test_engine
     session_module.async_session_maker = async_sessionmaker(bind=test_engine, expire_on_commit=False, class_=AsyncSession)
+    # Also rebind UnitOfWork's session maker to this test one
+    from habits_service.habits_service.app.db import uow as uow_module
+    uow_module.async_session_maker = session_module.async_session_maker
+
+    # Ensure models are loaded so Base.metadata has all tables
+    import habits_service.habits_service.app.db.tables  # noqa: F401
 
     # Prepare schema and tables using the test engine
     async with test_engine.begin() as conn:

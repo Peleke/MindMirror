@@ -82,19 +82,16 @@ class LessonTemplateRepository:
         summary: Optional[str] = None,
         tags: Optional[dict] = None,
         est_read_minutes: Optional[int] = None,
-        content_hash: Optional[str] = None,
-        metadata_json: Optional[dict] = None,
     ) -> LessonTemplate:
-        obj = LessonTemplate(
+        fields = dict(
             slug=slug,
             title=title,
             markdown_content=markdown_content,
             summary=summary,
             tags=tags,
             est_read_minutes=est_read_minutes,
-            content_hash=content_hash,
-            metadata_json=metadata_json,
         )
+        obj = LessonTemplate(**fields)
         self.session.add(obj)
         await self.session.flush()
         return obj
@@ -137,7 +134,7 @@ class LessonTemplateRepository:
     ) -> LessonTemplate:
         existing = await self.get_by_slug(slug)
         if not existing:
-            return await self.create(
+            obj = LessonTemplate(
                 slug=slug,
                 title=title,
                 markdown_content=markdown_content,
@@ -147,6 +144,9 @@ class LessonTemplateRepository:
                 content_hash=content_hash,
                 metadata_json=metadata_json,
             )
+            self.session.add(obj)
+            await self.session.flush()
+            return obj
         # Version bump only when content_hash changes
         update_fields = {
             "title": title,
@@ -168,7 +168,8 @@ class ProgramTemplateRepository:
         self.session = session
 
     async def create(self, *, slug: str, title: str, description: Optional[str] = None, content_hash: Optional[str] = None) -> ProgramTemplate:
-        obj = ProgramTemplate(slug=slug, title=title, description=description, content_hash=content_hash)
+        fields = dict(slug=slug, title=title, description=description)
+        obj = ProgramTemplate(**fields)
         self.session.add(obj)
         await self.session.flush()
         return obj
