@@ -120,6 +120,23 @@ services:
       - redis
     ports:
       - "8003:8003"
+  cli:
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+    container_name: mindmirror_cli
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-habits}
+    networks:
+      - mindmirror-network
+    depends_on:
+      - postgres
+      - habits_service
+    volumes:
+      - ./data:/workspace/data:ro
+    command: ["mindmirror", "--help"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 1s
