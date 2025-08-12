@@ -1,0 +1,55 @@
+slug: unfck-your-eating
+title: "Unf*ck Your Eating: 7 Habits in 7 Weeks"
+version: 1
+contentType: program
+sequence:
+  # Each step is a 7-day habit focus with optional lesson associations (by slug)
+  - stepSlug: screens-off
+    title: Put the Phone (and TV) Down
+    durationDays: 7
+    habitTemplateSlug: screens-off
+    lessonSlugs:
+      - screens-off
+  - stepSlug: eat-slowly
+    title: Eat Slowly and Chew Thoroughly
+    durationDays: 7
+    habitTemplateSlug: eat-slowly
+    lessonSlugs:
+      - eat-slowly
+  - stepSlug: stop-at-80
+    title: Stop at 80% Full (Leave a Bite or Two)
+    durationDays: 7
+    habitTemplateSlug: stop-at-80-percent
+    lessonSlugs:
+      - stop-at-80-percent
+  - stepSlug: fiber-first
+    title: More Fiber: Fruits, Veggies, and Grains
+    durationDays: 7
+    habitTemplateSlug: more-fiber
+    lessonSlugs:
+      - more-fiber
+  - stepSlug: prioritize-protein
+    title: Prioritize Protein
+    durationDays: 7
+    habitTemplateSlug: prioritize-protein
+    lessonSlugs:
+      - prioritize-protein
+  - stepSlug: rethink-drinks
+    title: Rethink Drinks: Choose Water or Unsweetened Options
+    durationDays: 7
+    habitTemplateSlug: rethink-drinks
+    lessonSlugs:
+      - rethink-drinks
+  - stepSlug: whole-foods
+    title: Prefer Whole Foods
+    durationDays: 7
+    habitTemplateSlug: prefer-whole-foods
+    lessonSlugs:
+      - prefer-whole-foods
+  - stepSlug: wrap-up
+    title: Wrap-Up and Next Steps
+    durationDays: 1
+    habitTemplateSlug: wrap-up
+    lessonSlugs:
+      - wrap-up
+

@@ -42,3 +42,22 @@ table
     assert parsed.flags["hasSourcesTables"] is True
 
 
+def test_parse_real_assets_outline_and_summary():
+    # Reads real content; verifies outline and summary derivation work without frontmatter
+    import os
+    # Prefer mounted /data when running in container with repo mounted at /workspace
+    mounted_base = "/data/habits/programs/unfck-your-eating"
+    if os.path.exists(mounted_base):
+        base = mounted_base
+    else:
+        base = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/habits/programs/unfck-your-eating"))
+    # Pick a representative file that has headings and content
+    target = os.path.join(base, "005_lesson.md")
+    with open(target, "r", encoding="utf-8") as f:
+        md = f.read()
+    parsed = parse_markdown(md)
+    # No frontmatter present, so slug may default from title if detected, otherwise empty; outline must exist
+    assert isinstance(parsed.outline, list) and len(parsed.outline) >= 1
+    # Summary should be derived from first sentence of body
+    assert isinstance(parsed.summary, str) and len(parsed.summary) > 0
+

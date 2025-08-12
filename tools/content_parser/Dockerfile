@@ -34,7 +34,8 @@ RUN if [ "$USE_LOCAL_PYPROJECT" = "true" ] && [ -f "/app/pyproject.toml" ]; then
       poetry install --no-interaction --no-ansi --no-root; \
     fi
 
-# Default command runs tests
-CMD ["/bin/sh", "-lc", "PYTHONPATH=/app poetry run pytest -q"]
+# Default command runs tests.
+# If the repo root is mounted at /workspace, expose assets via /data symlink for tests.
+CMD ["/bin/sh", "-lc", "if [ -d /workspace/data ] && [ ! -e /data ]; then ln -s /workspace/data /data; fi; PYTHONPATH=/app poetry run pytest -q"]
 
 
