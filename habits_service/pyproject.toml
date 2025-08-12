@@ -10,7 +10,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.11,<3.13"
 fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.30.3"}
 strawberry-graphql = "^0.275.5"
@@ -31,6 +31,7 @@ isort = "^5.12.0"
 mypy = "^1.5.0"
 ruff = "^0.1.0"
 docker = "^7.1.0"
+httpx = "^0.28.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -55,5 +56,11 @@ target-version = "py311"
 line-length = 88
 select = ["E", "F", "I", "N", "W", "B", "C4", "UP"]
 ignore = ["E501", "B008"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["habits_service/tests"]
+asyncio_mode = "strict"
+addopts = "-q"
 
 

@@ -3,20 +3,12 @@ from strawberry.fastapi import GraphQLRouter
 import strawberry
 from habits_service.habits_service.app.db.session import engine
 from habits_service.habits_service.app.db.models import Base
+from habits_service.habits_service.app.graphql.schemas.query import Query as RootQuery
+from habits_service.habits_service.app.config import get_settings
+from sqlalchemy import text
 
 
-@strawberry.type
-class Query:
-    @strawberry.field
-    def health(self) -> str:
-        return "ok"
-
-    @strawberry.field
-    def version(self) -> str:
-        return "0.1.0"
-
-
-schema = strawberry.Schema(query=Query)
+schema = strawberry.Schema(query=RootQuery)
 graphql_app = GraphQLRouter(schema)
 
 app = FastAPI()
@@ -36,6 +28,9 @@ async def ensure_schema_exists():
     # This is best-effort; Alembic will manage tables later.
     try:
         async with engine.begin() as conn:
+            schema = get_settings().database_schema
+            # Ensure schema exists first (dev convenience)
+            await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
             await conn.run_sync(Base.metadata.create_all)
     except Exception:
         # Do not crash service on startup if perms are insufficient

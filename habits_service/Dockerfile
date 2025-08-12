@@ -17,9 +17,11 @@ COPY habits_service/pyproject.toml ./
 COPY ./src/shared /src/shared
 
 # Install deps (create lock inside the image if missing)
+# Use BUILD_WITH_DEV=true at build-time to include dev dependencies
+ARG BUILD_WITH_DEV=false
 RUN poetry config virtualenvs.create false \
     && poetry lock --no-interaction --no-ansi \
-    && poetry install --no-root --only=main --no-ansi
+    && if [ "$BUILD_WITH_DEV" = "true" ]; then poetry install --no-root --with dev --no-ansi; else poetry install --no-root --only main --no-ansi; fi
 
 # Build shared wheel
 WORKDIR /src/shared

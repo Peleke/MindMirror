@@ -159,3 +159,61 @@ class JournalTaskEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# --- ACL & Provenance ---
+
+class TemplateAccess(Base):
+    """
+    Generic ACL for templates. Keeps templates user-agnostic while supporting:
+    - Private templates (owner only)
+    - Shared templates (view/edit to specific users)
+    - Public templates (user_id NULL + permission 'view')
+
+    Conventions:
+    - kind: 'habit' | 'lesson' | 'program'
+    - permission: 'owner' | 'edit' | 'view'
+    - Public: (user_id IS NULL, permission='view')
+    - Ownership: exactly one (kind, template_id, user_id, 'owner') for user-authored templates
+    """
+
+    __tablename__ = "template_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind = Column(String, nullable=False)  # habit|lesson|program
+    template_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(String, nullable=True, index=True)  # NULL => public
+    permission = Column(String, nullable=False)  # owner|edit|view
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("kind", "template_id", "user_id", "permission", name="uq_template_access"),
+        Index("ix_template_access_user_kind", "user_id", "kind"),
+        Index("ix_template_access_template", "kind", "template_id"),
+        CheckConstraint("permission in ('owner','edit','view')", name="ck_template_access_permission"),
+        CheckConstraint("kind in ('habit','lesson','program')", name="ck_template_access_kind"),
+    )
+
+
+class TemplateProvenance(Base):
+    """
+    Provenance metadata for templates, decoupled from templates themselves.
+    - origin: 'system' | 'user' | 'import'
+    - origin_user_id: set when origin='user' (creator) or import attribution
+    - unique per (kind, template_id)
+    """
+
+    __tablename__ = "template_provenance"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind = Column(String, nullable=False)  # habit|lesson|program
+    template_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    origin = Column(String, nullable=False)  # system|user|import
+    origin_user_id = Column(String, nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("kind", "template_id", name="uq_template_provenance_template"),
+        CheckConstraint("origin in ('system','user','import')", name="ck_template_provenance_origin"),
+        CheckConstraint("kind in ('habit','lesson','program')", name="ck_template_provenance_kind"),
+    )
+
+
