@@ -4,11 +4,12 @@ import strawberry
 from habits_service.habits_service.app.db.session import engine
 from habits_service.habits_service.app.db.models import Base
 from habits_service.habits_service.app.graphql.schemas.query import Query as RootQuery
+from habits_service.habits_service.app.graphql.schemas.mutation import Mutation as RootMutation
 from habits_service.habits_service.app.config import get_settings
 from sqlalchemy import text
 
 
-schema = strawberry.Schema(query=RootQuery)
+schema = strawberry.Schema(query=RootQuery, mutation=RootMutation)
 graphql_app = GraphQLRouter(schema)
 
 app = FastAPI()
