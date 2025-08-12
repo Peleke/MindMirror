@@ -8,7 +8,7 @@ from habits_service.habits_service.app.main import app
 
 
 @pytest.mark.asyncio
-async def test_program_queries_and_assignments():
+async def test_program_queries_and_assignments(db_session):
     transport = ASGITransport(app=app)
     client = AsyncClient(transport=transport, base_url="http://test")
 

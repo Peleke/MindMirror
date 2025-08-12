@@ -34,8 +34,18 @@ async def db_session() -> AsyncSession:
     from habits_service.habits_service.app.db import session as session_module
     importlib.reload(session_module)
 
-    # Prepare schema and tables using app engine
-    async with session_module.engine.begin() as conn:
+    # Build a test-scoped engine with schema translation so GraphQL and repos share it
+    test_engine = create_async_engine(
+        db_url,
+        future=True,
+        poolclass=NullPool,
+        execution_options={"schema_translate_map": {"habits": schema}},
+    )
+    session_module.engine = test_engine
+    session_module.async_session_maker = async_sessionmaker(bind=test_engine, expire_on_commit=False, class_=AsyncSession)
+
+    # Prepare schema and tables using the test engine
+    async with test_engine.begin() as conn:
         await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
         await conn.execute(text(f"CREATE SCHEMA {schema}"))
         await conn.run_sync(Base.metadata.create_all)
@@ -46,9 +56,9 @@ async def db_session() -> AsyncSession:
         yield session
 
     # Teardown
-    async with session_module.engine.begin() as conn:
+    async with test_engine.begin() as conn:
         await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
-    await session_module.engine.dispose()
+    await test_engine.dispose()
     print(f"[tests] Dropped schema {schema} and disposed engine")
 
 

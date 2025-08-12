@@ -15,7 +15,8 @@ async def test_acl_and_provenance(db_session):
     aclrepo = TemplateAccessRepository(db_session)
     provrepo = TemplateProvenanceRepository(db_session)
 
-    habit = await hrepo.create(slug="share-me", title="Share Me")
+    import uuid
+    habit = await hrepo.create(slug=f"share-me-{uuid.uuid4().hex[:8]}", title="Share Me")
     await db_session.commit()
 
     # Upsert public view and owner

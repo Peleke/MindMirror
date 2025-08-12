@@ -27,8 +27,9 @@ async def test_structural_repos_flow(db_session):
     arepo = UserProgramAssignmentRepository(db_session)
     ltrepo = LessonTemplateRepository(db_session)
 
-    habit = await hrepo.create(slug="hydrate", title="Hydrate")
-    program = await prepo.create(slug="water-week", title="Water Week")
+    import uuid
+    habit = await hrepo.create(slug=f"hydrate-{uuid.uuid4().hex[:6]}", title="Hydrate")
+    program = await prepo.create(slug=f"water-week-{uuid.uuid4().hex[:6]}", title="Water Week")
     await db_session.commit()
 
     # Steps

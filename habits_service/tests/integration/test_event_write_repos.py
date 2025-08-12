@@ -20,7 +20,8 @@ async def test_habit_and_lesson_event_upserts(db_session):
     he_repo = HabitEventRepository(db_session)
     le_repo = LessonEventRepository(db_session)
 
-    habit = await ht_repo.create(slug="event-habit", title="Event Habit")
+    import uuid
+    habit = await ht_repo.create(slug=f"event-habit-{uuid.uuid4().hex[:8]}", title="Event Habit")
     lesson = await lt_repo.create(slug="event-lesson", title="Event Lesson", markdown_content="# md")
     await db_session.commit()
 
