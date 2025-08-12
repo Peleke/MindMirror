@@ -36,6 +36,14 @@ jobs:
         run: |
           docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:${{ env.tag }} -f src/journal_service/Dockerfile .
 
+      - name: Docker build habits_service (prod deps)
+        if: env.service == 'habits_service' || env.service == 'all'
+        run: |
+          docker build \
+            --build-arg BUILD_WITH_DEV=false \
+            -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }} \
+            -f habits_service/Dockerfile .
+
       - name: Docker build celery-worker
         if: env.service == 'celery-worker' || env.service == 'all'
         run: |
