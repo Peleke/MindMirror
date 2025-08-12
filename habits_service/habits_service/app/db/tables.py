@@ -46,6 +46,11 @@ class LessonTemplate(Base):
     summary = Column(Text, nullable=True)
     tags = Column(JSON, nullable=True)
     est_read_minutes = Column(Integer, nullable=True)
+    # Versioning and metadata
+    version = Column(Integer, nullable=False, server_default="1")
+    content_hash = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="true")
+    metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -57,6 +62,10 @@ class ProgramTemplate(Base):
     slug = Column(String, nullable=False, unique=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    # Versioning
+    version = Column(Integer, nullable=False, server_default="1")
+    content_hash = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="true")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
