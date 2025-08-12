@@ -1,6 +1,6 @@
 import strawberry
 from datetime import date
-from typing import List
+from typing import List, Optional
 
 from habits_service.habits_service.app.db.uow import UnitOfWork
 from habits_service.habits_service.app.db.repositories import HabitsReadRepository
@@ -72,5 +72,28 @@ class Query:
                     )
 
             return converted
+
+    @strawberry.type
+    class ProgramTemplateType:
+        id: str
+        slug: str
+        title: str
+        description: Optional[str]
+
+    @strawberry.field
+    async def programTemplates(self) -> List[ProgramTemplateType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            rows = await repo.list_program_templates()
+            return [Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description) for r in rows]
+
+    @strawberry.field
+    async def programTemplateBySlug(self, slug: str) -> Optional[ProgramTemplateType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            r = await repo.get_program_template_by_slug(slug)
+            if not r:
+                return None
+            return Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description)
 
 

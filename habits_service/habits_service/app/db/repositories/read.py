@@ -11,6 +11,7 @@ from habits_service.habits_service.app.db.tables import (
     HabitTemplate,
     LessonEvent,
     LessonTemplate,
+    ProgramTemplate,
     ProgramStepTemplate,
     StepLessonTemplate,
     UserProgramAssignment,
@@ -36,6 +37,16 @@ class HabitsReadRepository:
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_program_templates(self) -> List[ProgramTemplate]:
+        stmt: Select = select(ProgramTemplate).order_by(ProgramTemplate.created_at.asc())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_program_template_by_slug(self, slug: str) -> Optional[ProgramTemplate]:
+        stmt: Select = select(ProgramTemplate).where(ProgramTemplate.slug == slug)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def get_habit_template(self, habit_template_id: str) -> Optional[HabitTemplate]:
         stmt: Select = select(HabitTemplate).where(HabitTemplate.id == habit_template_id)
