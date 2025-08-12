@@ -23,7 +23,7 @@ sequence:
     lessonSlugs:
       - stop-at-80-percent
   - stepSlug: fiber-first
-    title: More Fiber: Fruits, Veggies, and Grains
+    title: "More Fiber: Fruits, Veggies, and Grains"
     durationDays: 7
     habitTemplateSlug: more-fiber
     lessonSlugs:
@@ -35,7 +35,7 @@ sequence:
     lessonSlugs:
       - prioritize-protein
   - stepSlug: rethink-drinks
-    title: Rethink Drinks: Choose Water or Unsweetened Options
+    title: "Rethink Drinks: Choose Water or Unsweetened Options"
     durationDays: 7
     habitTemplateSlug: rethink-drinks
     lessonSlugs:
