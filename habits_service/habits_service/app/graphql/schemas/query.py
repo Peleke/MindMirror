@@ -96,4 +96,28 @@ class Query:
                 return None
             return Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description)
 
+    @strawberry.type
+    class ProgramAssignmentType:
+        id: str
+        userId: str
+        programTemplateId: str
+        status: str
+        startDate: date
+
+    @strawberry.field
+    async def programAssignments(self, userId: str, status: Optional[str] = None) -> List[ProgramAssignmentType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            rows = await repo.list_assignments(userId, status)
+            return [
+                Query.ProgramAssignmentType(
+                    id=str(r.id),
+                    userId=r.user_id,
+                    programTemplateId=str(r.program_template_id),
+                    status=r.status,
+                    startDate=r.start_date,
+                )
+                for r in rows
+            ]
+
 

@@ -29,6 +29,13 @@ class HabitsReadRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_assignments(self, user_id: str, status: Optional[str] = None) -> List[UserProgramAssignment]:
+        stmt: Select = select(UserProgramAssignment).where(UserProgramAssignment.user_id == user_id)
+        if status:
+            stmt = stmt.where(UserProgramAssignment.status == status)
+        result = await self.session.execute(stmt.order_by(UserProgramAssignment.created_at.desc()))
+        return list(result.scalars().all())
+
     async def get_program_steps(self, program_template_id: str) -> List[ProgramStepTemplate]:
         stmt: Select = (
             select(ProgramStepTemplate)
