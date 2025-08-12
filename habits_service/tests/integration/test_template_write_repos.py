@@ -47,5 +47,3 @@ async def test_template_write_repos_crud():
         await session.commit()
         again = await hrepo.get_by_id(str(habit.id))
         assert again and again.title == "Eat Slowly v2"
-
-

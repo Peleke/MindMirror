@@ -10,6 +10,9 @@ from habits_service.habits_service.app.db.tables import (
     HabitTemplate,
     LessonTemplate,
     ProgramTemplate,
+    ProgramStepTemplate,
+    StepLessonTemplate,
+    UserProgramAssignment,
 )
 
 
