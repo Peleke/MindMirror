@@ -8,16 +8,20 @@ import Constants from 'expo-constants'
 const isDevelopment = __DEV__
 
 // More robust gateway URL loading
-const GATEWAY_BASE_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || Constants.expoConfig?.extra?.gatewayUrl
+const RAW_GATEWAY_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || Constants.expoConfig?.extra?.gatewayUrl
 
-if (!GATEWAY_BASE_URL) {
+if (!RAW_GATEWAY_URL) {
   console.error("CRITICAL: Gateway URL is not configured. Check .env or app.json.")
 }
 
-// Ensure the final URI includes the /graphql path
-const finalGatewayUrl = GATEWAY_BASE_URL 
-  ? `${GATEWAY_BASE_URL.replace(/\/$/, '')}/graphql` 
-  : 'http://localhost:4000/graphql'; // Fallback for local dev if nothing is set
+// Normalize to ensure exactly one /graphql suffix, without duplicating it
+const normalizeGatewayUrl = (url?: string | null) => {
+  if (!url) return null
+  const trimmed = url.replace(/\/+$/, '')
+  return trimmed.endsWith('/graphql') ? trimmed : `${trimmed}/graphql`
+}
+
+const finalGatewayUrl = normalizeGatewayUrl(RAW_GATEWAY_URL) || 'http://localhost:4000/graphql'
 
 // HTTP Link for GraphQL endpoint
 const httpLink = createHttpLink({
