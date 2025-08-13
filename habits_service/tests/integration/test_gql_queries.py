@@ -47,7 +47,7 @@ async def test_program_queries_and_assignments(db_session):
 
     q2 = {"query": "query($s:String!){ programTemplateBySlug(slug:$s){ id slug title } }", "variables": {"s": program_slug}}
     rprog = await client.post("/graphql", json=q2)
-    assert rprog.json()["data"]["programTemplateBySlug"]["slug"] == "prog-q"
+    assert rprog.json()["data"]["programTemplateBySlug"]["slug"] == program_slug
 
     # Assign and list assignments
     m4 = {
