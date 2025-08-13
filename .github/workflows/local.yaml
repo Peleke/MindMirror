@@ -16,6 +16,7 @@ jobs:
       # Default production service URLs (can be overridden)
       JOURNAL_SERVICE_URL: https://journal-service-3858903851.us-east4.run.app
       AGENT_SERVICE_URL: https://agent-service-3858903851.us-east4.run.app
+      HABITS_SERVICE_URL: https://habits-service-3858903851.us-east4.run.app
 
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +45,13 @@ jobs:
             -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }} \
             -f habits_service/Dockerfile .
 
+      - name: Echo push command for habits_service
+        if: env.service == 'habits_service' || env.service == 'all'
+        run: |
+          echo "Build complete. To push the image, run:"
+          echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }}"
+          echo "::notice title=habits_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }}"
+
       - name: Docker build celery-worker
         if: env.service == 'celery-worker' || env.service == 'all'
         run: |
@@ -63,6 +71,7 @@ jobs:
             -v $(pwd)/mesh/build:/app/build \
             --env JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-https://journal-service-3858903851.us-east4.run.app} \
             --env AGENT_SERVICE_URL=${AGENT_SERVICE_URL:-https://agent-service-3858903851.us-east4.run.app} \
+            --env HABITS_SERVICE_URL=${HABITS_SERVICE_URL:-https://habits-service-3858903851.us-east4.run.app} \
             us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }} \
             npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql
 
