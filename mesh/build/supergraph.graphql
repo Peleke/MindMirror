@@ -85,18 +85,9 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(
-    name: "Agent"
-    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
-  )
-  HABITS @join__graph(
-    name: "Habits"
-    url: "https://habits-service-3858903851.us-east4.run.app/graphql"
-  )
-  JOURNAL @join__graph(
-    name: "Journal"
-    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
-  )
+  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
+  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
+  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
 }
 
 """
@@ -151,10 +142,10 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   listToolNames: [String!]! @join__field(graph: AGENT) 
   health: String! @join__field(graph: HABITS) 
   service: String! @join__field(graph: HABITS) 
-  todaysTasks(userId: String!, onDate: Date!) : [Task!]! @join__field(graph: HABITS) 
+  todaysTasks(onDate: Date!) : [Task!]! @join__field(graph: HABITS) 
   programTemplates: [ProgramTemplateType!]! @join__field(graph: HABITS) 
   programTemplateBySlug(slug: String!) : ProgramTemplateType @join__field(graph: HABITS) 
-  programAssignments(userId: String!, status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
+  programAssignments(status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
@@ -206,10 +197,10 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   createProgramTemplate(input: ProgramTemplateInput!) : ProgramTemplatePayload! @join__field(graph: HABITS) 
   addProgramStep(programId: String!, input: ProgramStepInput!) : ProgramStepPayload! @join__field(graph: HABITS) 
   addStepLesson(stepId: String!, dayIndex: Int!, lessonTemplateId: String!) : Boolean! @join__field(graph: HABITS) 
-  assignProgramToUser(userId: String!, programId: String!, startDate: Date!) : AssignmentPayload! @join__field(graph: HABITS) 
-  recordHabitResponse(userId: String!, habitTemplateId: String!, onDate: Date!, response: String!) : Boolean! @join__field(graph: HABITS) 
-  recordLessonOpened(userId: String!, lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
-  markLessonCompleted(userId: String!, lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
+  assignProgramToUser(programId: String!, startDate: Date!) : AssignmentPayload! @join__field(graph: HABITS) 
+  recordHabitResponse(habitTemplateId: String!, onDate: Date!, response: String!) : Boolean! @join__field(graph: HABITS) 
+  recordLessonOpened(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
+  markLessonCompleted(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
