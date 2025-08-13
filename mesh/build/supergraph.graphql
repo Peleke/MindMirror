@@ -85,9 +85,18 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
-  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
-  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
+  AGENT @join__graph(
+    name: "Agent"
+    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
+  )
+  HABITS @join__graph(
+    name: "Habits"
+    url: "https://habits-service-3858903851.us-east4.run.app/graphql"
+  )
+  JOURNAL @join__graph(
+    name: "Journal"
+    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
+  )
 }
 
 """
@@ -106,6 +115,11 @@ Represents binary data as Base64-encoded strings, using the standard alphabet.
 scalar Base64 @join__type(graph: AGENT) 
 
 scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL) 
+
+"""
+Date (isoformat)
+"""
+scalar Date @join__type(graph: HABITS) 
 
 scalar UUID @join__type(graph: JOURNAL) 
 
@@ -136,7 +150,11 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   getToolRegistryHealth: ToolRegistryHealth! @join__field(graph: AGENT) 
   listToolNames: [String!]! @join__field(graph: AGENT) 
   health: String! @join__field(graph: HABITS) 
-  version: String! @join__field(graph: HABITS) 
+  service: String! @join__field(graph: HABITS) 
+  todaysTasks(userId: String!, onDate: Date!) : [Task!]! @join__field(graph: HABITS) 
+  programTemplates: [ProgramTemplateType!]! @join__field(graph: HABITS) 
+  programTemplateBySlug(slug: String!) : ProgramTemplateType @join__field(graph: HABITS) 
+  programAssignments(userId: String!, status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
@@ -173,7 +191,7 @@ type ToolRegistryHealth @join__type(graph: AGENT)  {
   error: String
 }
 
-type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
+type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  {
   generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
   executeTool(toolName: String!, arguments: JSON!, version: String = null) : ToolExecutionResult! @join__field(graph: AGENT) 
   executeSubtool(
@@ -183,6 +201,15 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  {
     version: String = null
   ): ToolExecutionResult! @join__field(graph: AGENT) 
   uploadDocument(fileName: String!, content: Base64!, tradition: String! = "canon-default") : Boolean! @join__field(graph: AGENT) 
+  createHabitTemplate(input: HabitTemplateInput!) : HabitTemplatePayload! @join__field(graph: HABITS) 
+  createLessonTemplate(input: LessonTemplateInput!) : LessonTemplatePayload! @join__field(graph: HABITS) 
+  createProgramTemplate(input: ProgramTemplateInput!) : ProgramTemplatePayload! @join__field(graph: HABITS) 
+  addProgramStep(programId: String!, input: ProgramStepInput!) : ProgramStepPayload! @join__field(graph: HABITS) 
+  addStepLesson(stepId: String!, dayIndex: Int!, lessonTemplateId: String!) : Boolean! @join__field(graph: HABITS) 
+  assignProgramToUser(userId: String!, programId: String!, startDate: Date!) : AssignmentPayload! @join__field(graph: HABITS) 
+  recordHabitResponse(userId: String!, habitTemplateId: String!, onDate: Date!, response: String!) : Boolean! @join__field(graph: HABITS) 
+  recordLessonOpened(userId: String!, lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
+  markLessonCompleted(userId: String!, lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
@@ -200,6 +227,80 @@ type ToolExecutionResult @join__type(graph: AGENT)  {
   result: [JSON!]!
   error: String
   executionTimeMs: Int
+}
+
+type HabitTask @join__type(graph: HABITS)  {
+  taskId: String!
+  type: TaskType!
+  habitTemplateId: String!
+  title: String!
+  description: String
+  status: TaskStatus!
+}
+
+type LessonTask @join__type(graph: HABITS)  {
+  taskId: String!
+  type: TaskType!
+  lessonTemplateId: String!
+  title: String!
+  summary: String
+  status: TaskStatus!
+}
+
+type JournalTask @join__type(graph: HABITS)  {
+  taskId: String!
+  type: TaskType!
+  title: String!
+  description: String
+  status: TaskStatus!
+}
+
+type ProgramTemplateType @join__type(graph: HABITS)  {
+  id: String!
+  slug: String!
+  title: String!
+  description: String
+}
+
+type ProgramAssignmentType @join__type(graph: HABITS)  {
+  id: String!
+  userId: String!
+  programTemplateId: String!
+  status: String!
+  startDate: Date!
+}
+
+type HabitTemplatePayload @join__type(graph: HABITS)  {
+  id: String!
+  slug: String!
+  title: String!
+}
+
+type LessonTemplatePayload @join__type(graph: HABITS)  {
+  id: String!
+  slug: String!
+  title: String!
+}
+
+type ProgramTemplatePayload @join__type(graph: HABITS)  {
+  id: String!
+  slug: String!
+  title: String!
+}
+
+type ProgramStepPayload @join__type(graph: HABITS)  {
+  id: String!
+  programTemplateId: String!
+  sequenceIndex: Int!
+  habitTemplateId: String!
+  durationDays: Int!
+}
+
+type AssignmentPayload @join__type(graph: HABITS)  {
+  id: String!
+  userId: String!
+  programTemplateId: String!
+  status: String!
 }
 
 type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: JOURNAL)  @join__implements(graph: JOURNAL, interface: "JournalEntryInterface")  {
@@ -249,6 +350,48 @@ interface JournalEntryInterface @join__type(graph: JOURNAL)  {
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+}
+
+union Task @join__type(graph: HABITS)  @join__unionMember(graph: HABITS, member: "HabitTask")  @join__unionMember(graph: HABITS, member: "LessonTask")  @join__unionMember(graph: HABITS, member: "JournalTask")  = HabitTask | LessonTask | JournalTask
+
+enum TaskType @join__type(graph: HABITS)  {
+  habit @join__enumValue(graph: HABITS) 
+  lesson @join__enumValue(graph: HABITS) 
+  journal @join__enumValue(graph: HABITS) 
+}
+
+enum TaskStatus @join__type(graph: HABITS)  {
+  pending @join__enumValue(graph: HABITS) 
+  completed @join__enumValue(graph: HABITS) 
+  dismissed @join__enumValue(graph: HABITS) 
+}
+
+input HabitTemplateInput @join__type(graph: HABITS)  {
+  slug: String!
+  title: String!
+  shortDescription: String = null
+  description: String = null
+  level: Int = null
+  defaultDurationDays: Int! = 7
+}
+
+input LessonTemplateInput @join__type(graph: HABITS)  {
+  slug: String!
+  title: String!
+  markdownContent: String!
+  summary: String = null
+}
+
+input ProgramTemplateInput @join__type(graph: HABITS)  {
+  slug: String!
+  title: String!
+  description: String = null
+}
+
+input ProgramStepInput @join__type(graph: HABITS)  {
+  sequenceIndex: Int!
+  habitTemplateId: String!
+  durationDays: Int!
 }
 
 input GratitudeEntryInput @join__type(graph: JOURNAL)  {
