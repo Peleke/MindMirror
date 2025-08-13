@@ -10,8 +10,14 @@ resource "google_cloud_run_service" "habits_service" {
 
         ports { container_port = 8003 }
 
-        env { name = "ENVIRONMENT" value = var.environment }
-        env { name = "LOG_LEVEL" value = var.log_level }
+        env {
+          name  = "ENVIRONMENT"
+          value = var.environment
+        }
+        env {
+          name  = "LOG_LEVEL"
+          value = var.log_level
+        }
       }
 
       service_account_name = var.service_account_email

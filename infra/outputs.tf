@@ -22,3 +22,8 @@ output "celery_worker_url" {
   description = "Celery worker service URL"
   value       = module.celery_worker.celery_worker_url
 }
+
+output "habits_service_url" {
+  description = "Habits service URL"
+  value       = module.habits_service.habits_service_url
+}
