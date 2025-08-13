@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import strawberry
+from strawberry.types import Info
+from habits_service.habits_service.app.graphql.context import get_current_user_from_context
 from datetime import date
 from typing import Optional
 
@@ -157,31 +159,35 @@ class Mutation:
             return True
 
     @strawberry.mutation
-    async def assignProgramToUser(self, userId: str, programId: str, startDate: date) -> AssignmentPayload:
+    async def assignProgramToUser(self, programId: str, startDate: date, info: Info) -> AssignmentPayload:
         async with UnitOfWork() as uow:
             repo = UserProgramAssignmentRepository(uow.session)
-            a = await repo.create(user_id=userId, program_template_id=programId, start_date=startDate)
+            current_user = get_current_user_from_context(info)
+            a = await repo.create(user_id=str(current_user.id), program_template_id=programId, start_date=startDate)
             return AssignmentPayload(id=str(a.id), userId=a.user_id, programTemplateId=str(a.program_template_id), status=a.status)
 
     @strawberry.mutation
-    async def recordHabitResponse(self, userId: str, habitTemplateId: str, onDate: date, response: str) -> bool:
+    async def recordHabitResponse(self, habitTemplateId: str, onDate: date, response: str, info: Info) -> bool:
         async with UnitOfWork() as uow:
             repo = HabitEventRepository(uow.session)
-            await repo.upsert(user_id=userId, habit_template_id=habitTemplateId, on_date=onDate, response=response)
+            current_user = get_current_user_from_context(info)
+            await repo.upsert(user_id=str(current_user.id), habit_template_id=habitTemplateId, on_date=onDate, response=response)
             return True
 
     @strawberry.mutation
-    async def recordLessonOpened(self, userId: str, lessonTemplateId: str, onDate: date) -> bool:
+    async def recordLessonOpened(self, lessonTemplateId: str, onDate: date, info: Info) -> bool:
         async with UnitOfWork() as uow:
             repo = LessonEventRepository(uow.session)
-            await repo.upsert(user_id=userId, lesson_template_id=lessonTemplateId, on_date=onDate, event_type="opened")
+            current_user = get_current_user_from_context(info)
+            await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="opened")
             return True
 
     @strawberry.mutation
-    async def markLessonCompleted(self, userId: str, lessonTemplateId: str, onDate: date) -> bool:
+    async def markLessonCompleted(self, lessonTemplateId: str, onDate: date, info: Info) -> bool:
         async with UnitOfWork() as uow:
             repo = LessonEventRepository(uow.session)
-            await repo.upsert(user_id=userId, lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
+            current_user = get_current_user_from_context(info)
+            await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
             return True
 
 

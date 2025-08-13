@@ -29,6 +29,8 @@ async def db_session() -> AsyncSession:
     # Point app settings to this schema and URL, then reload session so its engine is created in this test's loop
     os.environ["DATABASE_URL"] = db_url
     os.environ["DATABASE_SCHEMA"] = schema
+    os.environ["ENVIRONMENT"] = "test"
+    os.environ["REQUIRE_AUTH"] = "false"
     from habits_service.habits_service.app.config import get_settings as _get_settings
     _get_settings.cache_clear()
     from habits_service.habits_service.app.db import session as session_module
@@ -66,6 +68,13 @@ async def db_session() -> AsyncSession:
         await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
     await test_engine.dispose()
     print(f"[tests] Dropped schema {schema} and disposed engine")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_app(db_session):
+    # Import app after db_session wired engine/session for this test
+    from habits_service.habits_service.app import main as app_main
+    yield app_main.app
 
 
 # remove old prepare_schema and module-based db_session

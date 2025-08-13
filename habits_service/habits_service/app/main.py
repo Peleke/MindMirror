@@ -7,10 +7,11 @@ from habits_service.habits_service.app.graphql.schemas.query import Query as Roo
 from habits_service.habits_service.app.graphql.schemas.mutation import Mutation as RootMutation
 from habits_service.habits_service.app.config import get_settings
 from sqlalchemy import text
+from habits_service.habits_service.app.graphql.context import get_context
 
 
 schema = strawberry.Schema(query=RootQuery, mutation=RootMutation)
-graphql_app = GraphQLRouter(schema)
+graphql_app = GraphQLRouter(schema, context_getter=get_context)
 
 app = FastAPI()
 

@@ -1,4 +1,5 @@
 import strawberry
+from strawberry.types import Info
 from datetime import date
 from typing import List, Optional
 
@@ -18,6 +19,7 @@ from .task_types import (
     TaskType as GTaskType,
     TaskStatus as GTaskStatus,
 )
+from habits_service.habits_service.app.graphql.context import get_current_user_from_context
 
 
 @strawberry.type
@@ -31,10 +33,11 @@ class Query:
         return "habits"
 
     @strawberry.field
-    async def todaysTasks(self, userId: str, onDate: date) -> List[Task]:
+    async def todaysTasks(self, info: Info, onDate: date) -> List[Task]:
+        current_user = get_current_user_from_context(info)
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
-            planned = await plan_daily_tasks(userId, onDate, repo)
+            planned = await plan_daily_tasks(str(current_user.id), onDate, repo)
 
             converted: List[Task] = []
             for t in planned:
@@ -105,10 +108,11 @@ class Query:
         startDate: date
 
     @strawberry.field
-    async def programAssignments(self, userId: str, status: Optional[str] = None) -> List[ProgramAssignmentType]:
+    async def programAssignments(self, info: Info, status: Optional[str] = None) -> List[ProgramAssignmentType]:
+        current_user = get_current_user_from_context(info)
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
-            rows = await repo.list_assignments(userId, status)
+            rows = await repo.list_assignments(str(current_user.id), status)
             return [
                 Query.ProgramAssignmentType(
                     id=str(r.id),
