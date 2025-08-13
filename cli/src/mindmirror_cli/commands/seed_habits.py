@@ -29,6 +29,11 @@ from habits_service.habits_service.app.db.repositories.write_structural import (
     ProgramStepTemplateRepository,
     StepLessonTemplateRepository,
 )
+from mindmirror_cli.core.utils import (
+    set_environment,
+    get_current_environment,
+    is_live_environment,
+)
 
 console = Console()
 app = typer.Typer(name="seed-habits", help="Seed habits/lessons/programs into DB")
@@ -46,14 +51,30 @@ def run(
     program_dir: str = typer.Argument("/workspace/data/habits/programs/unfck-your-eating", help="Program directory"),
     database_url: Optional[str] = typer.Option(None, "--db-url", envvar="DATABASE_URL"),
     schema: Optional[str] = typer.Option("habits", "--schema", envvar="DATABASE_SCHEMA"),
+    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
 ):
     """Seed the specified program into the current DB."""
 
     async def _run():
+        # Set CLI environment if provided (mirrors Qdrant commands behavior)
+        if env:
+            set_environment(env)
+            console.print(f"[blue]Using environment: {get_current_environment()}[/blue]")
+
         nonlocal database_url
         if not database_url:
-            # fall back to compose default
-            database_url = "postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
+            if is_live_environment():
+                # Prefer explicit SUPABASE_DATABASE_URL for live
+                supabase_db_url = os.getenv("SUPABASE_DATABASE_URL")
+                if not supabase_db_url:
+                    console.print(
+                        "[red]SUPABASE_DATABASE_URL must be set when using --env live, or provide --db-url explicitly[/red]"
+                    )
+                    raise typer.Exit(1)
+                database_url = supabase_db_url
+            else:
+                # fall back to compose default for local
+                database_url = "postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
 
         engine = create_async_engine(
             database_url,
