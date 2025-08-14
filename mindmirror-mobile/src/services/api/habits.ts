@@ -119,4 +119,20 @@ export const LESSONS_FOR_HABIT = gql`
   }
 `
 
+// 6) Program steps (mock for now; wire when backend exposes)
+export const PROGRAM_STEPS = gql`
+  query ProgramTemplateSteps($programId: String!) {
+    programTemplateSteps(programId: $programId) {
+      id
+      sequenceIndex
+      durationDays
+      habit {
+        id
+        title
+        shortDescription
+      }
+    }
+  }
+`
+
 

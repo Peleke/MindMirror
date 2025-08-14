@@ -56,6 +56,43 @@ export function createMockLink(): ApolloLink {
       })
     }
 
+    // Mock program templates (marketplace)
+    if (operation.operationName === 'ListProgramTemplates' || ((operation.query.loc as any)?.source?.body || '').includes('programTemplates')) {
+      const data = {
+        programTemplates: [
+          { id: 'prog-1', slug: 'unfck-your-eating', title: "Unf*ck Your Eating", description: "A 7-habit sequence to reset your relationship with food." },
+          { id: 'prog-2', slug: 'sleep-better', title: "Sleep Better", description: "Habits to improve sleep hygiene over two weeks." },
+        ],
+      }
+      return new Observable<FetchResult>((observer) => { observer.next({ data }); observer.complete() })
+    }
+
+    // Mock program by slug
+    if (operation.operationName === 'ProgramTemplateBySlug' || ((operation.query.loc as any)?.source?.body || '').includes('programTemplateBySlug')) {
+      const vars: any = operation.variables || {}
+      const slug = vars.slug || 'unfck-your-eating'
+      const data = {
+        programTemplateBySlug: {
+          id: slug === 'unfck-your-eating' ? 'prog-1' : 'prog-2',
+          slug,
+          title: slug === 'unfck-your-eating' ? 'Unf*ck Your Eating' : 'Sleep Better',
+          description: slug === 'unfck-your-eating' ? 'A 7-habit sequence to reset your relationship with food.' : 'Habits to improve sleep hygiene over two weeks.',
+        },
+      }
+      return new Observable<FetchResult>((observer) => { observer.next({ data }); observer.complete() })
+    }
+
+    // Mock program steps
+    if (operation.operationName === 'ProgramTemplateSteps' || ((operation.query.loc as any)?.source?.body || '').includes('programTemplateSteps')) {
+      const data = {
+        programTemplateSteps: [
+          { id: 'step-1', sequenceIndex: 0, durationDays: 7, habit: { id: 'habit-1', title: 'Eat Slowly', shortDescription: 'Take 20 minutes to finish a meal.' } },
+          { id: 'step-2', sequenceIndex: 1, durationDays: 7, habit: { id: 'habit-2', title: 'Protein First', shortDescription: 'Start meals with protein for satiety.' } },
+        ],
+      }
+      return new Observable<FetchResult>((observer) => { observer.next({ data }); observer.complete() })
+    }
+
     // Fallback to next link (do not swallow non-matching ops)
     return forward ? forward(operation) : new Observable<FetchResult>((o) => o.complete())
   })

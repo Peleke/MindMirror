@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 // Hide this route from expo-router drawer
 export const href = null as any
 export const unstable_settings = { initialRouteName: '(app)' } as any
+export const options = { drawerItemStyle: { display: 'none' } } as any
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
@@ -12,7 +13,9 @@ import { HStack } from '@/components/ui/hstack'
 import { Button, ButtonText } from '@/components/ui/button'
 import { Textarea, TextareaInput } from '@/components/ui/textarea'
 import { useMutation } from '@apollo/client'
-import { RECORD_HABIT_RESPONSE } from '@/services/api/habits'
+import { RECORD_HABIT_RESPONSE, LESSONS_FOR_HABIT } from '@/services/api/habits'
+import { useQuery, gql } from '@apollo/client'
+import { CheckCircle, Circle } from 'lucide-react-native'
 import { AppBar } from '@/components/common/AppBar'
 
 function todayIsoDate(): string {
@@ -40,6 +43,22 @@ export default function HabitDetailScreen() {
       await recordHabitResponse({ variables: { habitTemplateId: params.id, onDate, response: r } })
     }
   }
+
+  // Lessons associated with this habit (mock-first)
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: lessonsData } = useQuery(
+    gql`
+      query LessonsForHabitInline($habitTemplateId: String!, $onDate: Date!) {
+        lessonsForHabit(habitTemplateId: $habitTemplateId, onDate: $onDate) {
+          lessonTemplateId
+          title
+          summary
+          completed
+        }
+      }
+    `,
+    { variables: { habitTemplateId: String(params.id), onDate: today }, fetchPolicy: 'cache-and-network' }
+  )
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -106,8 +125,32 @@ export default function HabitDetailScreen() {
               </HStack>
             </VStack>
 
-            {/* TODO: Associated lessons list when available from graph */}
-            <Text className="text-typography-600 dark:text-gray-400">Lessons: Coming soon</Text>
+            {/* Associated lessons */}
+            <VStack space="sm">
+              <Text className="text-xl font-bold text-typography-900 dark:text-white">Lessons</Text>
+              <Box className="h-px bg-border-200 dark:bg-border-700" />
+              {((lessonsData?.lessonsForHabit as any[]) || []).length === 0 ? (
+                <Text className="text-typography-600 dark:text-gray-400">No lessons found.</Text>
+              ) : ((lessonsData?.lessonsForHabit as any[]) || []).map((l: any) => (
+                <Pressable
+                  key={l.lessonTemplateId}
+                  onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&summary=${encodeURIComponent(l.summary || '')}&from=tasks`)}
+                >
+                  <HStack className="py-3 items-center justify-between">
+                    <HStack space="sm" className="items-center">
+                      <Icon as={CheckCircle} size="sm" className={` ${l.completed ? 'text-green-600' : 'text-gray-300'}`} />
+                      <VStack>
+                        <Text className="text-base font-semibold text-typography-900 dark:text-white">{l.title}</Text>
+                        {l.summary ? (
+                          <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
+                        ) : null}
+                      </VStack>
+                    </HStack>
+                    <Icon as={l.completed ? CheckCircle : Circle} size="md" className={`${l.completed ? 'text-green-600' : 'text-gray-400'}`} />
+                  </HStack>
+                </Pressable>
+              ))}
+            </VStack>
           </VStack>
         </ScrollView>
       </VStack>
