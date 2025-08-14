@@ -107,3 +107,16 @@ export const ASSIGN_PROGRAM_TO_USER = gql`
 `
 
 
+// 5) Associated lessons for a habit (for current step/day)
+export const LESSONS_FOR_HABIT = gql`
+  query LessonsForHabit($habitTemplateId: String!, $onDate: Date!) {
+    lessonsForHabit(habitTemplateId: $habitTemplateId, onDate: $onDate) {
+      lessonTemplateId
+      title
+      summary
+      completed
+    }
+  }
+`
+
+

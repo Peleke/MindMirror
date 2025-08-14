@@ -2,6 +2,8 @@ import { Drawer } from 'expo-router/drawer'
 import { View, StyleSheet } from 'react-native'
 import { colors } from '@/theme'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useEffect } from 'react'
+import { useNavigationState } from '@react-navigation/native'
 
 export default function AppLayout() {
   return (
@@ -16,14 +18,9 @@ export default function AppLayout() {
               backgroundColor: colors.background.primary,
             },
           }}
+          // Ensure profile is last visually by declaring it last
         >
-          <Drawer.Screen
-            name="journal"
-            options={{
-              drawerLabel: 'Home',
-              title: 'Home',
-            }}
-          />
+          <Drawer.Screen name="journal" options={{ drawerLabel: 'Home', title: 'Home' }} />
           <Drawer.Screen
             name="journal-hub"
             options={{
@@ -52,13 +49,7 @@ export default function AppLayout() {
               title: 'Insights',
             }}
           />
-          <Drawer.Screen
-            name="profile"
-            options={{
-              drawerLabel: 'Profile',
-              title: 'Profile',
-            }}
-          />
+          <Drawer.Screen name="profile" options={{ drawerLabel: 'Profile', title: 'Profile' }} />
         </Drawer>
       </View>
     </GestureHandlerRootView>

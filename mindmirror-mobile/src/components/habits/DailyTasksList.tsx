@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react'
 import { ActivityIndicator } from 'react-native'
-import { useQuery, useMutation } from '@apollo/client'
+import { useQuery, useMutation, gql } from '@apollo/client'
 import { Box } from '@/components/ui/box'
 import { VStack } from '@/components/ui/vstack'
 import { Text } from '@/components/ui/text'
-import { GET_TODAYS_TASKS, RECORD_HABIT_RESPONSE, RECORD_LESSON_OPENED, MARK_LESSON_COMPLETED } from '@/services/api/habits'
+import { RECORD_HABIT_RESPONSE, RECORD_LESSON_OPENED, MARK_LESSON_COMPLETED } from '@/services/api/habits'
 import { Task, HabitTask, LessonTask, JournalTask } from '@/types/habits'
 import HabitCard from './cards/HabitCard'
 import LessonCard from './cards/LessonCard'
@@ -25,7 +25,35 @@ export default function DailyTasksList() {
   const router = useRouter()
   const mockEnabled = ((process.env.EXPO_PUBLIC_MOCK_TASKS || Constants.expoConfig?.extra?.mockTasks) || '').toString().toLowerCase() === 'true'
 
-  const { data, loading, error, refetch } = useQuery(GET_TODAYS_TASKS, {
+  const GET_TODAYS_TASKS_INLINE = gql`
+    query TodaysTasksInline($onDate: Date!) {
+      todaysTasks(onDate: $onDate) {
+        __typename
+        ... on HabitTask {
+          taskId
+          title
+          description
+          status
+          habitTemplateId
+        }
+        ... on LessonTask {
+          taskId
+          title
+          summary
+          status
+          lessonTemplateId
+        }
+        ... on JournalTask {
+          taskId
+          title
+          description
+          status
+        }
+      }
+    }
+  `
+
+  const { data, loading, error, refetch } = useQuery(GET_TODAYS_TASKS_INLINE, {
     variables: { onDate },
     fetchPolicy: 'cache-and-network',
     errorPolicy: 'none',
@@ -70,15 +98,21 @@ export default function DailyTasksList() {
   return (
     <VStack space="md">
       {tasks.map((t) => {
+        // eslint-disable-next-line no-console
+        console.log('[DailyTasksList] task item', t)
         if (t.__typename === 'HabitTask') {
           const ht = t as HabitTask
           const title = ht.title || 'Habit'
+          // eslint-disable-next-line no-console
+          console.log('[DailyTasksList] HabitTask title/desc', ht.title, ht.description)
           return (
             <HabitCard
               key={ht.taskId}
               task={{ ...ht, title }}
               onRespond={async (response: 'yes' | 'no') => {
-                await recordHabitResponse({ variables: { habitTemplateId: ht.habitTemplateId, onDate, response } })
+                if (!mockEnabled) {
+                  await recordHabitResponse({ variables: { habitTemplateId: ht.habitTemplateId, onDate, response } })
+                }
               }}
               onPress={() => {
                 const desc = ht.description ?? ''
@@ -90,6 +124,8 @@ export default function DailyTasksList() {
         if (t.__typename === 'LessonTask') {
           const lt = t as LessonTask
           const title = lt.title || 'Lesson'
+          // eslint-disable-next-line no-console
+          console.log('[DailyTasksList] LessonTask title/summary', lt.title, lt.summary)
           return (
             <LessonCard
               key={lt.taskId}

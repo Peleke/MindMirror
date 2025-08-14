@@ -1,20 +1,41 @@
 import React from 'react'
-import { useLocalSearchParams } from 'expo-router'
+// Hide this route from expo-router drawer
+export const href = null as any
+export const unstable_settings = { initialRouteName: '(app)' } as any
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { Text } from '@/components/ui/text'
 import { Box } from '@/components/ui/box'
 import { AppBar } from '@/components/common/AppBar'
+import { Button, ButtonText } from '@/components/ui/button'
+import { useMutation } from '@apollo/client'
+import { MARK_LESSON_COMPLETED } from '@/services/api/habits'
 
 // For now, render markdown as plain text; later replace with a proper MD renderer
 export default function LessonDetailScreen() {
   const params = useLocalSearchParams<{ id: string; title?: string; summary?: string }>()
+  const router = useRouter()
+  const [markLessonCompleted] = useMutation(MARK_LESSON_COMPLETED)
+  const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
+    .toString()
+    .toLowerCase() === 'true'
 
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title="Lesson" showBackButton />
+        <AppBar
+          title={params.title ? String(params.title) : 'Lesson'}
+          showBackButton
+          onBackPress={() => {
+            try {
+              router.back()
+            } catch {
+              router.replace('/journal')
+            }
+          }}
+        />
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <VStack className="px-6 py-6 w-full max-w-screen-md mx-auto" space="lg">
             <VStack space="sm">
@@ -30,6 +51,19 @@ export default function LessonDetailScreen() {
                 Markdown content rendering will be added. For now, we show summary and leave full content as TODO.
               </Text>
             </Box>
+
+            <Button
+              className="bg-blue-500"
+              onPress={async () => {
+                if (!mockEnabled) {
+                  const today = new Date().toISOString().slice(0, 10)
+                  await markLessonCompleted({ variables: { lessonTemplateId: String(params.id), onDate: today } })
+                }
+                router.replace('/tasks')
+              }}
+            >
+              <ButtonText>Complete Lesson</ButtonText>
+            </Button>
           </VStack>
         </ScrollView>
       </VStack>

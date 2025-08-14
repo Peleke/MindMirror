@@ -8,30 +8,55 @@ import { Text } from '@/components/ui/text'
 import { Button, ButtonText } from '@/components/ui/button'
 import { HabitTask } from '@/types/habits'
 import { Heart } from 'lucide-react-native'
+import { Swipeable } from 'react-native-gesture-handler'
+import { useState, useRef } from 'react'
 
 export default function HabitCard({ task, onRespond, onPress }: { task: HabitTask; onRespond: (r: 'yes' | 'no') => void; onPress?: () => void }) {
+  const [justSwiped, setJustSwiped] = useState(false)
+  const [lastResponse, setLastResponse] = useState<'yes' | 'no' | null>(null)
+  const swipeRef = useRef<Swipeable | null>(null)
   return (
-    <Pressable className="w-full" onPress={onPress}>
-      <Box className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow">
-        <VStack space="sm">
-          <HStack space="sm" className="items-center">
-            <Icon as={Heart} size="md" className="text-blue-600 dark:text-blue-400" />
-            <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
-          </HStack>
-          {task.description ? (
-            <Text className="text-typography-600 dark:text-gray-300">{task.description}</Text>
-          ) : null}
-          <HStack className="justify-between" space="sm">
-            <Button onPress={() => onRespond('yes')} className="flex-1 bg-blue-400">
-              <ButtonText>Yes</ButtonText>
-            </Button>
-            <Button onPress={() => onRespond('no')} className="flex-1 bg-red-400">
-              <ButtonText>No</ButtonText>
-            </Button>
-          </HStack>
-        </VStack>
-      </Box>
-    </Pressable>
+    <Swipeable
+      renderLeftActions={() => (
+        <Box className="justify-center items-start px-4 bg-blue-100 rounded-lg"><Text className="text-blue-700">Yes</Text></Box>
+      )}
+      renderRightActions={() => (
+        <Box className="justify-center items-end px-4 bg-red-100 rounded-lg"><Text className="text-red-700">No</Text></Box>
+      )}
+      onSwipeableOpen={(direction) => {
+        if (direction === 'left') {
+          setLastResponse('yes')
+          setJustSwiped(true)
+          onRespond('yes')
+        } else if (direction === 'right') {
+          setLastResponse('no')
+          setJustSwiped(true)
+          onRespond('no')
+        }
+        setTimeout(() => setJustSwiped(false), 400)
+        swipeRef.current?.close()
+      }}
+    >
+      <Pressable className="w-full" onPress={() => { if (!justSwiped && onPress) onPress() }}>
+        <Box className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow">
+          <VStack space="sm">
+            <HStack space="sm" className="items-center">
+              <Icon as={Heart} size="md" className="text-blue-600 dark:text-blue-400" />
+              <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
+            </HStack>
+            <Text className="text-typography-600 dark:text-gray-300">{task.description || 'No description provided.'}</Text>
+            <HStack className="justify-between" space="sm">
+              <Button onPress={() => { setLastResponse('yes'); onRespond('yes') }} className={`flex-1 ${lastResponse==='yes' ? 'bg-blue-500' : 'bg-blue-400'}`}>
+                <ButtonText>Yes</ButtonText>
+              </Button>
+              <Button onPress={() => { setLastResponse('no'); onRespond('no') }} className={`flex-1 ${lastResponse==='no' ? 'bg-red-500' : 'bg-red-400'}`}>
+                <ButtonText>No</ButtonText>
+              </Button>
+            </HStack>
+          </VStack>
+        </Box>
+      </Pressable>
+    </Swipeable>
   )
 }
 

@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react'
-import { useLocalSearchParams } from 'expo-router'
+// Hide this route from expo-router drawer
+export const href = null as any
+export const unstable_settings = { initialRouteName: '(app)' } as any
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
 import { ScrollView } from '@/components/ui/scroll-view'
@@ -22,20 +25,36 @@ function todayIsoDate(): string {
 
 export default function HabitDetailScreen() {
   const params = useLocalSearchParams<{ id: string; title?: string; description?: string }>()
+  const router = useRouter()
   const onDate = useMemo(() => todayIsoDate(), [])
   const [response, setResponse] = useState<'yes' | 'no' | null>(null)
   const [note, setNote] = useState('')
   const [recordHabitResponse] = useMutation(RECORD_HABIT_RESPONSE)
+  const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
+    .toString()
+    .toLowerCase() === 'true'
 
   const handleRespond = async (r: 'yes' | 'no') => {
     setResponse(r)
-    await recordHabitResponse({ variables: { habitTemplateId: params.id, onDate, response: r } })
+    if (!mockEnabled) {
+      await recordHabitResponse({ variables: { habitTemplateId: params.id, onDate, response: r } })
+    }
   }
 
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title={params.title ? String(params.title) : 'Habit'} showBackButton />
+        <AppBar
+          title={params.title ? String(params.title) : 'Habit'}
+          showBackButton
+          onBackPress={() => {
+            try {
+              router.back()
+            } catch {
+              router.replace('/journal')
+            }
+          }}
+        />
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <VStack className="px-6 py-6 w-full max-w-screen-md mx-auto" space="lg">
             <VStack space="sm">

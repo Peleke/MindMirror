@@ -22,6 +22,7 @@ import { useAffirmation } from '@/hooks/useAffirmation';
 import { useJournalStatus } from '@/hooks/useJournalStatus';
 import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
 import { AppBar } from '@/components/common/AppBar';
+import DailyTasksList from '@/components/habits/DailyTasksList'
 import { getUserDisplayName } from '@/utils/user';
 
 const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
@@ -106,10 +107,8 @@ export default function JournalScreen() {
       <VStack className="h-full w-full bg-background-0">
         <AppBar title="Journal" />
         
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          className="flex-1"
-        >
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+          <VStack className="w-full max-w-screen-md mx-auto">
           {/* Header Section */}
           <VStack className="px-6 py-6" space="md">
             <UserGreeting 
@@ -174,14 +173,14 @@ export default function JournalScreen() {
             </HStack>
           </VStack>
           
-          {/* Main Journal Entry Form */}
-          <VStack className="px-6 pb-6" space="md">
-            <JournalEntryForm
-              onSaveAndChat={handleSaveAndChat}
-              onSave={handleSave}
-              isLoading={isSubmitting}
-              className="bg-background-50 dark:bg-background-100 rounded-lg p-6"
-            />
+          {/* Divider */}
+          <Box className="h-px bg-border-200 dark:bg-border-700 mx-6" />
+
+          {/* Today's Tasks */}
+          <VStack className="px-6 py-6" space="md">
+            <Text className="text-lg font-semibold text-typography-900 dark:text-white">Today</Text>
+            <DailyTasksList />
+          </VStack>
           </VStack>
           
           {/* REMOVED: Old structured journal section */}

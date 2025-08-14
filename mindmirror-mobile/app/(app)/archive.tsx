@@ -224,10 +224,8 @@ export default function ArchiveScreen() {
       <VStack className="h-full w-full bg-background-0">
         <AppBar title="Archive" />
         
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          className="flex-1"
-        >
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+          <VStack className="w-full max-w-screen-md mx-auto">
           {/* Search Section */}
           <VStack className="px-6 py-6" space="md">
             <VStack space="xs">
@@ -353,6 +351,7 @@ export default function ArchiveScreen() {
             )}
           </VStack>
                       )}
+          </VStack>
           </ScrollView>
           
           {/* Pagination */}

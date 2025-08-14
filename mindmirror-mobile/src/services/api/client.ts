@@ -3,7 +3,7 @@ import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { Session } from '@supabase/supabase-js'
 import Constants from 'expo-constants'
-import { createMockLink } from './mockLink'
+import { createMockLink, createDevGuardLink } from './mockLink'
 
 // Environment detection
 const isDevelopment = __DEV__
@@ -107,7 +107,9 @@ export const apolloClient = new ApolloClient({
 
 // Helper function to create client with session context
 export function createApolloClientWithSession(session: Session | null) {
-  const mockEnabled = (process.env.EXPO_PUBLIC_MOCK_TASKS || '').toLowerCase() === 'true'
+  const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (Constants.expoConfig?.extra as any)?.mockTasks) || '')
+    .toString()
+    .toLowerCase() === 'true'
 
   const headerLink = setContext((_, { headers }) => {
     const nextHeaders: Record<string, string> = {
@@ -125,6 +127,7 @@ export function createApolloClientWithSession(session: Session | null) {
 
   const linkChain: ApolloLink[] = [errorLink, headerLink]
   if (mockEnabled) {
+    linkChain.push(createDevGuardLink())
     linkChain.push(createMockLink())
   }
   linkChain.push(httpLink)
