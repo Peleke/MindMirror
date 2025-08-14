@@ -22,6 +22,31 @@ from .task_types import (
 from habits_service.habits_service.app.graphql.context import get_current_user_from_context
 
 
+# Top-level GraphQL types to avoid unresolved nested type issues
+@strawberry.type
+class LessonTemplateType:
+    id: str
+    slug: str
+    title: str
+    summary: Optional[str]
+    markdownContent: str
+
+
+@strawberry.type
+class HabitBasicType:
+    id: str
+    title: str
+    shortDescription: Optional[str]
+
+
+@strawberry.type
+class ProgramStepType:
+    id: str
+    sequenceIndex: int
+    durationDays: int
+    habit: HabitBasicType
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -124,14 +149,6 @@ class Query:
                 for r in rows
             ]
 
-    @strawberry.type
-    class LessonTemplateType:
-        id: str
-        slug: str
-        title: str
-        summary: Optional[str]
-        markdownContent: str
-
     @strawberry.field
     async def lessonTemplateById(self, id: str) -> Optional[LessonTemplateType]:
         async with UnitOfWork() as uow:
@@ -139,12 +156,36 @@ class Query:
             row = await repo.get_lesson_template_by_id(id)
             if not row:
                 return None
-            return Query.LessonTemplateType(
+            return LessonTemplateType(
                 id=str(row.id),
                 slug=row.slug,
                 title=row.title,
                 summary=row.summary,
                 markdownContent=row.markdown_content,
             )
+
+    @strawberry.field
+    async def programTemplateSteps(self, programId: str) -> List[ProgramStepType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            steps = await repo.get_program_steps(programId)
+            out: List[ProgramStepType] = []
+            for s in steps:
+                habit = await repo.get_habit_template(str(s.habit_template_id))
+                if not habit:
+                    continue
+                out.append(
+                    ProgramStepType(
+                        id=str(s.id),
+                        sequenceIndex=s.sequence_index,
+                        durationDays=s.duration_days,
+                        habit=HabitBasicType(
+                            id=str(habit.id),
+                            title=habit.title,
+                            shortDescription=habit.short_description,
+                        ),
+                    )
+                )
+            return out
 
 
