@@ -67,7 +67,7 @@ export default function MarketplaceScreen() {
             ) : (
               <VStack space="md">
                 {programs.map((p: any) => (
-                  <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}`)}>
+                  <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}?from=marketplace`)}>
                     <Box className="p-4 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700 shadow">
                       <Text className="text-lg font-semibold text-typography-900 dark:text-white">{p.title}</Text>
                       {p.description ? (

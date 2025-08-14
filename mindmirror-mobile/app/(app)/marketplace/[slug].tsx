@@ -11,7 +11,9 @@ import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS } from 
 import { Button, ButtonText } from '@/components/ui/button'
 
 export default function ProgramDetailScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>()
+  const params = useLocalSearchParams<{ slug: string; from?: string }>()
+  const slug = params.slug
+  const from = params.from
   const router = useRouter()
   const { data, loading, error } = useQuery(PROGRAM_TEMPLATE_BY_SLUG, { variables: { slug }, fetchPolicy: 'cache-and-network' })
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
@@ -40,10 +42,14 @@ export default function ProgramDetailScreen() {
           title={program?.title || 'Program'}
           showBackButton
           onBackPress={() => {
-            try {
-              router.back()
-            } catch {
+            if (from === 'marketplace') {
               router.replace('/marketplace')
+            } else {
+              try {
+                router.back()
+              } catch {
+                router.replace('/journal')
+              }
             }
           }}
         />
