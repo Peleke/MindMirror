@@ -1,7 +1,7 @@
 import strawberry
 from strawberry.types import Info
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from habits_service.habits_service.app.db.uow import UnitOfWork
 from habits_service.habits_service.app.db.repositories import HabitsReadRepository
@@ -45,6 +45,14 @@ class ProgramStepType:
     sequenceIndex: int
     durationDays: int
     habit: HabitBasicType
+
+
+@strawberry.type
+class LessonForHabitType:
+    lessonTemplateId: str
+    title: str
+    summary: Optional[str]
+    completed: bool
 
 
 @strawberry.type
@@ -187,5 +195,51 @@ class Query:
                     )
                 )
             return out
+
+    @strawberry.field
+    async def lessonsForHabit(self, info: Info, habitTemplateId: str, onDate: date) -> List[LessonForHabitType]:
+        current_user = get_current_user_from_context(info)
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            assignments = await repo.get_active_assignments(str(current_user.id))
+            lesson_ids: List[str] = []
+
+            for a in assignments:
+                day_offset = (onDate - a.start_date).days
+                if day_offset < 0:
+                    continue
+                steps = await repo.get_program_steps(str(a.program_template_id))
+                acc = 0
+                for s in steps:
+                    step_len = s.duration_days
+                    if acc <= day_offset < acc + step_len:
+                        if str(s.habit_template_id) != habitTemplateId:
+                            break
+                        day_in_step = day_offset - acc
+                        sl = await repo.get_step_lessons_for_day(str(s.id), day_in_step)
+                        lesson_ids.extend([str(x.lesson_template_id) for x in sl])
+                        break
+                    acc += step_len
+
+            ids_set: Set[str] = set(lesson_ids)
+            if not ids_set:
+                return []
+
+            lessons = await repo.get_lesson_templates(list(ids_set))
+            events = await repo.find_lesson_events(str(current_user.id), list(ids_set), onDate)
+            completed_ids: Set[str] = {str(e.lesson_template_id) for e in events if e.event_type == 'completed'}
+
+            result: List[LessonForHabitType] = []
+            for l in lessons:
+                result.append(
+                    LessonForHabitType(
+                        lessonTemplateId=str(l.id),
+                        title=l.title,
+                        summary=l.summary,
+                        completed=str(l.id) in completed_ids,
+                    )
+                )
+            result.sort(key=lambda x: x.title.lower())
+            return result
 
 
