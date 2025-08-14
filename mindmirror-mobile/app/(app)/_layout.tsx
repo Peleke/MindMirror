@@ -2,8 +2,7 @@ import { Drawer } from 'expo-router/drawer'
 import { View, StyleSheet } from 'react-native'
 import { colors } from '@/theme'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { useEffect } from 'react'
-import { useNavigationState } from '@react-navigation/native'
+import CustomDrawerContent from '@/components/navigation/CustomDrawerContent'
 
 export default function AppLayout() {
   return (
@@ -18,6 +17,7 @@ export default function AppLayout() {
               backgroundColor: colors.background.primary,
             },
           }}
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
           // Ensure profile is last visually by declaring it last
         >
           <Drawer.Screen name="journal" options={{ drawerLabel: 'Home', title: 'Home' }} />

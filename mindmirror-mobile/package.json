@@ -97,6 +97,7 @@
     "react-native-css-interop": "^0.1.22",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-markdown-display": "^7.0.2",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.5.1",
     "react-native-screens": "~4.11.1",

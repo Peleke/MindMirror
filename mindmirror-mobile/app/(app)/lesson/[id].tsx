@@ -10,8 +10,9 @@ import { Text } from '@/components/ui/text'
 import { Box } from '@/components/ui/box'
 import { AppBar } from '@/components/common/AppBar'
 import { Button, ButtonText } from '@/components/ui/button'
-import { useMutation } from '@apollo/client'
-import { MARK_LESSON_COMPLETED } from '@/services/api/habits'
+import { useMutation, useQuery } from '@apollo/client'
+import { MARK_LESSON_COMPLETED, LESSON_TEMPLATE_BY_ID } from '@/services/api/habits'
+import Markdown from 'react-native-markdown-display'
 
 // For now, render markdown as plain text; later replace with a proper MD renderer
 export default function LessonDetailScreen() {
@@ -21,6 +22,11 @@ export default function LessonDetailScreen() {
   const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
     .toString()
     .toLowerCase() === 'true'
+
+  const { data: lessonDetail } = useQuery(LESSON_TEMPLATE_BY_ID, {
+    variables: { id: String(params.id) },
+    fetchPolicy: 'cache-and-network',
+  })
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -45,11 +51,10 @@ export default function LessonDetailScreen() {
               ) : null}
             </VStack>
 
-            {/* Placeholder for markdown content: fetch and render later */}
             <Box className="p-4 rounded-lg border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
-              <Text className="text-typography-700 dark:text-gray-200">
-                Markdown content rendering will be added. For now, we show summary and leave full content as TODO.
-              </Text>
+              <Markdown>
+                {lessonDetail?.lessonTemplateById?.markdownContent || (params.summary as string) || ''}
+              </Markdown>
             </Box>
 
             <Button

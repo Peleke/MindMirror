@@ -135,4 +135,17 @@ export const PROGRAM_STEPS = gql`
   }
 `
 
+// 7) Lesson detail by id (for markdown)
+export const LESSON_TEMPLATE_BY_ID = gql`
+  query LessonTemplateById($id: String!) {
+    lessonTemplateById(id: $id) {
+      id
+      slug
+      title
+      summary
+      markdownContent
+    }
+  }
+`
+
 

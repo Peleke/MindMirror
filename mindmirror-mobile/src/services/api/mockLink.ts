@@ -56,6 +56,22 @@ export function createMockLink(): ApolloLink {
       })
     }
 
+    // Mock lesson detail by id (in lesson detail screen we'll query markdown content later)
+    if (((operation.query.loc as any)?.source?.body || '').includes('lessonTemplateById')) {
+      const vars: any = operation.variables || {}
+      const id = vars.id || 'lesson-1'
+      const data = {
+        lessonTemplateById: {
+          id,
+          slug: 'eat-slowly-why',
+          title: 'Why Slowing Down Helps',
+          summary: 'Learn how slowing down improves digestion.',
+          markdownContent: '# Why Slowing Down Helps\n\nSlowing down your meals aids digestion by allowing **more thorough chewing** and better satiety signaling.\n\n## Key Points\n- Chew each bite 20-30 times\n- Put down your fork between bites\n- Take sips of water\n\n> “Nature does not hurry, yet everything is accomplished.” — Lao Tzu',
+        },
+      }
+      return new Observable<FetchResult>((observer) => { observer.next({ data }); observer.complete() })
+    }
+
     // Mock program templates (marketplace)
     if (operation.operationName === 'ListProgramTemplates' || ((operation.query.loc as any)?.source?.body || '').includes('programTemplates')) {
       const data = {
