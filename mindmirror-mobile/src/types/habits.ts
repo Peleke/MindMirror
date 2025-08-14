@@ -3,6 +3,7 @@ export type TaskType = 'habit' | 'lesson' | 'journal'
 export type TaskStatus = 'pending' | 'completed' | 'dismissed'
 
 export interface BaseTask {
+  __typename: 'HabitTask' | 'LessonTask' | 'JournalTask'
   taskId: string
   type: TaskType
   status: TaskStatus

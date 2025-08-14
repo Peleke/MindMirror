@@ -1,8 +1,9 @@
-import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client'
+import { ApolloClient, InMemoryCache, createHttpLink, from, ApolloLink } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { Session } from '@supabase/supabase-js'
 import Constants from 'expo-constants'
+import { createMockLink } from './mockLink'
 
 // Environment detection
 const isDevelopment = __DEV__
@@ -24,9 +25,7 @@ const normalizeGatewayUrl = (url?: string | null) => {
 const finalGatewayUrl = normalizeGatewayUrl(RAW_GATEWAY_URL) || 'http://localhost:4000/graphql'
 
 // HTTP Link for GraphQL endpoint
-const httpLink = createHttpLink({
-  uri: finalGatewayUrl,
-})
+const httpLink = createHttpLink({ uri: finalGatewayUrl })
 
 // Auth link to add JWT token and user ID headers
 const authLink = setContext((_, { headers, session }) => {
@@ -108,27 +107,38 @@ export const apolloClient = new ApolloClient({
 
 // Helper function to create client with session context
 export function createApolloClientWithSession(session: Session | null) {
+  const mockEnabled = (process.env.EXPO_PUBLIC_MOCK_TASKS || '').toLowerCase() === 'true'
+
+  const headerLink = setContext((_, { headers }) => {
+    const nextHeaders: Record<string, string> = {
+      ...(headers as Record<string, string>),
+      'Content-Type': 'application/json',
+    }
+    if (session?.access_token) {
+      nextHeaders['Authorization'] = `Bearer ${session.access_token}`
+    }
+    if (session?.user?.id) {
+      nextHeaders['x-internal-id'] = session.user.id
+    }
+    return { headers: nextHeaders }
+  })
+
+  const linkChain: ApolloLink[] = [errorLink, headerLink]
+  if (mockEnabled) {
+    linkChain.push(createMockLink())
+  }
+  linkChain.push(httpLink)
+
   return new ApolloClient({
-    link: from([
-      errorLink, 
-      setContext((_, { headers }) => ({
-        headers: {
-          ...headers,
-          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
-          'x-internal-id': session?.user?.id || '',
-          'Content-Type': 'application/json',
-        }
-      })),
-      httpLink
-    ]),
+    link: from(linkChain),
     cache: apolloClient.cache,
-    defaultOptions: apolloClient.defaultOptions
+    defaultOptions: apolloClient.defaultOptions,
   })
 }
 
 // Environment info for debugging
 export const apolloConfig = {
-  gatewayUrl: GATEWAY_BASE_URL,
+  gatewayUrl: finalGatewayUrl,
   isDevelopment,
   environment: isDevelopment ? 'development' : 'production'
 } 

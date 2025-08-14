@@ -102,19 +102,19 @@ export function JournalEntryForm({
             </Box>
           )}
 
-          <HStack className="items-center justify-between">
+          <VStack space="sm">
             <Text className="text-xs text-typography-500 dark:text-gray-400">
               {content.length}/2000 characters
             </Text>
-            <HStack space="md" className="justify-end">
-                <Button onPress={handleSave} variant="outline" isDisabled={isLoading || !content.trim()}>
-                    <ButtonText>Save</ButtonText>
-                </Button>
-                <Button onPress={handleSaveAndChat} variant="solid" isDisabled={isLoading || !content.trim()}>
-                    <ButtonText>Save and Chat</ButtonText>
-                </Button>
+            <HStack space="sm">
+              <Button onPress={handleSave} className="flex-1 bg-green-600" isDisabled={isLoading || !content.trim()}>
+                <ButtonText>Save</ButtonText>
+              </Button>
+              <Button onPress={handleSaveAndChat} className="flex-1 bg-green-700" isDisabled={isLoading || !content.trim()}>
+                <ButtonText>Save and Chat</ButtonText>
+              </Button>
             </HStack>
-          </HStack>
+          </VStack>
         </VStack>
       </Box>
     </VStack>

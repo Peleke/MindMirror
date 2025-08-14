@@ -15,6 +15,11 @@ export function ApolloProviderWrapper({ children }: ApolloProviderWrapperProps) 
     return createApolloClientWithSession(session)
   }, [session])
 
+  // Avoid issuing unauthenticated GraphQL requests before session is ready
+  if (!session) {
+    return null
+  }
+
   return (
     <ApolloProvider client={client}>
       {children}
