@@ -77,6 +77,11 @@ class HabitsReadRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_lesson_template_by_id(self, lesson_id: str) -> Optional[LessonTemplate]:
+        stmt: Select = select(LessonTemplate).where(LessonTemplate.id == lesson_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
     async def find_habit_event(self, user_id: str, habit_template_id: str, on_date: date) -> Optional[HabitEvent]:
         stmt: Select = select(HabitEvent).where(
             and_(

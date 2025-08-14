@@ -124,4 +124,27 @@ class Query:
                 for r in rows
             ]
 
+    @strawberry.type
+    class LessonTemplateType:
+        id: str
+        slug: str
+        title: str
+        summary: Optional[str]
+        markdownContent: str
+
+    @strawberry.field
+    async def lessonTemplateById(self, id: str) -> Optional[LessonTemplateType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            row = await repo.get_lesson_template_by_id(id)
+            if not row:
+                return None
+            return Query.LessonTemplateType(
+                id=str(row.id),
+                slug=row.slug,
+                title=row.title,
+                summary=row.summary,
+                markdownContent=row.markdown_content,
+            )
+
 
