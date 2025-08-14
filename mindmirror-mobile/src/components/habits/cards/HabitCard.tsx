@@ -8,35 +8,13 @@ import { Text } from '@/components/ui/text'
 import { Button, ButtonText } from '@/components/ui/button'
 import { HabitTask } from '@/types/habits'
 import { Heart } from 'lucide-react-native'
-import { Swipeable } from 'react-native-gesture-handler'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 
 export default function HabitCard({ task, onRespond, onPress }: { task: HabitTask; onRespond: (r: 'yes' | 'no') => void; onPress?: () => void }) {
   const [justSwiped, setJustSwiped] = useState(false)
   const [lastResponse, setLastResponse] = useState<'yes' | 'no' | null>(null)
-  const swipeRef = useRef<Swipeable | null>(null)
   return (
-    <Swipeable
-      renderLeftActions={() => (
-        <Box className="justify-center items-start px-4 bg-blue-100 rounded-lg"><Text className="text-blue-700">Yes</Text></Box>
-      )}
-      renderRightActions={() => (
-        <Box className="justify-center items-end px-4 bg-red-100 rounded-lg"><Text className="text-red-700">No</Text></Box>
-      )}
-      onSwipeableOpen={(direction) => {
-        if (direction === 'left') {
-          setLastResponse('yes')
-          setJustSwiped(true)
-          onRespond('yes')
-        } else if (direction === 'right') {
-          setLastResponse('no')
-          setJustSwiped(true)
-          onRespond('no')
-        }
-        setTimeout(() => setJustSwiped(false), 400)
-        swipeRef.current?.close()
-      }}
-    >
+    <>
       <Pressable className="w-full" onPress={() => { if (!justSwiped && onPress) onPress() }}>
         <Box className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow">
           <VStack space="sm">
@@ -56,7 +34,7 @@ export default function HabitCard({ task, onRespond, onPress }: { task: HabitTas
           </VStack>
         </Box>
       </Pressable>
-    </Swipeable>
+    </>
   )
 }
 

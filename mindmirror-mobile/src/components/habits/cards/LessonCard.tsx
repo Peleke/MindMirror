@@ -7,7 +7,6 @@ import { Icon } from '@/components/ui/icon'
 import { Text } from '@/components/ui/text'
 import { LessonTask } from '@/types/habits'
 import { BookOpen } from 'lucide-react-native'
-import { Swipeable } from 'react-native-gesture-handler'
 
 export default function LessonCard({
   task,
@@ -19,14 +18,6 @@ export default function LessonCard({
   onComplete: () => void
 }) {
   return (
-    <Swipeable
-      renderLeftActions={() => (
-        <Box className="justify-center items-start px-4 bg-green-100 rounded-lg"><Text className="text-green-700">Complete</Text></Box>
-      )}
-      onSwipeableOpen={(direction) => {
-        if (direction === 'left') onComplete()
-      }}
-    >
       <Pressable className="w-full" onPress={onOpen}>
         <Box className="p-4 rounded-lg border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
           <VStack space="sm">
@@ -38,7 +29,6 @@ export default function LessonCard({
           </VStack>
         </Box>
       </Pressable>
-    </Swipeable>
   )
 }
 

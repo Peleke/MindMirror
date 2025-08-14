@@ -7,31 +7,15 @@ import { Icon } from '@/components/ui/icon'
 import { Text } from '@/components/ui/text'
 import { JournalTask } from '@/types/habits'
 import { useRouter } from 'expo-router'
-import { Swipeable } from 'react-native-gesture-handler'
+// Swipe gestures removed per spec; keep UI stable with tap only
 import { PenTool } from 'lucide-react-native'
 
 export default function JournalCard({ task }: { task: JournalTask }) {
   const router = useRouter()
-  const swipeRef = useRef<Swipeable | null>(null)
-  const [justSwiped, setJustSwiped] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   return (
-    <Swipeable
-      ref={(r) => (swipeRef.current = r)}
-      renderRightActions={() => (
-        <Box className="justify-center items-end px-4 bg-gray-100 rounded-lg"><Text className="text-gray-700">Dismiss</Text></Box>
-      )}
-      onSwipeableOpen={(direction) => {
-        if (direction === 'right') {
-          setDismissed(true)
-          setJustSwiped(true)
-          setTimeout(() => setJustSwiped(false), 400)
-          // UI-only: no network call in mock/live yet
-          swipeRef.current?.close()
-        }
-      }}
-    >
-      <Pressable className="w-full" onPress={() => { if (!justSwiped) router.push('/journal/freeform') }}>
+    <>
+      <Pressable className="w-full" onPress={() => router.push('/journal/freeform')}>
         <Box className="p-4 rounded-lg border bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 shadow">
           <VStack space="sm">
             <HStack space="sm" className="items-center">
@@ -46,7 +30,7 @@ export default function JournalCard({ task }: { task: JournalTask }) {
           </VStack>
         </Box>
       </Pressable>
-    </Swipeable>
+    </>
   )
 }
 

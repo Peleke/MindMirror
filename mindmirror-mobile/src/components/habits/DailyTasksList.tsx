@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { ActivityIndicator } from 'react-native'
 import { useQuery, useMutation, gql } from '@apollo/client'
 import { Box } from '@/components/ui/box'
 import { VStack } from '@/components/ui/vstack'
 import { Text } from '@/components/ui/text'
+import { HStack } from '@/components/ui/hstack'
+import { Pressable } from '@/components/ui/pressable'
 import { RECORD_HABIT_RESPONSE, RECORD_LESSON_OPENED, MARK_LESSON_COMPLETED } from '@/services/api/habits'
 import { Task, HabitTask, LessonTask, JournalTask } from '@/types/habits'
 import HabitCard from './cards/HabitCard'
@@ -70,6 +72,9 @@ export default function DailyTasksList() {
   })
 
   const tasks: Task[] = data?.todaysTasks ?? []
+  const [activeTab, setActiveTab] = useState<'today' | 'completed'>('today')
+  const remainingTasks = tasks.filter((t: any) => t.status !== 'completed')
+  const completedTasks = tasks.filter((t: any) => t.status === 'completed')
 
   if (loading && !data) {
     return (
@@ -97,7 +102,29 @@ export default function DailyTasksList() {
 
   return (
     <VStack space="md">
-      {tasks.map((t) => {
+      {/* Tabs */}
+      <HStack className="w-full border-b border-border-200 dark:border-border-700" space="none">
+        <Pressable
+          className={`flex-1 py-2 border-b-2 ${activeTab==='today' ? 'border-primary-600' : 'border-transparent'}`}
+          onPress={() => setActiveTab('today')}
+        >
+          <Text className={`text-center ${activeTab==='today' ? 'text-typography-900 dark:text-white' : 'text-typography-700 dark:text-gray-300'}`}>Today</Text>
+        </Pressable>
+        <Pressable
+          className={`flex-1 py-2 border-l border-border-200 dark:border-border-700 border-b-2 ${activeTab==='completed' ? 'border-primary-600' : 'border-transparent'}`}
+          onPress={() => setActiveTab('completed')}
+        >
+          <Text className={`text-center ${activeTab==='completed' ? 'text-typography-900 dark:text-white' : 'text-typography-700 dark:text-gray-300'}`}>Completed</Text>
+        </Pressable>
+      </HStack>
+
+      {(activeTab==='today' ? remainingTasks : completedTasks).length === 0 ? (
+        <Box className="items-center py-8">
+          <Text className="text-typography-600 dark:text-gray-300">{activeTab==='today' ? 'No remaining tasks' : 'No completed tasks yet'}</Text>
+        </Box>
+      ) : null}
+
+      {(activeTab==='today' ? remainingTasks : completedTasks).map((t) => {
         // eslint-disable-next-line no-console
         console.log('[DailyTasksList] task item', t)
         if (t.__typename === 'HabitTask') {

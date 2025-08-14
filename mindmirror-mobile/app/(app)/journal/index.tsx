@@ -178,7 +178,6 @@ export default function JournalScreen() {
 
           {/* Today's Tasks */}
           <VStack className="px-6 py-6" space="md">
-            <Text className="text-lg font-semibold text-typography-900 dark:text-white">Today</Text>
             <DailyTasksList />
           </VStack>
           </VStack>
