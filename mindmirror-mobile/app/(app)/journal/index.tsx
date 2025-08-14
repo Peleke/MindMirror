@@ -23,6 +23,7 @@ import { useJournalStatus } from '@/hooks/useJournalStatus';
 import { CompletedJournalCard } from '@/components/journal/CompletedJournalCard';
 import { AppBar } from '@/components/common/AppBar';
 import DailyTasksList from '@/components/habits/DailyTasksList'
+import { useLocalSearchParams } from 'expo-router'
 import { getUserDisplayName } from '@/utils/user';
 
 const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
@@ -47,6 +48,7 @@ const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
 };
 
 export default function JournalScreen() {
+  const params = useLocalSearchParams<{ reload?: string }>()
   const router = useRouter();
   const { show } = useToast();
   const { user } = useAuth();
@@ -178,7 +180,7 @@ export default function JournalScreen() {
 
           {/* Today's Tasks */}
           <VStack className="px-6 py-6" space="md">
-            <DailyTasksList />
+            <DailyTasksList forceNetwork={params?.reload === '1'} />
           </VStack>
           </VStack>
           

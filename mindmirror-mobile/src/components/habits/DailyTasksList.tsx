@@ -22,7 +22,7 @@ function todayIsoDate(): string {
   return `${year}-${month}-${day}`
 }
 
-export default function DailyTasksList() {
+export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?: boolean }) {
   const onDate = useMemo(() => todayIsoDate(), [])
   const router = useRouter()
   const mockEnabled = ((process.env.EXPO_PUBLIC_MOCK_TASKS || Constants.expoConfig?.extra?.mockTasks) || '').toString().toLowerCase() === 'true'
@@ -57,7 +57,7 @@ export default function DailyTasksList() {
 
   const { data, loading, error, refetch } = useQuery(GET_TODAYS_TASKS_INLINE, {
     variables: { onDate },
-    fetchPolicy: 'cache-and-network',
+    fetchPolicy: forceNetwork ? 'network-only' : 'cache-and-network',
     errorPolicy: 'none',
     returnPartialData: false,
   })

@@ -9,6 +9,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMutation, useQuery } from '@apollo/client'
 import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS } from '@/services/api/habits'
 import { Button, ButtonText } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
+import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast'
 
 export default function ProgramDetailScreen() {
   const params = useLocalSearchParams<{ slug: string; from?: string }>()
@@ -17,6 +19,7 @@ export default function ProgramDetailScreen() {
   const router = useRouter()
   const { data, loading, error } = useQuery(PROGRAM_TEMPLATE_BY_SLUG, { variables: { slug }, fetchPolicy: 'cache-and-network' })
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
+  const { show } = useToast()
 
   const program = data?.programTemplateBySlug
   const { data: stepsData } = useQuery(PROGRAM_STEPS, {
@@ -29,9 +32,30 @@ export default function ProgramDetailScreen() {
     const today = new Date().toISOString().slice(0, 10)
     try {
       await assignProgramToUser({ variables: { programId: program.id, startDate: today } })
-      router.replace('/journal')
+      show({
+        placement: 'top',
+        render: ({ id }) => (
+          <Toast nativeID={`toast-${id}`} action="success" variant="solid">
+            <VStack>
+              <ToastTitle>Enrolled</ToastTitle>
+              <ToastDescription>You are enrolled. Loading todays tasks…</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      })
+      router.replace({ pathname: '/journal', params: { reload: '1' } })
     } catch (e) {
-      // TODO: toast error
+      show({
+        placement: 'top',
+        render: ({ id }) => (
+          <Toast nativeID={`toast-${id}`} action="error" variant="solid">
+            <VStack>
+              <ToastTitle>Enrollment failed</ToastTitle>
+              <ToastDescription>Please try again.</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      })
     }
   }
 

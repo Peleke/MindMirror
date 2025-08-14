@@ -64,7 +64,7 @@ export default function LessonDetailScreen() {
                   const today = new Date().toISOString().slice(0, 10)
                   await markLessonCompleted({ variables: { lessonTemplateId: String(params.id), onDate: today } })
                 }
-                router.replace('/tasks')
+                router.replace('/journal')
               }}
             >
               <ButtonText>Complete Lesson</ButtonText>

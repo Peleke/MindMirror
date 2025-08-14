@@ -146,6 +146,9 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   programTemplates: [ProgramTemplateType!]! @join__field(graph: HABITS) 
   programTemplateBySlug(slug: String!) : ProgramTemplateType @join__field(graph: HABITS) 
   programAssignments(status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
+  lessonTemplateById(id: String!) : LessonTemplateType @join__field(graph: HABITS) 
+  programTemplateSteps(programId: String!) : [ProgramStepType!]! @join__field(graph: HABITS) 
+  lessonsForHabit(habitTemplateId: String!, onDate: Date!) : [LessonForHabitType!]! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
@@ -259,6 +262,34 @@ type ProgramAssignmentType @join__type(graph: HABITS)  {
   programTemplateId: String!
   status: String!
   startDate: Date!
+}
+
+type LessonTemplateType @join__type(graph: HABITS)  {
+  id: String!
+  slug: String!
+  title: String!
+  summary: String
+  markdownContent: String!
+}
+
+type ProgramStepType @join__type(graph: HABITS)  {
+  id: String!
+  sequenceIndex: Int!
+  durationDays: Int!
+  habit: HabitBasicType!
+}
+
+type HabitBasicType @join__type(graph: HABITS)  {
+  id: String!
+  title: String!
+  shortDescription: String
+}
+
+type LessonForHabitType @join__type(graph: HABITS)  {
+  lessonTemplateId: String!
+  title: String!
+  summary: String
+  completed: Boolean!
 }
 
 type HabitTemplatePayload @join__type(graph: HABITS)  {
