@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
 import { ScrollView } from '@/components/ui/scroll-view'
@@ -11,8 +11,9 @@ import { useQuery, gql } from '@apollo/client'
 import { Pressable } from '@/components/ui/pressable'
 import { HStack } from '@/components/ui/hstack'
 import { Icon } from '@/components/ui/icon'
-import { CheckCircle, Circle } from 'lucide-react-native'
-import { LESSONS_FOR_HABIT } from '@/services/api/habits'
+import { CheckCircle, Circle as IconCircle } from 'lucide-react-native'
+import { LESSONS_FOR_HABIT, HABIT_STATS } from '@/services/api/habits'
+import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
 
 const STEP_QUERY = gql`
   query StepById($programId: String!) {
@@ -61,6 +62,18 @@ export default function ProgramStepDetailScreen() {
   const { data: entriesData } = useQuery(JOURNAL_ENTRIES_FOR_HABIT, { variables: { habitTemplateId: habitId, limit: 10, offset: 0 }, skip: !habitId })
   const [tab, setTab] = useState<'detail' | 'stats'>('detail')
   const completedIds = new Set<string>(((todayLessonsData?.lessonsForHabit as any[]) || []).filter((x: any) => x.completed).map((x: any) => x.lessonTemplateId))
+  const { data: statsData } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: !habitId })
+
+  const adherence = Math.max(0, Math.min(1, statsData?.habitStats?.adherenceRate || 0))
+  const streak = statsData?.habitStats?.currentStreak || 0
+  const presented = statsData?.habitStats?.presentedCount || 0
+  const completed = statsData?.habitStats?.completedCount || 0
+
+  const size = 140
+  const stroke = 14
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = circumference * (1 - adherence)
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -98,7 +111,7 @@ export default function ProgramStepDetailScreen() {
                       ((lessonsData?.programStepLessons as any[]) || []).map((l: any) => (
                         <Pressable
                           key={`${l.lessonTemplateId}-${l.dayIndex}`}
-                          onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&summary=${encodeURIComponent(l.summary || '')}&from=step`)}
+                          onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&subtitle=${encodeURIComponent(l.subtitle || '')}&summary=${encodeURIComponent(l.summary || '')}&from=step`)}
                         >
                           <HStack className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700 items-center justify-between">
                             <VStack className="flex-1" space="xs">
@@ -107,7 +120,7 @@ export default function ProgramStepDetailScreen() {
                                 <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
                               ) : null}
                             </VStack>
-                            <Icon as={completedIds.has(l.lessonTemplateId) ? CheckCircle : Circle} size="md" className={`${completedIds.has(l.lessonTemplateId) ? 'text-green-600' : 'text-gray-400'}`} />
+                            <Icon as={completedIds.has(l.lessonTemplateId) ? CheckCircle : IconCircle} size="md" className={`${completedIds.has(l.lessonTemplateId) ? 'text-green-600' : 'text-gray-400'}`} />
                           </HStack>
                         </Pressable>
                       ))
@@ -136,7 +149,40 @@ export default function ProgramStepDetailScreen() {
                 </VStack>
               </TabsContent>
               <TabsContent hidden={tab!=='stats'}>
-                <Text className="text-typography-700 dark:text-gray-300">Adherence, streaks, and counts will display here.</Text>
+                <VStack space="lg" className="items-center">
+                  <Box className="items-center justify-center">
+                    <Svg width={size} height={size}>
+                      <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                        <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
+                        <SvgCircle
+                          cx={size/2}
+                          cy={size/2}
+                          r={radius}
+                          stroke="#10b981"
+                          strokeWidth={stroke}
+                          strokeDasharray={`${circumference} ${circumference}`}
+                          strokeDashoffset={progress}
+                          strokeLinecap="round"
+                          fill="transparent"
+                        />
+                      </G>
+                    </Svg>
+                    <VStack className="absolute items-center">
+                      <Text className="text-2xl font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+                      <Text className="text-typography-600 dark:text-gray-300">Adherence</Text>
+                    </VStack>
+                  </Box>
+                  <HStack className="w-full justify-around">
+                    <VStack className="items-center">
+                      <Text className="text-xl font-bold text-typography-900 dark:text-white">{streak}</Text>
+                      <Text className="text-typography-600 dark:text-gray-300">Current streak</Text>
+                    </VStack>
+                    <VStack className="items-center">
+                      <Text className="text-xl font-bold text-typography-900 dark:text-white">{completed}/{presented}</Text>
+                      <Text className="text-typography-600 dark:text-gray-300">Completed</Text>
+                    </VStack>
+                  </HStack>
+                </VStack>
               </TabsContent>
             </Tabs>
           </VStack>

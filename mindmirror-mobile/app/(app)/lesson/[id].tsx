@@ -14,9 +14,8 @@ import { useMutation, useQuery } from '@apollo/client'
 import { MARK_LESSON_COMPLETED, LESSON_TEMPLATE_BY_ID } from '@/services/api/habits'
 import Markdown from 'react-native-markdown-display'
 
-// For now, render markdown as plain text; later replace with a proper MD renderer
 export default function LessonDetailScreen() {
-  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string }>()
+  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string }>()
   const router = useRouter()
   const [markLessonCompleted] = useMutation(MARK_LESSON_COMPLETED)
   const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
@@ -46,7 +45,11 @@ export default function LessonDetailScreen() {
           <VStack className="px-6 py-6 w-full max-w-screen-md mx-auto" space="lg">
             <VStack space="sm">
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">{params.title || 'Lesson'}</Text>
-              {params.summary ? (
+              {lessonDetail?.lessonTemplateById?.subtitle ? (
+                <Text className="text-typography-600 dark:text-gray-300">{lessonDetail?.lessonTemplateById?.subtitle}</Text>
+              ) : params.subtitle ? (
+                <Text className="text-typography-600 dark:text-gray-300">{params.subtitle}</Text>
+              ) : params.summary ? (
                 <Text className="text-typography-600 dark:text-gray-300">{params.summary}</Text>
               ) : null}
             </VStack>

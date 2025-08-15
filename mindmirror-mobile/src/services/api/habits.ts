@@ -59,6 +59,7 @@ export const PROGRAM_TEMPLATE_BY_SLUG = gql`
       slug
       title
       description
+      subtitle
     }
   }
 `
@@ -143,6 +144,19 @@ export const PROGRAM_STEP_LESSONS = gql`
       title
       summary
       estReadMinutes
+      subtitle
+      heroImageUrl
+    }
+  }
+`
+
+export const RECENT_LESSON_COMPLETIONS = gql`
+  query RecentLessonCompletions($limit: Int) {
+    recentLessonCompletions(limit: $limit) {
+      lessonTemplateId
+      title
+      summary
+      completedAt
     }
   }
 `
@@ -155,7 +169,19 @@ export const LESSON_TEMPLATE_BY_ID = gql`
       slug
       title
       summary
+      subtitle
       markdownContent
+    }
+  }
+`
+
+export const HABIT_STATS = gql`
+  query HabitStats($habitTemplateId: String!, $lookbackDays: Int) {
+    habitStats(habitTemplateId: $habitTemplateId, lookbackDays: $lookbackDays) {
+      presentedCount
+      completedCount
+      adherenceRate
+      currentStreak
     }
   }
 `

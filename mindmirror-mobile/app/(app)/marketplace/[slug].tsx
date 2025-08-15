@@ -7,13 +7,14 @@ import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMutation, useQuery } from '@apollo/client'
-import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS } from '@/services/api/habits'
+import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS, PROGRAM_STEP_LESSONS } from '@/services/api/habits'
 import { Icon } from '@/components/ui/icon'
 import { Pressable } from '@/components/ui/pressable'
 import { CheckCircle, BookOpen, Clock } from 'lucide-react-native'
 import { Button, ButtonText } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast'
+import { useQuery as useApolloQuery } from '@apollo/client'
 
 export default function ProgramDetailScreen() {
   const params = useLocalSearchParams<{ slug: string; from?: string }>()
@@ -32,6 +33,22 @@ export default function ProgramDetailScreen() {
   })
   const { data: assignmentsData } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
   const isEnrolled = !!(assignmentsData?.programAssignments || []).find((a: any) => a.programTemplateId === program?.id && a.status === 'active')
+  const StepPreview = ({ stepId }: { stepId: string }) => {
+    const { data: lessons } = useApolloQuery(PROGRAM_STEP_LESSONS, { variables: { programStepId: stepId } })
+    const first = (lessons?.programStepLessons || [])[0]
+    if (!first) return null
+    return (
+      <>
+        {first.subtitle ? (
+          <Text className="text-emerald-800/90 dark:text-emerald-200">{first.subtitle}</Text>
+        ) : null}
+        <Box className="h-px bg-emerald-200/60 dark:bg-emerald-800 my-1" />
+        {first.summary ? (
+          <Text className="text-emerald-900/80 dark:text-emerald-100/80">{first.summary}</Text>
+        ) : null}
+      </>
+    )
+  }
 
   const handleEnroll = async () => {
     const today = new Date().toISOString().slice(0, 10)
@@ -92,7 +109,9 @@ export default function ProgramDetailScreen() {
               <>
                 <VStack space="sm">
                   <Text className="text-2xl font-bold text-typography-900 dark:text-white">{program.title}</Text>
-                  {program.description ? (
+                  {program.subtitle ? (
+                    <Text className="text-typography-600 dark:text-gray-300">{program.subtitle}</Text>
+                  ) : program.description ? (
                     <Text className="text-typography-600 dark:text-gray-300">{program.description}</Text>
                   ) : null}
                   <Box className="mt-2 p-3 rounded-xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700">
@@ -112,9 +131,7 @@ export default function ProgramDetailScreen() {
                       <Box className="p-5 rounded-2xl border bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
                         <VStack space="xs">
                           <Text className="text-base font-semibold text-emerald-900 dark:text-emerald-100">{s.habit?.title || 'Habit'}</Text>
-                          {s.habit?.shortDescription ? (
-                            <Text className="text-emerald-800/90 dark:text-emerald-200">{s.habit.shortDescription}</Text>
-                          ) : null}
+                          <StepPreview stepId={s.id} />
                           <VStack className="flex-row items-center" space="xs">
                             <Icon as={Clock} size="sm" className="text-emerald-700 dark:text-emerald-300" />
                             <Text className="text-emerald-800 dark:text-emerald-200 font-semibold">{s.durationDays} days</Text>

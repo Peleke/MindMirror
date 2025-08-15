@@ -8,7 +8,7 @@ import { Input, InputField } from '@/components/ui/input'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 import { AppBar } from '@/components/common/AppBar'
 import { useQuery } from '@apollo/client'
-import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES } from '@/services/api/habits'
+import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES, RECENT_LESSON_COMPLETIONS } from '@/services/api/habits'
 import { Pressable } from '@/components/ui/pressable'
 import { useRouter } from 'expo-router'
 
@@ -16,6 +16,7 @@ export default function ProgramsAndResourcesScreen() {
   const router = useRouter()
   const { data: assignments } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
   const { data: templates } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+  const { data: completedLessons } = useQuery(RECENT_LESSON_COMPLETIONS, { fetchPolicy: 'cache-and-network', variables: { limit: 50 } })
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<'habits' | 'lessons'>('habits')
 
@@ -66,7 +67,23 @@ export default function ProgramsAndResourcesScreen() {
             </VStack>
 
             {category === 'lessons' ? (
-              <Text className="text-typography-600 dark:text-gray-300">Completed lessons listing coming soon.</Text>
+              <VStack space="md">
+                {((completedLessons?.recentLessonCompletions as any[]) || []).length === 0 ? (
+                  <Text className="text-typography-600 dark:text-gray-300">No completed lessons yet.</Text>
+                ) : (
+                  ((completedLessons?.recentLessonCompletions as any[]) || []).map((l: any) => (
+                    <Box key={`${l.lessonTemplateId}-${l.completedAt}`} className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                      <VStack>
+                        <Text className="text-base font-semibold text-typography-900 dark:text-white">{l.title}</Text>
+                        {l.summary ? (
+                          <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
+                        ) : null}
+                        <Text className="text-typography-500 dark:text-gray-400 mt-1">Completed {new Date(l.completedAt).toLocaleDateString()}</Text>
+                      </VStack>
+                    </Box>
+                  ))
+                )}
+              </VStack>
             ) : enrolled.length === 0 ? (
               <Text className="text-typography-600 dark:text-gray-300">No programs enrolled.</Text>
             ) : (
