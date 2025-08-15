@@ -114,10 +114,7 @@ export default function ProgramDetailScreen() {
                   ) : program.description ? (
                     <Text className="text-typography-600 dark:text-gray-300">{program.description}</Text>
                   ) : null}
-                  <Box className="mt-2 p-3 rounded-xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700">
-                    <Text className="text-typography-700 dark:text-gray-300">Duration: varies by habit steps. Enroll to start today.</Text>
-                    <Text className="text-typography-700 dark:text-gray-300">Includes lessons and daily practice.</Text>
-                  </Box>
+                  
                 </VStack>
 
                 <VStack space="sm">
@@ -127,7 +124,7 @@ export default function ProgramDetailScreen() {
                     <Text className="text-typography-600 dark:text-gray-300">No steps found.</Text>
                   ) : (
                     ((stepsData?.programTemplateSteps as any[]) || []).map((s: any) => (
-                      <Pressable key={s.id || s.sequenceIndex} onPress={() => router.push(`/marketplace/${slug}/step/${s.id || s.sequenceIndex}?programId=${encodeURIComponent(program.id)}&habitId=${encodeURIComponent(s.habit?.id || '')}`)}>
+                      <Pressable key={s.id || s.sequenceIndex} onPress={() => router.push(`/marketplace/${slug}/step/${s.id || s.sequenceIndex}?programId=${encodeURIComponent(program.id)}&habitId=${encodeURIComponent(s.habit?.id || '')}&returnTo=${encodeURIComponent(`/marketplace/${slug}`)}`)}>
                       <Box className="p-5 rounded-2xl border bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
                         <VStack space="xs">
                           <Text className="text-base font-semibold text-emerald-900 dark:text-emerald-100">{s.habit?.title || 'Habit'}</Text>

@@ -89,7 +89,7 @@ export default function ProgramsAndResourcesScreen() {
             ) : (
               <VStack space="md">
                 {enrolled.map((p: any) => (
-                  <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}?from=marketplace`)}>
+                  <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}?from=programs`)}>
                     <Box className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
                       <VStack space="xs">
                         <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.title}</Text>

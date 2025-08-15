@@ -6,7 +6,7 @@ import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Tabs, TabsBar, TabsTab, TabsContent } from '@/components/common/Tabs'
+// tabs removed; stats moved inline
 import { useQuery, gql } from '@apollo/client'
 import { Pressable } from '@/components/ui/pressable'
 import { HStack } from '@/components/ui/hstack'
@@ -50,7 +50,7 @@ const JOURNAL_ENTRIES_FOR_HABIT = gql`
 `
 
 export default function ProgramStepDetailScreen() {
-  const params = useLocalSearchParams<{ slug: string; id: string; programId?: string; habitId?: string }>()
+  const params = useLocalSearchParams<{ slug: string; id: string; programId?: string; habitId?: string; returnTo?: string }>()
   const router = useRouter()
   const programId = String(params.programId || '')
   const { data } = useQuery(STEP_QUERY, { variables: { programId }, skip: !programId })
@@ -60,7 +60,7 @@ export default function ProgramStepDetailScreen() {
   const today = new Date().toISOString().slice(0, 10)
   const { data: todayLessonsData } = useQuery(LESSONS_FOR_HABIT, { variables: { habitTemplateId: habitId, onDate: today }, skip: !habitId })
   const { data: entriesData } = useQuery(JOURNAL_ENTRIES_FOR_HABIT, { variables: { habitTemplateId: habitId, limit: 10, offset: 0 }, skip: !habitId })
-  const [tab, setTab] = useState<'detail' | 'stats'>('detail')
+  // tabs removed
   const completedIds = new Set<string>(((todayLessonsData?.lessonsForHabit as any[]) || []).filter((x: any) => x.completed).map((x: any) => x.lessonTemplateId))
   const { data: statsData } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: !habitId })
 
@@ -82,21 +82,49 @@ export default function ProgramStepDetailScreen() {
           title={step ? (step.habit?.title || 'Step') : 'Step'}
           showBackButton
           onBackPress={() => {
-            try {
-              router.back()
-            } catch {
-              router.replace(`/marketplace/${params.slug}`)
-            }
+            const target = params.returnTo ? String(params.returnTo) : `/marketplace/${params.slug}`
+            router.replace(target)
           }}
         />
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto px-6 py-6" space="lg">
-            <Tabs>
-              <TabsBar>
-                <TabsTab active={tab==='detail'} onPress={() => setTab('detail')}>Detail</TabsTab>
-                <TabsTab active={tab==='stats'} onPress={() => setTab('stats')}>Stats</TabsTab>
-              </TabsBar>
-              <TabsContent hidden={tab!=='detail'}>
+            <VStack space="lg">
+              <VStack space="sm" className="items-center">
+                <Box className="items-center justify-center">
+                  <Svg width={size} height={size}>
+                    <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                      <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
+                      <SvgCircle
+                        cx={size/2}
+                        cy={size/2}
+                        r={radius}
+                        stroke="#10b981"
+                        strokeWidth={stroke}
+                        strokeDasharray={`${circumference} ${circumference}`}
+                        strokeDashoffset={progress}
+                        strokeLinecap="round"
+                        fill="transparent"
+                      />
+                    </G>
+                  </Svg>
+                  <VStack className="absolute items-center">
+                    <Text className="text-2xl font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+                    <Text className="text-typography-600 dark:text-gray-300">Adherence</Text>
+                  </VStack>
+                </Box>
+                <HStack className="w-full justify-around">
+                  <VStack className="items-center">
+                    <Text className="text-xl font-bold text-typography-900 dark:text-white">{streak}</Text>
+                    <Text className="text-typography-600 dark:text-gray-300">Current streak</Text>
+                  </VStack>
+                  <VStack className="items-center">
+                    <Text className="text-xl font-bold text-typography-900 dark:text-white">{completed}/{presented}</Text>
+                    <Text className="text-typography-600 dark:text-gray-300">Completed</Text>
+                  </VStack>
+                </HStack>
+              </VStack>
+              <Box className="h-px bg-border-200 dark:bg-border-700" />
+              <VStack space="sm">
                 <VStack space="sm">
                   <Text className="text-xl font-bold text-typography-900 dark:text-white">{step?.habit?.title || 'Habit'}</Text>
                   {step?.habit?.shortDescription ? (
@@ -147,44 +175,8 @@ export default function ProgramStepDetailScreen() {
                     )}
                   </VStack>
                 </VStack>
-              </TabsContent>
-              <TabsContent hidden={tab!=='stats'}>
-                <VStack space="lg" className="items-center">
-                  <Box className="items-center justify-center">
-                    <Svg width={size} height={size}>
-                      <G rotation="-90" origin={`${size/2}, ${size/2}`}>
-                        <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
-                        <SvgCircle
-                          cx={size/2}
-                          cy={size/2}
-                          r={radius}
-                          stroke="#10b981"
-                          strokeWidth={stroke}
-                          strokeDasharray={`${circumference} ${circumference}`}
-                          strokeDashoffset={progress}
-                          strokeLinecap="round"
-                          fill="transparent"
-                        />
-                      </G>
-                    </Svg>
-                    <VStack className="absolute items-center">
-                      <Text className="text-2xl font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
-                      <Text className="text-typography-600 dark:text-gray-300">Adherence</Text>
-                    </VStack>
-                  </Box>
-                  <HStack className="w-full justify-around">
-                    <VStack className="items-center">
-                      <Text className="text-xl font-bold text-typography-900 dark:text-white">{streak}</Text>
-                      <Text className="text-typography-600 dark:text-gray-300">Current streak</Text>
-                    </VStack>
-                    <VStack className="items-center">
-                      <Text className="text-xl font-bold text-typography-900 dark:text-white">{completed}/{presented}</Text>
-                      <Text className="text-typography-600 dark:text-gray-300">Completed</Text>
-                    </VStack>
-                  </HStack>
-                </VStack>
-              </TabsContent>
-            </Tabs>
+              </VStack>
+            </VStack>
           </VStack>
         </ScrollView>
       </VStack>

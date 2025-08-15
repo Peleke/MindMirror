@@ -14,8 +14,7 @@ export default function CustomDrawerContent(props: Props) {
         <DrawerItem label="Journal Hub" onPress={() => navigation.navigate('journal-hub')} />
         <DrawerItem label="Programs & Resources" onPress={() => navigation.navigate('programs')} />
         <DrawerItem label="Chat" onPress={() => navigation.navigate('chat')} />
-        <DrawerItem label="Archive" onPress={() => navigation.navigate('archive')} />
-        <DrawerItem label="Insights" onPress={() => navigation.navigate('insights')} />
+        <DrawerItem label="Journal Archive" onPress={() => navigation.navigate('archive')} />
         <DrawerItem label="Marketplace" onPress={() => navigation.navigate('marketplace')} />
       </View>
       <View style={{ borderTopWidth: 1, borderColor: '#e5e7eb' }} />
