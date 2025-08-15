@@ -8,13 +8,14 @@ import { Input, InputField } from '@/components/ui/input'
 import { Pressable } from '@/components/ui/pressable'
 import { AppBar } from '@/components/common/AppBar'
 import { useQuery } from '@apollo/client'
-import { LIST_PROGRAM_TEMPLATES } from '@/services/api/habits'
+import { LIST_PROGRAM_TEMPLATES, PROGRAM_ASSIGNMENTS } from '@/services/api/habits'
 import { useRouter } from 'expo-router'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 
 export default function MarketplaceScreen() {
   const router = useRouter()
   const { data, loading, error } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+  const { data: assignmentsData } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<'habits'>('habits')
 
@@ -66,17 +67,28 @@ export default function MarketplaceScreen() {
               <Text className="text-typography-600 dark:text-gray-300">No programs found</Text>
             ) : (
               <VStack space="md">
-                {programs.map((p: any) => (
-                  <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}?from=marketplace`)}>
-                    <Box className="p-4 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700 shadow">
-                      <Text className="text-lg font-semibold text-typography-900 dark:text-white">{p.title}</Text>
-                      {p.description ? (
-                        <Text className="text-typography-600 dark:text-gray-300">{p.description}</Text>
-                      ) : null}
-                      <Text className="text-primary-600 dark:text-primary-400 mt-2">View</Text>
-                    </Box>
-                  </Pressable>
-                ))}
+                {programs.map((p: any) => {
+                  const isEnrolled = (assignmentsData?.programAssignments || []).some((a: any) => a.programTemplateId === p.id && a.status === 'active')
+                  return (
+                    <Pressable key={p.id} onPress={() => router.push(`/marketplace/${p.slug}?from=marketplace`)}>
+                      <Box className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
+                        <VStack space="xs">
+                          <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.title}</Text>
+                          {p.description ? (
+                            <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                          ) : null}
+                        </VStack>
+                        <VStack className="mt-3" space="xs">
+                          {isEnrolled ? (
+                            <Text className="self-start px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-green-200 text-green-700 shadow-sm dark:bg-green-900 dark:border-green-700 dark:text-green-100">Enrolled</Text>
+                          ) : (
+                            <Text className="self-start px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-indigo-200 text-indigo-700 shadow-sm dark:bg-indigo-900 dark:border-indigo-700 dark:text-indigo-100">Explore</Text>
+                          )}
+                        </VStack>
+                      </Box>
+                    </Pressable>
+                  )
+                })}
               </VStack>
             )}
           </VStack>
