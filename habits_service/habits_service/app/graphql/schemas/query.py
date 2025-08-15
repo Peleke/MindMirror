@@ -48,6 +48,9 @@ class ProgramStepType:
     sequenceIndex: int
     durationDays: int
     habit: HabitBasicType
+    started: bool
+    daysCompleted: int
+    totalDays: int
 
 
 @strawberry.type
@@ -85,6 +88,7 @@ class Query:
                             habitTemplateId=t.habitTemplateId,
                             title=t.title,
                             description=t.description,
+                            subtitle=getattr(t, 'subtitle', None),
                             status=GTaskStatus(t.status.value) if hasattr(t.status, "value") else GTaskStatus[t.status],
                         )
                     )
@@ -181,15 +185,32 @@ class Query:
             )
 
     @strawberry.field
-    async def programTemplateSteps(self, programId: str) -> List[ProgramStepType]:
+    async def programTemplateSteps(self, info: Info, programId: str) -> List[ProgramStepType]:
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
             steps = await repo.get_program_steps(programId)
             out: List[ProgramStepType] = []
+            # compute progress using user's assignment for this program, if any
+            current_user = get_current_user_from_context(info)
+            assignments = await repo.get_active_assignments(str(current_user.id))
+            assignment = next((a for a in assignments if str(a.program_template_id) == programId), None)
+            from datetime import date as _date
+            today = _date.today()
+            day_offset = (today - assignment.start_date).days if assignment else -1
+            # precompute prefix sums of duration
+            cursor = 0
             for s in steps:
                 habit = await repo.get_habit_template(str(s.habit_template_id))
                 if not habit:
                     continue
+                total_days = int(s.duration_days)
+                started = assignment is not None and day_offset >= cursor
+                if not started:
+                    days_completed = 0
+                elif day_offset >= cursor + total_days:
+                    days_completed = total_days
+                else:
+                    days_completed = max(0, min(total_days, (day_offset - cursor + 1)))
                 out.append(
                     ProgramStepType(
                         id=str(s.id),
@@ -200,8 +221,12 @@ class Query:
                             title=habit.title,
                             shortDescription=habit.short_description,
                         ),
+                        started=started,
+                        daysCompleted=days_completed,
+                        totalDays=total_days,
                     )
                 )
+                cursor += s.duration_days
             return out
 
     @strawberry.type

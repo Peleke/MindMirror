@@ -26,6 +26,7 @@ class HabitTask:
     habitTemplateId: str
     title: str
     description: Optional[str]
+    subtitle: Optional[str]
     status: TaskStatus
 
 

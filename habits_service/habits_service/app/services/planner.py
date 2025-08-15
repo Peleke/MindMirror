@@ -18,6 +18,7 @@ class HabitTask:
     habitTemplateId: str
     title: str
     description: Optional[str]
+    subtitle: Optional[str]
     status: TaskStatus
 
 
@@ -86,6 +87,7 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     habitTemplateId=str(habit.id),
                     title=habit.title,
                     description=habit.short_description,
+                    subtitle=habit.short_description,
                     status=status,
                 )
             )
