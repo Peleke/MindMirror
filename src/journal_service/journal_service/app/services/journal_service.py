@@ -72,14 +72,19 @@ class JournalService:
     async def create_freeform_entry(
         self, 
         user: CurrentUser, 
-        content: str
+        content: str,
+        habit_template_id: Optional[str] = None,
     ) -> tuple[JournalEntryResponse, callable]:
         """Create a freeform journal entry."""
         payload = {"content": content}
+        extra: Dict[str, Any] = {}
+        if habit_template_id:
+            extra["habit_template_id"] = habit_template_id
         entry = await self.repository.create(
             user_id=user.id,
             entry_type="FREEFORM",
-            payload=payload
+            payload=payload,
+            **extra,
         )
         
         logger.info(f"Created freeform entry {entry.id} for user {user.id}")
@@ -102,6 +107,7 @@ class JournalService:
         focus: Optional[str] = None,
         affirmation: Optional[str] = None,
         mood: Optional[str] = None,
+        habit_template_id: Optional[str] = None,
     ) -> tuple[JournalEntryResponse, callable]:
         """Create a gratitude journal entry."""
         payload = {
@@ -111,10 +117,14 @@ class JournalService:
             "affirmation": affirmation,
             "mood": mood,
         }
+        extra: Dict[str, Any] = {}
+        if habit_template_id:
+            extra["habit_template_id"] = habit_template_id
         entry = await self.repository.create(
             user_id=user_id,
             entry_type="GRATITUDE",
-            payload=payload
+            payload=payload,
+            **extra,
         )
         
         logger.info(f"Created gratitude entry {entry.id} for user {user_id}")
@@ -138,6 +148,7 @@ class JournalService:
         wins: List[str],
         improvements: List[str],
         mood: Optional[str] = None,
+        habit_template_id: Optional[str] = None,
     ) -> tuple[JournalEntryResponse, callable]:
         """Create a reflection journal entry."""
         payload = {
@@ -145,10 +156,14 @@ class JournalService:
             "improvements": improvements,
             "mood": mood,
         }
+        extra: Dict[str, Any] = {}
+        if habit_template_id:
+            extra["habit_template_id"] = habit_template_id
         entry = await self.repository.create(
             user_id=user_id,
             entry_type="REFLECTION",
-            payload=payload
+            payload=payload,
+            **extra,
         )
         
         logger.info(f"Created reflection entry {entry.id} for user {user_id}")

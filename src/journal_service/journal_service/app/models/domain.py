@@ -26,6 +26,7 @@ class JournalEntryResponse(BaseModel):
     payload: Dict[str, Any]
     created_at: datetime
     modified_at: Optional[datetime] = None
+    habit_template_id: Optional[UUID] = None
     
     class Config:
         from_attributes = True

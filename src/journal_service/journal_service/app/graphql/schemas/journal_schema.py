@@ -52,6 +52,7 @@ class Query:
                     entryType=entry.entry_type,
                     createdAt=entry.created_at,
                     modifiedAt=entry.modified_at,
+                    habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                     payload=payload
                 ))
             elif entry.entry_type == "REFLECTION":
@@ -62,6 +63,7 @@ class Query:
                     entryType=entry.entry_type,
                     createdAt=entry.created_at,
                     modifiedAt=entry.modified_at,
+                    habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                     payload=payload
                 ))
             elif entry.entry_type == "FREEFORM":
@@ -71,6 +73,7 @@ class Query:
                     entryType=entry.entry_type,
                     createdAt=entry.created_at,
                     modifiedAt=entry.modified_at,
+                    habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                     payload=entry.payload["content"]
                 ))
         
@@ -101,6 +104,7 @@ class Query:
                 entryType=entry.entry_type,
                 createdAt=entry.created_at,
                 modifiedAt=entry.modified_at,
+                habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                 payload=payload
             )
         elif entry.entry_type == "REFLECTION":
@@ -111,6 +115,7 @@ class Query:
                 entryType=entry.entry_type,
                 createdAt=entry.created_at,
                 modifiedAt=entry.modified_at,
+                habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                 payload=payload
             )
         elif entry.entry_type == "FREEFORM":
@@ -120,6 +125,7 @@ class Query:
                 entryType=entry.entry_type,
                 createdAt=entry.created_at,
                 modifiedAt=entry.modified_at,
+                habitTemplateId=str(entry.habit_template_id) if entry.habit_template_id else None,
                 payload=entry.payload["content"]
             )
         return None
@@ -302,6 +308,7 @@ class Mutation:
             focus=input.focus,
             affirmation=input.affirmation,
             mood=input.mood,
+            habit_template_id=input.habitTemplateId,
         )
         await session.commit()
         
@@ -316,6 +323,7 @@ class Mutation:
             entryType=entry.entry_type,
             createdAt=entry.created_at,
             modifiedAt=entry.modified_at,
+            habitTemplateId=str(entry.payload.get("habit_template_id")) if isinstance(entry.payload, dict) and entry.payload.get("habit_template_id") else None,
             payload=payload
         )
 
@@ -335,6 +343,7 @@ class Mutation:
             wins=input.wins,
             improvements=input.improvements,
             mood=input.mood,
+            habit_template_id=input.habitTemplateId,
         )
         await session.commit()
         
@@ -349,6 +358,7 @@ class Mutation:
             entryType=entry.entry_type,
             createdAt=entry.created_at,
             modifiedAt=entry.modified_at,
+            habitTemplateId=None,
             payload=payload
         )
 
@@ -366,6 +376,7 @@ class Mutation:
         entry, reindex_callback = await service.create_freeform_entry(
             user=current_user,
             content=input.content,
+            habit_template_id=input.habitTemplateId,
         )
         await session.commit()
         
@@ -378,6 +389,7 @@ class Mutation:
             entryType=entry.entry_type,
             createdAt=entry.created_at,
             modifiedAt=entry.modified_at,
+            habitTemplateId=None,
             payload=entry.payload["content"]
         )
 

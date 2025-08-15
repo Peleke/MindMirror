@@ -29,6 +29,7 @@ class JournalEntryInterface:
     entryType: str
     createdAt: datetime
     modifiedAt: Optional[datetime] = None
+    habitTemplateId: Optional[str] = None
 
 
 @strawberry.type
@@ -58,6 +59,7 @@ class GratitudeEntryInput:
     focus: Optional[str] = None
     affirmation: Optional[str] = None
     mood: Optional[str] = None
+    habitTemplateId: Optional[str] = None
 
 
 @strawberry.input
@@ -66,9 +68,11 @@ class ReflectionEntryInput:
     wins: List[str]
     improvements: List[str]
     mood: Optional[str] = None
+    habitTemplateId: Optional[str] = None
 
 
 @strawberry.input
 class FreeformEntryInput:
     """Input type for creating freeform entries."""
     content: str 
+    habitTemplateId: Optional[str] = None
