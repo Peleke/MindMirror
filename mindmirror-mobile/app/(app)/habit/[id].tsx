@@ -44,6 +44,8 @@ export default function HabitDetailScreen() {
     if (!mockEnabled) {
       await recordHabitResponse({ variables: { habitTemplateId: params.id, onDate, response: r } })
     }
+    // After recording response, navigate back to home and force reload so status updates immediately
+    router.replace({ pathname: '/journal', params: { reload: '1' } })
   }
 
   // Lessons associated with this habit (mock-first)
