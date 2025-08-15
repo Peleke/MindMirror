@@ -12,6 +12,7 @@ export default function CustomDrawerContent(props: Props) {
       <View style={{ flexGrow: 1 }}>
         <DrawerItem label="Home" onPress={() => navigation.navigate('journal')} />
         <DrawerItem label="Journal Hub" onPress={() => navigation.navigate('journal-hub')} />
+        <DrawerItem label="Programs & Resources" onPress={() => navigation.navigate('programs')} />
         <DrawerItem label="Chat" onPress={() => navigation.navigate('chat')} />
         <DrawerItem label="Archive" onPress={() => navigation.navigate('archive')} />
         <DrawerItem label="Insights" onPress={() => navigation.navigate('insights')} />

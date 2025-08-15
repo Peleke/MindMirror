@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMutation, useQuery } from '@apollo/client'
 import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS } from '@/services/api/habits'
 import { Icon } from '@/components/ui/icon'
+import { Pressable } from '@/components/ui/pressable'
 import { CheckCircle, BookOpen, Clock } from 'lucide-react-native'
 import { Button, ButtonText } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
@@ -107,7 +108,8 @@ export default function ProgramDetailScreen() {
                     <Text className="text-typography-600 dark:text-gray-300">No steps found.</Text>
                   ) : (
                     ((stepsData?.programTemplateSteps as any[]) || []).map((s: any) => (
-                      <Box key={s.id || s.sequenceIndex} className="p-5 rounded-2xl border bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800">
+                      <Pressable key={s.id || s.sequenceIndex} onPress={() => router.push(`/marketplace/${slug}/step/${s.id || s.sequenceIndex}`)}>
+                      <Box className="p-5 rounded-2xl border bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800">
                         <VStack space="xs">
                           <Text className="text-base font-semibold text-emerald-900 dark:text-emerald-100">Step {s.sequenceIndex + 1}: {s.habit?.title || 'Habit'}</Text>
                           <VStack className="flex-row items-center" space="xs">
@@ -120,6 +122,7 @@ export default function ProgramDetailScreen() {
                         </VStack>
                         {/* Optional: lessons list per step when available in API */}
                       </Box>
+                      </Pressable>
                     ))
                   )}
                 </VStack>
