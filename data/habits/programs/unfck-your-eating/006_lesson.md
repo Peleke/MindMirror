@@ -1,16 +1,13 @@
 ---
 slug: prefer-whole-foods
 title: "Prefer Whole Foods"
+subtitle: "Because what you eat—and how you flavor it—can shift your cravings, mood, and digestive peace…without overhauling your life."
 tags: [nutrition, habit]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: whole-foods
     dayIndex: 0
 ---
-
-## Prefer **Whole Foods**
-
-*Because what you eat—and how you flavor it—can shift your cravings, mood, and digestive peace…without overhauling your life.*
 
 Let’s be real: you’ve already started walking—with protein, fiber, slower eating, and less distraction. You’re already *displacing* the junk, one good habit ahead of the next. Now it’s time to steadily **re-place** processed foods with whole, nourishing ones—at your pace, without guilt.
 

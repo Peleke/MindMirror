@@ -1,14 +1,13 @@
 ---
 slug: wrap-up
 title: "Congratulations — You Did It!"
+subtitle: "Take a break and celebrate."
 tags: [nutrition, wrap-up]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: wrap-up
     dayIndex: 0
 ---
-
-## Congratulations — You Did It!
 
 You’ve just completed our 7-habit nutrition program — and that’s no small feat. Over the past days, you’ve been building a new foundation for eating that works with your body instead of against it. You’ve practiced awareness, patience, and balance — the very skills that transform eating from a mindless routine into an intentional, nourishing act.
 

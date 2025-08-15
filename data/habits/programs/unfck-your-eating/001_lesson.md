@@ -1,16 +1,13 @@
 ---
 slug: eat-slowly
 title: Eat Slowly and Chew Thoroughly
+subtitle: "What if the answer wasn’t less food—but more time to taste it?"
 tags: [nutrition, habit]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: eat-slowly
     dayIndex: 0
 ---
-
-## Eat Slowly and Chew Thoroughly
-
-*What if the answer wasn’t less food—but more time to taste it?*
 
 Let’s be honest: most of us eat like we’re being timed.
 

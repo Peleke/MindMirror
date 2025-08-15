@@ -1,16 +1,13 @@
 ---
 slug: rethink-drinks
 title: "Rethink Drinks: Choose Water or Unsweetened Options"
+subtitle: "Because beverages are mostly empty calories."
 tags: [nutrition, habit]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: rethink-drinks
     dayIndex: 0
 ---
-
-## Rethink Drinks: Choose Water or Unsweetened Options
-
-*Because beverages are **literally** empty calories.*
 
 You know that feeling when you’ve “been good all day” with meals… but then realized you’ve been sipping on a caramel latte, a fruit smoothie, and a Diet Coke without even thinking about it? That’s the stealthy sabotage of your drinks. They’re not just “hydration”—for a lot of us, they’re an invisible conveyor belt of sugar, cravings, and extra calories that don’t even fill us up.
 

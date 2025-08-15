@@ -1,6 +1,7 @@
 ---
 slug: more-fiber
 title: "More Fiber: Fruits, Veggies, and Grains"
+subtitle: "Because fullness, gut health, and staying sane around food all start with what’s on your plate."
 tags: [nutrition, habit]
 hasSourcesTables: true
 hasAddInGuide: true
@@ -9,10 +10,6 @@ stepRefs:
     stepSlug: fiber-first
     dayIndex: 0
 ---
-
-## **More Fiber: Fruits, Veggies, and Grains**
-
-*Because fullness, gut health, and staying sane around food all start with what’s on your plate.*
 
 Let’s be real: you eat fast, you snack when you’re stressed, and by late afternoon you find yourself suddenly craving…something. Anything. And when that snack *doesn’t* deliver—hello, second helping.
 

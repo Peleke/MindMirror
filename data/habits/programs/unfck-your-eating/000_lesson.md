@@ -1,16 +1,13 @@
 ---
 slug: screens-off
 title: "Screens Off: Put the Phone (and TV) Down"
+subtitle: "Because it’s hard to change behavior you don’t even notice."
 tags: [nutrition, habit]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: screens-off
     dayIndex: 0
 ---
-
-## Screens Off: Put the Phone (and TV) Down
-
-*Because it’s hard to change behavior you don’t even notice.*
 
 …You know how it goes: you sit down to eat “real quick,” phone in one hand, fork in the other. Maybe you’re scrolling, maybe you’re answering emails, maybe you’re rewatching *Schitt’s Creek* for the seventh time while eating ice cream straight from the pint. It feels like a break—but your brain is somewhere else, and your body doesn’t get the memo.
 

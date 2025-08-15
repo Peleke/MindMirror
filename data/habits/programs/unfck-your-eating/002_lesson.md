@@ -1,16 +1,13 @@
 ---
 slug: stop-at-80-percent
 title: "Stop at 80% Full (Leave a Bite or Two)"
+subtitle: "Because an ounce of prevention is worth a pound of cure."
 tags: [nutrition, habit]
 stepRefs:
   - program: unfck-your-eating
     stepSlug: stop-at-80
     dayIndex: 0
 ---
-
-## **Stop at 80% Full (Leave a Bite or Two)**
-
-*Because an ounce of prevention is worth a pound of cure.*
 
 Let’s be real: how often do you stop eating *after* you’re already too full?
 

@@ -1,6 +1,7 @@
 ---
 slug: prioritize-protein
 title: Prioritize Protein
+subtitle: "Because you can’t feel in control if you’re constantly hungry."
 tags: [nutrition, habit]
 hasAddInGuide: true
 stepRefs:
@@ -8,10 +9,6 @@ stepRefs:
     stepSlug: prioritize-protein
     dayIndex: 0
 ---
-
-## **Prioritize Protein**
-
-*Because you can’t feel in control if you’re constantly hungry.*
 
 Let’s be honest: you’re probably eating less protein than you think.
 
