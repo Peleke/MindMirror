@@ -16,6 +16,7 @@ import { Button, ButtonText } from '@/components/ui/button'
 import { Textarea, TextareaInput } from '@/components/ui/textarea'
 import { useMutation } from '@apollo/client'
 import { RECORD_HABIT_RESPONSE, LESSONS_FOR_HABIT } from '@/services/api/habits'
+import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations'
 import { useQuery, gql } from '@apollo/client'
 import { CheckCircle, Circle } from 'lucide-react-native'
 import { AppBar } from '@/components/common/AppBar'
@@ -35,6 +36,7 @@ export default function HabitDetailScreen() {
   const [response, setResponse] = useState<'yes' | 'no' | null>(null)
   const [note, setNote] = useState('')
   const [recordHabitResponse] = useMutation(RECORD_HABIT_RESPONSE)
+  const [createFreeformEntry] = useMutation(CREATE_FREEFORM_JOURNAL_ENTRY)
   const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
     .toString()
     .toLowerCase() === 'true'
@@ -120,10 +122,22 @@ export default function HabitDetailScreen() {
                 </Textarea>
               </Box>
               <HStack space="sm">
-                <Button className="flex-1 bg-green-500">
+                <Button className="flex-1 bg-green-500" onPress={async () => {
+                  if (!note.trim()) { router.replace({ pathname: '/journal', params: { reload: '1' } }); return }
+                  if (!mockEnabled) {
+                    await createFreeformEntry({ variables: { input: { content: note, habitTemplateId: String(params.id) } } })
+                  }
+                  router.replace({ pathname: '/journal', params: { reload: '1' } })
+                }}>
                   <ButtonText>Save</ButtonText>
                 </Button>
-                <Button className="flex-1 bg-green-600">
+                <Button className="flex-1 bg-green-600" onPress={async () => {
+                  if (!note.trim()) { router.replace({ pathname: '/journal', params: { reload: '1' } }); return }
+                  if (!mockEnabled) {
+                    await createFreeformEntry({ variables: { input: { content: note, habitTemplateId: String(params.id) } } })
+                  }
+                  router.replace({ pathname: '/journal', params: { reload: '1' } })
+                }}>
                   <ButtonText>Save and Chat</ButtonText>
                 </Button>
               </HStack>
