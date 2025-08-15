@@ -89,6 +89,27 @@ async def ensure_schema_exists():
             # Ensure schema exists first (dev convenience)
             await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
             await conn.run_sync(Base.metadata.create_all)
+            # Backfill columns added post-migration until Alembic is in place
+            await conn.execute(text("""
+                ALTER TABLE habits.lesson_templates
+                ADD COLUMN IF NOT EXISTS subtitle TEXT NULL;
+            """))
+            await conn.execute(text("""
+                ALTER TABLE habits.lesson_templates
+                ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR NULL;
+            """))
+            await conn.execute(text("""
+                ALTER TABLE habits.habit_templates
+                ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR NULL;
+            """))
+            await conn.execute(text("""
+                ALTER TABLE habits.program_templates
+                ADD COLUMN IF NOT EXISTS subtitle TEXT NULL;
+            """))
+            await conn.execute(text("""
+                ALTER TABLE habits.program_templates
+                ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR NULL;
+            """))
     except Exception:
         # Do not crash service on startup if perms are insufficient
         pass

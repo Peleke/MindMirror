@@ -28,6 +28,7 @@ class HabitTemplate(Base):
     slug = Column(String, nullable=False, unique=True, index=True)
     title = Column(String, nullable=False)
     short_description = Column(Text, nullable=True)
+    hero_image_url = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     level = Column(Integer, nullable=True)
     default_duration_days = Column(Integer, nullable=False, default=7)
@@ -43,9 +44,11 @@ class LessonTemplate(Base):
     slug = Column(String, nullable=False, unique=True, index=True)
     title = Column(String, nullable=False)
     markdown_content = Column(Text, nullable=False)
+    subtitle = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
     tags = Column(JSON, nullable=True)
     est_read_minutes = Column(Integer, nullable=True)
+    hero_image_url = Column(String, nullable=True)
     # Versioning and metadata
     version = Column(Integer, nullable=False, server_default="1")
     content_hash = Column(String, nullable=True)
@@ -62,6 +65,8 @@ class ProgramTemplate(Base):
     slug = Column(String, nullable=False, unique=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    subtitle = Column(Text, nullable=True)
+    hero_image_url = Column(String, nullable=True)
     # Versioning
     version = Column(Integer, nullable=False, server_default="1")
     content_hash = Column(String, nullable=True)

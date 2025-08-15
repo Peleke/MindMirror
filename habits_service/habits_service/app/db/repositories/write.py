@@ -82,6 +82,8 @@ class LessonTemplateRepository:
         summary: Optional[str] = None,
         tags: Optional[dict] = None,
         est_read_minutes: Optional[int] = None,
+        subtitle: Optional[str] = None,
+        hero_image_url: Optional[str] = None,
     ) -> LessonTemplate:
         fields = dict(
             slug=slug,
@@ -90,6 +92,8 @@ class LessonTemplateRepository:
             summary=summary,
             tags=tags,
             est_read_minutes=est_read_minutes,
+            subtitle=subtitle,
+            hero_image_url=hero_image_url,
         )
         obj = LessonTemplate(**fields)
         self.session.add(obj)
@@ -131,6 +135,8 @@ class LessonTemplateRepository:
         est_read_minutes: Optional[int],
         content_hash: Optional[str],
         metadata_json: Optional[dict],
+        subtitle: Optional[str] = None,
+        hero_image_url: Optional[str] = None,
     ) -> LessonTemplate:
         existing = await self.get_by_slug(slug)
         if not existing:
@@ -143,6 +149,8 @@ class LessonTemplateRepository:
                 est_read_minutes=est_read_minutes,
                 content_hash=content_hash,
                 metadata_json=metadata_json,
+                subtitle=subtitle,
+                hero_image_url=hero_image_url,
             )
             self.session.add(obj)
             await self.session.flush()
@@ -155,6 +163,8 @@ class LessonTemplateRepository:
             "tags": tags,
             "est_read_minutes": est_read_minutes,
             "metadata_json": metadata_json,
+            "subtitle": subtitle,
+            "hero_image_url": hero_image_url,
         }
         if content_hash and content_hash != existing.content_hash:
             update_fields["content_hash"] = content_hash
@@ -167,8 +177,8 @@ class ProgramTemplateRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, *, slug: str, title: str, description: Optional[str] = None, content_hash: Optional[str] = None) -> ProgramTemplate:
-        fields = dict(slug=slug, title=title, description=description)
+    async def create(self, *, slug: str, title: str, description: Optional[str] = None, content_hash: Optional[str] = None, subtitle: Optional[str] = None, hero_image_url: Optional[str] = None) -> ProgramTemplate:
+        fields = dict(slug=slug, title=title, description=description, subtitle=subtitle, hero_image_url=hero_image_url)
         obj = ProgramTemplate(**fields)
         self.session.add(obj)
         await self.session.flush()
@@ -205,11 +215,13 @@ class ProgramTemplateRepository:
         title: str,
         description: Optional[str],
         content_hash: Optional[str],
+        subtitle: Optional[str] = None,
+        hero_image_url: Optional[str] = None,
     ) -> ProgramTemplate:
         existing = await self.get_by_slug(slug)
         if not existing:
-            return await self.create(slug=slug, title=title, description=description, content_hash=content_hash)
-        update_fields = {"title": title, "description": description}
+            return await self.create(slug=slug, title=title, description=description, content_hash=content_hash, subtitle=subtitle, hero_image_url=hero_image_url)
+        update_fields = {"title": title, "description": description, "subtitle": subtitle, "hero_image_url": hero_image_url}
         if content_hash and content_hash != existing.content_hash:
             update_fields["content_hash"] = content_hash
             update_fields["version"] = existing.version + 1

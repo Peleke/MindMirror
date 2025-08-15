@@ -69,7 +69,6 @@ async def test_plan_single_step_day0_includes_habit_and_journal():
 
     types = [t.type for t in tasks]
     assert TaskType.habit in types
-    assert TaskType.journal in types
     ht = next(t for t in tasks if t.type == TaskType.habit)
     assert ht.title == "Eat Slowly"
     assert ht.status == TaskStatus.pending

@@ -34,8 +34,15 @@ class ProgramStepTemplateRepository:
 
     async def delete_by_program(self, program_template_id: str) -> int:
         pid = uuid.UUID(str(program_template_id))
-        res = await self.session.execute(delete(ProgramStepTemplate).where(ProgramStepTemplate.program_template_id == pid))
-        return res.rowcount or 0
+        # Delete step-lesson mappings first to avoid FK violations, then steps
+        res_steps = await self.session.execute(select(ProgramStepTemplate).where(ProgramStepTemplate.program_template_id == pid))
+        steps = list(res_steps.scalars().all())
+        deleted = 0
+        for st in steps:
+            await self.session.execute(delete(StepLessonTemplate).where(StepLessonTemplate.program_step_template_id == st.id))
+            deleted += 1
+        await self.session.execute(delete(ProgramStepTemplate).where(ProgramStepTemplate.program_template_id == pid))
+        return deleted
 
 
 class StepLessonTemplateRepository:

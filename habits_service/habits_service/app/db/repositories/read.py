@@ -70,6 +70,13 @@ class HabitsReadRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_step_lessons(self, step_id: str) -> List[StepLessonTemplate]:
+        stmt: Select = select(StepLessonTemplate).where(
+            StepLessonTemplate.program_step_template_id == step_id
+        ).order_by(StepLessonTemplate.day_index.asc())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_lesson_templates(self, lesson_ids: List[str]) -> List[LessonTemplate]:
         if not lesson_ids:
             return []
@@ -98,6 +105,16 @@ class HabitsReadRepository:
             return []
         stmt: Select = select(LessonEvent).where(
             and_(LessonEvent.user_id == user_id, LessonEvent.lesson_template_id.in_(lesson_ids), LessonEvent.date == on_date)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_recent_lesson_completions(self, user_id: str, limit: int = 50) -> List[LessonEvent]:
+        stmt: Select = (
+            select(LessonEvent)
+            .where(and_(LessonEvent.user_id == user_id, LessonEvent.event_type == "completed"))
+            .order_by(LessonEvent.created_at.desc())
+            .limit(limit)
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

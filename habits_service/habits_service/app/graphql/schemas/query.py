@@ -31,6 +31,8 @@ class LessonTemplateType:
     title: str
     summary: Optional[str]
     markdownContent: str
+    subtitle: Optional[str]
+    heroImageUrl: Optional[str]
 
 
 @strawberry.type
@@ -116,13 +118,16 @@ class Query:
         slug: str
         title: str
         description: Optional[str]
+        subtitle: Optional[str]
+        heroImageUrl: Optional[str]
+        # future: subtitle, heroImageUrl
 
     @strawberry.field
     async def programTemplates(self) -> List[ProgramTemplateType]:
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
             rows = await repo.list_program_templates()
-            return [Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description) for r in rows]
+            return [Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description, subtitle=getattr(r, 'subtitle', None), heroImageUrl=getattr(r, 'hero_image_url', None)) for r in rows]
 
     @strawberry.field
     async def programTemplateBySlug(self, slug: str) -> Optional[ProgramTemplateType]:
@@ -131,7 +136,7 @@ class Query:
             r = await repo.get_program_template_by_slug(slug)
             if not r:
                 return None
-            return Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description)
+            return Query.ProgramTemplateType(id=str(r.id), slug=r.slug, title=r.title, description=r.description, subtitle=getattr(r, 'subtitle', None), heroImageUrl=getattr(r, 'hero_image_url', None))
 
     @strawberry.type
     class ProgramAssignmentType:
@@ -171,6 +176,8 @@ class Query:
                 title=row.title,
                 summary=row.summary,
                 markdownContent=row.markdown_content,
+                subtitle=getattr(row, "subtitle", None),
+                heroImageUrl=getattr(row, "hero_image_url", None),
             )
 
     @strawberry.field
@@ -195,6 +202,71 @@ class Query:
                         ),
                     )
                 )
+            return out
+
+    @strawberry.type
+    class StepLessonType:
+        dayIndex: int
+        lessonTemplateId: str
+        title: str
+        summary: Optional[str]
+        estReadMinutes: Optional[int]
+        subtitle: Optional[str]
+        heroImageUrl: Optional[str]
+
+    @strawberry.field
+    async def programStepLessons(self, programStepId: str) -> List[StepLessonType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            sl = await repo.get_step_lessons(programStepId)
+            if not sl:
+                return []
+            lesson_ids = [str(x.lesson_template_id) for x in sl]
+            lessons = {str(l.id): l for l in await repo.get_lesson_templates(lesson_ids)}
+            out: List[Query.StepLessonType] = []
+            for m in sl:
+                l = lessons.get(str(m.lesson_template_id))
+                if not l:
+                    continue
+                out.append(Query.StepLessonType(
+                    dayIndex=m.day_index,
+                    lessonTemplateId=str(l.id),
+                    title=l.title,
+                    summary=l.summary,
+                    estReadMinutes=l.est_read_minutes,
+                    subtitle=getattr(l, "subtitle", None),
+                    heroImageUrl=getattr(l, "hero_image_url", None),
+                ))
+            return out
+
+    @strawberry.type
+    class LessonCompletionType:
+        lessonTemplateId: str
+        title: str
+        summary: Optional[str]
+        completedAt: date
+
+    @strawberry.field
+    async def recentLessonCompletions(self, info: Info, limit: int = 50) -> List[LessonCompletionType]:
+        current_user = get_current_user_from_context(info)
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            events = await repo.list_recent_lesson_completions(str(current_user.id), limit)
+            if not events:
+                return []
+            lesson_ids = list({str(e.lesson_template_id) for e in events})
+            lessons = {str(l.id): l for l in (await repo.get_lesson_templates(lesson_ids))}
+            out: List[Query.LessonCompletionType] = []
+            for e in events:
+                l = lessons.get(str(e.lesson_template_id))
+                if not l:
+                    continue
+                out.append(Query.LessonCompletionType(
+                    lessonTemplateId=str(l.id),
+                    title=l.title,
+                    summary=l.summary,
+                    completedAt=e.date,
+                ))
             return out
 
     @strawberry.field
