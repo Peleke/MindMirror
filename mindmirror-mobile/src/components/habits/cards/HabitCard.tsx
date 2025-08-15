@@ -22,7 +22,7 @@ export default function HabitCard({ task, onRespond, onPress }: { task: HabitTas
               <Icon as={Heart} size="md" className="text-blue-600 dark:text-blue-400" />
               <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
             </HStack>
-            <Text className="text-typography-600 dark:text-gray-300">{task.description || 'No description provided.'}</Text>
+            <Text className="text-typography-600 dark:text-gray-300">{(task as any).subtitle || task.description || 'No description provided.'}</Text>
             <HStack className="justify-between" space="sm">
               <Button onPress={() => { setLastResponse('yes'); onRespond('yes') }} className={`flex-1 ${lastResponse==='yes' ? 'bg-blue-500' : 'bg-blue-400'}`}>
                 <ButtonText>Yes</ButtonText>

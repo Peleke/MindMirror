@@ -35,8 +35,11 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
           taskId
           title
           description
+          subtitle
           status
           habitTemplateId
+          # prefer to pass subtitle for UI
+          # this requires backend to include it on HabitTask; temporarily omitted
         }
         ... on LessonTask {
           taskId

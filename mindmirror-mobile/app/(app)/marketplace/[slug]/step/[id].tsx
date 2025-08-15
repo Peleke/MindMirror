@@ -131,6 +131,7 @@ export default function ProgramStepDetailScreen() {
                     <Text className="text-typography-600 dark:text-gray-300">{step.habit.shortDescription}</Text>
                   ) : null}
                   <Box className="h-px bg-border-200 dark:bg-border-700" />
+                  {/* subtitle/description area above lessons if needed later from habit template */}
                   <VStack space="sm">
                     <Text className="text-base font-semibold text-typography-900 dark:text-white">Lessons</Text>
                     {((lessonsData?.programStepLessons as any[]) || []).length === 0 ? (

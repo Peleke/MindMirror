@@ -111,10 +111,10 @@ export default function ProgramDetailScreen() {
                   <Text className="text-2xl font-bold text-typography-900 dark:text-white">{program.title}</Text>
                   {program.subtitle ? (
                     <Text className="text-typography-600 dark:text-gray-300">{program.subtitle}</Text>
-                  ) : program.description ? (
+                  ) : null}
+                  {program.description ? (
                     <Text className="text-typography-600 dark:text-gray-300">{program.description}</Text>
                   ) : null}
-                  
                 </VStack>
 
                 <VStack space="sm">
@@ -133,6 +133,11 @@ export default function ProgramDetailScreen() {
                             <Icon as={Clock} size="sm" className="text-emerald-700 dark:text-emerald-300" />
                             <Text className="text-emerald-800 dark:text-emerald-200 font-semibold">{s.durationDays} days</Text>
                           </VStack>
+                          {typeof s.started !== 'undefined' ? (
+                            <Text className="text-emerald-800/80 dark:text-emerald-200/90 mt-1">
+                              {s.started ? `In progress: ${s.daysCompleted}/${s.totalDays}` : 'Not started'}
+                            </Text>
+                          ) : null}
                         </VStack>
                       </Box>
                       </Pressable>

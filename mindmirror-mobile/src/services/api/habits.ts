@@ -36,6 +36,7 @@ export const GET_TODAYS_TASKS = gql`
   query TodaysTasks($onDate: Date!) {
     todaysTasks(onDate: $onDate) {
       ...TaskFields
+      ... on HabitTask { subtitle }
     }
   }
 `
@@ -127,6 +128,9 @@ export const PROGRAM_STEPS = gql`
       id
       sequenceIndex
       durationDays
+      started
+      daysCompleted
+      totalDays
       habit {
         id
         title
