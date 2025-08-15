@@ -78,6 +78,30 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
         # Habit card
         habit = await repo.get_habit_template(str(active_step.habit_template_id))
         if habit:
+            # derive subtitle: prefer habit.short_description, else first lesson's subtitle/summary for today's step
+            subtitle_text: Optional[str] = habit.short_description
+            if not subtitle_text:
+                # Prefer today's lesson subtitle if available
+                step_lessons_for_day = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
+                if step_lessons_for_day:
+                    first_lesson_id = str(step_lessons_for_day[0].lesson_template_id)
+                    lessons_for_sub = await repo.get_lesson_templates([first_lesson_id])
+                    if lessons_for_sub:
+                        l0 = lessons_for_sub[0]
+                        subtitle_text = getattr(l0, "subtitle", None) or l0.summary or None
+                # Fallback to the first mapped lesson of the step if today has none
+                if not subtitle_text:
+                    all_step_lessons = await repo.get_step_lessons(str(active_step.id))
+                    if all_step_lessons:
+                        first_any_id = str(all_step_lessons[0].lesson_template_id)
+                        lessons_any = await repo.get_lesson_templates([first_any_id])
+                        if lessons_any:
+                            l0 = lessons_any[0]
+                            subtitle_text = getattr(l0, "subtitle", None) or l0.summary or None
+
+            if not subtitle_text:
+                subtitle_text = habit.title
+
             ev = await repo.find_habit_event(user_id, str(habit.id), on_date)
             status: TaskStatus = TaskStatus.completed if ev and ev.response == "yes" else TaskStatus.pending
             tasks.append(
@@ -87,7 +111,7 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     habitTemplateId=str(habit.id),
                     title=habit.title,
                     description=habit.short_description,
-                    subtitle=habit.short_description,
+                    subtitle=subtitle_text,
                     status=status,
                 )
             )

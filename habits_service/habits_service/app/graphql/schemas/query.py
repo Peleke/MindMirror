@@ -40,6 +40,7 @@ class HabitBasicType:
     id: str
     title: str
     shortDescription: Optional[str]
+    description: Optional[str]
 
 
 @strawberry.type
@@ -220,6 +221,7 @@ class Query:
                             id=str(habit.id),
                             title=habit.title,
                             shortDescription=habit.short_description,
+                            description=habit.description,
                         ),
                         started=started,
                         daysCompleted=days_completed,
