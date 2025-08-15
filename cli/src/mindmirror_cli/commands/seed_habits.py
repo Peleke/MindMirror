@@ -106,7 +106,12 @@ def run(
             program_title = manifest.get("title", program_slug)
             program_hash = _hash_content(json.dumps(manifest, sort_keys=True))
             program = await prepo.upsert_with_version(
-                slug=program_slug, title=program_title, description=manifest.get("description"), content_hash=program_hash
+                slug=program_slug,
+                title=program_title,
+                description=manifest.get("description"),
+                content_hash=program_hash,
+                subtitle=manifest.get("subtitle"),
+                hero_image_url=manifest.get("heroImageUrl"),
             )
             await session.commit()
 
@@ -123,7 +128,10 @@ def run(
                     "flags": parsed.flags,
                     "outline": [asdict(o) for o in parsed.outline],
                 }
-                content_hash = _hash_content(parsed.slug, parsed.title, parsed.markdown, json.dumps(metadata, sort_keys=True))
+                # Support subtitle and hero image
+                subtitle = parsed.raw_frontmatter.get("subtitle") if hasattr(parsed, "raw_frontmatter") else None
+                hero_image_url = parsed.raw_frontmatter.get("heroImageUrl") if hasattr(parsed, "raw_frontmatter") else None
+                content_hash = _hash_content(parsed.slug, parsed.title, parsed.markdown, subtitle or "", hero_image_url or "", json.dumps(metadata, sort_keys=True))
                 lt = await lrepo.upsert_with_version(
                     slug=parsed.slug,
                     title=parsed.title or parsed.slug,
@@ -133,6 +141,8 @@ def run(
                     est_read_minutes=None,
                     content_hash=content_hash,
                     metadata_json=metadata,
+                    subtitle=subtitle,
+                    hero_image_url=hero_image_url,
                 )
                 slug_to_lesson_id[parsed.slug] = str(lt.id)
             await session.commit()
@@ -170,6 +180,10 @@ def run(
             )
             existing_steps = list(existing_steps.scalars())
             if existing_steps:
+                # Delete step-lesson mappings first to avoid FK violations
+                for st in existing_steps:
+                    await slrepo.delete_by_step(str(st.id))
+                await session.commit()
                 await srepo.delete_by_program(str(program.id))
                 await session.commit()
 
