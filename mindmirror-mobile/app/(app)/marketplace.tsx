@@ -74,7 +74,9 @@ export default function MarketplaceScreen() {
                       <Box className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
                         <VStack space="xs">
                           <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.title}</Text>
-                          {p.description ? (
+                          {p.subtitle ? (
+                            <Text className="text-indigo-800/80 dark:text-indigo-300">{p.subtitle}</Text>
+                          ) : p.description ? (
                             <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
                           ) : null}
                         </VStack>
