@@ -112,15 +112,6 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     )
                 )
 
-    # Always include journal card (configurable later)
-    tasks.append(
-        JournalTask(
-            taskId=_deterministic_task_id("habits", user_id, on_date, "journal", "daily"),
-            type=TaskType.journal,
-            title="Daily Journal",
-            description="Reflect or free-write.",
-            status=TaskStatus.pending,
-        )
-    )
+    # No standalone JournalTask. Journaling is provided via a normal habit in the "Daily Journaling" program.
 
     return tasks

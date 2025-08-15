@@ -1,0 +1,11 @@
+slug: daily-journaling
+title: Daily Journaling
+description: Build a consistent journaling practice every day.
+steps:
+  - sequence_index: 0
+    duration_days: 36500  # effectively ongoing
+    habit:
+      slug: daily-journaling
+      title: Daily Journaling
+      short_description: Take a few minutes to write every day.
+    lessons: []  # optional welcome/intake lessons can be added later
