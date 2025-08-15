@@ -234,6 +234,7 @@ type HabitTask @join__type(graph: HABITS)  {
   habitTemplateId: String!
   title: String!
   description: String
+  subtitle: String
   status: TaskStatus!
 }
 
@@ -286,6 +287,9 @@ type ProgramStepType @join__type(graph: HABITS)  {
   sequenceIndex: Int!
   durationDays: Int!
   habit: HabitBasicType!
+  started: Boolean!
+  daysCompleted: Int!
+  totalDays: Int!
 }
 
 type HabitBasicType @join__type(graph: HABITS)  {
