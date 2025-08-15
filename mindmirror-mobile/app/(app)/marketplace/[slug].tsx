@@ -108,19 +108,18 @@ export default function ProgramDetailScreen() {
                     <Text className="text-typography-600 dark:text-gray-300">No steps found.</Text>
                   ) : (
                     ((stepsData?.programTemplateSteps as any[]) || []).map((s: any) => (
-                      <Pressable key={s.id || s.sequenceIndex} onPress={() => router.push(`/marketplace/${slug}/step/${s.id || s.sequenceIndex}`)}>
-                      <Box className="p-5 rounded-2xl border bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800">
+                      <Pressable key={s.id || s.sequenceIndex} onPress={() => router.push(`/marketplace/${slug}/step/${s.id || s.sequenceIndex}?programId=${encodeURIComponent(program.id)}&habitId=${encodeURIComponent(s.habit?.id || '')}`)}>
+                      <Box className="p-5 rounded-2xl border bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
                         <VStack space="xs">
-                          <Text className="text-base font-semibold text-emerald-900 dark:text-emerald-100">Step {s.sequenceIndex + 1}: {s.habit?.title || 'Habit'}</Text>
+                          <Text className="text-base font-semibold text-emerald-900 dark:text-emerald-100">{s.habit?.title || 'Habit'}</Text>
+                          {s.habit?.shortDescription ? (
+                            <Text className="text-emerald-800/90 dark:text-emerald-200">{s.habit.shortDescription}</Text>
+                          ) : null}
                           <VStack className="flex-row items-center" space="xs">
                             <Icon as={Clock} size="sm" className="text-emerald-700 dark:text-emerald-300" />
                             <Text className="text-emerald-800 dark:text-emerald-200 font-semibold">{s.durationDays} days</Text>
                           </VStack>
-                          {s.habit?.shortDescription ? (
-                            <Text className="text-emerald-800/80 dark:text-emerald-200">{s.habit.shortDescription}</Text>
-                          ) : null}
                         </VStack>
-                        {/* Optional: lessons list per step when available in API */}
                       </Box>
                       </Pressable>
                     ))

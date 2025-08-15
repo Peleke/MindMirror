@@ -17,7 +17,7 @@ export default function ProgramsAndResourcesScreen() {
   const { data: assignments } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
   const { data: templates } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<'habits'>('habits')
+  const [category, setCategory] = useState<'habits' | 'lessons'>('habits')
 
   const enrolled = useMemo(() => {
     const as = assignments?.programAssignments || []
@@ -58,13 +58,16 @@ export default function ProgramsAndResourcesScreen() {
                         <SelectDragIndicator />
                       </SelectDragIndicatorWrapper>
                       <SelectItem label="Habits" value="habits" />
+                      <SelectItem label="Lessons" value="lessons" />
                     </SelectContent>
                   </SelectPortal>
                 </Select>
               </VStack>
             </VStack>
 
-            {enrolled.length === 0 ? (
+            {category === 'lessons' ? (
+              <Text className="text-typography-600 dark:text-gray-300">Completed lessons listing coming soon.</Text>
+            ) : enrolled.length === 0 ? (
               <Text className="text-typography-600 dark:text-gray-300">No programs enrolled.</Text>
             ) : (
               <VStack space="md">

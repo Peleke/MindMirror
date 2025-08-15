@@ -134,6 +134,18 @@ export const PROGRAM_STEPS = gql`
     }
   }
 `
+ 
+export const PROGRAM_STEP_LESSONS = gql`
+  query ProgramStepLessons($programStepId: String!) {
+    programStepLessons(programStepId: $programStepId) {
+      dayIndex
+      lessonTemplateId
+      title
+      summary
+      estReadMinutes
+    }
+  }
+`
 
 // 7) Lesson detail by id (for markdown)
 export const LESSON_TEMPLATE_BY_ID = gql`
