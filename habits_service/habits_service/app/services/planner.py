@@ -99,9 +99,6 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                             l0 = lessons_any[0]
                             subtitle_text = getattr(l0, "subtitle", None) or l0.summary or None
 
-            if not subtitle_text:
-                subtitle_text = habit.title
-
             ev = await repo.find_habit_event(user_id, str(habit.id), on_date)
             status: TaskStatus = TaskStatus.completed if ev and ev.response == "yes" else TaskStatus.pending
             tasks.append(
