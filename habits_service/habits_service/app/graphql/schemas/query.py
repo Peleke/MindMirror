@@ -2,6 +2,7 @@ import strawberry
 from strawberry.types import Info
 from datetime import date
 from typing import List, Optional, Set
+from datetime import timedelta
 
 from habits_service.habits_service.app.db.uow import UnitOfWork
 from habits_service.habits_service.app.db.repositories import HabitsReadRepository
@@ -241,5 +242,74 @@ class Query:
                 )
             result.sort(key=lambda x: x.title.lower())
             return result
+
+    @strawberry.type
+    class HabitStatsType:
+        presentedCount: int
+        completedCount: int
+        adherenceRate: float
+        currentStreak: int
+
+    @strawberry.field
+    async def habitStats(self, info: Info, habitTemplateId: str, lookbackDays: int = 14) -> HabitStatsType:
+        current_user = get_current_user_from_context(info)
+        today = date.today()
+        start_day = today - timedelta(days=lookbackDays - 1)
+
+        presented = 0
+        completed = 0
+        streak = 0
+
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            assignments = await repo.get_active_assignments(str(current_user.id))
+
+            # Helper to determine if habit was presented on a given day based on step mapping
+            async def is_presented(on_day: date) -> bool:
+                for a in assignments:
+                    day_offset = (on_day - a.start_date).days
+                    if day_offset < 0:
+                        continue
+                    steps = await repo.get_program_steps(str(a.program_template_id))
+                    cursor = 0
+                    for s in steps:
+                        if day_offset < cursor + s.duration_days:
+                            if str(s.habit_template_id) == habitTemplateId:
+                                return True
+                            break
+                        cursor += s.duration_days
+                return False
+
+            # Iterate range for presented/completed counts
+            d = start_day
+            while d <= today:
+                if await is_presented(d):
+                    presented += 1
+                    ev = await repo.find_habit_event(str(current_user.id), habitTemplateId, d)
+                    if ev and ev.response == "yes":
+                        completed += 1
+                d += timedelta(days=1)
+
+            # Compute current streak (consecutive presented+completed backwards from today)
+            d = today
+            while d >= start_day:
+                if await is_presented(d):
+                    ev = await repo.find_habit_event(str(current_user.id), habitTemplateId, d)
+                    if ev and ev.response == "yes":
+                        streak += 1
+                        d -= timedelta(days=1)
+                        continue
+                    break
+                else:
+                    # If not presented this day, stop streak
+                    break
+
+            rate = (completed / presented) if presented else 0.0
+            return Query.HabitStatsType(
+                presentedCount=presented,
+                completedCount=completed,
+                adherenceRate=rate,
+                currentStreak=streak,
+            )
 
 

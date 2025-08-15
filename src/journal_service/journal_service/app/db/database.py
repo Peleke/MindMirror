@@ -61,6 +61,15 @@ async def init_db():
             
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)
+            # Ensure new columns exist for backward compatibility (safe no-op if present)
+            await conn.execute(text("""
+                ALTER TABLE journal.journal_entries
+                ADD COLUMN IF NOT EXISTS habit_template_id UUID NULL;
+            """))
+            await conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_journal_entries_habit_template_id
+                ON journal.journal_entries(habit_template_id);
+            """))
             logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}", exc_info=True)
