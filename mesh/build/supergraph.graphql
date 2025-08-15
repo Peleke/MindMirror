@@ -296,6 +296,7 @@ type HabitBasicType @join__type(graph: HABITS)  {
   id: String!
   title: String!
   shortDescription: String
+  description: String
 }
 
 type StepLessonType @join__type(graph: HABITS)  {
