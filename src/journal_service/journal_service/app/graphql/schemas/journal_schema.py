@@ -279,6 +279,41 @@ class Query:
             user_id=str(current_user.id),
             entry_type=entry_type
         )
+
+    @strawberry.field
+    async def journalEntriesForHabit(
+        self,
+        info,
+        habitTemplateId: UUID,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> List[JournalEntryInterface]:
+        """Entries linked to a specific habit for the current user."""
+        current_user = get_current_user_from_context(info)
+        service = get_journal_service_from_context(info)
+        entries = await service.get_entries_for_habit(
+            user_id=str(current_user.id), habit_template_id=str(habitTemplateId), limit=limit, offset=offset
+        )
+        result = []
+        for entry in entries:
+            if entry.entry_type == "GRATITUDE":
+                payload = GratitudePayloadType(**entry.payload)
+                result.append(GratitudeJournalEntry(
+                    id=str(entry.id), userId=str(entry.user_id), entryType=entry.entry_type,
+                    createdAt=entry.created_at, modifiedAt=entry.modified_at, payload=payload
+                ))
+            elif entry.entry_type == "REFLECTION":
+                payload = ReflectionPayloadType(**entry.payload)
+                result.append(ReflectionJournalEntry(
+                    id=str(entry.id), userId=str(entry.user_id), entryType=entry.entry_type,
+                    createdAt=entry.created_at, modifiedAt=entry.modified_at, payload=payload
+                ))
+            elif entry.entry_type == "FREEFORM":
+                result.append(FreeformJournalEntry(
+                    id=str(entry.id), userId=str(entry.user_id), entryType=entry.entry_type,
+                    createdAt=entry.created_at, modifiedAt=entry.modified_at, payload=entry.payload["content"]
+                ))
+        return result
     
     @strawberry.field
     async def journal_entries_count(self, info) -> int:
@@ -286,6 +321,12 @@ class Query:
         current_user = get_current_user_from_context(info)
         service = get_journal_service_from_context(info)
         return await service.count_entries_for_user(str(current_user.id))
+
+    @strawberry.field
+    async def completedLessons(self, info, limit: int = 50, offset: int = 0) -> list[str]:
+        """IDs of recently completed lessons for the current user (proxy until habits_service exposes directly)."""
+        # Placeholder: ideally move to habits_service; keeping here would require cross-service joins
+        return []
 
 
 @strawberry.type

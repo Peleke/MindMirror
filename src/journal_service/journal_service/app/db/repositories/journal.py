@@ -85,6 +85,25 @@ class JournalRepository(BaseRepository[JournalEntry]):
             .offset(offset)
         )
         return result.scalars().all()
+
+    async def get_entries_for_habit(
+        self,
+        user_id: str,
+        habit_template_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[JournalEntry]:
+        result = await self.session.execute(
+            select(JournalEntry)
+            .where(
+                JournalEntry.user_id == user_id,
+                JournalEntry.habit_template_id == habit_template_id,
+            )
+            .order_by(JournalEntry.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return result.scalars().all()
     
     async def count_entries_for_user(self, user_id: str) -> int:
         """Count total journal entries for user."""

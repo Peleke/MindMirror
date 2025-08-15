@@ -192,6 +192,16 @@ class JournalService:
             user_id, limit, offset
         )
         return [JournalEntryResponse.from_orm(entry) for entry in entries]
+
+    async def get_entries_for_habit(
+        self,
+        user_id: str,
+        habit_template_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[JournalEntryResponse]:
+        entries = await self.repository.get_entries_for_habit(user_id, habit_template_id, limit, offset)
+        return [JournalEntryResponse.from_orm(entry) for entry in entries]
     
     async def count_entries_for_user(self, user_id: str) -> int:
         """Count journal entries for user."""
