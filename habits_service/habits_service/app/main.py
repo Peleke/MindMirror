@@ -1,7 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional, Literal
-import time
+from habits_service.habits_service.app.api.models import AutoEnrollRequest, RedeemRequest
 from strawberry.fastapi import GraphQLRouter
 import strawberry
 from habits_service.habits_service.app.db.session import engine
@@ -27,47 +25,10 @@ async def health():
 app.include_router(graphql_app, prefix="/graphql")
 
 
-# --- Simple in-memory rate limiter (per user, per endpoint) ---
-_RATE_LIMIT: dict[str, tuple[int, int]] = {"/api/auto-enroll": (5, 60), "/api/redeem": (5, 60)}
-_RATE_BUCKETS: dict[str, List[float]] = {}
-
-
-def _check_rate_limit(endpoint: str, user_id: str):
-    limit, window = _RATE_LIMIT.get(endpoint, (10, 60))
-    key = f"{endpoint}:{user_id}"
-    now = time.time()
-    bucket = _RATE_BUCKETS.get(key, [])
-    # drop old timestamps
-    bucket = [ts for ts in bucket if now - ts <= window]
-    if len(bucket) >= limit:
-        raise HTTPException(status_code=429, detail="rate-limited")
-    bucket.append(now)
-    _RATE_BUCKETS[key] = bucket
-
-
-# --- Request models ---
-class EntitlementItem(BaseModel):
-    status: Literal["issued", "redeemed", "revoked"]
-    email: EmailStr
-    programTemplateId: str
-    code: Optional[str] = None
-
-
-class AutoEnrollRequest(BaseModel):
-    email: EmailStr
-    entitlements: List[EntitlementItem]
-
-
-class RedeemRequest(BaseModel):
-    code: str
-    entitlement: EntitlementItem
-
-
 @app.post("/api/auto-enroll")
 async def auto_enroll(entitlements: AutoEnrollRequest, x_internal_id: str = Header(None)):
     if not x_internal_id:
         raise HTTPException(status_code=401, detail="unauthorized")
-    _check_rate_limit("/api/auto-enroll", x_internal_id)
     try:
         email = entitlements.email
         items = entitlements.entitlements or []
@@ -96,7 +57,6 @@ async def auto_enroll(entitlements: AutoEnrollRequest, x_internal_id: str = Head
 async def redeem(body: RedeemRequest, x_internal_id: str = Header(None)):
     if not x_internal_id:
         raise HTTPException(status_code=401, detail="unauthorized")
-    _check_rate_limit("/api/redeem", x_internal_id)
     try:
         code = body.code
         entitlement = body.entitlement
