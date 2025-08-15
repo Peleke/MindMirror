@@ -148,7 +148,10 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   programAssignments(status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
   lessonTemplateById(id: String!) : LessonTemplateType @join__field(graph: HABITS) 
   programTemplateSteps(programId: String!) : [ProgramStepType!]! @join__field(graph: HABITS) 
+  programStepLessons(programStepId: String!) : [StepLessonType!]! @join__field(graph: HABITS) 
+  recentLessonCompletions(limit: Int! = 50) : [LessonCompletionType!]! @join__field(graph: HABITS) 
   lessonsForHabit(habitTemplateId: String!, onDate: Date!) : [LessonForHabitType!]! @join__field(graph: HABITS) 
+  habitStats(habitTemplateId: String!, lookbackDays: Int! = 14) : HabitStatsType! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
@@ -156,7 +159,9 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
   freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
   journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
+  journalEntriesForHabit(habitTemplateId: UUID!, limit: Int! = 20, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntriesCount: Int! @join__field(graph: JOURNAL) 
+  completedLessons(limit: Int! = 50, offset: Int! = 0) : [String!]! @join__field(graph: JOURNAL) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -254,6 +259,8 @@ type ProgramTemplateType @join__type(graph: HABITS)  {
   slug: String!
   title: String!
   description: String
+  subtitle: String
+  heroImageUrl: String
 }
 
 type ProgramAssignmentType @join__type(graph: HABITS)  {
@@ -270,6 +277,8 @@ type LessonTemplateType @join__type(graph: HABITS)  {
   title: String!
   summary: String
   markdownContent: String!
+  subtitle: String
+  heroImageUrl: String
 }
 
 type ProgramStepType @join__type(graph: HABITS)  {
@@ -285,11 +294,35 @@ type HabitBasicType @join__type(graph: HABITS)  {
   shortDescription: String
 }
 
+type StepLessonType @join__type(graph: HABITS)  {
+  dayIndex: Int!
+  lessonTemplateId: String!
+  title: String!
+  summary: String
+  estReadMinutes: Int
+  subtitle: String
+  heroImageUrl: String
+}
+
+type LessonCompletionType @join__type(graph: HABITS)  {
+  lessonTemplateId: String!
+  title: String!
+  summary: String
+  completedAt: Date!
+}
+
 type LessonForHabitType @join__type(graph: HABITS)  {
   lessonTemplateId: String!
   title: String!
   summary: String
   completed: Boolean!
+}
+
+type HabitStatsType @join__type(graph: HABITS)  {
+  presentedCount: Int!
+  completedCount: Int!
+  adherenceRate: Float!
+  currentStreak: Int!
 }
 
 type HabitTemplatePayload @join__type(graph: HABITS)  {
@@ -331,6 +364,7 @@ type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: J
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: GratitudePayloadType!
 }
 
@@ -348,6 +382,7 @@ type ReflectionJournalEntry implements JournalEntryInterface @join__type(graph: 
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: ReflectionPayloadType!
 }
 
@@ -363,6 +398,7 @@ type FreeformJournalEntry implements JournalEntryInterface @join__type(graph: JO
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: String!
 }
 
@@ -372,6 +408,7 @@ interface JournalEntryInterface @join__type(graph: JOURNAL)  {
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
 }
 
 union Task @join__type(graph: HABITS)  @join__unionMember(graph: HABITS, member: "HabitTask")  @join__unionMember(graph: HABITS, member: "LessonTask")  @join__unionMember(graph: HABITS, member: "JournalTask")  = HabitTask | LessonTask | JournalTask
@@ -422,14 +459,17 @@ input GratitudeEntryInput @join__type(graph: JOURNAL)  {
   focus: String = null
   affirmation: String = null
   mood: String = null
+  habitTemplateId: String = null
 }
 
 input ReflectionEntryInput @join__type(graph: JOURNAL)  {
   wins: [String!]!
   improvements: [String!]!
   mood: String = null
+  habitTemplateId: String = null
 }
 
 input FreeformEntryInput @join__type(graph: JOURNAL)  {
   content: String!
+  habitTemplateId: String = null
 }
