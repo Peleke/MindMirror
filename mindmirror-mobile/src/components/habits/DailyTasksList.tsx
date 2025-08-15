@@ -133,12 +133,13 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
         if (t.__typename === 'HabitTask') {
           const ht = t as HabitTask
           const title = ht.title || 'Habit'
+          const subtitle = (ht as any).subtitle || ''
           // eslint-disable-next-line no-console
           console.log('[DailyTasksList] HabitTask title/desc', ht.title, ht.description)
           return (
             <HabitCard
               key={ht.taskId}
-              task={{ ...ht, title }}
+              task={{ ...ht, title, subtitle }}
               onRespond={async (response: 'yes' | 'no') => {
                 if (!mockEnabled) {
                   await recordHabitResponse({ variables: { habitTemplateId: ht.habitTemplateId, onDate, response } })

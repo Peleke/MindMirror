@@ -89,6 +89,15 @@ export default function ProgramStepDetailScreen() {
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto px-6 py-6" space="lg">
             <VStack space="lg">
+              {/* Header above stats */}
+              <VStack space="sm">
+                <Text className="text-xl font-bold text-typography-900 dark:text-white">{step?.habit?.title || 'Habit'}</Text>
+                {step?.habit?.shortDescription ? (
+                  <Text className="text-typography-600 dark:text-gray-300">{step.habit.shortDescription}</Text>
+                ) : null}
+              </VStack>
+              <Box className="h-px bg-border-200 dark:bg-border-700" />
+              {/* Stats block */}
               <VStack space="sm" className="items-center">
                 <Box className="items-center justify-center">
                   <Svg width={size} height={size}>
@@ -125,57 +134,47 @@ export default function ProgramStepDetailScreen() {
               </VStack>
               <Box className="h-px bg-border-200 dark:bg-border-700" />
               <VStack space="sm">
-                <VStack space="sm">
-                  <Text className="text-xl font-bold text-typography-900 dark:text-white">{step?.habit?.title || 'Habit'}</Text>
-                  {step?.habit?.shortDescription ? (
-                    <Text className="text-typography-600 dark:text-gray-300">{step.habit.shortDescription}</Text>
-                  ) : null}
-                  <Box className="h-px bg-border-200 dark:bg-border-700" />
-                  {/* subtitle/description area above lessons if needed later from habit template */}
-                  <VStack space="sm">
-                    <Text className="text-base font-semibold text-typography-900 dark:text-white">Lessons</Text>
-                    {((lessonsData?.programStepLessons as any[]) || []).length === 0 ? (
-                      <Text className="text-typography-600 dark:text-gray-300">No lessons mapped.</Text>
-                    ) : (
-                      ((lessonsData?.programStepLessons as any[]) || []).map((l: any) => (
-                        <Pressable
-                          key={`${l.lessonTemplateId}-${l.dayIndex}`}
-                          onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&subtitle=${encodeURIComponent(l.subtitle || '')}&summary=${encodeURIComponent(l.summary || '')}&from=step`)}
-                        >
-                          <HStack className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700 items-center justify-between">
-                            <VStack className="flex-1" space="xs">
-                              <Text className="text-sm font-semibold text-typography-900 dark:text-white">Day {l.dayIndex + 1}: {l.title}</Text>
-                              {l.summary ? (
-                                <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
-                              ) : null}
-                            </VStack>
-                            <Icon as={completedIds.has(l.lessonTemplateId) ? CheckCircle : IconCircle} size="md" className={`${completedIds.has(l.lessonTemplateId) ? 'text-green-600' : 'text-gray-400'}`} />
-                          </HStack>
-                        </Pressable>
-                      ))
-                    )}
-                  </VStack>
-                  <Box className="h-px bg-border-200 dark:bg-border-700" />
-                  <VStack space="sm">
-                    <Text className="text-base font-semibold text-typography-900 dark:text-white">Linked Journal Entries</Text>
-                    {((entriesData?.journalEntriesForHabit as any[]) || []).length === 0 ? (
-                      <Text className="text-typography-600 dark:text-gray-300">No linked entries yet.</Text>
-                    ) : (
-                      ((entriesData?.journalEntriesForHabit as any[]) || []).map((e: any) => (
-                        <Box key={e.id} className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
-                          <Text className="text-sm font-semibold text-typography-900 dark:text-white">{new Date(e.createdAt).toLocaleDateString()}</Text>
-                          {e.__typename === 'FreeformJournalEntry' ? (
-                            <Text className="text-typography-600 dark:text-gray-300">{e.payload}</Text>
-                          ) : e.__typename === 'GratitudeJournalEntry' ? (
-                            <Text className="text-typography-600 dark:text-gray-300">Gratitude entry</Text>
-                          ) : (
-                            <Text className="text-typography-600 dark:text-gray-300">Reflection entry</Text>
-                          )}
-                        </Box>
-                      ))
-                    )}
-                  </VStack>
-                </VStack>
+                <Text className="text-base font-semibold text-typography-900 dark:text-white">Lessons</Text>
+                {((lessonsData?.programStepLessons as any[]) || []).length === 0 ? (
+                  <Text className="text-typography-600 dark:text-gray-300">No lessons mapped.</Text>
+                ) : (
+                  ((lessonsData?.programStepLessons as any[]) || []).map((l: any) => (
+                    <Pressable
+                      key={`${l.lessonTemplateId}-${l.dayIndex}`}
+                      onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&subtitle=${encodeURIComponent(l.subtitle || '')}&summary=${encodeURIComponent(l.summary || '')}&from=step`)}
+                    >
+                      <HStack className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700 items-center justify-between">
+                        <VStack className="flex-1" space="xs">
+                          <Text className="text-sm font-semibold text-typography-900 dark:text-white">Day {l.dayIndex + 1}: {l.title}</Text>
+                          {l.summary ? (
+                            <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
+                          ) : null}
+                        </VStack>
+                        <Icon as={completedIds.has(l.lessonTemplateId) ? CheckCircle : IconCircle} size="md" className={`${completedIds.has(l.lessonTemplateId) ? 'text-green-600' : 'text-gray-400'}`} />
+                      </HStack>
+                    </Pressable>
+                  ))
+                )}
+              </VStack>
+              <Box className="h-px bg-border-200 dark:bg-border-700" />
+              <VStack space="sm">
+                <Text className="text-base font-semibold text-typography-900 dark:text-white">Linked Journal Entries</Text>
+                {((entriesData?.journalEntriesForHabit as any[]) || []).length === 0 ? (
+                  <Text className="text-typography-600 dark:text-gray-300">No linked entries yet.</Text>
+                ) : (
+                  ((entriesData?.journalEntriesForHabit as any[]) || []).map((e: any) => (
+                    <Box key={e.id} className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                      <Text className="text-sm font-semibold text-typography-900 dark:text-white">{new Date(e.createdAt).toLocaleDateString()}</Text>
+                      {e.__typename === 'FreeformJournalEntry' ? (
+                        <Text className="text-typography-600 dark:text-gray-300">{e.payload}</Text>
+                      ) : e.__typename === 'GratitudeJournalEntry' ? (
+                        <Text className="text-typography-600 dark:text-gray-300">Gratitude entry</Text>
+                      ) : (
+                        <Text className="text-typography-600 dark:text-gray-300">Reflection entry</Text>
+                      )}
+                    </Box>
+                  ))
+                )}
               </VStack>
             </VStack>
           </VStack>

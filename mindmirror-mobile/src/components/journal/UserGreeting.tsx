@@ -19,7 +19,7 @@ export function UserGreeting({
   };
 
   const getLastEntryText = () => {
-    if (!lastEntryDate) return "Ready to start your journaling journey?";
+    if (!lastEntryDate) return "Ready to start your transformation journey?";
     
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - lastEntryDate.getTime());

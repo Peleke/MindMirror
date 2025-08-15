@@ -49,6 +49,7 @@ export const LIST_PROGRAM_TEMPLATES = gql`
       slug
       title
       description
+      subtitle
     }
   }
 `
