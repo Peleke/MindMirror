@@ -219,6 +219,40 @@ Product case: Enable intelligent workout adaptations without relying on GenAI by
   - Planner chooses safe substitutions automatically when user profile flags constraints.
   - UI: modification sheet shows rationale and alternatives.
 
+### Go-to-Market & Growth Targets
+Product case: Use a high-clarity wedge (UYE) to prove value fast, then expand with journaling, meals, and movement; compounding personalization drives retention and monetization.
+
+- Where value is strongest
+  - Daily behavior-change loop: Habit programs + journaling + AI personalization + streaks
+  - Flagship wedge: UYE → immediate wins; then Daily Journaling, Movement, Meals
+  - Cross-vertical compounding: data unlocks anticipatory interventions
+
+- Close the gap quickly
+  - Ship demo funnel: Landing → PDF+Sheet lead magnet → auto-enroll UYE → daily drips → stats & affirmations
+  - Instant “aha”: adherence ring, streak potential, and a personalized affirmation on Day 1
+  - Reduce friction: one-tap enroll, fast backnav, network-only refreshes after actions
+  - Retention nudges: streak-saving push, weekly recap email with visuals
+  - Content ops lite: daily variants + prompts + reusable assets; preview/validation/seed
+  - Social proof & UGC: short testimonials, 7-day challenges with CTAs
+
+- Targets by phase
+  - Immediate (2–4 weeks)
+    - Aggressive: 5–8k emails, 1–2k installs, 40–50% enroll; D7 30–35%; 10–15% WAU
+    - Realistic: 1–2k emails, 300–600 installs, 25–35% enroll; D7 20–25%; 8–10% WAU
+    - North-star: ≥60% complete ≥1 task on Day 1
+  - Near (2–6 weeks)
+    - Aggressive: 15–20k emails, 3–5k installs, 20–25% WAU/MAU; D30 18–22%; 3–5% paid trial opt-in
+    - Realistic: 6–10k emails, 1.2–2.5k installs, 15–18% WAU/MAU; D30 12–15%; 1.5–3% paid
+    - North-star: ≥4 completions/week; cross-enrollment by week 3
+  - Medium (6–16 weeks)
+    - Aggressive: 35–50k emails, 7–10k MAU; D90 15–18%; paid 5–7%
+    - Realistic: 15–25k emails, 3–5k MAU; D90 10–12%; paid 3–4%
+    - North-star: anticipatory nudges accepted ≥25%
+  - Long-term (16–24 weeks)
+    - Aggressive: 80–120k emails, 15–20k MAU; paid 7–9%; referrals ≥15%
+    - Realistic: 35–60k emails, 7–12k MAU; paid 4–6%; referrals 8–10%
+    - North-star: time-to-value < 1 minute/session
+
 ### Long-Term (16–24 weeks)
 Product case: Deliver automated, anticipatory interventions and a premium, distinctive brand experience. The app should not only reflect the user’s data but proactively coach—suggesting habit adjustments, adapting workouts, and shaping affirmations and lessons to their current context. Pair with a top-tier design overhaul to differentiate.
 
