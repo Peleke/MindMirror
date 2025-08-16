@@ -389,8 +389,10 @@ class Query:
                         completed += 1
                 d += timedelta(days=1)
 
-            # Compute current streak (consecutive presented+completed backwards from today)
+            # Compute current streak (consecutive completed days), allowing today's miss,
+            # and ignoring days where the habit wasn't presented.
             d = today
+            allow_skip_today = True
             while d >= start_day:
                 if await is_presented(d):
                     ev = await repo.find_habit_event(str(current_user.id), habitTemplateId, d)
@@ -398,10 +400,14 @@ class Query:
                         streak += 1
                         d -= timedelta(days=1)
                         continue
+                    # Presented but not completed
+                    if d == today and allow_skip_today:
+                        allow_skip_today = False
+                        d -= timedelta(days=1)
+                        continue
                     break
-                else:
-                    # If not presented this day, stop streak
-                    break
+                # Not presented that day; skip back without breaking the streak window
+                d -= timedelta(days=1)
 
             rate = (completed / presented) if presented else 0.0
             return Query.HabitStatsType(
