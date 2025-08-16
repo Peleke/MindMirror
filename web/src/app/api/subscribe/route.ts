@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, source = 'landing_page' } = await request.json();
+    const { email, source = 'landing_page', tag } = await request.json();
 
     if (!email) {
       return NextResponse.json(
@@ -42,13 +42,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Compose source with optional campaign tag (e.g., 'landing_page:uye')
+    const finalSource = tag ? `${source}:${String(tag).toLowerCase()}` : source
+
     // Insert new subscriber
     const { data: newSubscriber, error: insertError } = await supabase
       .from('subscribers')
       .insert([
         {
           email: email.toLowerCase(),
-          source: source,
+          source: finalSource,
           status: 'active'
         }
       ])

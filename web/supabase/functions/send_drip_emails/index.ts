@@ -7,7 +7,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// Email subjects for each day
+// Email subjects for each day (default MindMirror)
 const EMAIL_SUBJECTS = {
   0: "Welcome to MindMirror",
   1: "Your Brain Is a Forest",
@@ -20,8 +20,18 @@ const EMAIL_SUBJECTS = {
   14: "We're still here",
 };
 
+const EMAIL_SUBJECTS_UYE: Record<number, string> = {
+  1: "The easiest way to eat less—without changing your plate",
+  2: "Slower eating for speedier progress",
+  3: "The Okinawan habit that keeps you light on your feet",
+  4: "The nutrient you’re probably only getting half of",
+  5: "Psst—why you’re hungry again an hour later",
+  6: "The sneaky calories your brain doesn’t count",
+  7: "The swap that keeps you full for hours",
+};
+
 // Function to load email template by day
-async function loadEmailTemplate(day: number): Promise<string> {
+async function loadEmailTemplate(day: number, campaign?: string): Promise<string> {
   const templateFiles = {
     0: "0-welcome-email.tsx",
     1: "1-day.tsx", 
@@ -40,8 +50,9 @@ async function loadEmailTemplate(day: number): Promise<string> {
   }
 
   try {
-    // Load the React Email template
-    const templatePath = `./emails/${fileName}`;
+    // Load the React Email template (support subdirectories per campaign)
+    const baseDir = campaign ? `./emails/${campaign}` : `./emails`;
+    const templatePath = `${baseDir}/${fileName}`;
     const templateContent = await Deno.readTextFile(templatePath);
     
     // For now, we'll use a simple text extraction approach
@@ -106,7 +117,7 @@ serve(async (_req) => {
   try {
     // Get subscribers who haven't completed the drip sequence
     const { data: subs, error } = await fetch(
-      `${supabaseUrl}/rest/v1/subscribers?drip_day_sent=lt.7&select=id,email,subscribed_at,drip_day_sent`,
+      `${supabaseUrl}/rest/v1/subscribers?drip_day_sent=lt.7&select=id,email,subscribed_at,drip_day_sent,source`,
       {
         headers: {
           apikey: supabaseAnonKey!,
@@ -132,13 +143,18 @@ serve(async (_req) => {
         (Date.now() - new Date(sub.subscribed_at).getTime()) / (1000 * 60 * 60 * 24)
       );
 
+      // Determine campaign from source (e.g., 'landing_page:uye')
+      const source: string = sub.source || '';
+      const campaign = source.includes(':') ? source.split(':')[1].trim() : '';
+      const subjects = campaign === 'uye' ? EMAIL_SUBJECTS_UYE : EMAIL_SUBJECTS;
+
       // Check if we have a template for this day
-      if (!EMAIL_SUBJECTS[daysSince as keyof typeof EMAIL_SUBJECTS]) continue;
+      if (!subjects[daysSince as keyof typeof subjects]) continue;
 
       try {
         // Load email template for this day
-        const emailBody = await loadEmailTemplate(daysSince);
-        const subject = EMAIL_SUBJECTS[daysSince as keyof typeof EMAIL_SUBJECTS];
+        const emailBody = await loadEmailTemplate(daysSince, campaign);
+        const subject = subjects[daysSince as keyof typeof subjects];
 
         // Send email via Resend
         const resendResponse = await fetch("https://api.resend.com/emails", {
