@@ -67,6 +67,23 @@ export default function HabitDetailScreen() {
     { variables: { habitTemplateId: String(params.id), onDate: today }, fetchPolicy: 'cache-and-network' }
   )
 
+  // Debug streak day-by-day for this habit
+  const { data: streakDebug } = useQuery(
+    gql`
+      query HabitStreakDebug($habitTemplateId: String!, $lookbackDays: Int) {
+        habitStreakDebug(habitTemplateId: $habitTemplateId, lookbackDays: $lookbackDays) {
+          date
+          presented
+          completed
+          eventResponse
+        }
+      }
+    `,
+    { variables: { habitTemplateId: String(params.id), lookbackDays: 7 }, skip: !params.id }
+  )
+  // eslint-disable-next-line no-console
+  console.log('[HabitDetail] streakDebug', streakDebug?.habitStreakDebug)
+
   // Habit stats for flair
   const { data: statsData } = useQuery(HABIT_STATS, { variables: { habitTemplateId: String(params.id), lookbackDays: 21 }, skip: !params.id })
   const adherence = Math.max(0, Math.min(1, statsData?.habitStats?.adherenceRate || 0))
