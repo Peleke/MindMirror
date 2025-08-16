@@ -417,4 +417,57 @@ class Query:
                 currentStreak=streak,
             )
 
+    # --- Debug helpers ---
+    @strawberry.type
+    class HabitDayDebugType:
+        date: date
+        presented: bool
+        completed: bool
+        eventResponse: Optional[str]
+
+    @strawberry.field
+    async def habitStreakDebug(self, info: Info, habitTemplateId: str, lookbackDays: int = 14) -> List[HabitDayDebugType]:
+        """
+        Debug endpoint: returns last N days with flags for whether the habit was presented
+        and whether it was completed, plus the raw event response if present.
+        """
+        current_user = get_current_user_from_context(info)
+        today = date.today()
+        start_day = today - timedelta(days=lookbackDays - 1)
+
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            assignments = await repo.get_active_assignments(str(current_user.id))
+
+            async def is_presented(on_day: date) -> bool:
+                for a in assignments:
+                    day_offset = (on_day - a.start_date).days
+                    if day_offset < 0:
+                        continue
+                    steps = await repo.get_program_steps(str(a.program_template_id))
+                    cursor = 0
+                    for s in steps:
+                        if day_offset < cursor + s.duration_days:
+                            if str(s.habit_template_id) == habitTemplateId:
+                                return True
+                            break
+                        cursor += s.duration_days
+                return False
+
+            out: List[Query.HabitDayDebugType] = []
+            d = start_day
+            while d <= today:
+                presented = await is_presented(d)
+                ev = await repo.find_habit_event(str(current_user.id), habitTemplateId, d) if presented else None
+                out.append(
+                    Query.HabitDayDebugType(
+                        date=d,
+                        presented=presented,
+                        completed=bool(ev and ev.response == "yes"),
+                        eventResponse=(ev.response if ev else None),
+                    )
+                )
+                d += timedelta(days=1)
+            return out
+
 
