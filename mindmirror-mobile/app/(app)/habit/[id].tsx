@@ -15,7 +15,8 @@ import { Icon } from '@/components/ui/icon'
 import { Button, ButtonText } from '@/components/ui/button'
 import { Textarea, TextareaInput } from '@/components/ui/textarea'
 import { useMutation } from '@apollo/client'
-import { RECORD_HABIT_RESPONSE, LESSONS_FOR_HABIT } from '@/services/api/habits'
+import { RECORD_HABIT_RESPONSE, LESSONS_FOR_HABIT, HABIT_STATS } from '@/services/api/habits'
+import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
 import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations'
 import { useQuery, gql } from '@apollo/client'
 import { CheckCircle, Circle } from 'lucide-react-native'
@@ -66,6 +67,18 @@ export default function HabitDetailScreen() {
     { variables: { habitTemplateId: String(params.id), onDate: today }, fetchPolicy: 'cache-and-network' }
   )
 
+  // Habit stats for flair
+  const { data: statsData } = useQuery(HABIT_STATS, { variables: { habitTemplateId: String(params.id), lookbackDays: 21 }, skip: !params.id })
+  const adherence = Math.max(0, Math.min(1, statsData?.habitStats?.adherenceRate || 0))
+  const streak = statsData?.habitStats?.currentStreak || 0
+  const presented = statsData?.habitStats?.presentedCount || 0
+  const completed = statsData?.habitStats?.completedCount || 0
+  const size = 120
+  const stroke = 12
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = circumference * (1 - adherence)
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -87,6 +100,42 @@ export default function HabitDetailScreen() {
               {params.description ? (
                 <Text className="text-typography-600 dark:text-gray-300">{params.description}</Text>
               ) : null}
+            </VStack>
+
+            {/* Stats */}
+            <VStack space="sm" className="items-center">
+              <Box className="items-center justify-center">
+                <Svg width={size} height={size}>
+                  <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                    <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
+                    <SvgCircle
+                      cx={size/2}
+                      cy={size/2}
+                      r={radius}
+                      stroke="#10b981"
+                      strokeWidth={stroke}
+                      strokeDasharray={`${circumference} ${circumference}`}
+                      strokeDashoffset={progress}
+                      strokeLinecap="round"
+                      fill="transparent"
+                    />
+                  </G>
+                </Svg>
+                <VStack className="absolute items-center">
+                  <Text className="text-xl font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+                  <Text className="text-typography-600 dark:text-gray-300">Adherence</Text>
+                </VStack>
+              </Box>
+              <HStack className="w-full justify-around">
+                <VStack className="items-center">
+                  <Text className="text-base font-bold text-typography-900 dark:text-white">{streak}</Text>
+                  <Text className="text-typography-600 dark:text-gray-300">Current streak</Text>
+                </VStack>
+                <VStack className="items-center">
+                  <Text className="text-base font-bold text-typography-900 dark:text-white">{completed}/{presented}</Text>
+                  <Text className="text-typography-600 dark:text-gray-300">Completed</Text>
+                </VStack>
+              </HStack>
             </VStack>
 
             {/* Response Section */}
