@@ -7,12 +7,14 @@ interface UserGreetingProps {
   userName?: string;
   lastEntryDate?: Date;
   className?: string;
+  hideSubtext?: boolean;
 }
 
 export function UserGreeting({ 
   userName, 
   lastEntryDate, 
-  className = "" 
+  className = "",
+  hideSubtext = false,
 }: UserGreetingProps) {
   const getGreeting = () => {
     return 'Welcome back';
@@ -36,9 +38,11 @@ export function UserGreeting({
       <Text className="text-2xl font-semibold text-typography-900 dark:text-white">
         {getGreeting()}{userName ? `, ${userName}` : ''}.
       </Text>
-      <Text className="text-base text-typography-600 dark:text-gray-300 leading-6">
-        {getLastEntryText()}
-      </Text>
+      {hideSubtext ? null : (
+        <Text className="text-base text-typography-600 dark:text-gray-300 leading-6">
+          {getLastEntryText()}
+        </Text>
+      )}
     </VStack>
   );
 } 

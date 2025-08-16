@@ -12,6 +12,9 @@ import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
 import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
+import { useQuery, gql } from '@apollo/client'
+import { HABIT_STATS, GET_TODAYS_TASKS } from '@/services/api/habits'
+import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
 import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
 import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
 import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
@@ -25,6 +28,125 @@ import { AppBar } from '@/components/common/AppBar';
 import DailyTasksList from '@/components/habits/DailyTasksList'
 import { useLocalSearchParams } from 'expo-router'
 import { getUserDisplayName } from '@/utils/user';
+
+function todayIsoDate(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+}
+
+function MiniDashboard() {
+  const onDate = todayIsoDate()
+  const MINI_TASKS = gql`
+    query MiniTodaysTasks($onDate: Date!) {
+      todaysTasks(onDate: $onDate) {
+        __typename
+        ... on HabitTask {
+          taskId
+          habitTemplateId
+          title
+          status
+        }
+      }
+    }
+  `
+  const { data: tasks, loading: tasksLoading } = useQuery(MINI_TASKS, { variables: { onDate }, fetchPolicy: 'cache-and-network' })
+  const firstHabit = (tasks?.todaysTasks || []).find((t: any) => t.__typename === 'HabitTask' && t.habitTemplateId)
+  const habitId = firstHabit?.habitTemplateId || (global as any).__preferredHabitId || ''
+  const habitTitle = firstHabit?.title || ''
+  const { data: stats, loading: statsLoading } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: !habitId })
+
+  // Debug logs
+  // eslint-disable-next-line no-console
+  console.log('[MiniDashboard] tasks loaded?', !tasksLoading, 'habitTask found?', !!firstHabit, 'habitId', habitId, 'title', habitTitle)
+  // eslint-disable-next-line no-console
+  console.log('[MiniDashboard] stats loading?', statsLoading, 'stats', stats?.habitStats)
+  if (habitId) { (global as any).__preferredHabitId = habitId }
+
+  const adherence = Math.max(0, Math.min(1, stats?.habitStats?.adherenceRate || 0))
+  const streak = stats?.habitStats?.currentStreak || 0
+  const presented = stats?.habitStats?.presentedCount ?? 0
+  const completed = stats?.habitStats?.completedCount ?? 0
+  const size = 110
+  const stroke = 10
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = circumference * (1 - adherence)
+
+  if ((tasksLoading && !habitId) || (habitId && statsLoading)) {
+    return (
+      <VStack className="mt-2 items-center">
+        <ActivityIndicator />
+      </VStack>
+    )
+  }
+
+  if (!habitId) {
+    return null
+  }
+
+  return (
+    <VStack className="mt-2 px-4">
+      <Box className="p-4 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
+      <HStack className="items-end justify-between">
+        {/* Left: adherence ring + counts + header */}
+        <VStack className="items-center" style={{ width: '33%' }}>
+          <Box className="items-center justify-center">
+            <Svg width={size} height={size}>
+              <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
+                <SvgCircle
+                  cx={size/2}
+                  cy={size/2}
+                  r={radius}
+                  stroke="#10b981"
+                  strokeWidth={stroke}
+                  strokeDasharray={`${circumference} ${circumference}`}
+                  strokeDashoffset={progress}
+                  strokeLinecap="round"
+                  fill="transparent"
+                />
+              </G>
+            </Svg>
+            <VStack className="absolute items-center">
+              <Text className="text-lg font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+            </VStack>
+          </Box>
+          <Text className="text-typography-600 dark:text-gray-300 mt-1">{completed}/{presented}</Text>
+          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center" numberOfLines={1}>{habitTitle || 'Adherence'}</Text>
+        </VStack>
+        {/* Middle: today's changes */}
+        <VStack className="items-center" style={{ width: '33%' }}>
+          <TodayChips onDate={onDate} tasks={tasks?.todaysTasks || []} />
+          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Today's wins</Text>
+        </VStack>
+        {/* Right: current streak */}
+        <VStack className="items-center justify-end" style={{ width: '33%' }}>
+          <Text className="text-2xl font-bold text-typography-900 dark:text-white">{streak}</Text>
+          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Current streak</Text>
+        </VStack>
+      </HStack>
+      </Box>
+    </VStack>
+  )
+}
+
+function TodayChips({ onDate, tasks }: { onDate: string; tasks: any[] }) {
+  const completedHabit = tasks.find((t: any) => t.__typename === 'HabitTask' && t.status === 'completed')
+  const completedLesson = tasks.find((t: any) => t.__typename === 'LessonTask' && t.status === 'completed')
+  const chips: string[] = []
+  if (completedHabit) chips.push('Habit ✓')
+  if (completedLesson) chips.push('Lesson ✓')
+  if (chips.length === 0) return <Text className="text-typography-600 dark:text-gray-300 italic">Keep going</Text>
+  return (
+    <VStack className="space-y-1 mt-0.5 items-stretch w-full px-4">
+      {chips.map((c) => (
+        <Box key={c} className="px-3 py-1 rounded-md bg-indigo-50 dark:bg-gray-800 border border-indigo-300 dark:border-gray-600 shadow-sm">
+          <Text className="text-xs font-semibold text-indigo-900 dark:text-gray-100 text-center">{c}</Text>
+        </Box>
+      ))}
+    </VStack>
+  )
+}
 
 const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
   const isGratitude = type === 'Gratitude';
@@ -116,11 +238,11 @@ export default function JournalScreen() {
             <UserGreeting 
               userName={userName} 
               className="text-2xl font-semibold text-typography-900 dark:text-white"
+              hideSubtext
             />
             
-            <Text className="text-lg font-semibold text-typography-900 dark:text-white pt-4">
-              From your journals...
-            </Text>
+            {/* Mini dashboard: current habit stats */}
+            <MiniDashboard />
             <AffirmationDisplay 
               affirmation={isAffirmationLoading ? "Loading..." : affirmation}
             />

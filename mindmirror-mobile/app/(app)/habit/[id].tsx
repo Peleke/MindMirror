@@ -153,9 +153,36 @@ export default function HabitDetailScreen() {
               </HStack>
             </VStack>
 
+            {/* Associated lessons */}
+            <VStack space="sm">
+              <Text className="text-xl font-bold text-typography-900 dark:text-white">Lessons</Text>
+              <Box className="h-px bg-border-200 dark:bg-border-700" />
+              {((lessonsData?.lessonsForHabit as any[]) || []).length === 0 ? (
+                <Text className="text-typography-600 dark:text-gray-400">No lessons found.</Text>
+              ) : ((lessonsData?.lessonsForHabit as any[]) || []).map((l: any) => (
+                <Pressable
+                  key={l.lessonTemplateId}
+                  onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&summary=${encodeURIComponent(l.summary || '')}&from=tasks`)}
+                >
+                  <HStack className="py-3 items-center justify-between">
+                    <HStack space="sm" className="items-center">
+                      <Icon as={CheckCircle} size="sm" className={` ${l.completed ? 'text-green-600' : 'text-gray-300'}`} />
+                      <VStack>
+                        <Text className="text-base font-semibold text-typography-900 dark:text-white">{l.title}</Text>
+                        {l.summary ? (
+                          <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
+                        ) : null}
+                      </VStack>
+                    </HStack>
+                    <Icon as={l.completed ? CheckCircle : Circle} size="md" className={`${l.completed ? 'text-green-600' : 'text-gray-400'}`} />
+                  </HStack>
+                </Pressable>
+              ))}
+            </VStack>
+
             {/* Journal Note Section */}
             <VStack space="sm">
-              <Text className="text-base font-semibold text-typography-900 dark:text-white">Add a note (optional)</Text>
+              <Text className="text-base font-semibold text-typography-900 dark:text-white">What hit you the most about practicing this habit today?</Text>
               <Box className="bg-white dark:bg-gray-800 rounded-lg border border-border-200 dark:border-border-700 p-2">
                 <Textarea>
                   <TextareaInput
@@ -190,33 +217,6 @@ export default function HabitDetailScreen() {
                   <ButtonText>Save and Chat</ButtonText>
                 </Button>
               </HStack>
-            </VStack>
-
-            {/* Associated lessons */}
-            <VStack space="sm">
-              <Text className="text-xl font-bold text-typography-900 dark:text-white">Lessons</Text>
-              <Box className="h-px bg-border-200 dark:bg-border-700" />
-              {((lessonsData?.lessonsForHabit as any[]) || []).length === 0 ? (
-                <Text className="text-typography-600 dark:text-gray-400">No lessons found.</Text>
-              ) : ((lessonsData?.lessonsForHabit as any[]) || []).map((l: any) => (
-                <Pressable
-                  key={l.lessonTemplateId}
-                  onPress={() => router.push(`/lesson/${l.lessonTemplateId}?title=${encodeURIComponent(l.title)}&summary=${encodeURIComponent(l.summary || '')}&from=tasks`)}
-                >
-                  <HStack className="py-3 items-center justify-between">
-                    <HStack space="sm" className="items-center">
-                      <Icon as={CheckCircle} size="sm" className={` ${l.completed ? 'text-green-600' : 'text-gray-300'}`} />
-                      <VStack>
-                        <Text className="text-base font-semibold text-typography-900 dark:text-white">{l.title}</Text>
-                        {l.summary ? (
-                          <Text className="text-typography-600 dark:text-gray-300">{l.summary}</Text>
-                        ) : null}
-                      </VStack>
-                    </HStack>
-                    <Icon as={l.completed ? CheckCircle : Circle} size="md" className={`${l.completed ? 'text-green-600' : 'text-gray-400'}`} />
-                  </HStack>
-                </Pressable>
-              ))}
             </VStack>
           </VStack>
         </ScrollView>

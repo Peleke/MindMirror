@@ -123,7 +123,7 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
 
       {(activeTab==='today' ? remainingTasks : completedTasks).length === 0 ? (
         <Box className="items-center py-8">
-          <Text className="text-typography-600 dark:text-gray-300">{activeTab==='today' ? 'No remaining tasks' : 'No completed tasks yet'}</Text>
+          <Text className="text-typography-600 dark:text-gray-300">{activeTab==='today' ? '✨ Wow, you nailed everything!' : 'No completed tasks yet'}</Text>
         </Box>
       ) : null}
 
