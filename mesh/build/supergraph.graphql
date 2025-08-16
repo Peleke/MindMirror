@@ -152,6 +152,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   recentLessonCompletions(limit: Int! = 50) : [LessonCompletionType!]! @join__field(graph: HABITS) 
   lessonsForHabit(habitTemplateId: String!, onDate: Date!) : [LessonForHabitType!]! @join__field(graph: HABITS) 
   habitStats(habitTemplateId: String!, lookbackDays: Int! = 14) : HabitStatsType! @join__field(graph: HABITS) 
+  habitStreakDebug(habitTemplateId: String!, lookbackDays: Int! = 14) : [HabitDayDebugType!]! @join__field(graph: HABITS) 
   journalEntries(entryType: String = null, limit: Int! = 10, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntry(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
   journalEntrySystem(entryId: UUID!) : JournalEntryInterface @join__field(graph: JOURNAL) 
@@ -328,6 +329,13 @@ type HabitStatsType @join__type(graph: HABITS)  {
   completedCount: Int!
   adherenceRate: Float!
   currentStreak: Int!
+}
+
+type HabitDayDebugType @join__type(graph: HABITS)  {
+  date: Date!
+  presented: Boolean!
+  completed: Boolean!
+  eventResponse: String
 }
 
 type HabitTemplatePayload @join__type(graph: HABITS)  {
