@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   Body,
   Container,
@@ -10,8 +11,8 @@ import {
   Text,
   Section,
   Button,
-} from '@react-email/components';
-import * as React from 'react';
+} from 'npm:@react-email/components';
+import * as React from 'npm:react';
 
 interface WelcomeEmailProps {
   userEmail: string;

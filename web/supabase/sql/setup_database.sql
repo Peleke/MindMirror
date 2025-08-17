@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS waitlist.subscribers (
   id BIGSERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  source VARCHAR(50) DEFAULT 'landing_page',
+  source VARCHAR(100) DEFAULT 'landing_page',
   status VARCHAR(20) DEFAULT 'active',
+  drip_day_sent INT,                  -- last drip day sent; null means none
+  last_sent_at TIMESTAMP WITH TIME ZONE,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
@@ -52,36 +54,45 @@ ALTER TABLE waitlist.email_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waitlist.admin_users ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access policies
-CREATE POLICY "Admins can view all subscribers" ON waitlist.subscribers
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM waitlist.admin_users 
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins can view all subscribers" ON waitlist.subscribers
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM waitlist.admin_users 
+        WHERE admin_users.user_id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "Admins can view all email events" ON waitlist.email_events
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM waitlist.admin_users 
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins can view all email events" ON waitlist.email_events
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM waitlist.admin_users 
+        WHERE admin_users.user_id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "Admins can manage admin users" ON waitlist.admin_users
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM waitlist.admin_users 
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins can manage admin users" ON waitlist.admin_users
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM waitlist.admin_users 
+        WHERE admin_users.user_id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Insert indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_subscribers_email ON waitlist.subscribers(email);
-CREATE INDEX IF NOT EXISTS idx_subscribers_subscribed_at ON waitlist.subscribers(subscribed_at);
-CREATE INDEX IF NOT EXISTS idx_email_events_subscriber_id ON waitlist.email_events(subscriber_id);
-CREATE INDEX IF NOT EXISTS idx_email_events_created_at ON waitlist.email_events(created_at);
-CREATE INDEX IF NOT EXISTS idx_admin_users_user_id ON waitlist.admin_users(user_id);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_waitlist_subscribers_email ON waitlist.subscribers(email);
+CREATE INDEX IF NOT EXISTS idx_waitlist_subscribers_subscribed_at ON waitlist.subscribers(subscribed_at);
+CREATE INDEX IF NOT EXISTS idx_waitlist_subscribers_status_drip ON waitlist.subscribers(status, drip_day_sent);
+CREATE INDEX IF NOT EXISTS idx_waitlist_email_events_subscriber_id ON waitlist.email_events(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_waitlist_email_events_created_at ON waitlist.email_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_waitlist_admin_users_user_id ON waitlist.admin_users(user_id);
 
 -- Confirm setup
-SELECT 'Database schema created successfully!' as status; 
+SELECT 'Database schema created/updated successfully!' as status;
+
+
