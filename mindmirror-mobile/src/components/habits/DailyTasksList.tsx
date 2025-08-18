@@ -97,16 +97,34 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
 
   if (!tasks.length) {
     return (
-      <Box className="items-center py-8">
-        <Text className="text-typography-600 dark:text-gray-300">No tasks for today</Text>
-      </Box>
+      <VStack space="md">
+        {/* Tabs placeholder to keep layout consistent */}
+        <HStack className="w-full border-b border-border-200 dark:border-border-700">
+          <Pressable className="flex-1 py-2 border-b-2 border-primary-600">
+            <Text className="text-center text-typography-900 dark:text-white">Today</Text>
+          </Pressable>
+          <Pressable className="flex-1 py-2 border-l border-border-200 dark:border-border-700 border-b-2 border-transparent">
+            <Text className="text-center text-typography-700 dark:text-gray-300">Completed</Text>
+          </Pressable>
+        </HStack>
+        <Box className="items-center py-8">
+          <Text className="text-typography-600 dark:text-gray-300 mb-3">No tasks today. Why not explore the Marketplace?</Text>
+          <Pressable onPress={() => router.replace('/marketplace')}>
+            <Box className="px-3 py-1.5 rounded-md bg-indigo-50 dark:bg-gray-800 border border-indigo-300 dark:border-gray-600 shadow-sm">
+              <Text className="text-xs font-semibold text-indigo-900 dark:text-gray-100 text-center">
+                Explore Marketplace
+              </Text>
+            </Box>
+          </Pressable>
+        </Box>
+      </VStack>
     )
   }
 
   return (
     <VStack space="md">
       {/* Tabs */}
-      <HStack className="w-full border-b border-border-200 dark:border-border-700" space="none">
+      <HStack className="w-full border-b border-border-200 dark:border-border-700">
         <Pressable
           className={`flex-1 py-2 border-b-2 ${activeTab==='today' ? 'border-primary-600' : 'border-transparent'}`}
           onPress={() => setActiveTab('today')}
@@ -139,7 +157,7 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
           return (
             <HabitCard
               key={ht.taskId}
-              task={{ ...ht, title, subtitle }}
+              task={{ ...ht, title }}
               onRespond={async (response: 'yes' | 'no') => {
                 if (!mockEnabled) {
                   await recordHabitResponse({ variables: { habitTemplateId: ht.habitTemplateId, onDate, response } })

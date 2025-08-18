@@ -80,9 +80,7 @@ function MiniDashboard() {
     )
   }
 
-  if (!habitId) {
-    return null
-  }
+  // Show zeroed dashboard even if no habitId selected yet
 
   return (
     <VStack className="mt-2 px-4">
@@ -131,11 +129,19 @@ function MiniDashboard() {
 }
 
 function TodayChips({ onDate, tasks }: { onDate: string; tasks: any[] }) {
+  const router = useRouter()
   const completedHabit = tasks.find((t: any) => t.__typename === 'HabitTask' && t.status === 'completed')
   const completedLesson = tasks.find((t: any) => t.__typename === 'LessonTask' && t.status === 'completed')
   const chips: string[] = []
   if (completedHabit) chips.push('Habit ✓')
   if (completedLesson) chips.push('Lesson ✓')
+  if ((tasks || []).length === 0) {
+    return (
+      <VStack className="space-y-2 items-center w-full px-4">
+        <Text className="text-typography-600 dark:text-gray-300 italic">Keep going!</Text>
+      </VStack>
+    )
+  }
   if (chips.length === 0) return <Text className="text-typography-600 dark:text-gray-300 italic">Keep going</Text>
   return (
     <VStack className="space-y-1 mt-0.5 items-stretch w-full px-4">
