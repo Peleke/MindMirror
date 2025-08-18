@@ -61,6 +61,11 @@ export const gatewayConfig = defineConfig({
       if (authorization) {
         headers['authorization'] = authorization;
       }
+      // Pass cookies for web flows if present (autoenroll also supports bearer)
+      const cookie = request.headers.get('cookie');
+      if (cookie) {
+        headers['cookie'] = cookie;
+      }
       
       console.log(`🔍 Gateway: Propagating headers to ${subgraphName}:`, headers);
       return headers;
