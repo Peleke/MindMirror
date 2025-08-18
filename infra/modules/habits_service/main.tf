@@ -19,6 +19,10 @@ resource "google_cloud_run_service" "habits_service" {
           value = var.log_level
         }
         env {
+          name  = "DATABASE_URL"
+          value = var.database_url
+        }
+        env {
           name  = "VOUCHERS_WEB_BASE_URL"
           value = var.vouchers_web_base_url
         }

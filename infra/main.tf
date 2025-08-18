@@ -212,6 +212,7 @@ module "habits_service" {
   log_level   = var.log_level
   environment = var.environment
 
+  database_url                 = data.google_secret_manager_secret_version.database_url.secret_data
   vouchers_web_base_url        = var.vouchers_web_base_url
   uye_program_template_id      = var.uye_program_template_id
   mindmirror_program_template_id = var.mindmirror_program_template_id
