@@ -21,6 +21,7 @@ from habits_service.habits_service.app.db.repositories.write_events import (
     HabitEventRepository,
     LessonEventRepository,
 )
+from habits_service.habits_service.app.db.repositories import HabitsReadRepository
 
 
 @strawberry.input
@@ -165,6 +166,20 @@ class Mutation:
             current_user = get_current_user_from_context(info)
             a = await repo.create(user_id=str(current_user.id), program_template_id=programId, start_date=startDate)
             return AssignmentPayload(id=str(a.id), userId=a.user_id, programTemplateId=str(a.program_template_id), status=a.status)
+
+    @strawberry.mutation
+    async def unenrollProgram(self, programId: str, info: Info) -> bool:
+        async with UnitOfWork() as uow:
+            current_user = get_current_user_from_context(info)
+            read = HabitsReadRepository(uow.session)
+            active = await read.get_active_assignments(str(current_user.id))
+            target = next((a for a in active if str(a.program_template_id) == programId), None)
+            if not target:
+                return True
+            write = UserProgramAssignmentRepository(uow.session)
+            await write.set_status(str(target.id), 'cancelled')
+            await uow.session.commit()
+            return True
 
     @strawberry.mutation
     async def recordHabitResponse(self, habitTemplateId: str, onDate: date, response: str, info: Info) -> bool:
