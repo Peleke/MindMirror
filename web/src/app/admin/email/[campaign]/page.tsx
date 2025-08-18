@@ -1,24 +1,26 @@
-import { headers } from 'next/headers'
+import { createServiceRoleClient } from '../../../../../lib/supabase/server'
 
 interface PageProps { params: { campaign: string }, searchParams?: { [key: string]: string | string[] | undefined } }
 
-function getBaseUrl() {
-  try {
-    const h = headers()
-    const host = (h as any).get('x-forwarded-host') || (h as any).get('host')
-    const proto = (h as any).get('x-forwarded-proto') || 'https'
-    if (host) return `${proto}://${host}`
-  } catch {}
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')
-  return 'http://localhost:3000'
-}
-
 async function getSubscribers(campaign: string) {
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/api/admin/campaigns/${campaign}/subscribers`, { cache: 'no-store' })
-  if (!res.ok) return { subscribers: [] }
-  return res.json()
+  const supabase = createServiceRoleClient()
+  let query = supabase
+    .schema('waitlist')
+    .from('subscriber_campaigns')
+    .select('id, subscriber_id, campaign, status, drip_day_sent, subscribed_at, subscriber:subscribers(id,email)')
+    .eq('campaign', campaign)
+  const { data, error } = await query
+  if (error) return { subscribers: [] }
+  const subscribers = (data as any[] || []).map((row: any) => ({
+    subscriberCampaignId: row.id,
+    subscriberId: row.subscriber_id,
+    email: row.subscriber?.email,
+    campaign: row.campaign,
+    status: row.status,
+    dripDaySent: row.drip_day_sent,
+    subscribedAt: row.subscribed_at,
+  }))
+  return { subscribers }
 }
 
 export default async function CampaignDetailPage({ params }: PageProps) {
