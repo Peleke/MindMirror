@@ -6,7 +6,7 @@ import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMutation, useQuery } from '@apollo/client'
+import { useApolloClient, useMutation, useQuery } from '@apollo/client'
 import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS, PROGRAM_STEP_LESSONS, UNENROLL_PROGRAM } from '@/services/api/habits'
 import { Icon } from '@/components/ui/icon'
 import { Pressable } from '@/components/ui/pressable'
@@ -21,6 +21,7 @@ export default function ProgramDetailScreen() {
   const slug = params.slug
   const from = params.from
   const router = useRouter()
+  const client = useApolloClient()
   const { data, loading, error } = useQuery(PROGRAM_TEMPLATE_BY_SLUG, { variables: { slug }, fetchPolicy: 'cache-and-network' })
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
   const [unenrollProgram] = useMutation(UNENROLL_PROGRAM)
@@ -61,7 +62,7 @@ export default function ProgramDetailScreen() {
           <Toast nativeID={`toast-${id}`} action="success" variant="solid">
             <VStack>
               <ToastTitle>Enrolled</ToastTitle>
-              <ToastDescription>You are enrolled. Loading todays tasks…</ToastDescription>
+              <ToastDescription>You are enrolled. Loading today's tasks…</ToastDescription>
             </VStack>
           </Toast>
         ),
@@ -85,6 +86,13 @@ export default function ProgramDetailScreen() {
   const handleUnenroll = async () => {
     try {
       await unenrollProgram({ variables: { programId: program.id } })
+      // Refresh key queries so UI updates immediately
+      await client.refetchQueries({ include: [
+        'ProgramAssignments',
+        'TodaysTasks',
+        'ProgramTemplateSteps',
+        'ListProgramTemplates'
+      ] })
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="warning" variant="solid">
           <VStack>
@@ -93,6 +101,14 @@ export default function ProgramDetailScreen() {
           </VStack>
         </Toast>
       )})
+      // Navigate back; fallback to home
+      if (from === 'marketplace') {
+        router.replace('/marketplace')
+      } else if (from === 'programs' || from === 'resources') {
+        router.replace('/programs')
+      } else {
+        router.replace('/journal')
+      }
     } catch (e) {
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="error" variant="solid">
