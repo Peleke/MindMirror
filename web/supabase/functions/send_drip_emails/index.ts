@@ -99,7 +99,8 @@ function replaceNamePlaceholders(input: string): string {
 
 function resolveWebBaseUrl(): string {
   const env = (k: string) => (Deno.env.get(k) || '').replace(/\/$/, '')
-  return env('WEB_BASE_URL') || env('NEXT_PUBLIC_BASE_URL') || (env('VERCEL_URL') ? `https://${env('VERCEL_URL')}` : 'https://mindmirror.swae.io')
+  // Prefer explicit CTA base for emails if provided
+  return env('EMAIL_CTA_BASE_URL') || env('WEB_BASE_URL') || env('NEXT_PUBLIC_BASE_URL') || (env('VERCEL_URL') ? `https://${env('VERCEL_URL')}` : 'https://mindmirror.swae.io')
 }
 
 function appendCta(html: string, text: string, campaign: string, recipientEmail: string): { html: string, text: string } {

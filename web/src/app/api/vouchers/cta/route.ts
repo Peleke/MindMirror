@@ -7,6 +7,14 @@ function resolveWebBaseUrl(): string {
   return pub || vercel || 'http://localhost:3000'
 }
 
+function resolveAppSignupUrl(): string {
+  // Prefer explicit app signup target (mobile preview or local device)
+  const explicit = (process.env.NEXT_PUBLIC_APP_SIGNUP_URL || process.env.APP_SIGNUP_BASE_URL || '').replace(/\/$/, '')
+  if (explicit) return explicit
+  // Fallback to web root if not provided
+  return resolveWebBaseUrl()
+}
+
 function generateCode(length = 8) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
@@ -55,8 +63,12 @@ export async function GET(req: NextRequest) {
     })
   } catch (e) { console.error('voucher email error', e) }
 
-  // Set short-lived cookies and redirect to login/app root
-  const res = NextResponse.redirect(`${resolveWebBaseUrl()}/`)
+  // Support redirect override via query param (?redirect=https://...)
+  const redirectOverride = searchParams.get('redirect') || ''
+  const target = (redirectOverride || resolveAppSignupUrl()) + '/'
+
+  // Set short-lived cookies and redirect to signup/app root
+  const res = NextResponse.redirect(target)
   res.cookies.set('voucher_email', email, { httpOnly: true, maxAge: 60 * 60 * 24, path: '/' })
   res.cookies.set('voucher_campaign', campaign, { httpOnly: true, maxAge: 60 * 60 * 24, path: '/' })
   return res
