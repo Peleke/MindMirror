@@ -2,17 +2,14 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 
 function getBaseUrl() {
-  // Use relative URLs on Vercel/production
-  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return ''
   try {
     const h = headers()
-    // headers() returns a ReadonlyHeaders in app router (sync access)
     const host = (h as any).get('x-forwarded-host') || (h as any).get('host')
-    const proto = (h as any).get('x-forwarded-proto') || 'http'
+    const proto = (h as any).get('x-forwarded-proto') || 'https'
     if (host) return `${proto}://${host}`
   } catch {}
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')
   return 'http://localhost:3000'
 }
 
