@@ -277,6 +277,18 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   </p>
                 </a>
 
+                <a href="/admin/vouchers" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 block transition-colors">
+                  <div className="flex items-center">
+                    <Mail className="h-5 w-5 text-purple-500 mr-3" />
+                    <span className="text-sm font-medium text-gray-900">
+                      Mint Voucher (test)
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Generate a voucher and email it to a tester
+                  </p>
+                </a>
+
                 <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 cursor-not-allowed">
                   <div className="flex items-center">
                     <Settings className="h-5 w-5 text-gray-400 mr-3" />

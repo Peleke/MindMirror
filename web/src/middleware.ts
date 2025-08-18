@@ -23,7 +23,11 @@ export function middleware(request: NextRequest) {
     '/admin',
     '/api/admin',
     // Resend webhook
-    '/api/resend'
+    '/api/resend',
+    // Voucher + redeem flows
+    '/redeem',
+    '/api/vouchers',
+    '/api/stripe/webhook'
   ]
 
   // Special handling for root path - redirect to landing

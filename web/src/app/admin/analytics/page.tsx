@@ -86,7 +86,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-2">Email Analytics</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-semibold">Email Analytics</h1>
+        <a href="/admin" className="text-sm text-gray-600 hover:text-gray-800">Back to Dashboard</a>
+      </div>
       <CampaignSwitcher />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="border border-gray-200 rounded-lg p-4">
