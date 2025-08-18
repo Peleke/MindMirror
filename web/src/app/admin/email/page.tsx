@@ -43,6 +43,9 @@ export default async function CampaignListPage() {
         <h1 className="text-2xl font-semibold">Email Campaigns</h1>
         <a href="/admin" className="text-sm text-gray-600 hover:text-gray-800">Back to Dashboard</a>
       </div>
+      <div className="flex items-center justify-end mb-4">
+        <a href="/admin/email/force" className="text-sm text-indigo-600 hover:underline">Force-send drip email</a>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {campaigns.map((c: any) => (
           <Link key={c.campaign} href={`/admin/email/${c.campaign}`} className="block border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
