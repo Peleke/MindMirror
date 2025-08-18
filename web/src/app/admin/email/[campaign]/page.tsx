@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 interface PageProps { params: { campaign: string }, searchParams?: { [key: string]: string | string[] | undefined } }
 
 function getBaseUrl() {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return ''
   try {
     const h = headers()
     const host = (h as any).get('x-forwarded-host') || (h as any).get('host')

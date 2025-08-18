@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import CampaignSwitcher from './CampaignSwitcher'
 
 function getBaseUrl() {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return ''
   try {
     const h = headers()
     const host = (h as any).get('x-forwarded-host') || (h as any).get('host')

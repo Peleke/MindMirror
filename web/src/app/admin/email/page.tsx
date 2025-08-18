@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 
 function getBaseUrl() {
+  // Use relative URLs on Vercel/production
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') return ''
   try {
     const h = headers()
     // headers() returns a ReadonlyHeaders in app router (sync access)
