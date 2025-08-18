@@ -21,7 +21,9 @@ export function middleware(request: NextRequest) {
     '/icons',
     // Admin routes (allow UI and API)
     '/admin',
-    '/api/admin'
+    '/api/admin',
+    // Resend webhook
+    '/api/resend'
   ]
 
   // Special handling for root path - redirect to landing

@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '../../../../../lib/supabase/server'
+import { Webhook } from 'svix'
 
 // Minimal Resend webhook to capture delivered/opened/clicked/etc.
 // Configure RESEND_WEBHOOK_SECRET and set the same in Resend dashboard
 
 export async function POST(request: NextRequest) {
   const secret = process.env.RESEND_WEBHOOK_SECRET || ''
-  const header = request.headers.get('x-resend-signature') || ''
   if (!secret) return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
 
-  // For simplicity, accept when header equals secret. Replace with HMAC verification if desired.
-  if (header !== secret) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Resend uses Svix signatures
+  const svixId = request.headers.get('svix-id') || ''
+  const svixTimestamp = request.headers.get('svix-timestamp') || ''
+  const svixSignature = request.headers.get('svix-signature') || ''
 
-  const payload = await request.json().catch(() => null as any)
+  const payloadText = await request.text()
+  let payload: any = null
+  try {
+    const wh = new Webhook(secret)
+    wh.verify(payloadText, {
+      'svix-id': svixId,
+      'svix-timestamp': svixTimestamp,
+      'svix-signature': svixSignature,
+    })
+    payload = JSON.parse(payloadText)
+  } catch (e) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
   if (!payload) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
   const supabase = createServiceRoleClient()
