@@ -17,6 +17,8 @@ jobs:
       JOURNAL_SERVICE_URL: https://journal-service-3858903851.us-east4.run.app
       AGENT_SERVICE_URL: https://agent-service-3858903851.us-east4.run.app
       HABITS_SERVICE_URL: https://habits-service-3858903851.us-east4.run.app
+      # Vouchers Web Base (used by Mesh OpenAPI subgraph for vouchers/autoenroll)
+      VOUCHERS_WEB_BASE_URL: https://mind-mirror-seven.vercel.app
 
     steps:
       - uses: actions/checkout@v4
@@ -96,6 +98,7 @@ jobs:
             --env JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL:-https://journal-service-3858903851.us-east4.run.app} \
             --env AGENT_SERVICE_URL=${AGENT_SERVICE_URL:-https://agent-service-3858903851.us-east4.run.app} \
             --env HABITS_SERVICE_URL=${HABITS_SERVICE_URL:-https://habits-service-3858903851.us-east4.run.app} \
+            --env VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL:-https://mind-mirror-seven.vercel.app} \
             us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }} \
             npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql
 

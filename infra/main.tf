@@ -211,4 +211,8 @@ module "habits_service" {
   # Logging and environment
   log_level   = var.log_level
   environment = var.environment
+
+  vouchers_web_base_url        = var.vouchers_web_base_url
+  uye_program_template_id      = var.uye_program_template_id
+  mindmirror_program_template_id = var.mindmirror_program_template_id
 }

@@ -95,3 +95,21 @@ variable "debug" {
   type        = string
   default     = "false"
 }
+
+variable "vouchers_web_base_url" {
+  description = "Base URL of web app exposing vouchers REST"
+  type        = string
+  default     = "https://mind-mirror-seven.vercel.app"
+}
+
+variable "uye_program_template_id" {
+  description = "Program template ID for UYE"
+  type        = string
+  default     = "be925a11-edfa-4208-9924-d0ecae956aac"
+}
+
+variable "mindmirror_program_template_id" {
+  description = "Program template ID for MindMirror"
+  type        = string
+  default     = "1b4fa08a-462b-445e-85a6-6da4d70c6ed"
+}

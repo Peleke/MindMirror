@@ -18,6 +18,18 @@ resource "google_cloud_run_service" "habits_service" {
           name  = "LOG_LEVEL"
           value = var.log_level
         }
+        env {
+          name  = "VOUCHERS_WEB_BASE_URL"
+          value = var.vouchers_web_base_url
+        }
+        env {
+          name  = "UYE_PROGRAM_TEMPLATE_ID"
+          value = var.uye_program_template_id
+        }
+        env {
+          name  = "MINDMIRROR_PROGRAM_TEMPLATE_ID"
+          value = var.mindmirror_program_template_id
+        }
       }
 
       service_account_name = var.service_account_email

@@ -5,4 +5,8 @@ variable "service_account_email" { type = string }
 variable "environment" { type = string }
 variable "log_level" { type = string }
 
+variable "vouchers_web_base_url" { type = string }
+variable "uye_program_template_id" { type = string }
+variable "mindmirror_program_template_id" { type = string }
+
 
