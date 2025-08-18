@@ -3,8 +3,20 @@ import { createServiceRoleClient } from '../../../../../lib/supabase/server'
 import { createClient } from '../../../../../lib/supabase/server'
 
 export async function POST(req: NextRequest) {
-  const supaUser = await createClient()
-  const { data: { user } } = await supaUser.auth.getUser()
+  // Try bearer token first (mobile/native via gateway), then cookies
+  let user: any = null
+  const authz = req.headers.get('authorization') || ''
+  if (authz.startsWith('Bearer ')) {
+    const token = authz.slice(7)
+    const supaSrv = createServiceRoleClient()
+    const { data, error } = await supaSrv.auth.getUser(token)
+    if (!error) user = data.user
+  }
+  if (!user) {
+    const supaUser = await createClient()
+    const { data: { user: cookieUser } } = await supaUser.auth.getUser()
+    user = cookieUser
+  }
   if (!user) return NextResponse.json({ ok: true, enrolled: false })
 
   const supabase = createServiceRoleClient()

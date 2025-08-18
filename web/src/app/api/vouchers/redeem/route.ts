@@ -23,9 +23,7 @@ export async function POST(req: NextRequest) {
   if (error || !voucher) return NextResponse.json({ error: 'invalid code' }, { status: 400 })
   if (voucher.status !== 'unused') return NextResponse.json({ error: 'already used or invalid' }, { status: 400 })
   if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) return NextResponse.json({ error: 'expired' }, { status: 400 })
-  if (voucher.assigned_email && voucher.assigned_email.toLowerCase() !== (user.email || '').toLowerCase()) {
-    return NextResponse.json({ error: 'email mismatch' }, { status: 400 })
-  }
+  // Allow manual redeem even if assigned_email mismatches; only auto-enroll path enforces match
 
   // Insert enrollment
   const { data: enroll, error: enrollErr } = await supabase
