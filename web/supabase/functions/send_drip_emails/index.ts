@@ -89,6 +89,33 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+function replaceNamePlaceholders(input: string): string {
+  return input
+    .replace(/\[First name\]/gi, 'friend')
+    .replace(/\{\{\s*first_name\s*\}\}/gi, 'friend')
+    .replace(/\[\[first_name\]\]/gi, 'friend')
+    .replace(/%FIRST_NAME%/g, 'friend')
+}
+
+function resolveWebBaseUrl(): string {
+  const env = (k: string) => (Deno.env.get(k) || '').replace(/\/$/, '')
+  return env('WEB_BASE_URL') || env('NEXT_PUBLIC_BASE_URL') || (env('VERCEL_URL') ? `https://${env('VERCEL_URL')}` : 'https://mindmirror.swae.io')
+}
+
+function appendCta(html: string, text: string, campaign: string, recipientEmail: string): { html: string, text: string } {
+  const base = resolveWebBaseUrl()
+  const ctaUrl = `${base}/api/vouchers/cta?campaign=${encodeURIComponent(campaign)}&email=${encodeURIComponent(recipientEmail)}`
+  const ctaHtml = `
+  <div style="margin-top:24px;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
+    <h3 style="margin:0 0 8px 0;color:#111827;font-size:16px;font-weight:600">Try Swae OS — 75% off, 8 weeks included</h3>
+    <p style="margin:0 0 8px 0;color:#374151;font-size:14px">Click below to create your account. We’ll email your voucher code. If you sign up with this email, you’ll be enrolled automatically.</p>
+    <p style="margin:0 0 12px 0"><a href="${ctaUrl}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Get your voucher & create account</a></p>
+    <p style="margin:0;color:#6b7280;font-size:12px">If anything goes wrong, use the voucher code we send on the Marketplace → Redeem Voucher screen. If you’re already enrolled, you can ignore that email.</p>
+  </div>`
+  const ctaText = `\n\n—\nTry Swae OS — 100% off (not a typo), 8 weeks free\nCreate your account: ${ctaUrl}\nIf signup with this email, you’ll be enrolled automatically. Otherwise, use the voucher code we send in the app (Marketplace → Redeem Voucher). If you’re already enrolled, you can ignore that email.`
+  return { html: `${html}\n${ctaHtml}`, text: `${text}${ctaText}` }
+}
+
 // Fallback email content if template loading fails
 function getFallbackEmail(day: number): string {
   const fallbacks = {
@@ -124,7 +151,12 @@ serve(async (_req: Request) => {
       const targetEmail = String(body.forceSendForEmail);
       const campaign = (body.campaign || 'mindmirror').toString();
       const day = Number(body.day);
-      const { html, text } = await loadEmailTemplate(day, campaign);
+      let { html, text } = await loadEmailTemplate(day, campaign);
+      html = replaceNamePlaceholders(html)
+      text = replaceNamePlaceholders(text)
+      const withCta = appendCta(html, text, campaign, targetEmail)
+      html = withCta.html
+      text = withCta.text
       const subject = (campaign === 'uye' ? EMAIL_SUBJECTS_UYE : EMAIL_SUBJECTS)[day as keyof typeof EMAIL_SUBJECTS] || 'Welcome';
       // Lookup subscriber_id for tagging/logging
       let subscriberId: number | null = null
@@ -219,7 +251,12 @@ serve(async (_req: Request) => {
 
       try {
         // Load email template for this day
-        const { html, text } = await loadEmailTemplate(daysSince, campaign);
+        let { html, text } = await loadEmailTemplate(daysSince, campaign);
+        html = replaceNamePlaceholders(html)
+        text = replaceNamePlaceholders(text)
+        const withCta = appendCta(html, text, campaign, sub.subscriber.email)
+        html = withCta.html
+        text = withCta.text
         const subject = subjects[daysSince as keyof typeof subjects];
 
         // Send email via Resend
