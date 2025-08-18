@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { createServiceRoleClient } from '../../../../lib/supabase/server'
 import CampaignSwitcher from './CampaignSwitcher'
 
 function getBaseUrl() {
@@ -13,26 +14,71 @@ function getBaseUrl() {
   return 'http://localhost:3000'
 }
 
-async function getSummary(range: string, campaign?: string) {
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/api/admin/analytics/summary?range=${encodeURIComponent(range)}${campaign ? `&campaign=${encodeURIComponent(campaign)}` : ''}`, { cache: 'no-store' })
-  if (!res.ok) return { range, summary: {} }
-  return res.json()
+function parseRange(range?: string) {
+  const now = new Date()
+  const days = range === '30d' ? 30 : 7
+  const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  return { from, to: now, days }
 }
 
-async function getSeries(metric: string, range: string, campaign?: string) {
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/api/admin/analytics/timeseries?metric=${encodeURIComponent(metric)}&range=${encodeURIComponent(range)}&bucket=day${campaign ? `&campaign=${encodeURIComponent(campaign)}` : ''}`, { cache: 'no-store' })
-  if (!res.ok) return { series: [] }
-  return res.json()
+async function getSummaryDirect(range: string, campaign?: string) {
+  const supabase = createServiceRoleClient()
+  const { from, to } = parseRange(range)
+  const { data, error } = await supabase
+    .schema('waitlist')
+    .from('email_events')
+    .select('event_type, created_at, event_data')
+    .gte('created_at', from.toISOString())
+    .lte('created_at', to.toISOString())
+  if (error) return { range, summary: {} as Record<string, number> }
+  const summary: Record<string, number> = {}
+  for (const row of data || []) {
+    if (campaign) {
+      const rowCampaign = (row as any).event_data?.campaign || (row as any).event_data?.tags?.find?.((t: any) => t.name === 'campaign')?.value
+      if ((rowCampaign || '').toLowerCase() !== campaign.toLowerCase()) continue
+    }
+    const type = ((row as any).event_type || 'sent').toLowerCase()
+    summary[type] = (summary[type] || 0) + 1
+  }
+  return { range, summary }
+}
+
+async function getSeriesDirect(metric: string, range: string, campaign?: string) {
+  const supabase = createServiceRoleClient()
+  const { from, to, days } = parseRange(range)
+  const { data, error } = await supabase
+    .schema('waitlist')
+    .from('email_events')
+    .select('created_at, event_type, event_data')
+    .eq('event_type', metric)
+    .gte('created_at', from.toISOString())
+    .lte('created_at', to.toISOString())
+  if (error) return { series: [] as Array<{ date: string, count: number }> }
+  const buckets: { date: string, count: number }[] = []
+  const cursor = new Date(from)
+  for (let i = 0; i < days; i++) {
+    const key = cursor.toISOString().slice(0, 10)
+    buckets.push({ date: key, count: 0 })
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+  for (const row of data || []) {
+    if (campaign) {
+      const rowCampaign = (row as any).event_data?.campaign || (row as any).event_data?.tags?.find?.((t: any) => t.name === 'campaign')?.value
+      if ((rowCampaign || '').toLowerCase() !== campaign.toLowerCase()) continue
+    }
+    const key = new Date((row as any).created_at).toISOString().slice(0, 10)
+    const idx = buckets.findIndex(b => b.date === key)
+    if (idx >= 0) buckets[idx].count += 1
+  }
+  return { series: buckets }
 }
 
 export default async function AnalyticsPage({ searchParams }: { searchParams?: { [k: string]: string | string[] | undefined } }) {
   const range = '7d'
   const campaign = (searchParams?.campaign as string | undefined) || ''
   const [summary, series] = await Promise.all([
-    getSummary(range, campaign || undefined),
-    getSeries('opened', range, campaign || undefined)
+    getSummaryDirect(range, campaign || undefined),
+    getSeriesDirect('sent', range, campaign || undefined)
   ])
 
   const s = summary.summary || {}
@@ -62,7 +108,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: {
       </div>
 
       <div className="border border-gray-200 rounded-lg p-4">
-        <div className="text-sm text-gray-700 mb-3">Opens over time (last 7 days)</div>
+        <div className="text-sm text-gray-700 mb-3">Sends over time (last 7 days)</div>
         <div className="w-full overflow-x-auto">
           <div className="flex items-end h-40 gap-2">
             {seriesData.map((d: any) => (
