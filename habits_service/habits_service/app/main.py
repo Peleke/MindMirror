@@ -79,6 +79,41 @@ async def redeem(body: RedeemRequest, x_internal_id: str = Header(None)):
         raise HTTPException(status_code=500, detail="failed")
 
 
+@app.post("/api/unenroll")
+async def unenroll(program_template_id: str, x_internal_id: str = Header(None)):
+    if not x_internal_id:
+        raise HTTPException(status_code=401, detail="unauthorized")
+    try:
+        from habits_service.habits_service.app.db.uow import UnitOfWork
+        from habits_service.habits_service.app.db.repositories.write_structural import UserProgramAssignmentRepository
+        async with UnitOfWork() as uow:
+            repo = UserProgramAssignmentRepository(uow.session)
+            # Find active assignment and set status to cancelled
+            # Simplify: update any active assignment for this user/program
+            from sqlalchemy import select
+            from habits_service.habits_service.app.db.tables import UserProgramAssignment
+            import uuid
+            pid = uuid.UUID(str(program_template_id))
+            res = await uow.session.execute(
+                select(UserProgramAssignment).where(
+                    UserProgramAssignment.user_id == x_internal_id,
+                    UserProgramAssignment.program_template_id == pid,
+                    UserProgramAssignment.status == "active",
+                )
+            )
+            obj = res.scalars().first()
+            if not obj:
+                return {"ok": True, "changed": 0}
+            obj.status = "cancelled"
+            await uow.session.flush()
+            await uow.session.commit()
+            return {"ok": True, "changed": 1}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="failed")
+
+
 @app.on_event("startup")
 async def ensure_schema_exists():
     # Create schema if not present (optional, works on Postgres when user has perms)
