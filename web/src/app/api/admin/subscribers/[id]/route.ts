@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServiceRoleClient } from '../../../../../lib/supabase/server'
+import { createServiceRoleClient } from '../../../../../../lib/supabase/server'
 
 export async function GET(req: Request, ctx: { params: { id: string } }) {
   const supabase = createServiceRoleClient()
