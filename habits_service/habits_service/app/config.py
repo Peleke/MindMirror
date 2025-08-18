@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # Environment
     environment: str = os.getenv("ENVIRONMENT", "development")
 
+    # Vouchers/web integration
+    vouchers_web_base_url: Optional[str] = os.getenv("VOUCHERS_WEB_BASE_URL")
+
+    # Campaign -> Program mapping
+    uye_program_template_id: Optional[str] = os.getenv("UYE_PROGRAM_TEMPLATE_ID")
+    mindmirror_program_template_id: Optional[str] = os.getenv("MINDMIRROR_PROGRAM_TEMPLATE_ID")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

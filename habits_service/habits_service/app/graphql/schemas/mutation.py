@@ -22,6 +22,7 @@ from habits_service.habits_service.app.db.repositories.write_events import (
     LessonEventRepository,
 )
 from habits_service.habits_service.app.db.repositories import HabitsReadRepository
+from habits_service.habits_service.app.config import get_settings
 
 
 @strawberry.input
@@ -204,5 +205,54 @@ class Mutation:
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
             return True
+
+    @strawberry.mutation
+    async def autoEnroll(self, campaign: str, info: Info) -> bool:
+        """Proxy auto-enroll: calls web vouchers autoenroll, then ensures a habits assignment exists."""
+        current_user = get_current_user_from_context(info)
+        settings = get_settings()
+        # Call web REST autoenroll with bearer
+        import httpx
+        web_base = settings.vouchers_web_base_url
+        if not web_base:
+            return False
+        url = f"{web_base.rstrip('/')}/api/vouchers/autoenroll"
+        # Try to forward Authorization header if present
+        token = None
+        try:
+            # strawberry context stores request
+            req = info.context.get('request')
+            if req:
+                authz = req.headers.get('authorization')
+                if authz and authz.lower().startswith('bearer '):
+                    token = authz.split(' ', 1)[1]
+        except Exception:
+            pass
+        headers = {'content-type': 'application/json'}
+        if token:
+            headers['authorization'] = f"Bearer {token}"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(url, headers=headers)
+            ok = resp.status_code == 200
+            # proceed regardless; web may not have a voucher
+        # Create habits assignment if we have a mapping
+        campaign_l = (campaign or '').lower()
+        program_id = None
+        if campaign_l == 'uye':
+            program_id = settings.uye_program_template_id
+        elif campaign_l == 'mindmirror':
+            program_id = settings.mindmirror_program_template_id
+        if not program_id:
+            return False
+        from datetime import date as _date
+        async with UnitOfWork() as uow:
+            read = HabitsReadRepository(uow.session)
+            active = await read.get_active_assignments(str(current_user.id))
+            if any(str(a.program_template_id) == program_id for a in active):
+                return True
+            write = UserProgramAssignmentRepository(uow.session)
+            await write.create(user_id=str(current_user.id), program_template_id=program_id, start_date=_date.today())
+            await uow.session.commit()
+        return True
 
 
