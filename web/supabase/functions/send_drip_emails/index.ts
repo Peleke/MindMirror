@@ -126,12 +126,46 @@ serve(async (_req: Request) => {
       const day = Number(body.day);
       const { html, text } = await loadEmailTemplate(day, campaign);
       const subject = (campaign === 'uye' ? EMAIL_SUBJECTS_UYE : EMAIL_SUBJECTS)[day as keyof typeof EMAIL_SUBJECTS] || 'Welcome';
+      // Lookup subscriber_id for tagging/logging
+      let subscriberId: number | null = null
+      try {
+        const lookup = await fetch(`${supabaseUrl}/rest/v1/subscribers?select=id&email=eq.${encodeURIComponent(targetEmail.toLowerCase())}`,
+          { headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Accept-Profile': 'waitlist' } })
+        if (lookup.ok) {
+          const rows = await lookup.json() as Array<{ id: number }>
+          if (rows && rows.length > 0) subscriberId = rows[0].id
+        }
+      } catch (_) {}
+
+      const tags = [
+        { name: 'campaign', value: campaign },
+        { name: 'day', value: String(day) },
+        { name: 'subscriber_id', value: String(subscriberId ?? '') },
+      ]
+
       const resendResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: campaign === 'uye' ? "uye@emails.peleke.me" : "mindmirror@emails.peleke.me", to: targetEmail, subject, text, html })
+        body: JSON.stringify({ from: campaign === 'uye' ? "uye@emails.peleke.me" : "mindmirror@emails.peleke.me", to: targetEmail, subject, text, html, tags })
       });
-      return new Response(JSON.stringify({ message: 'sent-once', ok: resendResponse.ok }), { status: 200, headers: { 'content-type': 'application/json' } });
+      let messageId: string | undefined
+      try { const j = await resendResponse.json(); messageId = j?.id } catch {}
+
+      // Record a 'sent' event for analytics
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/email_events`, {
+          method: 'POST',
+          headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Content-Type': 'application/json', 'Content-Profile': 'waitlist', 'Prefer': 'return=representation' },
+          body: JSON.stringify({
+            subscriber_id: subscriberId,
+            email_id: messageId,
+            event_type: 'sent',
+            event_data: { campaign, day, subject, message_id: messageId, tags },
+          })
+        })
+      } catch (_) {}
+
+      return new Response(JSON.stringify({ message: 'sent-once', ok: resendResponse.ok, id: messageId }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
   } catch (_) { /* ignore */ }
   const cronSecret = Deno.env.get('CRON_SECRET')
@@ -189,6 +223,12 @@ serve(async (_req: Request) => {
         const subject = subjects[daysSince as keyof typeof subjects];
 
         // Send email via Resend
+        const tags = [
+          { name: 'campaign', value: campaign },
+          { name: 'day', value: String(daysSince) },
+          { name: 'subscriber_id', value: String(sub.subscriber.id) },
+        ]
+
         const resendResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -201,14 +241,18 @@ serve(async (_req: Request) => {
             subject: subject,
             text,
             html,
+            tags,
           }),
         });
 
         if (!resendResponse.ok) {
-          console.error(`Failed to send email to ${sub.email}:`, await resendResponse.text());
+          console.error(`Failed to send email to ${sub.subscriber.email}:`, await resendResponse.text());
           errors++;
           continue;
         }
+
+        let messageId: string | undefined
+        try { const j = await resendResponse.json(); messageId = j?.id } catch {}
 
         // Update subscriber's drip_day_sent
         const updateResponse = await fetch(
@@ -230,6 +274,20 @@ serve(async (_req: Request) => {
           errors++;
           continue;
         }
+
+        // Insert 'sent' event into email_events
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/email_events`, {
+            method: 'POST',
+            headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Content-Type': 'application/json', 'Content-Profile': 'waitlist', 'Prefer': 'return=representation' },
+            body: JSON.stringify({
+              subscriber_id: sub.subscriber.id,
+              email_id: messageId,
+              event_type: 'sent',
+              event_data: { campaign, day: daysSince, subject, message_id: messageId, tags },
+            })
+          })
+        } catch (_) {}
 
         emailsSent++;
         console.log(`[send_drip_emails] sent day ${daysSince} email to`, sub.email);
