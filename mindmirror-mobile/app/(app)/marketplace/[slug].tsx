@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMutation, useQuery } from '@apollo/client'
-import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS, PROGRAM_STEP_LESSONS } from '@/services/api/habits'
+import { PROGRAM_TEMPLATE_BY_SLUG, ASSIGN_PROGRAM_TO_USER, PROGRAM_STEPS, PROGRAM_ASSIGNMENTS, PROGRAM_STEP_LESSONS, UNENROLL_PROGRAM } from '@/services/api/habits'
 import { Icon } from '@/components/ui/icon'
 import { Pressable } from '@/components/ui/pressable'
 import { CheckCircle, BookOpen, Clock } from 'lucide-react-native'
@@ -23,6 +23,7 @@ export default function ProgramDetailScreen() {
   const router = useRouter()
   const { data, loading, error } = useQuery(PROGRAM_TEMPLATE_BY_SLUG, { variables: { slug }, fetchPolicy: 'cache-and-network' })
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
+  const [unenrollProgram] = useMutation(UNENROLL_PROGRAM)
   const { show } = useToast()
 
   const program = data?.programTemplateBySlug
@@ -78,6 +79,29 @@ export default function ProgramDetailScreen() {
           </Toast>
         ),
       })
+    }
+  }
+
+  const handleUnenroll = async () => {
+    try {
+      await unenrollProgram({ variables: { programId: program.id } })
+      show({ placement: 'top', render: ({ id }) => (
+        <Toast nativeID={`toast-${id}`} action="warning" variant="solid">
+          <VStack>
+            <ToastTitle>Unenrolled</ToastTitle>
+            <ToastDescription>You can re-enroll anytime. Progress will restart.</ToastDescription>
+          </VStack>
+        </Toast>
+      )})
+    } catch (e) {
+      show({ placement: 'top', render: ({ id }) => (
+        <Toast nativeID={`toast-${id}`} action="error" variant="solid">
+          <VStack>
+            <ToastTitle>Unenroll failed</ToastTitle>
+            <ToastDescription>Please try again.</ToastDescription>
+          </VStack>
+        </Toast>
+      )})
     }
   }
 
@@ -145,9 +169,16 @@ export default function ProgramDetailScreen() {
                   )}
                 </VStack>
 
-                <Button className={`bg-primary-600 ${isEnrolled ? 'opacity-60' : ''}`} onPress={isEnrolled ? undefined : handleEnroll} disabled={isEnrolled}>
-                  <ButtonText>{isEnrolled ? 'Enrolled' : 'Enroll'}</ButtonText>
-                </Button>
+                <VStack space="sm">
+                  <Button className={`bg-primary-600 ${isEnrolled ? 'opacity-60' : ''}`} onPress={isEnrolled ? undefined : handleEnroll} disabled={isEnrolled}>
+                    <ButtonText>{isEnrolled ? 'Enrolled' : 'Enroll'}</ButtonText>
+                  </Button>
+                  {isEnrolled && (
+                    <Button className="bg-red-600" onPress={handleUnenroll}>
+                      <ButtonText>Unenroll</ButtonText>
+                    </Button>
+                  )}
+                </VStack>
               </>
             )}
           </VStack>

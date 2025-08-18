@@ -36,7 +36,6 @@ export const GET_TODAYS_TASKS = gql`
   query TodaysTasks($onDate: Date!) {
     todaysTasks(onDate: $onDate) {
       ...TaskFields
-      ... on HabitTask { subtitle }
     }
   }
 `
@@ -106,6 +105,12 @@ export const ASSIGN_PROGRAM_TO_USER = gql`
       programTemplateId
       status
     }
+  }
+`
+
+export const UNENROLL_PROGRAM = gql`
+  mutation UnenrollProgram($programId: String!) {
+    unenrollProgram(programId: $programId)
   }
 `
 
