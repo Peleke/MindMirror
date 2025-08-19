@@ -38,7 +38,10 @@ class Settings(BaseSettings):
 
     # Campaign -> Program mapping
     uye_program_template_id: Optional[str] = os.getenv("UYE_PROGRAM_TEMPLATE_ID")
-    mindmirror_program_template_id: Optional[str] = os.getenv("MINDMIRROR_PROGRAM_TEMPLATE_ID")
+    # Add-on programs
+    daily_journaling_program_template_id: Optional[str] = os.getenv("DAILY_JOURNALING_PROGRAM_TEMPLATE_ID")
+    # Also journalinl
+    mindmirror_program_template_id = daily_journaling_program_template_id
 
     class Config:
         env_file = ".env"

@@ -273,9 +273,31 @@ class Mutation:
         async with UnitOfWork() as uow:
             read = HabitsReadRepository(uow.session)
             active = await read.get_active_assignments(str(current_user.id))
-            if any(str(a.program_template_id) == program_id for a in active):
-                return AutoEnrollResult(ok=True, enrolled=True)
+
+            # Determine if primary program and daily journaling need assignments
+            journaling_program_id = settings.daily_journaling_program_template_id
+            has_primary = any(str(a.program_template_id) == program_id for a in active)
+            has_journaling = journaling_program_id and any(
+                str(a.program_template_id) == str(journaling_program_id) for a in active
+            )
+
             write = UserProgramAssignmentRepository(uow.session)
-            await write.create(user_id=str(current_user.id), program_template_id=program_id, start_date=_date.today())
+
+            # Ensure primary program assignment exists
+            if not has_primary:
+                await write.create(
+                    user_id=str(current_user.id),
+                    program_template_id=program_id,
+                    start_date=_date.today(),
+                )
+
+            # Also ensure daily journaling program assignment exists (if configured)
+            if journaling_program_id and not has_journaling:
+                await write.create(
+                    user_id=str(current_user.id),
+                    program_template_id=str(journaling_program_id),
+                    start_date=_date.today(),
+                )
+
             await uow.session.commit()
         return AutoEnrollResult(ok=True, enrolled=True)
