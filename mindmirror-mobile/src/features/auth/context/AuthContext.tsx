@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase/client'
+import { useMutation } from '@apollo/client'
+import { AUTO_ENROLL } from '@/services/api/habits'
 
 interface AuthContextType {
   user: User | null
@@ -16,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [autoEnrollState, setAutoEnrollState] = useState<'idle'|'success'|'mismatch'|'none'>('idle')
+  const [autoEnroll] = useMutation(AUTO_ENROLL)
 
   useEffect(() => {
     console.log('AuthProvider: Initializing auth state')
@@ -53,12 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ User signed in:', session?.user?.email)
           // One-time autoenroll per session
           try {
-            const resp = await fetch(`${process.env.EXPO_PUBLIC_WEB_BASE_URL || ''}/api/vouchers/autoenroll`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-            })
-            const j = await resp.json().catch(() => ({}))
+            // Prefer GQL gateway autoEnroll so both habits and admark enrollments occur
+            const { data } = await autoEnroll({ variables: { campaign: 'uye' } })
+            const j = data?.autoEnroll
             if (j?.enrolled) {
               console.log('🎟️ Auto-enrolled via voucher')
               setAutoEnrollState('success')

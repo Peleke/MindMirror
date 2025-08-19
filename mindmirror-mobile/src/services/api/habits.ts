@@ -114,6 +114,16 @@ export const UNENROLL_PROGRAM = gql`
   }
 `
 
+export const AUTO_ENROLL = gql`
+  mutation AutoEnroll($campaign: String!) {
+    autoEnroll(campaign: $campaign) {
+      ok
+      enrolled
+      reason
+    }
+  }
+`
+
 
 // 5) Associated lessons for a habit (for current step/day)
 export const LESSONS_FOR_HABIT = gql`
