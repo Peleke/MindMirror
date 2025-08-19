@@ -11,4 +11,3 @@ COPY . .
 # Use runtime entrypoint to compose supergraph from env and start gateway
 RUN chmod +x /app/runtime-entrypoint.sh
 ENTRYPOINT ["/app/runtime-entrypoint.sh"]
-
