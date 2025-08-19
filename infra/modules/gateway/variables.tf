@@ -31,6 +31,16 @@ variable "journal_service_url" {
   type        = string
 }
 
+variable "habits_service_url" {
+  description = "Habits service URL"
+  type        = string
+}
+
+variable "vouchers_web_base_url" {
+  description = "Base URL of the web app exposing vouchers REST endpoints"
+  type        = string
+}
+
 variable "environment" {
   type        = string
   description = "Environment name (e.g., development, production)"

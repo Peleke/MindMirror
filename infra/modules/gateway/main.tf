@@ -34,6 +34,16 @@ resource "google_cloud_run_service" "gateway" {
           value = var.journal_service_url
         }
 
+        env {
+          name  = "HABITS_SERVICE_URL"
+          value = var.habits_service_url
+        }
+
+        env {
+          name  = "VOUCHERS_WEB_BASE_URL"
+          value = var.vouchers_web_base_url
+        }
+
         # Environment
         env {
           name  = "ENVIRONMENT"

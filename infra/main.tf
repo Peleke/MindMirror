@@ -65,6 +65,16 @@ data "google_secret_manager_secret_version" "journal_service_url" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "habits_service_url" {
+  secret  = "HABITS_SERVICE_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "vouchers_web_base_url" {
+  secret  = "VOUCHERS_WEB_BASE_URL"
+  project = var.project_id
+}
+
 data "google_secret_manager_secret_version" "celery_worker_url" {
   secret  = "CELERY_WORKER_URL"
   project = var.project_id
@@ -163,6 +173,8 @@ module "gateway" {
   # Service URLs (from secrets)
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
   journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+  habits_service_url    = data.google_secret_manager_secret_version.habits_service_url.secret_data
+  vouchers_web_base_url = data.google_secret_manager_secret_version.vouchers_web_base_url.secret_data
   
   # Environment
   environment           = var.environment
