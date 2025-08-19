@@ -218,7 +218,7 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   recordHabitResponse(habitTemplateId: String!, onDate: Date!, response: String!) : Boolean! @join__field(graph: HABITS) 
   recordLessonOpened(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
   markLessonCompleted(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
-  autoEnroll(campaign: String!) : Boolean! @join__field(graph: HABITS) 
+  autoEnroll(campaign: String!) : AutoEnrollResult! @join__field(graph: HABITS) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
@@ -378,6 +378,12 @@ type AssignmentPayload @join__type(graph: HABITS)  {
   userId: String!
   programTemplateId: String!
   status: String!
+}
+
+type AutoEnrollResult @join__type(graph: HABITS)  {
+  ok: Boolean!
+  enrolled: Boolean!
+  reason: String
 }
 
 type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: JOURNAL)  @join__implements(graph: JOURNAL, interface: "JournalEntryInterface")  {
