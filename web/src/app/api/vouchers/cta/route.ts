@@ -12,7 +12,7 @@ function resolveAppSignupUrl(): string {
   const explicit = (process.env.NEXT_PUBLIC_APP_SIGNUP_URL || process.env.APP_SIGNUP_BASE_URL || '').replace(/\/$/, '')
   if (explicit) return explicit
   // Fallback to web root if not provided
-  return resolveWebBaseUrl()
+  return `${resolveWebBaseUrl()}/mindmirror-mobile/signup`
 }
 
 function generateCode(length = 8) {
@@ -68,11 +68,10 @@ export async function GET(req: NextRequest) {
         </ul>
         <p style=\"font-size:14px;color:#374151;margin:0 0 6px 0\">Here’s your voucher code: <b>${code}</b></p>
         <p style=\"font-size:12px;color:#6b7280;margin:0 0 12px 0\">You’ll only need it if the app asks — if you sign up with <b>${email}</b>, you’ll be enrolled automatically. Otherwise, you can enter it manually in the app (Marketplace → Redeem Voucher).</p>
-        <p style=\"font-size:12px;color:#6b7280;margin:0 0 12px 0\">Already enrolled in ${programName}? You can safely ignore this email.</p>
-        <p style=\"font-size:12px;color:#9ca3af;margin:0 0 24px 0\">Manual fallback: <a href=\"${redeemUrl}\">${redeemUrl}</a></p>
+        <p style=\"font-size:12px;color:#6b7280;margin:0 0 24px 0\">Already enrolled in ${programName}? You can safely ignore this email.</p>
       </div>
     </div>`
-    const text = `We're glad you're here!\n\nTo take advantage of your free access:\n- Create your account: ${appSignup}\n- Use the same email this message was sent to: ${email}\n\nYour voucher code: ${code}\n(Only needed if the app asks. If you sign up with ${email}, you’ll be enrolled automatically.)\n\nAlready enrolled in ${programName}? You can ignore this email.\nManual fallback: ${redeemUrl}`
+    const text = `We're glad you're here!\n\nTo take advantage of your free access:\n- Create your account: ${appSignup}\n- Use the same email this message was sent to: ${email}\n\nYour voucher code: ${code}\n(Only needed if the app asks. If you sign up with ${email}, you’ll be enrolled automatically.)\n\nAlready enrolled in ${programName}? You can ignore this email.`
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
