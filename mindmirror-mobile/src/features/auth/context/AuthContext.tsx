@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/services/supabase/client'
-import { useMutation } from '@apollo/client'
-import { AUTO_ENROLL } from '@/services/api/habits'
 
 interface AuthContextType {
   user: User | null
@@ -17,8 +15,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [autoEnrollState, setAutoEnrollState] = useState<'idle'|'success'|'mismatch'|'none'>('idle')
-  const [autoEnroll] = useMutation(AUTO_ENROLL)
 
   useEffect(() => {
     console.log('AuthProvider: Initializing auth state')
@@ -54,23 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Handle different auth events
         if (event === 'SIGNED_IN') {
           console.log('✅ User signed in:', session?.user?.email)
-          // One-time autoenroll per session
-          try {
-            // Prefer GQL gateway autoEnroll so both habits and admark enrollments occur
-            const { data } = await autoEnroll({ variables: { campaign: 'uye' } })
-            const j = data?.autoEnroll
-            if (j?.enrolled) {
-              console.log('🎟️ Auto-enrolled via voucher')
-              setAutoEnrollState('success')
-            } else if (j?.reason === 'email_mismatch') {
-              console.log('⚠️ Voucher email mismatch; show voucher entry modal')
-              setAutoEnrollState('mismatch')
-            } else {
-              setAutoEnrollState('none')
-            }
-          } catch (e) {
-            console.log('autoenroll error', e)
-          }
         } else if (event === 'SIGNED_OUT') {
           console.log('❌ User signed out')
         } else if (event === 'TOKEN_REFRESHED') {
@@ -102,22 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {autoEnrollState === 'success' && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16 }}>
-          <div style={{ backgroundColor: '#10b981', padding: 12, borderRadius: 8 }}>
-            <span style={{ color: 'white' }}>You’re in! Your voucher has been applied.</span>
-            <button onClick={() => setAutoEnrollState('idle')} style={{ marginLeft: 12, color: 'white', textDecorationLine: 'underline' }}>Dismiss</button>
-          </div>
-        </div>
-      )}
-      {autoEnrollState === 'mismatch' && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16 }}>
-          <div style={{ backgroundColor: '#f59e0b', padding: 12, borderRadius: 8 }}>
-            <span style={{ color: 'white' }}>We couldn’t auto-apply your voucher. Enter your code here or use Marketplace → Redeem Voucher.</span>
-            <button onClick={() => setAutoEnrollState('idle')} style={{ marginLeft: 12, color: 'white', textDecorationLine: 'underline' }}>Dismiss</button>
-          </div>
-        </div>
-      )}
     </AuthContext.Provider>
   )
 }

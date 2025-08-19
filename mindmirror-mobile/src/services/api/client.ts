@@ -4,6 +4,7 @@ import { onError } from '@apollo/client/link/error'
 import { Session } from '@supabase/supabase-js'
 import Constants from 'expo-constants'
 import { createMockLink, createDevGuardLink } from './mockLink'
+import { supabase } from '@/services/supabase/client'
 
 // Environment detection
 const isDevelopment = __DEV__
@@ -28,9 +29,18 @@ const finalGatewayUrl = normalizeGatewayUrl(RAW_GATEWAY_URL) || 'http://localhos
 const httpLink = createHttpLink({ uri: finalGatewayUrl })
 
 // Auth link to add JWT token and user ID headers
-const authLink = setContext((_, { headers, session }) => {
-  // Get session from context or use provided session
-  const currentSession = session as Session | null
+const authLink = setContext(async (_, { headers, session }) => {
+  // Get session from context, provided session, or dynamically from Supabase
+  let currentSession = session as Session | null
+  
+  if (!currentSession) {
+    try {
+      const { data: { session: supabaseSession } } = await supabase.auth.getSession()
+      currentSession = supabaseSession
+    } catch (error) {
+      console.warn('Apollo Client: Failed to get session from Supabase:', error)
+    }
+  }
 
   if (!currentSession?.access_token) {
     console.warn('Apollo Client: No session or access token available')

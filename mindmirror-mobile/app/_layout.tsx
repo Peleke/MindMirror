@@ -1,7 +1,8 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { AuthStateHandler } from '@/features/auth/components/AuthStateHandler';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
-import { ApolloProviderWrapper } from '@/services/api/apollo-provider';
+import { ApolloProviderWrapper, SimpleApolloProvider } from '@/services/api/apollo-provider';
+import { AutoEnrollHandler } from '@/features/auth/components/AutoEnrollHandler';
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   DarkTheme,
@@ -58,15 +59,18 @@ function RootLayoutNav() {
   return (
     <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <ApolloProviderWrapper>
+        <SimpleApolloProvider>
+          <AuthProvider>
+            <ApolloProviderWrapper>
               <AuthStateHandler />
+              <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
               </Stack>
-          </ApolloProviderWrapper>
-        </AuthProvider>
+            </ApolloProviderWrapper>
+          </AuthProvider>
+        </SimpleApolloProvider>
       </ThemeProvider>
     </GluestackUIProvider>
   );
