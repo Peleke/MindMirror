@@ -96,6 +96,13 @@ class AssignmentPayload:
 
 
 @strawberry.type
+class AutoEnrollResult:
+    ok: bool
+    enrolled: bool
+    reason: Optional[str] = None
+
+
+@strawberry.type
 class Mutation:
     @strawberry.mutation
     async def createHabitTemplate(self, input: HabitTemplateInput) -> HabitTemplatePayload:
@@ -205,12 +212,6 @@ class Mutation:
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
             return True
-
-    @strawberry.type
-    class AutoEnrollResult:
-        ok: bool
-        enrolled: bool
-        reason: Optional[str] = None
 
     @strawberry.mutation
     async def autoEnroll(self, campaign: str, info: Info) -> AutoEnrollResult:
