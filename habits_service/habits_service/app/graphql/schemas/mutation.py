@@ -206,21 +206,28 @@ class Mutation:
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
             return True
 
+    @strawberry.type
+    class AutoEnrollResult:
+        ok: bool
+        enrolled: bool
+        reason: Optional[str] = None
+
     @strawberry.mutation
-    async def autoEnroll(self, campaign: str, info: Info) -> bool:
-        """Proxy auto-enroll: calls web vouchers autoenroll, then ensures a habits assignment exists."""
+    async def autoEnroll(self, campaign: str, info: Info) -> AutoEnrollResult:
+        """Proxy auto-enroll: calls web vouchers autoenroll, then ensures a habits assignment exists when eligible."""
         current_user = get_current_user_from_context(info)
         settings = get_settings()
-        # Call web REST autoenroll with bearer
+
+        # Prepare call to web REST autoenroll with bearer
         import httpx
         web_base = settings.vouchers_web_base_url
         if not web_base:
-            return False
+            return AutoEnrollResult(ok=False, enrolled=False, reason="web_base_url_not_configured")
         url = f"{web_base.rstrip('/')}/api/vouchers/autoenroll"
-        # Try to forward Authorization header if present
+
+        # Forward Authorization header when available
         token = None
         try:
-            # strawberry context stores request
             req = info.context.get('request')
             if req:
                 authz = req.headers.get('authorization')
@@ -231,11 +238,23 @@ class Mutation:
         headers = {'content-type': 'application/json'}
         if token:
             headers['authorization'] = f"Bearer {token}"
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(url, headers=headers)
-            ok = resp.status_code == 200
-            # proceed regardless; web may not have a voucher
-        # Create habits assignment if we have a mapping
+
+        web_enrolled = False
+        web_reason: Optional[str] = None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(url, headers=headers, json={})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    web_enrolled = bool(data.get('enrolled'))
+                    web_reason = data.get('reason')
+                else:
+                    web_reason = f"web_status_{resp.status_code}"
+        except Exception:
+            # If web call fails, continue; we'll return ok=False
+            return AutoEnrollResult(ok=False, enrolled=False, reason="web_call_failed")
+
+        # Map campaign to program id
         campaign_l = (campaign or '').lower()
         program_id = None
         if campaign_l == 'uye':
@@ -243,16 +262,19 @@ class Mutation:
         elif campaign_l == 'mindmirror':
             program_id = settings.mindmirror_program_template_id
         if not program_id:
-            return False
+            return AutoEnrollResult(ok=False, enrolled=False, reason="unknown_campaign")
+
+        # Only create assignment if web reported enrolled True
+        if not web_enrolled:
+            return AutoEnrollResult(ok=True, enrolled=False, reason=web_reason)
+
         from datetime import date as _date
         async with UnitOfWork() as uow:
             read = HabitsReadRepository(uow.session)
             active = await read.get_active_assignments(str(current_user.id))
             if any(str(a.program_template_id) == program_id for a in active):
-                return True
+                return AutoEnrollResult(ok=True, enrolled=True)
             write = UserProgramAssignmentRepository(uow.session)
             await write.create(user_id=str(current_user.id), program_template_id=program_id, start_date=_date.today())
             await uow.session.commit()
-        return True
-
-
+        return AutoEnrollResult(ok=True, enrolled=True)
