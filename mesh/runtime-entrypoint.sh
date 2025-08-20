@@ -37,5 +37,3 @@ npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql
 
 echo "Starting Hive Gateway with generated supergraph on PORT=${PORT:-4000}"
 exec npx hive-gateway supergraph ./build/supergraph.graphql --host 0.0.0.0 --port ${PORT:-4000}
-
-
