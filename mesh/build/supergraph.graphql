@@ -89,10 +89,7 @@ enum join__Graph {
     name: "Agent"
     url: "https://agent-service-3858903851.us-east4.run.app/graphql"
   )
-  HABITS @join__graph(
-    name: "Habits"
-    url: "https://habits-service-3858903851.us-east4.run.app/graphql"
-  )
+  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
   JOURNAL @join__graph(
     name: "Journal"
     url: "https://journal-service-3858903851.us-east4.run.app/graphql"
