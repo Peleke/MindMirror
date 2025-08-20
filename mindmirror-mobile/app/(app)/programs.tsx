@@ -8,13 +8,15 @@ import { Input, InputField } from '@/components/ui/input'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 import { AppBar } from '@/components/common/AppBar'
 import { useQuery } from '@apollo/client'
+import { useLocalSearchParams } from 'expo-router'
 import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES, RECENT_LESSON_COMPLETIONS } from '@/services/api/habits'
 import { Pressable } from '@/components/ui/pressable'
 import { useRouter } from 'expo-router'
 
 export default function ProgramsAndResourcesScreen() {
   const router = useRouter()
-  const { data: assignments } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
+  const params = useLocalSearchParams<{ reload?: string }>()
+  const { data: assignments } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: params?.reload === '1' ? 'network-only' : 'cache-and-network', variables: { status: 'active' } })
   const { data: templates } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
   const { data: completedLessons } = useQuery(RECENT_LESSON_COMPLETIONS, { fetchPolicy: 'cache-and-network', variables: { limit: 50 } })
   const [search, setSearch] = useState('')

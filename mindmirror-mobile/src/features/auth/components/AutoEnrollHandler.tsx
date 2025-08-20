@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useApolloClient, useMutation } from '@apollo/client'
 import { AUTO_ENROLL } from '@/services/api/habits'
+import { useRouter } from 'expo-router'
 import { useAuth } from '@/features/auth/context/AuthContext'
 
 export function AutoEnrollHandler() {
   const { session } = useAuth()
   const client = useApolloClient()
+  const router = useRouter()
   const [autoEnrollState, setAutoEnrollState] = useState<'idle'|'success'|'mismatch'|'none'>('idle')
   const [autoEnroll] = useMutation(AUTO_ENROLL)
   const [hasTriedAutoEnroll, setHasTriedAutoEnroll] = useState(false)
@@ -34,6 +36,8 @@ export function AutoEnrollHandler() {
                 'ProgramAssignments',
                 'ListProgramTemplates',
               ]})
+              // Force Journal screen to render with network-only fetch once
+              try { router.replace({ pathname: '/journal', params: { reload: '1' } }) } catch {}
             } catch (e) {
               console.log('refetch after autoEnroll failed', e)
             }

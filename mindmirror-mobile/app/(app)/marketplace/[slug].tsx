@@ -1,6 +1,7 @@
 import React from 'react'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
+import { HStack } from '@/components/ui/hstack'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
@@ -12,6 +13,7 @@ import { Icon } from '@/components/ui/icon'
 import { Pressable } from '@/components/ui/pressable'
 import { CheckCircle, BookOpen, Clock } from 'lucide-react-native'
 import { Button, ButtonText } from '@/components/ui/button'
+import { View } from 'react-native'
 import { useToast } from '@/components/ui/toast'
 import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast'
 import { useQuery as useApolloQuery } from '@apollo/client'
@@ -25,6 +27,7 @@ export default function ProgramDetailScreen() {
   const { data, loading, error } = useQuery(PROGRAM_TEMPLATE_BY_SLUG, { variables: { slug }, fetchPolicy: 'cache-and-network' })
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
   const [unenrollProgram] = useMutation(UNENROLL_PROGRAM)
+  const [showConfirmUnenroll, setShowConfirmUnenroll] = React.useState(false)
   const { show } = useToast()
 
   const program = data?.programTemplateBySlug
@@ -104,6 +107,7 @@ export default function ProgramDetailScreen() {
         ],
         awaitRefetchQueries: true,
       })
+      setShowConfirmUnenroll(false)
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="warning" variant="solid">
           <VStack>
@@ -116,9 +120,9 @@ export default function ProgramDetailScreen() {
       if (from === 'marketplace') {
         router.replace('/marketplace')
       } else if (from === 'programs' || from === 'resources') {
-        router.replace('/programs')
+        router.replace('/programs?reload=1')
       } else {
-        router.replace('/journal')
+        router.replace('/journal?reload=1')
       }
     } catch (e) {
       show({ placement: 'top', render: ({ id }) => (
@@ -201,7 +205,7 @@ export default function ProgramDetailScreen() {
                     <ButtonText>{isEnrolled ? 'Enrolled' : 'Enroll'}</ButtonText>
                   </Button>
                   {isEnrolled && (
-                    <Button className="bg-red-600" onPress={handleUnenroll}>
+                    <Button className="bg-red-600" onPress={() => setShowConfirmUnenroll(true)}>
                       <ButtonText>Unenroll</ButtonText>
                     </Button>
                   )}
@@ -211,6 +215,24 @@ export default function ProgramDetailScreen() {
           </VStack>
         </ScrollView>
       </VStack>
+      {showConfirmUnenroll ? (
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700">
+            <VStack space="md">
+              <Text className="text-xl font-bold text-typography-900 dark:text-white">Unenroll from this program?</Text>
+              <Text className="text-typography-700 dark:text-gray-300">You’ll lose today’s tasks immediately. You can re‑enroll anytime and progress will restart.</Text>
+              <HStack className="justify-end space-x-3">
+                <Button className="bg-gray-600" onPress={() => setShowConfirmUnenroll(false)}>
+                  <ButtonText>Cancel</ButtonText>
+                </Button>
+                <Button className="bg-red-600" onPress={handleUnenroll}>
+                  <ButtonText>Confirm</ButtonText>
+                </Button>
+              </HStack>
+            </VStack>
+          </Box>
+        </View>
+      ) : null}
     </SafeAreaView>
   )
 }
