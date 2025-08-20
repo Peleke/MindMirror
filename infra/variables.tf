@@ -113,3 +113,9 @@ variable "mindmirror_program_template_id" {
   type        = string
   default     = "1b4fa08a-462b-445e-85a6-6da4d70c6ed"
 }
+
+variable "daily_journaling_program_template_id" {
+  description = "Program template ID for Daily Journaling"
+  type        = string
+  default     = "1b4fa08a-462b-445e-85a6-6da4d70c6ed"
+}

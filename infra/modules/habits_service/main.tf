@@ -34,6 +34,11 @@ resource "google_cloud_run_service" "habits_service" {
           name  = "MINDMIRROR_PROGRAM_TEMPLATE_ID"
           value = var.mindmirror_program_template_id
         }
+
+        env {
+          name  = "DAILY_JOURNALING_PROGRAM_TEMPLATE_ID"
+          value = var.daily_journaling_program_template_id
+        }
       }
 
       service_account_name = var.service_account_email

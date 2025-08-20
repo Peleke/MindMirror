@@ -11,4 +11,4 @@ variable "vouchers_web_base_url" { type = string }
 variable "uye_program_template_id" { type = string }
 variable "mindmirror_program_template_id" { type = string }
 
-
+variable "daily_journaling_program_template_id" { type = string }

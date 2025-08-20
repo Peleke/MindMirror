@@ -228,4 +228,5 @@ module "habits_service" {
   vouchers_web_base_url        = var.vouchers_web_base_url
   uye_program_template_id      = var.uye_program_template_id
   mindmirror_program_template_id = var.mindmirror_program_template_id
+  daily_journaling_program_template_id = var.daily_journaling_program_template_id
 }
