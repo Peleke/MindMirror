@@ -179,7 +179,7 @@ services:
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: ["./start-web.sh"]
+    command: ["./start.sh"]
     networks:
       - mindmirror-network
     depends_on:
@@ -224,7 +224,7 @@ services:
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: ["./start-worker.sh"]
+    command: ["./start.sh"]
     networks:
       - mindmirror-network
     depends_on:

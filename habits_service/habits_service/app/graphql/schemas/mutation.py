@@ -172,7 +172,16 @@ class Mutation:
         async with UnitOfWork() as uow:
             repo = UserProgramAssignmentRepository(uow.session)
             current_user = get_current_user_from_context(info)
+            # Avoid duplicate active assignments for the same program
+            read = HabitsReadRepository(uow.session)
+            active = await read.get_active_assignments(str(current_user.id))
+            existing = next((x for x in active if str(x.program_template_id) == programId), None)
+            if existing:
+                return AssignmentPayload(
+                    id=str(existing.id), userId=existing.user_id, programTemplateId=str(existing.program_template_id), status=existing.status
+                )
             a = await repo.create(user_id=str(current_user.id), program_template_id=programId, start_date=startDate)
+            await uow.session.commit()
             return AssignmentPayload(id=str(a.id), userId=a.user_id, programTemplateId=str(a.program_template_id), status=a.status)
 
     @strawberry.mutation
@@ -195,6 +204,7 @@ class Mutation:
             repo = HabitEventRepository(uow.session)
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), habit_template_id=habitTemplateId, on_date=onDate, response=response)
+            await uow.session.commit()
             return True
 
     @strawberry.mutation
@@ -203,6 +213,7 @@ class Mutation:
             repo = LessonEventRepository(uow.session)
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="opened")
+            await uow.session.commit()
             return True
 
     @strawberry.mutation
@@ -211,6 +222,7 @@ class Mutation:
             repo = LessonEventRepository(uow.session)
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
+            await uow.session.commit()
             return True
 
     @strawberry.mutation
@@ -298,6 +310,5 @@ class Mutation:
                     program_template_id=str(journaling_program_id),
                     start_date=_date.today(),
                 )
-
             await uow.session.commit()
         return AutoEnrollResult(ok=True, enrolled=True)
