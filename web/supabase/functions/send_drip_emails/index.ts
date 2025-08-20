@@ -106,7 +106,8 @@ function resolveWebBaseUrl(): string {
 
 function resolveAppSignupUrl(base: string): string {
   const env = (k: string) => (Deno.env.get(k) || '').trim()
-  return env('EMAIL_APP_SIGNUP_URL') || env('APP_SIGNUP_URL') || `${base}/journal/signup`
+  // Prefer explicit overrides, else default to mobile signup route
+  return env('EMAIL_APP_SIGNUP_URL') || env('APP_SIGNUP_URL') || `${base}/signup`
 }
 
 function appendCta(html: string, text: string, campaign: string, recipientEmail: string): { html: string, text: string } {
