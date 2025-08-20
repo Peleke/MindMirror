@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { useMutation } from '@apollo/client'
+import { useApolloClient, useMutation } from '@apollo/client'
 import { AUTO_ENROLL } from '@/services/api/habits'
 import { useAuth } from '@/features/auth/context/AuthContext'
 
 export function AutoEnrollHandler() {
   const { session } = useAuth()
+  const client = useApolloClient()
   const [autoEnrollState, setAutoEnrollState] = useState<'idle'|'success'|'mismatch'|'none'>('idle')
   const [autoEnroll] = useMutation(AUTO_ENROLL)
   const [hasTriedAutoEnroll, setHasTriedAutoEnroll] = useState(false)
@@ -24,6 +25,18 @@ export function AutoEnrollHandler() {
           if (j?.enrolled) {
             console.log('🎟️ Auto-enrolled via voucher')
             setAutoEnrollState('success')
+            // Refresh key queries so UI updates immediately
+            try {
+              await client.refetchQueries({ include: [
+                'TodaysTasks',
+                'TodaysTasksInline',
+                'MiniTodaysTasks',
+                'ProgramAssignments',
+                'ListProgramTemplates',
+              ]})
+            } catch (e) {
+              console.log('refetch after autoEnroll failed', e)
+            }
           } else if (j?.reason === 'email_mismatch') {
             console.log('⚠️ Voucher email mismatch; show voucher entry modal')
             setAutoEnrollState('mismatch')

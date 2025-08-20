@@ -55,7 +55,15 @@ export default function ProgramDetailScreen() {
   const handleEnroll = async () => {
     const today = new Date().toISOString().slice(0, 10)
     try {
-      await assignProgramToUser({ variables: { programId: program.id, startDate: today } })
+      await assignProgramToUser({ variables: { programId: program.id, startDate: today },
+        refetchQueries: [
+          'ProgramAssignments',
+          'TodaysTasks',
+          'TodaysTasksInline',
+          'MiniTodaysTasks',
+        ],
+        awaitRefetchQueries: true,
+      })
       show({
         placement: 'top',
         render: ({ id }) => (
@@ -85,14 +93,17 @@ export default function ProgramDetailScreen() {
 
   const handleUnenroll = async () => {
     try {
-      await unenrollProgram({ variables: { programId: program.id } })
-      // Refresh key queries so UI updates immediately
-      await client.refetchQueries({ include: [
-        'ProgramAssignments',
-        'TodaysTasks',
-        'ProgramTemplateSteps',
-        'ListProgramTemplates'
-      ] })
+      await unenrollProgram({ variables: { programId: program.id },
+        refetchQueries: [
+          'ProgramAssignments',
+          'TodaysTasks',
+          'TodaysTasksInline',
+          'MiniTodaysTasks',
+          'ProgramTemplateSteps',
+          'ListProgramTemplates',
+        ],
+        awaitRefetchQueries: true,
+      })
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="warning" variant="solid">
           <VStack>
