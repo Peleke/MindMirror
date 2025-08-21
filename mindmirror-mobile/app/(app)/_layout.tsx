@@ -21,28 +21,11 @@ export default function AppLayout() {
           // Ensure profile is last visually by declaring it last
         >
           <Drawer.Screen name="journal" options={{ drawerLabel: 'Home', title: 'Home' }} />
+          <Drawer.Screen name="programs" options={{ drawerLabel: 'Programs & Resources', title: 'Programs & Resources' }} />
+          <Drawer.Screen name="archive" options={{ drawerLabel: 'Journal Archive', title: 'Archive' }} />
+          <Drawer.Screen name="journal-hub" options={{ drawerLabel: 'Journal Hub', title: 'Journal' }} />
+          <Drawer.Screen name="chat" options={{ drawerLabel: 'Chat', title: 'Chat' }} />
           <Drawer.Screen name="marketplace" options={{ drawerLabel: 'Marketplace', title: 'Marketplace' }} />
-          <Drawer.Screen
-            name="journal-hub"
-            options={{
-              drawerLabel: 'Journal Hub',
-              title: 'Journal',
-            }}
-          />
-          <Drawer.Screen
-            name="chat"
-            options={{
-              drawerLabel: 'Chat',
-              title: 'Chat',
-            }}
-          />
-          <Drawer.Screen
-            name="archive"
-            options={{
-              drawerLabel: 'Archive',
-              title: 'Archive',
-            }}
-          />
           <Drawer.Screen
             name="insights"
             options={{

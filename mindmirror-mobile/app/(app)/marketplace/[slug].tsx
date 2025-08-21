@@ -28,7 +28,7 @@ export default function ProgramDetailScreen() {
   const [assignProgramToUser] = useMutation(ASSIGN_PROGRAM_TO_USER)
   const [unenrollProgram] = useMutation(UNENROLL_PROGRAM)
   const [showConfirmUnenroll, setShowConfirmUnenroll] = React.useState(false)
-  const { show } = useToast()
+  const { show, close } = useToast()
 
   const program = data?.programTemplateBySlug
   const { data: stepsData } = useQuery(PROGRAM_STEPS, {
@@ -113,6 +113,9 @@ export default function ProgramDetailScreen() {
           <VStack>
             <ToastTitle>Unenrolled</ToastTitle>
             <ToastDescription>You can re-enroll anytime. Progress will restart.</ToastDescription>
+            <Pressable onPress={() => close(id)}>
+              <Text className="text-white underline">Dismiss</Text>
+            </Pressable>
           </VStack>
         </Toast>
       )})
