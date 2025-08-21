@@ -225,7 +225,7 @@ module "habits_service" {
   environment = var.environment
 
   database_url                 = data.google_secret_manager_secret_version.database_url.secret_data
-  vouchers_web_base_url        = var.vouchers_web_base_url
+  vouchers_web_base_url        = data.google_secret_manager_secret_version.vouchers_web_base_url.secret_data
   uye_program_template_id      = var.uye_program_template_id
   mindmirror_program_template_id = var.mindmirror_program_template_id
   daily_journaling_program_template_id = var.daily_journaling_program_template_id
