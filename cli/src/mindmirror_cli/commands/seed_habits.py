@@ -264,8 +264,6 @@ def run(
                                         fh = ex.get("from")
                                         th = ex.get("to")
                                         segment_md += "\n\n" + _extract_heading_range(full_md, fh, th)
-                                else:
-                                    segment_md = ""
                             seg_payloads.append({
                                 "lesson_template_id": lesson_id,
                                 "day_index_within_step": seg.get("day_index"),
