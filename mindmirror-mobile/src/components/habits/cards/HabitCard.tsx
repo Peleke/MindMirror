@@ -16,13 +16,13 @@ export default function HabitCard({ task, onRespond, onPress }: { task: HabitTas
   return (
     <>
       <Pressable className="w-full" onPress={() => { if (!justSwiped && onPress) onPress() }}>
-        <Box className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 shadow">
+        <Box className="p-4 rounded-lg border bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800 shadow">
           <VStack space="sm">
             <HStack space="sm" className="items-center">
-              <Icon as={Heart} size="md" className="text-blue-600 dark:text-blue-400" />
+              <Icon as={Heart} size="md" className="text-teal-700 dark:text-teal-300" />
               <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
             </HStack>
-            <Text className="text-typography-600 dark:text-gray-300">{(task as any).subtitle || task.description || 'No description provided.'}</Text>
+            <Text className="text-typography-600 dark:text-gray-300">{(task as any).subtitle || task.description || ''}</Text>
             <HStack className="justify-between" space="sm">
               <Button onPress={() => { setLastResponse('yes'); onRespond('yes') }} className={`flex-1 ${lastResponse==='yes' ? 'bg-blue-500' : 'bg-blue-400'}`}>
                 <ButtonText>Yes</ButtonText>
