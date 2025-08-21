@@ -122,6 +122,7 @@ class Query:
                             title=t.title,
                             description=t.description,
                             status=GTaskStatus(t.status.value) if hasattr(t.status, "value") else GTaskStatus[t.status],
+                            habitTemplateId=getattr(t, 'habitTemplateId', None),
                         )
                     )
 

@@ -39,6 +39,7 @@ class JournalTask:
     title: str
     description: Optional[str]
     status: TaskStatus
+    habitTemplateId: Optional[str] = None
 
 
 Task = HabitTask | LessonTask | JournalTask
@@ -85,8 +86,25 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 subtitle_text = daily_plan.habit_variant_text
             if not subtitle_text:
                 subtitle_text = habit.short_description
-            if not subtitle_text and 'daily_plan' in locals() and daily_plan and daily_plan.journal_prompt_text:
-                subtitle_text = daily_plan.journal_prompt_text
+            if not subtitle_text:
+                # Fallback: use program description for a friendlier line when nothing else exists
+                try:
+                    steps_program = await repo.get_program_template_by_slug(None)  # placeholder to avoid lint; will replace
+                except Exception:
+                    steps_program = None
+                # Fetch program by id (we don't have slug; use active_step.program_template_id via another repo method)
+                try:
+                    from habits_service.habits_service.app.db.tables import ProgramTemplate
+                    # simple lookup by id via existing session
+                    program_id = str(active_step.program_template_id)
+                    # reusing session in repo
+                    from sqlalchemy import select
+                    result = await repo.session.execute(select(ProgramTemplate).where(ProgramTemplate.id == program_id))
+                    program_row = result.scalars().first()
+                    if program_row and getattr(program_row, 'description', None):
+                        subtitle_text = program_row.description
+                except Exception:
+                    pass
             if not subtitle_text:
                 # Prefer today's lesson subtitle if available
                 step_lessons_for_day = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
@@ -176,6 +194,7 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     title="Daily Journal",
                     description=daily_plan.journal_prompt_text,
                     status=TaskStatus.pending,
+                    habitTemplateId=str(habit.id) if habit else None,
                 )
             )
 

@@ -47,6 +47,7 @@ class JournalTask:
     title: str
     description: Optional[str]
     status: TaskStatus
+    habitTemplateId: Optional[str]
 
 
 Task = strawberry.union("Task", (HabitTask, LessonTask, JournalTask))
