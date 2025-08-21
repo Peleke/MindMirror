@@ -155,6 +155,8 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   lessonTemplateById(id: String!) : LessonTemplateType @join__field(graph: HABITS) 
   programTemplateSteps(programId: String!) : [ProgramStepType!]! @join__field(graph: HABITS) 
   programStepLessons(programStepId: String!) : [StepLessonType!]! @join__field(graph: HABITS) 
+  programStepDailyPlan(programStepId: String!) : [StepDayPlanType!]! @join__field(graph: HABITS) 
+  lessonSegmentById(id: String!) : LessonSegmentType @join__field(graph: HABITS) 
   recentLessonCompletions(limit: Int! = 50) : [LessonCompletionType!]! @join__field(graph: HABITS) 
   lessonsForHabit(habitTemplateId: String!, onDate: Date!) : [LessonForHabitType!]! @join__field(graph: HABITS) 
   habitStats(habitTemplateId: String!, lookbackDays: Int! = 14) : HabitStatsType! @join__field(graph: HABITS) 
@@ -215,6 +217,8 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   recordHabitResponse(habitTemplateId: String!, onDate: Date!, response: String!) : Boolean! @join__field(graph: HABITS) 
   recordLessonOpened(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
   markLessonCompleted(lessonTemplateId: String!, onDate: Date!) : Boolean! @join__field(graph: HABITS) 
+  upsertStepDailyPlan(programStepId: String!, items: [StepDayPlanInput!]!) : Boolean! @join__field(graph: HABITS) 
+  upsertLessonSegments(segments: [LessonSegmentInput!]!) : Boolean! @join__field(graph: HABITS) 
   autoEnroll(campaign: String!) : AutoEnrollResult! @join__field(graph: HABITS) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
@@ -314,6 +318,22 @@ type StepLessonType @join__type(graph: HABITS)  {
   estReadMinutes: Int
   subtitle: String
   heroImageUrl: String
+}
+
+type StepDayPlanType @join__type(graph: HABITS)  {
+  dayIndex: Int!
+  habitVariantText: String
+  journalPromptText: String
+  lessonSegmentId: String
+}
+
+type LessonSegmentType @join__type(graph: HABITS)  {
+  id: String!
+  lessonTemplateId: String!
+  title: String!
+  subtitle: String
+  markdownContent: String!
+  summary: String
 }
 
 type LessonCompletionType @join__type(graph: HABITS)  {
@@ -472,6 +492,22 @@ input ProgramStepInput @join__type(graph: HABITS)  {
   sequenceIndex: Int!
   habitTemplateId: String!
   durationDays: Int!
+}
+
+input StepDayPlanInput @join__type(graph: HABITS)  {
+  dayIndex: Int!
+  habitVariantText: String = null
+  journalPromptText: String = null
+  lessonSegmentId: String = null
+}
+
+input LessonSegmentInput @join__type(graph: HABITS)  {
+  lessonTemplateId: String!
+  dayIndexWithinStep: Int = null
+  title: String!
+  subtitle: String = null
+  markdownContent: String!
+  summary: String = null
 }
 
 input GratitudeEntryInput @join__type(graph: JOURNAL)  {
