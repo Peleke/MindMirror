@@ -169,20 +169,98 @@ class Query:
             ]
 
     @strawberry.field
-    async def lessonTemplateById(self, id: str) -> Optional[LessonTemplateType]:
+    async def lessonTemplateById(self, id: str, info: Info) -> Optional[LessonTemplateType]:
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
             row = await repo.get_lesson_template_by_id(id)
             if not row:
                 return None
+
+            # Default values from full lesson
+            content_markdown = row.markdown_content
+            summary_text = row.summary
+            subtitle_text = getattr(row, "subtitle", None)
+            hero_image_url = getattr(row, "hero_image_url", None)
+
+            # Try to substitute with today's segment excerpt when applicable
+            try:
+                from datetime import date as _date
+                current_user = get_current_user_from_context(info)  # type: ignore[name-defined]
+                today = _date.today()
+                # Find an active step for any active assignment and check its daily plan
+                assignments = await repo.get_active_assignments(str(current_user.id))
+                found_segment = False
+                for assignment in assignments or []:
+                    steps = await repo.get_program_steps(str(assignment.program_template_id))
+                    if not steps:
+                        continue
+                    day_offset = (today - assignment.start_date).days
+                    if day_offset < 0:
+                        continue
+                    cursor = 0
+                    active_step = None
+                    day_index = 0
+                    for s in steps:
+                        if day_offset < cursor + s.duration_days:
+                            active_step = s
+                            day_index = day_offset - cursor
+                            break
+                        cursor += s.duration_days
+                    if not active_step:
+                        continue
+                    daily_plan = await repo.get_step_daily_plan_for_day(str(active_step.id), day_index)
+                    if daily_plan and daily_plan.lesson_segment_id:
+                        seg = await repo.get_lesson_segment_by_id(str(daily_plan.lesson_segment_id))
+                        if seg and str(seg.lesson_template_id) == str(row.id):
+                            # Use excerpt content from the segment
+                            content_markdown = seg.markdown_content or content_markdown
+                            # Prefer segment summary; else derive from excerpt content
+                            if not summary_text:
+                                content_for_summary = seg.summary or seg.markdown_content or content_markdown or ""
+                                summary_text = (content_for_summary[:240] + ("…" if len(content_for_summary) > 240 else "")) or None
+                            # Prefer segment subtitle if lesson has none
+                            if not subtitle_text:
+                                subtitle_text = seg.subtitle or None
+                            found_segment = True
+                            break
+                # If no segment found for today, fall back to first available segment for this lesson
+                if not found_segment:
+                    segs = await repo.list_lesson_segments_by_lesson(str(row.id))
+                    if segs:
+                        first = segs[0]
+                        if first.markdown_content:
+                            content_markdown = first.markdown_content
+                        if not summary_text:
+                            base = first.summary or first.markdown_content or content_markdown or row.summary or row.markdown_content or ""
+                            summary_text = (base[:240] + ("…" if len(base) > 240 else "")) or None
+                        if not subtitle_text:
+                            subtitle_text = first.subtitle or subtitle_text
+            except Exception:
+                # Never block detail page on segment detection errors
+                pass
+
+            # As a final fallback, derive a short summary from the lesson markdown if still missing
+            if not summary_text:
+                base = row.summary or (row.markdown_content or "")
+                summary_text = (base[:240] + ("…" if len(base) > 240 else "")) or None
+
+            # As a final content fallback when no segment was applied, trim to intro before first level-3 heading
+            try:
+                if content_markdown == row.markdown_content and content_markdown:
+                    cut = content_markdown.find("\n### ")
+                    if cut > 0:
+                        content_markdown = content_markdown[:cut].strip()
+            except Exception:
+                pass
+
             return LessonTemplateType(
                 id=str(row.id),
                 slug=row.slug,
                 title=row.title,
-                summary=row.summary,
-                markdownContent=row.markdown_content,
-                subtitle=getattr(row, "subtitle", None),
-                heroImageUrl=getattr(row, "hero_image_url", None),
+                summary=summary_text,
+                markdownContent=content_markdown,
+                subtitle=subtitle_text,
+                heroImageUrl=hero_image_url,
             )
 
     @strawberry.field

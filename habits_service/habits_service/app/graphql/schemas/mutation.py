@@ -340,12 +340,10 @@ class Mutation:
             read = HabitsReadRepository(uow.session)
             active = await read.get_active_assignments(str(current_user.id))
 
-            # Determine if primary program and daily journaling need assignments
-            journaling_program_id = settings.daily_journaling_program_template_id
+            # Determine if primary program; daily journaling auto-enroll disabled
+            journaling_program_id = None  # auto-enrollment for daily journaling reverted
             has_primary = any(str(a.program_template_id) == program_id for a in active)
-            has_journaling = journaling_program_id and any(
-                str(a.program_template_id) == str(journaling_program_id) for a in active
-            )
+            has_journaling = False
 
             write = UserProgramAssignmentRepository(uow.session)
 
@@ -356,13 +354,6 @@ class Mutation:
                     program_template_id=program_id,
                     start_date=_date.today(),
                 )
-
-            # Also ensure daily journaling program assignment exists (if configured)
-            if journaling_program_id and not has_journaling:
-                await write.create(
-                    user_id=str(current_user.id),
-                    program_template_id=str(journaling_program_id),
-                    start_date=_date.today(),
-                )
+            # Daily journaling program auto-enrollment intentionally disabled
             await uow.session.commit()
         return AutoEnrollResult(ok=True, enrolled=True)

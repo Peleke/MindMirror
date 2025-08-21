@@ -15,6 +15,9 @@ from habits_service.habits_service.app.db.tables import (
     ProgramStepTemplate,
     StepLessonTemplate,
     UserProgramAssignment,
+    # Newly required models for daily planning
+    StepDailyPlan,
+    LessonSegment,
 )
 
 
@@ -116,6 +119,36 @@ class HabitsReadRepository:
             .order_by(LessonEvent.created_at.desc())
             .limit(limit)
         )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    # --- Daily Plan & Lesson Segment helpers (used by planner) ---
+    async def get_step_daily_plan_for_day(self, step_id: str, day_index: int) -> Optional[StepDailyPlan]:
+        stmt: Select = select(StepDailyPlan).where(
+            and_(
+                StepDailyPlan.program_step_template_id == step_id,
+                StepDailyPlan.day_index == day_index,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def list_step_daily_plan(self, step_id: str) -> List[StepDailyPlan]:
+        stmt: Select = select(StepDailyPlan).where(
+            StepDailyPlan.program_step_template_id == step_id
+        ).order_by(StepDailyPlan.day_index.asc())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_lesson_segment_by_id(self, segment_id: str) -> Optional[LessonSegment]:
+        stmt: Select = select(LessonSegment).where(LessonSegment.id == segment_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def list_lesson_segments_by_lesson(self, lesson_template_id: str) -> List[LessonSegment]:
+        stmt: Select = select(LessonSegment).where(
+            LessonSegment.lesson_template_id == lesson_template_id
+        ).order_by(LessonSegment.day_index_within_step.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

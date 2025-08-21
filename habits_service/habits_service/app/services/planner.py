@@ -85,6 +85,8 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 subtitle_text = daily_plan.habit_variant_text
             if not subtitle_text:
                 subtitle_text = habit.short_description
+            if not subtitle_text and 'daily_plan' in locals() and daily_plan and daily_plan.journal_prompt_text:
+                subtitle_text = daily_plan.journal_prompt_text
             if not subtitle_text:
                 # Prefer today's lesson subtitle if available
                 step_lessons_for_day = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
@@ -129,13 +131,15 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 # Use parent lesson id for identity; title/summary from segment
                 parent_id = str(seg.lesson_template_id)
                 status = TaskStatus.pending
+                # Fallback for summary when segment lacks one: derive from excerpt content
+                seg_summary = seg.summary or ((seg.markdown_content or "")[:200] + ("…" if seg.markdown_content and len(seg.markdown_content) > 200 else ""))
                 tasks.append(
                     LessonTask(
                         taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", parent_id),
                         type=TaskType.lesson,
                         lessonTemplateId=parent_id,
                         title=seg.title,
-                        summary=seg.summary or None,
+                        summary=seg_summary or None,
                         status=status,
                     )
                 )
@@ -150,7 +154,8 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 completed_ids = {str(le.lesson_template_id) for le in lesson_events if le.event_type == "completed"}
                 for lesson in lessons:
                     status = TaskStatus.completed if str(lesson.id) in completed_ids else TaskStatus.pending
-                    summary = lesson.summary or None
+                    # Fallback for summary when lesson lacks one: derive from lesson markdown
+                    summary = lesson.summary or ((lesson.markdown_content or "")[:200] + ("…" if lesson.markdown_content and len(lesson.markdown_content) > 200 else "")) or None
                     tasks.append(
                         LessonTask(
                             taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson.id)),
