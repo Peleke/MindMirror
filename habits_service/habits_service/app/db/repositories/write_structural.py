@@ -41,6 +41,8 @@ class ProgramStepTemplateRepository:
         steps = list(res_steps.scalars().all())
         deleted = 0
         for st in steps:
+            # Remove daily plans for the step (FK to program_step_templates)
+            await self.session.execute(delete(StepDailyPlan).where(StepDailyPlan.program_step_template_id == st.id))
             await self.session.execute(delete(StepLessonTemplate).where(StepLessonTemplate.program_step_template_id == st.id))
             deleted += 1
         await self.session.execute(delete(ProgramStepTemplate).where(ProgramStepTemplate.program_template_id == pid))
