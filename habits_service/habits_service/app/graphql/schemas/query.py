@@ -94,13 +94,23 @@ class Query:
                         )
                     )
                 elif isinstance(t, PLessonTask):
+                    # Ensure non-empty summary by falling back to lesson template content when needed
+                    summary_text = t.summary
+                    if not summary_text:
+                        try:
+                            lt = await repo.get_lesson_template_by_id(t.lessonTemplateId)
+                            if lt:
+                                base = getattr(lt, 'summary', None) or getattr(lt, 'markdown_content', '') or ''
+                                summary_text = (base[:240] + ("…" if len(base) > 240 else "")) or None
+                        except Exception:
+                            summary_text = None
                     converted.append(
                         GLessonTask(
                             taskId=t.taskId,
                             type=GTaskType.lesson,
                             lessonTemplateId=t.lessonTemplateId,
                             title=t.title,
-                            summary=t.summary,
+                            summary=summary_text,
                             status=GTaskStatus(t.status.value) if hasattr(t.status, "value") else GTaskStatus[t.status],
                         )
                     )
