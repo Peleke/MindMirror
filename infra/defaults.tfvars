@@ -19,7 +19,7 @@ agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmir
 gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:f320f029e90510478c65473c31f933a1a8e6f6ae"
 # gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
-habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:2cf96feba4e8925f4ba9a285b6d53eb274198826"
+habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:7849df81f923fce173c5689986a2fed88b59fdd8"
 
 # --- Mocking & Testing Fallbacks ---
 # These are used for mesh compatibility and should be replaced with real values or logic if needed.
