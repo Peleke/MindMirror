@@ -146,6 +146,3 @@ Rendering strategy
 Authoring ergonomics
 - Keep includes declarative and minimal: `{{ include: slug }}`. CLI validates slugs exist.
 - Provide a preview CLI command to show how includes resolve and segments slice.
-
-
-
