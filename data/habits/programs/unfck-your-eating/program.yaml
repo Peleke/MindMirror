@@ -10,6 +10,7 @@ sequence:
     durationDays: 7
     habitTemplateSlug: screens-off
     lessonSlugs:
+      - orientation
       - screens-off
   - stepSlug: eat-slowly
     title: Eat Slowly and Chew Thoroughly
