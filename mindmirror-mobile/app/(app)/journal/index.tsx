@@ -35,6 +35,8 @@ function todayIsoDate(): string {
 }
 
 function MiniDashboard() {
+  const { session, loading: authLoading } = useAuth()
+  const hasSession = !!session?.access_token
   const onDate = todayIsoDate()
   const MINI_TASKS = gql`
     query MiniTodaysTasks($onDate: Date!) {
@@ -49,11 +51,11 @@ function MiniDashboard() {
       }
     }
   `
-  const { data: tasks, loading: tasksLoading } = useQuery(MINI_TASKS, { variables: { onDate }, fetchPolicy: 'cache-and-network' })
+  const { data: tasks, loading: tasksLoading } = useQuery(MINI_TASKS, { variables: { onDate }, fetchPolicy: 'cache-and-network', skip: authLoading || !hasSession })
   const firstHabit = (tasks?.todaysTasks || []).find((t: any) => t.__typename === 'HabitTask' && t.habitTemplateId)
   const habitId = firstHabit?.habitTemplateId || (global as any).__preferredHabitId || ''
   const habitTitle = firstHabit?.title || ''
-  const { data: stats, loading: statsLoading } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: !habitId })
+  const { data: stats, loading: statsLoading } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: authLoading || !hasSession || !habitId })
 
   // Debug logs
   // eslint-disable-next-line no-console
@@ -179,9 +181,19 @@ export default function JournalScreen() {
   const params = useLocalSearchParams<{ reload?: string }>()
   const router = useRouter();
   const { show } = useToast();
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
+
+  if (authLoading && !session) {
+    return (
+      <SafeAreaView className="h-full w-full">
+        <VStack className="h-full w-full bg-background-0 items-center justify-center">
+          <ActivityIndicator />
+        </VStack>
+      </SafeAreaView>
+    )
+  }
   
   const {
     submitEntry,

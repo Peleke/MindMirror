@@ -26,7 +26,7 @@ const normalizeGatewayUrl = (url?: string | null) => {
 const finalGatewayUrl = normalizeGatewayUrl(RAW_GATEWAY_URL) || 'http://localhost:4000/graphql'
 
 // HTTP Link for GraphQL endpoint
-const httpLink = createHttpLink({ uri: finalGatewayUrl })
+const httpLink = createHttpLink({ uri: finalGatewayUrl, credentials: 'omit' })
 
 // Auth link to add JWT token and user ID headers
 const authLink = setContext(async (_, { headers, session }) => {
@@ -43,7 +43,7 @@ const authLink = setContext(async (_, { headers, session }) => {
   }
 
   if (!currentSession?.access_token) {
-    console.warn('Apollo Client: No session or access token available')
+    // Don't attach empty headers; just pass through. Callers should skip queries until session exists.
     return { headers }
   }
 

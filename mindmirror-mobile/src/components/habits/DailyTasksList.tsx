@@ -13,6 +13,7 @@ import LessonCard from './cards/LessonCard'
 import JournalCard from './cards/JournalCard'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
+import { useAuth } from '@/features/auth/context/AuthContext'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -26,6 +27,8 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
   const onDate = useMemo(() => todayIsoDate(), [])
   const router = useRouter()
   const mockEnabled = ((process.env.EXPO_PUBLIC_MOCK_TASKS || Constants.expoConfig?.extra?.mockTasks) || '').toString().toLowerCase() === 'true'
+  const { session, loading: authLoading } = useAuth()
+  const hasSession = !!session?.access_token
 
   const GET_TODAYS_TASKS_INLINE = gql`
     query TodaysTasksInline($onDate: Date!) {
@@ -63,6 +66,7 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
     fetchPolicy: forceNetwork ? 'network-only' : 'cache-and-network',
     errorPolicy: 'none',
     returnPartialData: false,
+    skip: authLoading || !hasSession,
   })
 
   const [recordHabitResponse] = useMutation(RECORD_HABIT_RESPONSE, {
@@ -79,7 +83,7 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
   const remainingTasks = tasks.filter((t: any) => t.status !== 'completed')
   const completedTasks = tasks.filter((t: any) => t.status === 'completed')
 
-  if (loading && !data) {
+  if ((authLoading || loading) && !data) {
     return (
       <Box className="items-center py-8">
         <ActivityIndicator />
