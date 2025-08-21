@@ -26,7 +26,7 @@ lesson_segments:
   screens-off:
     # Day 0: intro → Evidence (+ append Citations)
     - day_index: 0
-      title: "Why this matters"
+      title: "Screens Off: Why It Matters"
       subtitle: "Introduction & Evidence"
       extract:
         type: heading_range
@@ -40,7 +40,7 @@ lesson_segments:
 
     # Day 2: Interlude (anything between Evidence and Pushback)
     - day_index: 2
-      title: "Interlude"
+      title: "Screens Off: Interlude"
       subtitle: "Guides and practical add-ins"
       extract:
         type: heading_range
@@ -49,14 +49,14 @@ lesson_segments:
 
     # Day 3: Pushback
     - day_index: 3
-      title: "Pushback"
+      title: "Screens Off: Pushback"
       extract:
         type: heading
         match: "### Pushback"
 
     # Day 4: Action Items + Accountability
     - day_index: 4
-      title: "Action Items & Accountability"
+      title: "Screens Off: Action Items & Accountability"
       extract:
         type: heading_range
         from: "### Action Items"
@@ -64,8 +64,7 @@ lesson_segments:
 
     # Day 5: Final Notes
     - day_index: 5
-      title: "Final Notes"
+      title: "Screens Off: Final Notes"
       extract:
         type: heading
         match: "### Final Notes"
-
