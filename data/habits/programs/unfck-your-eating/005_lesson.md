@@ -31,6 +31,22 @@ In other words: water first, less sugar over time, cravings fade. The habit work
 
 ---
 
+### Pushback
+
+_“But I love my morning latte/soda/juice.”_
+Keep it! This habit isn’t about cutting—it’s about crowding out. Start with water first, then have your drink. Over time, most people naturally need less of the sweet stuff to feel satisfied.
+
+_“Artificial sweeteners are fine, right?”_
+They’re not the devil, but they’re not neutral either. They don’t add calories, but they do keep your brain chasing hyper-sweet flavors, which can make whole foods taste dull. Think of them as a crutch—not a cure. Use them if they help you transition, but keep nudging toward unsweetened options.
+
+_“Plain water is boring.”_
+So upgrade it. Sparkling water, fruit-infused water, herbal teas—there are endless ways to make hydration feel like a ritual instead of a chore. Half the battle is finding something you actually enjoy drinking.
+
+_“I don’t drink soda, so I’m good.”_
+Cool—but what about juice, smoothies, fancy coffee drinks, or alcohol mixers? They’re often just as sneaky when it comes to sugar load. The principle is the same: water first, then make a conscious choice.
+
+---
+
 ### **Action Items: Ways to Practice this Habit**
 
 Try one a day this week—or pick your favorite and nail it until it’s second nature.
@@ -63,3 +79,17 @@ Here are your prompts for the week:
 | **Sunday** | Overall: How has the flavor-forward, whole-food shift affected my cravings, satisfaction, or energy? |
 
 By week’s end, compare your notes. Notice if your sweet drinks tasted *different* by day 7. That shift? That’s your taste buds recalibrating—and it’s how displacement becomes your quiet superpower.
+
+---
+
+### Citations
+
+1. Rolls, B.J., et al. (2005). "Portion size of food affects energy intake in normal-weight and overweight men and women." Am J Clin Nutr. PubMed 16087983
+
+2. DiMeglio, D.P., & Mattes, R.D. (2000). "Liquid versus solid carbohydrate: effects on food intake and body weight." Int J Obes Relat Metab Disord. PubMed 10721886
+
+3. Avena, N.M., et al. (2009). "Sugar and addiction: evidence from animal and human studies." Physiol Behav. PubMed 19135493
+
+4. Daniels, M.C., & Popkin, B.M. (2010). "Impact of water intake on energy intake and weight status: a systematic review." Nutr Rev. PubMed 20682226
+
+5. Pepino, M.Y., et al. (2013). "Sucralose affects glycemic and hormonal responses to an oral glucose load." Diabetes Care. PubMed 23685300

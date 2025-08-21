@@ -78,8 +78,13 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
         # Habit card
         habit = await repo.get_habit_template(str(active_step.habit_template_id))
         if habit:
-            # derive subtitle: prefer habit.short_description, else first lesson's subtitle/summary for today's step
-            subtitle_text: Optional[str] = habit.short_description
+            # derive subtitle: daily plan variant overrides, else habit.short_description, else lesson subtitle/summary
+            subtitle_text: Optional[str] = None
+            daily_plan = await repo.get_step_daily_plan_for_day(str(active_step.id), day_index)
+            if daily_plan and daily_plan.habit_variant_text:
+                subtitle_text = daily_plan.habit_variant_text
+            if not subtitle_text:
+                subtitle_text = habit.short_description
             if not subtitle_text:
                 # Prefer today's lesson subtitle if available
                 step_lessons_for_day = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
@@ -113,28 +118,62 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 )
             )
 
-        # Lessons for the day
-        step_lessons = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
-        lesson_ids = [str(sl.lesson_template_id) for sl in step_lessons]
-        lessons = await repo.get_lesson_templates(lesson_ids)
-        if lessons:
-            # For simplicity, consider lesson completed if a 'completed' event exists; else pending
-            lesson_events = await repo.find_lesson_events(user_id, [str(l.id) for l in lessons], on_date)
-            completed_ids = {str(le.lesson_template_id) for le in lesson_events if le.event_type == "completed"}
-            for lesson in lessons:
-                status = TaskStatus.completed if str(lesson.id) in completed_ids else TaskStatus.pending
-                summary = lesson.summary or None
+        # Lessons for the day (segment-aware)
+        # Prefer explicit segment from daily plan; else fall back to mapped step lessons
+        if 'daily_plan' not in locals():
+            daily_plan = await repo.get_step_daily_plan_for_day(str(active_step.id), day_index)
+        segment_used = False
+        if daily_plan and daily_plan.lesson_segment_id:
+            seg = await repo.get_lesson_segment_by_id(str(daily_plan.lesson_segment_id))
+            if seg:
+                # Use parent lesson id for identity; title/summary from segment
+                parent_id = str(seg.lesson_template_id)
+                status = TaskStatus.pending
                 tasks.append(
                     LessonTask(
-                        taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson.id)),
+                        taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", parent_id),
                         type=TaskType.lesson,
-                        lessonTemplateId=str(lesson.id),
-                        title=lesson.title,
-                        summary=summary,
+                        lessonTemplateId=parent_id,
+                        title=seg.title,
+                        summary=seg.summary or None,
                         status=status,
                     )
                 )
+                segment_used = True
+        if not segment_used:
+            step_lessons = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
+            lesson_ids = [str(sl.lesson_template_id) for sl in step_lessons]
+            lessons = await repo.get_lesson_templates(lesson_ids)
+            if lessons:
+                # Consider lesson completed if a 'completed' event exists; else pending
+                lesson_events = await repo.find_lesson_events(user_id, [str(l.id) for l in lessons], on_date)
+                completed_ids = {str(le.lesson_template_id) for le in lesson_events if le.event_type == "completed"}
+                for lesson in lessons:
+                    status = TaskStatus.completed if str(lesson.id) in completed_ids else TaskStatus.pending
+                    summary = lesson.summary or None
+                    tasks.append(
+                        LessonTask(
+                            taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson.id)),
+                            type=TaskType.lesson,
+                            lessonTemplateId=str(lesson.id),
+                            title=lesson.title,
+                            summary=summary,
+                            status=status,
+                        )
+                    )
 
-    # No standalone JournalTask. Journaling is provided via a normal habit in the "Daily Journaling" program.
+        # Journal prompt from daily plan -> JournalTask
+        if daily_plan and daily_plan.journal_prompt_text:
+            tasks.append(
+                JournalTask(
+                    taskId=_deterministic_task_id("habits", user_id, on_date, "journal", str(active_step.id)),
+                    type=TaskType.journal,
+                    title="Daily Journal",
+                    description=daily_plan.journal_prompt_text,
+                    status=TaskStatus.pending,
+                )
+            )
+
+    # JournalTask now optionally emitted via StepDailyPlan.journal_prompt_text
 
     return tasks

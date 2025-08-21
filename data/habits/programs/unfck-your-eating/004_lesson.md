@@ -39,6 +39,22 @@ And here’s where things get even more powerful: protein + fiber = **appetite r
 
 ---
 
+### Pushback
+
+_“But I don’t want to eat meat at every meal.”_
+
+Good—because you don’t have to. Beans, lentils, tofu, tempeh, edamame, seitan, Greek yogurt, cottage cheese, eggs—all count. The palm rule works no matter your eating style.
+
+_“Protein powder feels so fake.”_
+
+Cool—don’t use it. Protein powders are just one tool. They’re useful if you’re rushed, but whole-food sources work just as well. A can of tuna, a couple boiled eggs, or some leftover chicken hits the same target.
+
+_“I thought carbs were the problem, not protein.”_
+
+It’s not about demonizing carbs—it’s about balance. Carbs are fuel. Protein is stability. When you add protein to your carbs, blood sugar stays steady instead of spiking and crashing. That steadiness is the difference between “calm focus” and “cookie monster attack.”
+
+---
+
 ### Sources of Protein
 
 Below are some common sources of protein, split into animal and plant sources.

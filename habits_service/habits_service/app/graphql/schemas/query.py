@@ -267,6 +267,53 @@ class Query:
             return out
 
     @strawberry.type
+    class StepDayPlanType:
+        dayIndex: int
+        habitVariantText: Optional[str]
+        journalPromptText: Optional[str]
+        lessonSegmentId: Optional[str]
+
+    @strawberry.field
+    async def programStepDailyPlan(self, programStepId: str) -> List[StepDayPlanType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            rows = await repo.list_step_daily_plan(programStepId)
+            return [
+                Query.StepDayPlanType(
+                    dayIndex=r.day_index,
+                    habitVariantText=r.habit_variant_text,
+                    journalPromptText=r.journal_prompt_text,
+                    lessonSegmentId=(str(r.lesson_segment_id) if r.lesson_segment_id else None),
+                )
+                for r in rows
+            ]
+
+    @strawberry.type
+    class LessonSegmentType:
+        id: str
+        lessonTemplateId: str
+        title: str
+        subtitle: Optional[str]
+        markdownContent: str
+        summary: Optional[str]
+
+    @strawberry.field
+    async def lessonSegmentById(self, id: str) -> Optional[LessonSegmentType]:
+        async with UnitOfWork() as uow:
+            repo = HabitsReadRepository(uow.session)
+            seg = await repo.get_lesson_segment_by_id(id)
+            if not seg:
+                return None
+            return Query.LessonSegmentType(
+                id=str(seg.id),
+                lessonTemplateId=str(seg.lesson_template_id),
+                title=seg.title,
+                subtitle=seg.subtitle,
+                markdownContent=seg.markdown_content,
+                summary=seg.summary,
+            )
+
+    @strawberry.type
     class LessonCompletionType:
         lessonTemplateId: str
         title: str

@@ -12,8 +12,10 @@ from habits_service.habits_service.app.db.tables import (
     HabitTemplate,
     LessonEvent,
     LessonTemplate,
+    LessonSegment,
     ProgramStepTemplate,
     ProgramTemplate,
+    StepDailyPlan,
     StepLessonTemplate,
     UserProgramAssignment,
 )
@@ -68,6 +70,11 @@ class HabitsReadRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_lesson_segment_by_id(self, segment_id: str) -> Optional[LessonSegment]:
+        stmt: Select = select(LessonSegment).where(LessonSegment.id == segment_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
     async def find_habit_event(self, user_id: str, habit_template_id: str, on_date: date) -> Optional[HabitEvent]:
         stmt: Select = select(HabitEvent).where(
             and_(
@@ -85,6 +92,21 @@ class HabitsReadRepository:
         stmt: Select = select(LessonEvent).where(
             and_(LessonEvent.user_id == user_id, LessonEvent.lesson_template_id.in_(lesson_ids), LessonEvent.date == on_date)
         )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_step_daily_plan_for_day(self, step_id: str, day_index: int) -> Optional[StepDailyPlan]:
+        stmt: Select = select(StepDailyPlan).where(
+            and_(
+                StepDailyPlan.program_step_template_id == step_id,
+                StepDailyPlan.day_index == day_index,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def list_step_daily_plan(self, step_id: str) -> List[StepDailyPlan]:
+        stmt: Select = select(StepDailyPlan).where(StepDailyPlan.program_step_template_id == step_id).order_by(StepDailyPlan.day_index.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

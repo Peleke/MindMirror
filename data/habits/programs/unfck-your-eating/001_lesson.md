@@ -49,6 +49,24 @@ Eating slowly might sound basic—but it’s one of the **most underrated tools*
 
 ---
 
+### **Pushback**
+
+_"I don't have time for this."_
+
+You’re not wrong. Most of us really are pressed for time. The thought of turning a 10-minute lunch into a 20-minute ritual can feel laughable. And honestly? For some meals, it _isn’t realistic_.
+
+But here’s the reframe: **you don’t have to overhaul your schedule**—you just need a pause.
+
+Even 2–3 extra minutes of slowing down makes a difference in how much you taste, how satisfied you feel, and how much your body absorbs.
+
+If your life is chaotic, start inside the chaos:
+- Take the first three bites slowly, chewing fully, before you slip back into “default” speed. _This still counts._
+- Or pick just one meal a day (often dinner) to practice slowing down.
+
+This isn’t about perfection—it’s about inserting micro-moments of awareness. Those micro-moments add up, and they change how you experience food without requiring you to quit your job or meditate at the table.
+
+---
+
 ### **Action Items: Ways to Practice This Habit**
 
 Try one of the following each day this week—or repeat the one that works best for you. The goal is to *practice* eating slowly, not perfect it.

@@ -16,6 +16,8 @@ from habits_service.habits_service.app.db.repositories.write_structural import (
     ProgramStepTemplateRepository,
     StepLessonTemplateRepository,
     UserProgramAssignmentRepository,
+    LessonSegmentRepository,
+    StepDailyPlanRepository,
 )
 from habits_service.habits_service.app.db.repositories.write_events import (
     HabitEventRepository,
@@ -100,6 +102,24 @@ class AutoEnrollResult:
     ok: bool
     enrolled: bool
     reason: Optional[str] = None
+
+
+@strawberry.input
+class StepDayPlanInput:
+    dayIndex: int
+    habitVariantText: Optional[str] = None
+    journalPromptText: Optional[str] = None
+    lessonSegmentId: Optional[str] = None
+
+
+@strawberry.input
+class LessonSegmentInput:
+    lessonTemplateId: str
+    dayIndexWithinStep: Optional[int] = None
+    title: str
+    subtitle: Optional[str] = None
+    markdownContent: str
+    summary: Optional[str] = None
 
 
 @strawberry.type
@@ -222,6 +242,40 @@ class Mutation:
             repo = LessonEventRepository(uow.session)
             current_user = get_current_user_from_context(info)
             await repo.upsert(user_id=str(current_user.id), lesson_template_id=lessonTemplateId, on_date=onDate, event_type="completed")
+            await uow.session.commit()
+            return True
+
+    @strawberry.mutation
+    async def upsertStepDailyPlan(self, programStepId: str, items: list[StepDayPlanInput]) -> bool:
+        async with UnitOfWork() as uow:
+            dprepo = StepDailyPlanRepository(uow.session)
+            payload = []
+            for it in items or []:
+                payload.append({
+                    "day_index": int(it.dayIndex),
+                    "habit_variant_text": it.habitVariantText,
+                    "journal_prompt_text": it.journalPromptText,
+                    "lesson_segment_id": it.lessonSegmentId,
+                })
+            await dprepo.bulk_upsert(step_id=programStepId, plans=payload)
+            await uow.session.commit()
+            return True
+
+    @strawberry.mutation
+    async def upsertLessonSegments(self, segments: list[LessonSegmentInput]) -> bool:
+        async with UnitOfWork() as uow:
+            segrepo = LessonSegmentRepository(uow.session)
+            payload = []
+            for s in segments or []:
+                payload.append({
+                    "lesson_template_id": s.lessonTemplateId,
+                    "day_index_within_step": s.dayIndexWithinStep,
+                    "title": s.title,
+                    "subtitle": s.subtitle,
+                    "markdown_content": s.markdownContent,
+                    "summary": s.summary,
+                })
+            await segrepo.bulk_upsert(payload)
             await uow.session.commit()
             return True
 

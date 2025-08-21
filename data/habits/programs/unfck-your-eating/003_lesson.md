@@ -96,6 +96,8 @@ Only if you limit yourself to iceberg lettuce and plain boiled broccoli.
 
 Let’s get creative: sweet potatoes with cumin and lime, hummus with paprikas, lentil chili with cilantro, chia pudding with berries, edamame tossed with ginger and garlic. Cheap beans and grains are nutrient-dense powerhouses—flavor-rich and affordable.
 
+---
+
 ### Sources of Fiber
 
 Here are a few common options for high-fiber fruits, vegetables, and low-GI/smart-carbs.

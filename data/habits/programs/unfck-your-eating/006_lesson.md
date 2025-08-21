@@ -36,7 +36,7 @@ Everyone seems to “know” this is a good idea…But there’s often a surpris
 
  
 
-**“I’m not a cook, and whole foods feel intimidating.”**
+_“I’m not a cook, and whole foods feel intimidating.”_
 
 No judgment. None.
 
@@ -44,7 +44,7 @@ Swap just *one thing* this week: a can of beans for refried beans, fresh berries
 
 When comfort meets ease, we find successful replacement. Make it as easy as you neeed to.
 
-**“Processed foods are just easier and cheaper.”**
+_“Processed foods are just easier and cheaper.”_
 
 Sometimes. But staples like oats, canned beans, and frozen greens are *even* cheaper. And spices? One jar lasts weeks. 
 
@@ -52,7 +52,7 @@ It *can* be true that processed foods are easier. That is, after all, their whol
 
 All we’re asking is this: Choose whole foods as often as *possible*. Be *mindful* when you don’t: Is it convenience, comfort, or laziness? There’s no wrong answer as long as you notice and name one.
 
-**“I love my treats—they’re social or emotional.”**
+_“I love my treats—they’re social or emotional.”_
 
 Fair. Don’t remove joy. Instead, apply displacement: start with your whole-food base (protein, fiber, slow eating), add a small treat if you want.
 
@@ -99,7 +99,7 @@ This step doesn’t stand alone—it builds on habits we’ve already practiced:
 
 ---
 
-### **References**
+### **Citations**
 
 1. Estruch, R., et al. (2013). “Primary prevention of cardiovascular disease with a Mediterranean diet.” *NEJM*.
 2. Hall, K.D., et al. (2019). “Ultra-processed diets cause excess calorie intake and weight gain.” *Cell Metabolism*.

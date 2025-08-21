@@ -1,0 +1,71 @@
+daily_plan:
+  - day_index: 0
+    habit_variant_text: "Slow down: add a 60-second pause before bites"
+    journal_prompt_text: "When you paused today, what did you notice about hunger/fullness cues?"
+  - day_index: 1
+    habit_variant_text: "Phone on silent"
+    journal_prompt_text: "What was the first urge to check my phone? Did it fade or grow stronger?"
+  - day_index: 2
+    habit_variant_text: "Phone off"
+    journal_prompt_text: "How did it feel to fully shut my phone down before eating?"
+  - day_index: 3
+    habit_variant_text: "Put Your Phone in another room"
+    journal_prompt_text: "Did removing my phone entirely change the way I paid attention to my food?"
+  - day_index: 4
+    habit_variant_text: "Set a Ten-minute timer"
+    journal_prompt_text: "How long before you looked at how much time was left? Be honest. How long felt like ten minutes?"
+  - day_index: 5
+    habit_variant_text: "The First-bite method"
+    journal_prompt_text: "What flavors or textures did I notice that I usually miss?"
+  - day_index: 6
+    habit_variant_text: "Eat a Full Meal...In silence"
+    journal_prompt_text: "Was eating in silence uncomfortable, calming, or both?"
+
+lesson_segments:
+  # Matches 000_lesson.md (Screens Off)
+  screens-off:
+    # Day 0: intro → Evidence (+ append Citations)
+    - day_index: 0
+      title: "Why this matters"
+      subtitle: "Introduction & Evidence"
+      extract:
+        type: heading_range
+        from: "## Introduction"
+        to: "### Evidence"
+        extra:
+          - type: heading
+            match: "### Evidence"
+          - type: heading
+            match: "### Citations"
+
+    # Day 2: Interlude (anything between Evidence and Pushback)
+    - day_index: 2
+      title: "Interlude"
+      subtitle: "Guides and practical add-ins"
+      extract:
+        type: heading_range
+        from: "### Evidence"
+        to: "### Pushback"
+
+    # Day 3: Pushback
+    - day_index: 3
+      title: "Pushback"
+      extract:
+        type: heading
+        match: "### Pushback"
+
+    # Day 4: Action Items + Accountability
+    - day_index: 4
+      title: "Action Items & Accountability"
+      extract:
+        type: heading_range
+        from: "### Action Items"
+        to: "### Final Notes"
+
+    # Day 5: Final Notes
+    - day_index: 5
+      title: "Final Notes"
+      extract:
+        type: heading
+        match: "### Final Notes"
+

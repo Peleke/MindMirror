@@ -110,6 +110,50 @@ class StepLessonTemplate(Base):
     )
 
 
+class LessonSegment(Base):
+    __tablename__ = "lesson_segments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lesson_template_id = Column(
+        UUID(as_uuid=True), ForeignKey("lesson_templates.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    day_index_within_step = Column(Integer, nullable=True)
+    title = Column(Text, nullable=False)
+    subtitle = Column(Text, nullable=True)
+    markdown_content = Column(Text, nullable=False)
+    summary = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_lesson_segments_lesson", "lesson_template_id"),
+    )
+
+
+class StepDailyPlan(Base):
+    __tablename__ = "step_daily_plan"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    program_step_template_id = Column(
+        UUID(as_uuid=True), ForeignKey("program_step_templates.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    day_index = Column(Integer, nullable=False)
+    habit_variant_text = Column(Text, nullable=True)
+    journal_prompt_text = Column(Text, nullable=True)
+    lesson_segment_id = Column(
+        UUID(as_uuid=True), ForeignKey("lesson_segments.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("program_step_template_id", "day_index", name="uq_step_daily_plan_day"),
+        Index("ix_step_daily_plan_step_day", "program_step_template_id", "day_index"),
+    )
+
+
 class UserProgramAssignment(Base):
     __tablename__ = "user_program_assignments"
 
