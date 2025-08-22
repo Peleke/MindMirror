@@ -5,7 +5,12 @@ import uvicorn
 # Use a different default port for the meals service to avoid conflicts
 # when running multiple services locally.
 DEFAULT_HTTP_PORT = 8089
-HTTP_PORT = int(os.getenv("MEALS_HTTP_PORT", DEFAULT_HTTP_PORT))  # Use a specific env var for meals port
+
+# Cloud Run sets PORT. Prefer it when present. Otherwise use MEALS_HTTP_PORT, then default.
+HTTP_PORT = int(
+    os.getenv("PORT")
+    or os.getenv("MEALS_HTTP_PORT", DEFAULT_HTTP_PORT)
+)
 
 
 def start() -> None:

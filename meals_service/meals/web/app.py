@@ -27,10 +27,17 @@ API_VERSION = Config.API_VERSION
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Initializing database for meals service...")
-    await init_db()  # This function needs to use Config.DATABASE_URL
+    try:
+        await init_db()  # This function needs to use Config.DATABASE_URL
+    except Exception as exc:
+        # Log and continue boot so Cloud Run can become healthy; endpoints that need DB will fail at use-time
+        print(f"[WARN] init_db failed during startup: {exc}")
     yield
     print("Closing database connection for meals service...")
-    await close_db()  # This function needs to manage the engine used by init_db
+    try:
+        await close_db()  # This function needs to manage the engine used by init_db
+    except Exception as exc:
+        print(f"[WARN] close_db failed during shutdown: {exc}")
 
 
 async def get_context(uow: UnitOfWork = Depends(get_uow)):
