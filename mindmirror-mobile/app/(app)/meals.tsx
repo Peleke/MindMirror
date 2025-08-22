@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 import { AppBar } from '@/components/common/AppBar'
 import CalendarPicker from 'react-native-calendar-picker'
 import { useRouter } from 'expo-router'
+import Svg, { Circle } from 'react-native-svg'
 
 const LIST_MEALS = gql`
   query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
@@ -24,18 +25,9 @@ const LIST_MEALS = gql`
   }
 `
 
-const LIST_FOOD_ITEMS = gql`
-  query FoodItemsForUser($userId: String!, $search: String, $limit: Int) {
-    foodItemsForUserWithPublic(userId: $userId, searchTerm: $search, limit: $limit) {
-      id_
-      name
-      servingSize
-      servingUnit
-      calories
-      protein
-      carbohydrates
-      fat
-    }
+const TOTAL_WATER = gql`
+  query TotalWater($userId: String!, $date: String!) {
+    totalWaterConsumptionByUserAndDate(userId: $userId, dateStr: $date)
   }
 `
 
@@ -49,12 +41,12 @@ export default function MealsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showFabSheet, setShowFabSheet] = useState(false)
 
-  const { startIso, endIso } = useMemo(() => {
+  const { startIso, endIso, dayIso } = useMemo(() => {
     const end = anchorDate
     const start = new Date(end)
     start.setDate(end.getDate() - (showArchive ? 180 : 14))
     const toIso = (d: Date) => d.toISOString().slice(0, 10)
-    return { startIso: toIso(start), endIso: toIso(end) }
+    return { startIso: toIso(start), endIso: toIso(end), dayIso: toIso(end) }
   }, [anchorDate, showArchive])
 
   const mealsQuery = useQuery(LIST_MEALS, {
@@ -63,9 +55,9 @@ export default function MealsScreen() {
     fetchPolicy: 'cache-and-network',
   })
 
-  const foodsQuery = useQuery(LIST_FOOD_ITEMS, {
+  const waterQuery = useQuery(TOTAL_WATER, {
     skip: !userId,
-    variables: { userId, search: null, limit: 20 },
+    variables: { userId, date: dayIso },
     fetchPolicy: 'cache-and-network',
   })
 
@@ -74,8 +66,8 @@ export default function MealsScreen() {
 
   const meals = mealsQuery.data?.mealsByUserAndDateRange ?? []
 
-  const loading = mealsQuery.loading || foodsQuery.loading
-  const error = mealsQuery.error || foodsQuery.error
+  const loading = mealsQuery.loading || waterQuery.loading
+  const error = mealsQuery.error || waterQuery.error
 
   const screenWidth = Dimensions.get('window').width
 
@@ -90,8 +82,38 @@ export default function MealsScreen() {
     return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.carbohydrates || 0), 0), 0)
   }, [meals])
   const totalFat = useMemo(() => {
-    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0), 0
+    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0)
   }, [meals])
+
+  const dailyCalGoal = 2000
+  const calProgress = Math.max(0, Math.min(1, totalCalories / dailyCalGoal))
+
+  const totalWaterMl = waterQuery.data?.totalWaterConsumptionByUserAndDate ?? 0
+  const waterOz = totalWaterMl / 29.5735
+  const dailyWaterGoalOz = 64
+  const waterProgress = Math.max(0, Math.min(1, waterOz / dailyWaterGoalOz))
+
+  const Donut = ({ size = 120, stroke = 10, progress = 0, color = '#1d4ed8', track = '#e5e7eb' }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string }) => {
+    const radius = (size - stroke) / 2
+    const circumference = 2 * Math.PI * radius
+    const dash = circumference * progress
+    return (
+      <Svg width={size} height={size}>
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={track} strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={`${dash}, ${circumference}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+    )
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -113,39 +135,54 @@ export default function MealsScreen() {
       </View>
 
       {/* Top charts - simple pager */}
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ maxHeight: 180 }}>
+      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ maxHeight: 200 }}>
+        {/* Calories donut */}
         <View style={{ width: screenWidth, padding: 16 }}>
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 10, borderColor: '#93c5fd', alignItems: 'center', justifyContent: 'center' }}>
+            <Donut size={120} stroke={10} progress={calProgress} color="#1d4ed8" track="#e5e7eb" />
+            <View style={{ position: 'absolute', alignItems: 'center' }}>
               <Text style={{ fontSize: 22, fontWeight: '700', color: '#1d4ed8' }}>{Math.round(totalCalories)}</Text>
               <Text style={{ color: '#666' }}>cal</Text>
             </View>
-            <Text style={{ marginTop: 8, color: '#666' }}>out of 2000</Text>
+            <Text style={{ marginTop: 8, color: '#666' }}>out of {dailyCalGoal}</Text>
           </View>
         </View>
+        {/* Macros summary with stacked bar */}
         <View style={{ width: screenWidth, padding: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#16a34a', fontWeight: '700' }}>{Math.round(totalProtein)}g</Text>
-              <Text style={{ color: '#666' }}>Protein</Text>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#d97706', fontWeight: '700' }}>{Math.round(totalCarbs)}g</Text>
-              <Text style={{ color: '#666' }}>Carbs</Text>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#2563eb', fontWeight: '700' }}>{Math.round(totalFat)}g</Text>
-              <Text style={{ color: '#666' }}>Fat</Text>
-            </View>
+          <View style={{ marginBottom: 10, alignItems: 'center' }}>
+            <Text style={{ color: '#666' }}>Macronutrients</Text>
+          </View>
+          <View style={{ flexDirection: 'row', marginBottom: 8, justifyContent: 'space-evenly' }}>
+            <Text style={{ color: '#16a34a', fontWeight: '700' }}>{Math.round(totalProtein)}g P</Text>
+            <Text style={{ color: '#d97706', fontWeight: '700' }}>{Math.round(totalCarbs)}g C</Text>
+            <Text style={{ color: '#2563eb', fontWeight: '700' }}>{Math.round(totalFat)}g F</Text>
+          </View>
+          <View style={{ height: 14, borderRadius: 7, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
+            {(() => {
+              const calsP = totalProtein * 4
+              const calsC = totalCarbs * 4
+              const calsF = totalFat * 9
+              const total = Math.max(1, calsP + calsC + calsF)
+              return (
+                <View style={{ flexDirection: 'row', width: '100%', height: '100%' }}>
+                  <View style={{ flex: calsP / total, backgroundColor: '#16a34a' }} />
+                  <View style={{ flex: calsC / total, backgroundColor: '#d97706' }} />
+                  <View style={{ flex: calsF / total, backgroundColor: '#2563eb' }} />
+                </View>
+              )
+            })()}
           </View>
         </View>
+        {/* Water donut */}
         <View style={{ width: screenWidth, padding: 16 }}>
           <View style={{ alignItems: 'center' }}>
             <Text style={{ color: '#666' }}>Water</Text>
-            <View style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: '#93c5fd', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>0</Text>
+            <Donut size={100} stroke={8} progress={waterProgress} color="#1d4ed8" track="#e5e7eb" />
+            <View style={{ position: 'absolute', top: 58, alignItems: 'center' }}>
+              <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>{Math.round(waterOz)}</Text>
               <Text style={{ color: '#666' }}>oz</Text>
             </View>
+            <Text style={{ marginTop: 8, color: '#666' }}>out of {dailyWaterGoalOz} oz</Text>
           </View>
         </View>
       </ScrollView>
@@ -159,11 +196,11 @@ export default function MealsScreen() {
         )}
         {error && !loading && (
           <View style={{ paddingTop: 24 }}>
-            <Text style={{ color: '#c00' }}>Failed to load meals. {String(error)}</Text>
+            <Text style={{ color: '#c00' }}>Failed to load data. {String(error)}</Text>
           </View>
         )}
 
-        {/* Move meals list into the lower section with card styling */}
+        {/* Meals list with card styling */}
         {!loading && !error && (
           <View style={{ marginTop: 12 }}>
             <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>Meals</Text>
