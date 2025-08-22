@@ -33,6 +33,7 @@ export default function AppLayout() {
               title: 'Insights',
             }}
           />
+          <Drawer.Screen name="meals" options={{ drawerLabel: 'Meals', title: 'Meals' }} />
           <Drawer.Screen name="profile" options={{ drawerLabel: 'Profile', title: 'Profile' }} />
         </Drawer>
       </View>
