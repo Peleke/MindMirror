@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Service to build (agent_service, journal_service, celery-worker, mesh, all)"
+        description: "Service to build (agent_service, journal_service, habits_service, meals_service, celery-worker, mesh, all)"
         required: true
         default: "all"
 
@@ -68,6 +68,18 @@ jobs:
           echo "Build complete. To push the image, run:"
           echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }}"
           echo "::notice title=habits_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:${{ env.tag }}"
+
+      - name: Docker build meals_service
+        if: env.service == 'meals_service' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:${{ env.tag }} -f meals_service/Dockerfile ./meals_service
+
+      - name: Echo push command for meals_service
+        if: env.service == 'meals_service' || env.service == 'all'
+        run: |
+          echo "Build complete. To push the image, run:"
+          echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:${{ env.tag }}"
+          echo "::notice title=meals_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:${{ env.tag }}"
 
       - name: Docker build celery-worker
         if: env.service == 'celery-worker' || env.service == 'all'

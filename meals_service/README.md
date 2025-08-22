@@ -163,3 +163,29 @@ The service will replace the current Supabase-based implementation in the Flutte
 - Data migration from Supabase to PostgreSQL
 - API endpoint updates in the frontend
 - GraphQL query/mutation replacements 
+
+# Meals Service
+
+## Migrations (Alembic)
+
+Initialize (already added to repo):
+- `alembic.ini`
+- `alembic/env.py`
+- `alembic/versions/0001_init.py`
+
+Run migrations locally:
+
+```bash
+poetry install
+export DATABASE_URL=postgresql+asyncpg://USER:PASS@HOST:5432/DB
+poetry run alembic upgrade head
+```
+
+Create a new migration after model changes:
+
+```bash
+poetry run alembic revision --autogenerate -m "describe change"
+poetry run alembic upgrade head
+```
+
+Cloud Run deploy will not run Alembic automatically; apply migrations via CI/CD step or manual run. 
