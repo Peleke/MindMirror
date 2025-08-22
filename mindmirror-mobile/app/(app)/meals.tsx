@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react'
-import { SafeAreaView, View, Text, FlatList, ActivityIndicator, Pressable, Modal } from 'react-native'
+import { SafeAreaView, View, Text, FlatList, ActivityIndicator, Pressable, Modal, ScrollView, Dimensions } from 'react-native'
 import { gql, useQuery } from '@apollo/client'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { AppBar } from '@/components/common/AppBar'
@@ -42,12 +42,12 @@ const LIST_FOOD_ITEMS = gql`
 export default function MealsScreen() {
   const { session } = useAuth()
   const userId = session?.user?.id || ''
+  const router = useRouter()
 
   const [showArchive, setShowArchive] = useState(false)
   const [anchorDate, setAnchorDate] = useState<Date>(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showFabSheet, setShowFabSheet] = useState(false)
-  const router = useRouter()
 
   const { startIso, endIso } = useMemo(() => {
     const end = anchorDate
@@ -69,25 +69,35 @@ export default function MealsScreen() {
     fetchPolicy: 'cache-and-network',
   })
 
-  const onOpenCalendar = useCallback(() => {
-    setShowDatePicker(true)
-  }, [])
-
-  const onFabPress = useCallback(() => {
-    setShowFabSheet(true)
-  }, [])
+  const onOpenCalendar = useCallback(() => setShowDatePicker(true), [])
+  const onFabPress = useCallback(() => setShowFabSheet(true), [])
 
   const meals = mealsQuery.data?.mealsByUserAndDateRange ?? []
-  const foodItems = foodsQuery.data?.foodItemsForUserWithPublic ?? []
 
   const loading = mealsQuery.loading || foodsQuery.loading
   const error = mealsQuery.error || foodsQuery.error
+
+  const screenWidth = Dimensions.get('window').width
+
+  const totalCalories = useMemo(() => {
+    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.calories || 0), 0), 0)
+  }, [meals])
+
+  const totalProtein = useMemo(() => {
+    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.protein || 0), 0), 0)
+  }, [meals])
+  const totalCarbs = useMemo(() => {
+    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.carbohydrates || 0), 0), 0)
+  }, [meals])
+  const totalFat = useMemo(() => {
+    return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0), 0
+  }, [meals])
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <AppBar title="Meals" />
 
-      {/* Controls row: calendar + Today/Archive */}
+      {/* Controls row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, marginTop: 8, marginBottom: 8 }}>
         <Pressable onPress={onOpenCalendar} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff' }}>
           <Text style={{ fontWeight: '600' }}>Calendar</Text>
@@ -102,6 +112,44 @@ export default function MealsScreen() {
         </View>
       </View>
 
+      {/* Top charts - simple pager */}
+      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ maxHeight: 180 }}>
+        <View style={{ width: screenWidth, padding: 16 }}>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 10, borderColor: '#93c5fd', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#1d4ed8' }}>{Math.round(totalCalories)}</Text>
+              <Text style={{ color: '#666' }}>cal</Text>
+            </View>
+            <Text style={{ marginTop: 8, color: '#666' }}>out of 2000</Text>
+          </View>
+        </View>
+        <View style={{ width: screenWidth, padding: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' }}>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#16a34a', fontWeight: '700' }}>{Math.round(totalProtein)}g</Text>
+              <Text style={{ color: '#666' }}>Protein</Text>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#d97706', fontWeight: '700' }}>{Math.round(totalCarbs)}g</Text>
+              <Text style={{ color: '#666' }}>Carbs</Text>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#2563eb', fontWeight: '700' }}>{Math.round(totalFat)}g</Text>
+              <Text style={{ color: '#666' }}>Fat</Text>
+            </View>
+          </View>
+        </View>
+        <View style={{ width: screenWidth, padding: 16 }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ color: '#666' }}>Water</Text>
+            <View style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: '#93c5fd', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+              <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>0</Text>
+              <Text style={{ color: '#666' }}>oz</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
       {/* Content */}
       <View style={{ flex: 1, paddingHorizontal: 12 }}>
         {loading && (
@@ -114,63 +162,50 @@ export default function MealsScreen() {
             <Text style={{ color: '#c00' }}>Failed to load meals. {String(error)}</Text>
           </View>
         )}
-        {!loading && !error && meals.length === 0 && (
-          <View style={{ paddingTop: 48, alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 6 }}>No Meals Found</Text>
-            <Text style={{ color: '#666' }}>Log your first meal to get started.</Text>
-          </View>
-        )}
 
-        {/* Meals List */}
-        {!loading && !error && meals.length > 0 && (
-          <FlatList
-            data={meals}
-            keyExtractor={(item) => item.id_}
-            renderItem={({ item }) => (
-              <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontWeight: '600' }}>{item.name}</Text>
-                  <Text style={{ color: '#555' }}>{Math.round((item.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))} cal</Text>
-                </View>
-                <Text style={{ color: '#666' }}>{item.type} • {new Date(item.date).toLocaleString()}</Text>
-                {item.notes ? <Text style={{ marginTop: 4 }}>{item.notes}</Text> : null}
-                {(item.mealFoods?.length ?? 0) > 0 && (
-                  <View style={{ marginTop: 6 }}>
-                    {item.mealFoods.map((mf: any) => (
-                      <Text key={mf.id_} style={{ color: '#444' }}>
-                        {mf.quantity} {mf.servingUnit} — {mf.foodItem?.name}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-          />
-        )}
-
-        {/* Food Items (short list) */}
+        {/* Move meals list into the lower section with card styling */}
         {!loading && !error && (
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>Food Items</Text>
-            {foodItems.length === 0 ? (
-              <Text style={{ color: '#666' }}>No food items yet.</Text>
+          <View style={{ marginTop: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>Meals</Text>
+            {meals.length === 0 ? (
+              <Text style={{ color: '#666' }}>No meals yet.</Text>
             ) : (
               <FlatList
-                data={foodItems}
+                data={meals}
                 keyExtractor={(item) => item.id_}
-                renderItem={({ item }) => (
-                  <View style={{ paddingVertical: 6 }}>
-                    <Text style={{ fontWeight: '500' }}>{item.name}</Text>
-                    <Text style={{ color: '#666' }}>{item.servingSize}{item.servingUnit} • {Math.round(item.calories)} kcal</Text>
-                  </View>
-                )}
+                renderItem={({ item }) => {
+                  const kcal = Math.round((item.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))
+                  return (
+                    <View style={{ marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
+                      <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontWeight: '700' }}>{item.name}</Text>
+                        <View style={{ paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#eff6ff', borderRadius: 12 }}>
+                          <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>{kcal} cal</Text>
+                        </View>
+                      </View>
+                      <View style={{ padding: 12 }}>
+                        <Text style={{ color: '#666', marginBottom: 4 }}>{item.type} • {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                        {item.notes ? <Text style={{ color: '#666', marginBottom: 6 }}>{item.notes}</Text> : null}
+                        {(item.mealFoods?.length ?? 0) > 0 && (
+                          <View style={{ marginTop: 4 }}>
+                            {item.mealFoods.map((mf: any) => (
+                              <Text key={mf.id_} style={{ color: '#444' }}>
+                                {mf.quantity} {mf.servingUnit} — {mf.foodItem?.name}
+                              </Text>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )
+                }}
               />
             )}
           </View>
         )}
       </View>
 
-      {/* Date picker modal (react-native-calendar-picker) */}
+      {/* Date picker modal */}
       <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowDatePicker(false)}>
           <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '94%' }}>
@@ -212,7 +247,7 @@ export default function MealsScreen() {
         </Pressable>
       </Modal>
 
-      {/* Floating Action Button */}
+      {/* FAB */}
       <Pressable onPress={onFabPress} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
         <Text style={{ color: '#fff', fontSize: 28, marginTop: -2 }}>＋</Text>
       </Pressable>

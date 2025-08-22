@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { SafeAreaView, View, Text, TextInput, Pressable, Modal, FlatList, KeyboardAvoidingView, ScrollView, Platform } from 'react-native'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { SafeAreaView, View, Text, TextInput, Pressable, Modal, FlatList, KeyboardAvoidingView, ScrollView, Platform, Animated, Easing } from 'react-native'
 import { gql, useMutation, useLazyQuery } from '@apollo/client'
 import { AppBar } from '@/components/common/AppBar'
 import { useRouter } from 'expo-router'
@@ -7,7 +7,7 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 
 const CREATE_MEAL = gql`
   mutation CreateMeal($input: MealCreateInput!) {
-    create_meal(input: $input) {
+    createMeal(input: $input) {
       id_
       name
       type
@@ -34,7 +34,7 @@ const SEARCH_FOOD_ITEMS = gql`
 
 const CREATE_FOOD_ITEM = gql`
   mutation CreateFoodItem($input: FoodItemCreateInput!) {
-    create_food_item(input: $input) {
+    createFoodItem(input: $input) {
       id_
       name
       servingSize
@@ -78,6 +78,7 @@ export default function CreateMealScreen() {
   const [selectedForQuantity, setSelectedForQuantity] = useState<any | null>(null)
   const [quantity, setQuantity] = useState<string>('1')
   const [servingUnit, setServingUnit] = useState<string>('')
+  const [editIndex, setEditIndex] = useState<number | null>(null)
   const [creatingNew, setCreatingNew] = useState(false)
   const [newFood, setNewFood] = useState({
     name: '',
@@ -110,6 +111,34 @@ export default function CreateMealScreen() {
   const [createMeal, { loading: creatingMeal }] = useMutation(CREATE_MEAL)
   const [createFoodItem, { loading: creatingFood }] = useMutation(CREATE_FOOD_ITEM)
   const [runSearch, { data: searchData, loading: searching }] = useLazyQuery(SEARCH_FOOD_ITEMS)
+  const resultsHeight = useMemo(() => {
+    if (selectedForQuantity) return Platform.OS === 'web' ? 220 : 180
+    return Platform.OS === 'web' ? 420 : 360
+  }, [selectedForQuantity])
+
+  const qtyAnimOpacity = useRef(new Animated.Value(0)).current
+  const qtyAnimTranslateY = useRef(new Animated.Value(24)).current
+
+  useEffect(() => {
+    if (selectedForQuantity) {
+      qtyAnimOpacity.setValue(0)
+      qtyAnimTranslateY.setValue(24)
+      Animated.parallel([
+        Animated.timing(qtyAnimOpacity, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(qtyAnimTranslateY, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [selectedForQuantity, qtyAnimOpacity, qtyAnimTranslateY])
 
   useEffect(() => {
     const h = setTimeout(() => {
@@ -123,15 +152,15 @@ export default function CreateMealScreen() {
   const searchResults = searchData?.foodItemsForUserWithPublic ?? []
 
   const input = useMemo(() => ({
-    user_id: userId,
+    userId: userId,
     name,
     type: mealType,
     date: dt.toISOString(),
     notes: notes || null,
-    meal_foods_data: selectedFoods.map(sf => ({
-      food_item_id: sf.foodItem.id_,
+    mealFoodsData: selectedFoods.map(sf => ({
+      foodItemId: sf.foodItem.id_,
       quantity: sf.quantity,
-      serving_unit: sf.servingUnit || sf.foodItem.servingUnit,
+      servingUnit: sf.servingUnit || sf.foodItem.servingUnit,
     })),
   }), [userId, name, mealType, dt, notes, selectedFoods])
 
@@ -141,16 +170,17 @@ export default function CreateMealScreen() {
     if (!canSubmit) return
     try {
       await createMeal({ variables: { input } })
-      router.back()
+      router.replace('/meals')
     } catch (e) {
       console.error('Create meal failed', e)
     }
   }
 
-  const openQuantityFor = (item: any) => {
+  const openQuantityFor = (item: any, index: number | null = null, presetQty?: number, presetUnit?: string) => {
     setSelectedForQuantity(item)
-    setQuantity('1')
-    setServingUnit(item.servingUnit || 'g')
+    setQuantity(presetQty != null ? String(presetQty) : (item?.servingSize != null ? String(item.servingSize) : '1'))
+    setServingUnit(presetUnit || item.servingUnit || 'g')
+    setEditIndex(index)
   }
 
   const addSelectedFood = () => {
@@ -158,11 +188,16 @@ export default function CreateMealScreen() {
     const qty = parseFloat(quantity)
     if (!isFinite(qty) || qty <= 0) return
     const unit = (servingUnit || selectedForQuantity.servingUnit || 'g').trim()
-    setSelectedFoods((prev) => [
-      ...prev,
-      { foodItem: selectedForQuantity, quantity: qty, servingUnit: unit },
-    ])
+    setSelectedFoods((prev) => {
+      if (editIndex != null) {
+        const copy = [...prev]
+        copy[editIndex] = { foodItem: selectedForQuantity, quantity: qty, servingUnit: unit }
+        return copy
+      }
+      return [...prev, { foodItem: selectedForQuantity, quantity: qty, servingUnit: unit }]
+    })
     setSelectedForQuantity(null)
+    setEditIndex(null)
     setQuantity('1')
   }
 
@@ -173,19 +208,19 @@ export default function CreateMealScreen() {
   const saveNewFoodItem = async () => {
     if (!userId) return
     const payload: any = {
-      user_id: userId,
+      userId: userId,
       name: newFood.name.trim(),
-      serving_size: parseFloat(newFood.serving_size) || 0,
-      serving_unit: newFood.serving_unit.trim() || 'g',
+      servingSize: parseFloat(newFood.serving_size) || 0,
+      servingUnit: newFood.serving_unit.trim() || 'g',
       calories: parseFloat(newFood.calories) || 0,
     }
     if (newFood.protein) payload.protein = parseFloat(newFood.protein)
     if (newFood.carbohydrates) payload.carbohydrates = parseFloat(newFood.carbohydrates)
     if (newFood.fat) payload.fat = parseFloat(newFood.fat)
-    if (newFood.saturated_fat) payload.saturated_fat = parseFloat(newFood.saturated_fat)
-    if (newFood.monounsaturated_fat) payload.monounsaturated_fat = parseFloat(newFood.monounsaturated_fat)
-    if (newFood.polyunsaturated_fat) payload.polyunsaturated_fat = parseFloat(newFood.polyunsaturated_fat)
-    if (newFood.trans_fat) payload.trans_fat = parseFloat(newFood.trans_fat)
+    if (newFood.saturated_fat) payload.saturatedFat = parseFloat(newFood.saturated_fat)
+    if (newFood.monounsaturated_fat) payload.monounsaturatedFat = parseFloat(newFood.monounsaturated_fat)
+    if (newFood.polyunsaturated_fat) payload.polyunsaturatedFat = parseFloat(newFood.polyunsaturated_fat)
+    if (newFood.trans_fat) payload.transFat = parseFloat(newFood.trans_fat)
     if (newFood.cholesterol) payload.cholesterol = parseFloat(newFood.cholesterol)
     if (newFood.fiber) payload.fiber = parseFloat(newFood.fiber)
     if (newFood.sugar) payload.sugar = parseFloat(newFood.sugar)
@@ -193,16 +228,15 @@ export default function CreateMealScreen() {
     if (newFood.potassium) payload.potassium = parseFloat(newFood.potassium)
     if (newFood.calcium) payload.calcium = parseFloat(newFood.calcium)
     if (newFood.iron) payload.iron = parseFloat(newFood.iron)
-    if (newFood.vitamin_d) payload.vitamin_d = parseFloat(newFood.vitamin_d)
+    if (newFood.vitamin_d) payload.vitaminD = parseFloat(newFood.vitamin_d)
     if (newFood.zinc) payload.zinc = parseFloat(newFood.zinc)
     if (newFood.notes?.trim()) payload.notes = newFood.notes.trim()
 
     try {
       const res = await createFoodItem({ variables: { input: payload } })
-      const created = res.data?.create_food_item
+      const created = res.data?.createFoodItem
       if (created) {
-        // Pre-add with default quantity 1
-        setSelectedFoods(prev => [...prev, { foodItem: created, quantity: 1, servingUnit: created.servingUnit || payload.serving_unit }])
+        setSelectedFoods(prev => [...prev, { foodItem: created, quantity: created.servingSize || 1, servingUnit: created.servingUnit || payload.servingUnit }])
         setCreatingNew(false)
         setNewFood({ name: '', serving_size: '', serving_unit: 'g', calories: '', protein: '', carbohydrates: '', fat: '', saturated_fat: '', monounsaturated_fat: '', polyunsaturated_fat: '', trans_fat: '', cholesterol: '', fiber: '', sugar: '', sodium: '', potassium: '', calcium: '', iron: '', vitamin_d: '', zinc: '', notes: '' })
         setShowFoodModal(false)
@@ -212,9 +246,27 @@ export default function CreateMealScreen() {
     }
   }
 
+  const colors = {
+    protein: '#16a34a', // green-600
+    carbs: '#d97706',   // amber-700
+    fat: '#2563eb',     // blue-600
+    dot: '#9ca3af',     // gray-400
+  }
+
+  const formatMacros = (sf: SelectedFood) => {
+    const fi = sf.foodItem
+    const baseSize = Number(fi.servingSize) || 0
+    const sameUnit = (sf.servingUnit || '').toLowerCase() === (fi.servingUnit || '').toLowerCase()
+    const factor = baseSize > 0 && sameUnit ? sf.quantity / baseSize : 1
+    const p = Math.round((fi.protein || 0) * factor)
+    const c = Math.round((fi.carbohydrates || 0) * factor)
+    const f = Math.round((fi.fat || 0) * factor)
+    return { p, c, f }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <AppBar title="Create Meal" showBackButton />
+      <AppBar title="Create Meal" showBackButton onBackPress={() => router.replace('/meals')} />
 
       <View style={{ padding: 16, gap: 16 }}>
         <View>
@@ -256,20 +308,33 @@ export default function CreateMealScreen() {
             <Text style={{ color: '#666', marginBottom: 8 }}>No foods added yet</Text>
           ) : (
             <View style={{ marginBottom: 8 }}>
-              {selectedFoods.map((sf, idx) => (
-                <View key={sf.foodItem.id_ + '-' + idx} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-                  <View>
-                    <Text style={{ fontWeight: '600' }}>{sf.foodItem.name}</Text>
-                    <Text style={{ color: '#666' }}>{sf.quantity} {sf.servingUnit}</Text>
-                  </View>
-                  <Pressable onPress={() => removeSelectedFoodAt(idx)} style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-                    <Text style={{ color: '#b91c1c', fontWeight: '600' }}>Remove</Text>
+              {selectedFoods.map((sf, idx) => {
+                const macros = formatMacros(sf)
+                return (
+                  <Pressable key={sf.foodItem.id_ + '-' + idx} onPress={() => { setShowFoodModal(true); setCreatingNew(false); openQuantityFor(sf.foodItem, idx, sf.quantity, sf.servingUnit) }} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '600' }}>{sf.foodItem.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                          <Text style={{ color: '#666' }}>{sf.quantity} {sf.servingUnit}</Text>
+                          <Text style={{ marginHorizontal: 6, color: colors.dot }}>•</Text>
+                          <Text style={{ color: colors.protein, fontWeight: '600' }}>{macros.p}P</Text>
+                          <Text style={{ marginHorizontal: 6, color: colors.dot }}>•</Text>
+                          <Text style={{ color: colors.carbs, fontWeight: '600' }}>{macros.c}C</Text>
+                          <Text style={{ marginHorizontal: 6, color: colors.dot }}>•</Text>
+                          <Text style={{ color: colors.fat, fontWeight: '600' }}>{macros.f}F</Text>
+                        </View>
+                      </View>
+                      <Pressable onPress={() => removeSelectedFoodAt(idx)} hitSlop={8} style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+                        <Text style={{ color: '#b91c1c', fontWeight: '600' }}>Remove</Text>
+                      </Pressable>
+                    </View>
                   </Pressable>
-                </View>
-              ))}
+                )
+              })}
             </View>
           )}
-          <Pressable onPress={() => { setShowFoodModal(true); setCreatingNew(false) }} style={{ borderWidth: 1, borderColor: '#1d4ed8', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
+          <Pressable onPress={() => { setShowFoodModal(true); setCreatingNew(false); setSelectedForQuantity(null); setEditIndex(null); setQuantity('1'); setSearch('') }} style={{ borderWidth: 1, borderColor: '#1d4ed8', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
             <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>Add Food</Text>
           </Pressable>
         </View>
@@ -295,10 +360,10 @@ export default function CreateMealScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowFoodModal(false)} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-            <View style={{ alignSelf: 'center', width: '96%', backgroundColor: '#fff', maxHeight: '90%', borderRadius: 12, padding: 16, position: 'relative' }}>
+            <View style={{ alignSelf: 'center', width: '96%', backgroundColor: '#fff', height: '90%', borderRadius: 12, padding: 16, position: 'relative' }}>
               {!creatingNew ? (
-                <>
-                  <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>Add Food</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>{editIndex != null ? 'Edit Quantity' : 'Add Food'}</Text>
                   <TextInput
                     value={search}
                     onChangeText={setSearch}
@@ -310,7 +375,7 @@ export default function CreateMealScreen() {
                   <Pressable onPress={() => setCreatingNew(true)} style={{ paddingVertical: 10 }}>
                     <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>＋ Create New Item</Text>
                   </Pressable>
-                  <View style={{ height: Platform.OS === 'web' ? 420 : 360, marginTop: 6 }}>
+                  <View style={{ flex: 1, marginTop: 6, paddingBottom: selectedForQuantity ? 150 : 0 }}>
                     <FlatList
                       keyboardShouldPersistTaps="handled"
                       showsVerticalScrollIndicator={true}
@@ -330,9 +395,8 @@ export default function CreateMealScreen() {
                     />
                   </View>
 
-                  {/* Quantity selector inline */}
                   {selectedForQuantity && (
-                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' }}>
+                    <Animated.View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, opacity: qtyAnimOpacity, transform: [{ translateY: qtyAnimTranslateY }] }}>
                       <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
                       <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -353,16 +417,16 @@ export default function CreateMealScreen() {
                         />
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
-                        <Pressable onPress={() => setSelectedForQuantity(null)} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                        <Pressable onPress={() => { setSelectedForQuantity(null); setEditIndex(null) }} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
                           <Text style={{ color: '#666' }}>Cancel</Text>
                         </Pressable>
                         <Pressable onPress={addSelectedFood} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff', fontWeight: '700' }}>Add</Text>
+                          <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
                         </Pressable>
                       </View>
-                    </View>
+                    </Animated.View>
                   )}
-                </>
+                </View>
               ) : (
                 <>
                   <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>Create Food Item</Text>
