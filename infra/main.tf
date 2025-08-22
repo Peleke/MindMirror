@@ -230,3 +230,18 @@ module "habits_service" {
   mindmirror_program_template_id = var.mindmirror_program_template_id
   daily_journaling_program_template_id = var.daily_journaling_program_template_id
 }
+
+module "meals_service" {
+  source       = "./modules/meals"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = "meals-service"
+  image        = var.meals_image
+  env          = var.meals_env
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.meals_service_email
+}
+
+output "meals_service_url" {
+  value = module.meals_service.service_url
+}

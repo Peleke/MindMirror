@@ -54,6 +54,22 @@ resource "google_project_iam_member" "agent_sa_secret_access" {
   member  = "serviceAccount:${google_service_account.agent_service.email}"
 }
 
+resource "google_service_account" "meals_service" {
+  account_id   = "meals-service"
+  display_name = "Service Account for Meals Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "meals_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.meals_service.email}"
+}
+
+output "meals_service_email" {
+  value = google_service_account.meals_service.email
+}
+
 # Existing secrets — just referencing
 data "google_secret_manager_secret" "reindex" {
   secret_id = "REINDEX_SECRET_KEY"

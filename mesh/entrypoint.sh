@@ -5,6 +5,7 @@ echo "--- MESH-COMPOSE ENTRYPOINT DEBUG ---"
 echo "Received JOURNAL_SERVICE_URL: [${JOURNAL_SERVICE_URL}]"
 echo "Received AGENT_SERVICE_URL: [${AGENT_SERVICE_URL}]"
 echo "Received HABITS_SERVICE_URL: [${HABITS_SERVICE_URL}]"
+echo "Received MEALS_SERVICE_URL: [${MEALS_SERVICE_URL}]"
 echo "Received VOUCHERS_WEB_BASE_URL: [${VOUCHERS_WEB_BASE_URL}]"
 echo "--- END DEBUG ---"
 
@@ -15,6 +16,7 @@ echo "Generating mesh config with the following URLs:"
 echo "JOURNAL_SERVICE_URL: ${JOURNAL_SERVICE_URL}"
 echo "AGENT_SERVICE_URL: ${AGENT_SERVICE_URL}"
 echo "HABITS_SERVICE_URL: ${HABITS_SERVICE_URL}"
+echo "MEALS_SERVICE_URL: ${MEALS_SERVICE_URL}"
 echo "VOUCHERS_WEB_BASE_URL: ${VOUCHERS_WEB_BASE_URL}"
 
 # Generate the dynamic mesh config file.
@@ -36,6 +38,11 @@ export const composeConfig = defineConfig({
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Habits', {
         endpoint: '${HABITS_SERVICE_URL:-http://habits_service:8003}/graphql',
+      })
+    },
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Meals', {
+        endpoint: '${MEALS_SERVICE_URL:-http://meals_service:8004}/graphql',
       })
     },
     

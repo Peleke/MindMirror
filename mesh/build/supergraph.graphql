@@ -88,12 +88,13 @@ enum join__Graph {
   AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
   HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
   JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
+  MEALS @join__graph(name: "Meals", url: "http://meals_service:8004/graphql") 
 }
 
 """
 Date with time (isoformat)
 """
-scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL) 
+scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS) 
 
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
@@ -105,7 +106,7 @@ Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
 
-scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL) 
+scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS) 
 
 """
 Date (isoformat)
@@ -114,7 +115,7 @@ scalar Date @join__type(graph: HABITS)
 
 scalar UUID @join__type(graph: JOURNAL) 
 
-type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  {
+type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  {
   ask(
     query: String!
     tradition: String! = "canon-default"
@@ -165,6 +166,43 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   journalEntriesForHabit(habitTemplateId: UUID!, limit: Int! = 20, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntriesCount: Int! @join__field(graph: JOURNAL) 
   completedLessons(limit: Int! = 50, offset: Int! = 0) : [String!]! @join__field(graph: JOURNAL) 
+  foodItem(id: ID!) : FoodItemTypeGQL @join__field(graph: MEALS) 
+  foodItems(
+    userId: String = null
+    searchTerm: String = null
+    limit: Int = null
+    offset: Int = null
+  ): [FoodItemTypeGQL!]! @join__field(graph: MEALS) 
+  foodItemsForUserWithPublic(
+    userId: String!
+    searchTerm: String = null
+    limit: Int = null
+    offset: Int = null
+  ): [FoodItemTypeGQL!]! @join__field(graph: MEALS) 
+  meal(id: ID!) : MealTypeGQL @join__field(graph: MEALS) 
+  mealsByUserAndDateRange(
+    userId: String!
+    startDate: String!
+    endDate: String!
+    limit: Int = null
+    offset: Int = null
+  ): [MealTypeGQL!]! @join__field(graph: MEALS) 
+  searchMealsByUser(
+    userId: String!
+    searchTerm: String = null
+    limit: Int = null
+    offset: Int = null
+  ): [MealTypeGQL!]! @join__field(graph: MEALS) 
+  userGoals(userId: String!) : UserGoalsTypeGQL @join__field(graph: MEALS) 
+  waterConsumption(id: ID!) : WaterConsumptionTypeGQL @join__field(graph: MEALS) 
+  waterConsumptionsByUserAndDateRange(
+    userId: String!
+    startDate: String!
+    endDate: String!
+    limit: Int = null
+    offset: Int = null
+  ): [WaterConsumptionTypeGQL!]! @join__field(graph: MEALS) 
+  totalWaterConsumptionByUserAndDate(userId: String!, dateStr: String!) : Float! @join__field(graph: MEALS) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -193,7 +231,7 @@ type ToolRegistryHealth @join__type(graph: AGENT)  {
   error: String
 }
 
-type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  {
+type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  {
   generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
   executeTool(toolName: String!, arguments: JSON!, version: String = null) : ToolExecutionResult! @join__field(graph: AGENT) 
   executeSubtool(
@@ -220,6 +258,21 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
   deleteJournalEntry(entryId: UUID!) : Boolean! @join__field(graph: JOURNAL) 
+  createFoodItem(input: FoodItemCreateInput!) : FoodItemTypeGQL! @join__field(graph: MEALS) 
+  updateFoodItem(id: ID!, input: FoodItemUpdateInput!) : FoodItemTypeGQL @join__field(graph: MEALS) 
+  deleteFoodItem(id: ID!) : Boolean! @join__field(graph: MEALS) 
+  createMeal(input: MealCreateInput!) : MealTypeGQL! @join__field(graph: MEALS) 
+  updateMeal(id: ID!, input: MealUpdateInput!) : MealTypeGQL @join__field(graph: MEALS) 
+  deleteMeal(id: ID!) : Boolean! @join__field(graph: MEALS) 
+  addFoodToMeal(mealId: ID!, foodItemId: ID!, quantity: Float!, servingUnit: String!) : MealTypeGQL @join__field(graph: MEALS) 
+  removeFoodFromMeal(mealId: ID!, foodItemId: ID!) : MealTypeGQL @join__field(graph: MEALS) 
+  createUserGoals(input: UserGoalsCreateInput!) : UserGoalsTypeGQL! @join__field(graph: MEALS) 
+  updateUserGoals(userId: String!, input: UserGoalsUpdateInput!) : UserGoalsTypeGQL @join__field(graph: MEALS) 
+  upsertUserGoals(userId: String!, input: UserGoalsCreateInput!) : UserGoalsTypeGQL! @join__field(graph: MEALS) 
+  deleteUserGoals(userId: String!) : Boolean! @join__field(graph: MEALS) 
+  createWaterConsumption(input: WaterConsumptionCreateInput!) : WaterConsumptionTypeGQL! @join__field(graph: MEALS) 
+  updateWaterConsumption(id: ID!, input: WaterConsumptionUpdateInput!) : WaterConsumptionTypeGQL @join__field(graph: MEALS) 
+  deleteWaterConsumption(id: ID!) : Boolean! @join__field(graph: MEALS) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -260,6 +313,7 @@ type JournalTask @join__type(graph: HABITS)  {
   title: String!
   description: String
   status: TaskStatus!
+  habitTemplateId: String
 }
 
 type ProgramTemplateType @join__type(graph: HABITS)  {
@@ -443,6 +497,78 @@ type FreeformJournalEntry implements JournalEntryInterface @join__type(graph: JO
   payload: String!
 }
 
+type FoodItemTypeGQL @join__type(graph: MEALS)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  name: String!
+  servingSize: Float!
+  servingUnit: String!
+  calories: Float!
+  protein: Float!
+  carbohydrates: Float!
+  fat: Float!
+  saturatedFat: Float
+  monounsaturatedFat: Float
+  polyunsaturatedFat: Float
+  transFat: Float
+  cholesterol: Float
+  fiber: Float
+  sugar: Float
+  sodium: Float
+  potassium: Float
+  calcium: Float
+  iron: Float
+  vitaminD: Float
+  zinc: Float
+  notes: String
+  userId: String
+}
+
+type MealFoodTypeGQL @join__type(graph: MEALS)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  mealId: ID!
+  foodItemId: ID!
+  quantity: Float!
+  servingUnit: String!
+  foodItem: FoodItemTypeGQL!
+}
+
+type MealTypeGQL @join__type(graph: MEALS)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  userId: String!
+  name: String!
+  type: MealTypeValueGQL!
+  date: DateTime!
+  notes: String
+  mealFoods: [MealFoodTypeGQL!]!
+}
+
+type UserGoalsTypeGQL @join__type(graph: MEALS)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  userId: String!
+  dailyCalorieGoal: Float!
+  dailyWaterGoal: Float!
+  dailyProteinGoal: Float
+  dailyCarbsGoal: Float
+  dailyFatGoal: Float
+}
+
+type WaterConsumptionTypeGQL @join__type(graph: MEALS)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  userId: String!
+  quantity: Float!
+  consumedAt: DateTime!
+}
+
 interface JournalEntryInterface @join__type(graph: JOURNAL)  {
   id: String!
   userId: String!
@@ -464,6 +590,13 @@ enum TaskStatus @join__type(graph: HABITS)  {
   pending @join__enumValue(graph: HABITS) 
   completed @join__enumValue(graph: HABITS) 
   dismissed @join__enumValue(graph: HABITS) 
+}
+
+enum MealTypeValueGQL @join__type(graph: MEALS)  {
+  BREAKFAST @join__enumValue(graph: MEALS) 
+  LUNCH @join__enumValue(graph: MEALS) 
+  DINNER @join__enumValue(graph: MEALS) 
+  SNACK @join__enumValue(graph: MEALS) 
 }
 
 input HabitTemplateInput @join__type(graph: HABITS)  {
@@ -529,4 +662,103 @@ input ReflectionEntryInput @join__type(graph: JOURNAL)  {
 input FreeformEntryInput @join__type(graph: JOURNAL)  {
   content: String!
   habitTemplateId: String = null
+}
+
+input FoodItemCreateInput @join__type(graph: MEALS)  {
+  name: String!
+  servingSize: Float!
+  servingUnit: String!
+  calories: Float!
+  protein: Float!
+  carbohydrates: Float!
+  fat: Float!
+  saturatedFat: Float = null
+  monounsaturatedFat: Float = null
+  polyunsaturatedFat: Float = null
+  transFat: Float = null
+  cholesterol: Float = null
+  fiber: Float = null
+  sugar: Float = null
+  sodium: Float = null
+  potassium: Float = null
+  calcium: Float = null
+  iron: Float = null
+  vitaminD: Float = null
+  zinc: Float = null
+  notes: String = null
+  userId: String = null
+}
+
+input FoodItemUpdateInput @join__type(graph: MEALS)  {
+  name: String = null
+  servingSize: Float = null
+  servingUnit: String = null
+  calories: Float = null
+  protein: Float = null
+  carbohydrates: Float = null
+  fat: Float = null
+  saturatedFat: Float = null
+  monounsaturatedFat: Float = null
+  polyunsaturatedFat: Float = null
+  transFat: Float = null
+  cholesterol: Float = null
+  fiber: Float = null
+  sugar: Float = null
+  sodium: Float = null
+  potassium: Float = null
+  calcium: Float = null
+  iron: Float = null
+  vitaminD: Float = null
+  zinc: Float = null
+  notes: String = null
+}
+
+input MealCreateInput @join__type(graph: MEALS)  {
+  userId: String!
+  name: String!
+  type: MealTypeValueGQL!
+  date: DateTime!
+  notes: String = null
+  mealFoodsData: [MealFoodInput!]! = []
+}
+
+input MealFoodInput @join__type(graph: MEALS)  {
+  foodItemId: ID!
+  quantity: Float!
+  servingUnit: String!
+}
+
+input MealUpdateInput @join__type(graph: MEALS)  {
+  name: String = null
+  type: MealTypeValueGQL = null
+  date: DateTime = null
+  notes: String = null
+}
+
+input UserGoalsCreateInput @join__type(graph: MEALS)  {
+  userId: String!
+  dailyCalorieGoal: Float!
+  dailyWaterGoal: Float!
+  dailyProteinGoal: Float = null
+  dailyCarbsGoal: Float = null
+  dailyFatGoal: Float = null
+}
+
+input UserGoalsUpdateInput @join__type(graph: MEALS)  {
+  dailyCalorieGoal: Float = null
+  dailyWaterGoal: Float = null
+  dailyProteinGoal: Float = null
+  dailyCarbsGoal: Float = null
+  dailyFatGoal: Float = null
+}
+
+input WaterConsumptionCreateInput @join__type(graph: MEALS)  {
+  userId: String!
+  quantity: Float!
+  consumedAt: String!
+}
+
+input WaterConsumptionUpdateInput @join__type(graph: MEALS)  {
+  quantity: Float = null
+  consumedAt: String = null
 }

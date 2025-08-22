@@ -8,6 +8,7 @@ export const composeConfig = defineConfig({
     { sourceHandler: loadGraphQLHTTPSubgraph('Journal', { endpoint: 'http://journal_service:8001/graphql' }) },
     { sourceHandler: loadGraphQLHTTPSubgraph('Agent', { endpoint: 'http://agent_service:8000/graphql' }) },
     { sourceHandler: loadGraphQLHTTPSubgraph('Habits', { endpoint: 'http://habits_service:8003/graphql' }) },
+    { sourceHandler: loadGraphQLHTTPSubgraph('Meals', { endpoint: 'http://meals_service:8004/graphql' }) },
     // Voucher REST endpoints exposed via OpenAPI (simple wrapper)
     {
       sourceHandler: loadOpenAPISubgraph('Vouchers', {
