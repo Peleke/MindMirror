@@ -16,16 +16,16 @@ debug                           = "false"
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
 journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
-gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:f320f029e90510478c65473c31f933a1a8e6f6ae"
+gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:638c6a53680ed47d6201f0059559919e074ed219"
 # gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
 habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:7849df81f923fce173c5689986a2fed88b59fdd8"
-meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:223318a41b45b6803b9d49bbfdcd9cee7f8b5e09"
+meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:638c6a53680ed47d6201f0059559919e074ed219"
 
 # --- Mocking & Testing Fallbacks ---
 # These are used for mesh compatibility and should be replaced with real values or logic if needed.
 faux_mesh_supabase_id           = "00000000-0000-0000-0000-000000000002"
-faux_mesh_user_id               = "00000000-0000-0000-0000-000000000001" 
+faux_mesh_user_id               = "00000000-0000-0000-0000-000000000001"
 
 # Meals service
 meals_env = {}
