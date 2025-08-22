@@ -36,6 +36,11 @@ variable "habits_service_url" {
   type        = string
 }
 
+variable "meals_service_url" {
+  description = "Meals service URL"
+  type        = string
+}
+
 variable "vouchers_web_base_url" {
   description = "Base URL of the web app exposing vouchers REST endpoints"
   type        = string

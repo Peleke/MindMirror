@@ -85,6 +85,11 @@ data "google_secret_manager_secret_version" "reindex_secret_key" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "meals_service_url" {
+  secret  = "MEALS_SERVICE_URL"
+  project = var.project_id
+}
+
 module "journal_service" {
   source                = "./modules/journal_service"
   project_id            = var.project_id
@@ -174,6 +179,7 @@ module "gateway" {
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
   journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
   habits_service_url    = data.google_secret_manager_secret_version.habits_service_url.secret_data
+  meals_service_url     = data.google_secret_manager_secret_version.meals_service_url.secret_data
   vouchers_web_base_url = data.google_secret_manager_secret_version.vouchers_web_base_url.secret_data
   
   # Environment
