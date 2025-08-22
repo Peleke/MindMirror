@@ -5,6 +5,7 @@ echo "--- HIVE GATEWAY RUNTIME ENTRYPOINT ---"
 echo "JOURNAL_SERVICE_URL=${JOURNAL_SERVICE_URL}"
 echo "AGENT_SERVICE_URL=${AGENT_SERVICE_URL}"
 echo "HABITS_SERVICE_URL=${HABITS_SERVICE_URL}"
+echo "MEALS_SERVICE_URL=${MEALS_SERVICE_URL}"
 echo "VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL}"
 
 # Generate dynamic mesh config from env or use docker fallbacks for local
@@ -26,6 +27,11 @@ export const composeConfig = defineConfig({
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Habits', {
         endpoint: `${process.env.HABITS_SERVICE_URL || 'http://habits_service:8003'}/graphql`,
+      })
+    },
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Meals', {
+        endpoint: `${process.env.MEALS_SERVICE_URL || 'http://meals_service:8004'}/graphql`,
       })
     },
   ]
