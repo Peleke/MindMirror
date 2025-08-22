@@ -4,6 +4,7 @@ import { gql, useQuery } from '@apollo/client'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { AppBar } from '@/components/common/AppBar'
 import CalendarPicker from 'react-native-calendar-picker'
+import { useRouter } from 'expo-router'
 
 const LIST_MEALS = gql`
   query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
@@ -46,6 +47,7 @@ export default function MealsScreen() {
   const [anchorDate, setAnchorDate] = useState<Date>(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showFabSheet, setShowFabSheet] = useState(false)
+  const router = useRouter()
 
   const { startIso, endIso } = useMemo(() => {
     const end = anchorDate
@@ -199,7 +201,7 @@ export default function MealsScreen() {
       <Modal visible={showFabSheet} transparent animationType="fade" onRequestClose={() => setShowFabSheet(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFabSheet(false)}>
           <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-            <Pressable onPress={() => { setShowFabSheet(false); (global as any).expoRouter?.push?.('/(app)/meals/create') }} style={{ paddingVertical: 12 }}>
+            <Pressable onPress={() => { setShowFabSheet(false); router.push('/meals/create') }} style={{ paddingVertical: 12 }}>
               <Text style={{ fontSize: 16, fontWeight: '600' }}>Create New Meal</Text>
             </Pressable>
             <View style={{ height: 8 }} />
