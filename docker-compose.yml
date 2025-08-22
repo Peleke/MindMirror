@@ -126,6 +126,7 @@ services:
       timeout: 20s
       retries: 10
       start_period: 5s
+
   cli:
     build:
       context: .
@@ -149,7 +150,7 @@ services:
       timeout: 20s
       retries: 10
       start_period: 5s
-      
+
   # --- Workers ---
   celery-worker-web:
     build:
@@ -296,9 +297,6 @@ services:
       - mindmirror-network
     volumes:
       - qdrant_data:/qdrant/storage
-    # The official qdrant image is distroless and has no shell,
-    # so we can't use a command-based healthcheck.
-    # We rely on service_started condition.
 
   redis:
     image: redis:7-alpine
@@ -322,6 +320,7 @@ services:
       - JOURNAL_SERVICE_URL=http://journal_service:8001
       - AGENT_SERVICE_URL=http://agent_service:8000
       - HABITS_SERVICE_URL=http://habits_service:8003
+      - MEALS_SERVICE_URL=http://meals_service:8004
     volumes:
       - ./mesh/build:/app/build
     networks:
@@ -332,6 +331,8 @@ services:
       agent_service:
         condition: service_healthy
       habits_service:
+        condition: service_healthy
+      meals_service:
         condition: service_healthy
 
   gateway:
@@ -355,6 +356,34 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/healthcheck"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  meals_service:
+    build:
+      context: ./meals_service
+      dockerfile: Dockerfile
+    container_name: meals_service
+    env_file: ${ENV_FILE:-.env}
+    # environment:
+    #   # Preferred single URL (service supports DATABASE_URL first)
+    #   - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    #   # Generic DB_* used by current implementation
+    #   - DB_HOST=postgres
+    #   - DB_PORT=5432
+    #   - DB_USER=${POSTGRES_USER}
+    #   - DB_PASSWORD=${POSTGRES_PASSWORD}
+    #   - DB_NAME=${POSTGRES_DB}
+    networks:
+      - mindmirror-network
+    depends_on:
+      - postgres
+    ports:
+      - "8004:8004"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 2s
       timeout: 10s
       retries: 20
