@@ -19,7 +19,7 @@ agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmir
 gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:ab1f63c6c3417d5023617029aec5071d209f5468"
 # gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
-habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:7849df81f923fce173c5689986a2fed88b59fdd8"
+habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:3b3e40593f8990da0e099688740afbf4d108cef6"
 meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:638c6a53680ed47d6201f0059559919e074ed219"
 
 # --- Mocking & Testing Fallbacks ---
