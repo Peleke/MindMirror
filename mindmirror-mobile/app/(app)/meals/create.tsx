@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { SafeAreaView, View, Text, TextInput, Pressable, Modal, FlatList, KeyboardAvoidingView, ScrollView, Platform, Animated, Easing } from 'react-native'
 import { gql, useMutation, useLazyQuery } from '@apollo/client'
 import { AppBar } from '@/components/common/AppBar'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/features/auth/context/AuthContext'
 
 const CREATE_MEAL = gql`
@@ -105,6 +105,8 @@ export default function CreateMealScreen() {
   })
 
   const router = useRouter()
+  const params = useLocalSearchParams<{ from?: string }>()
+  const returnTo = (params?.from as string) || '/meals'
   const { session } = useAuth()
   const userId = session?.user?.id || ''
 
@@ -170,7 +172,7 @@ export default function CreateMealScreen() {
     if (!canSubmit) return
     try {
       await createMeal({ variables: { input } })
-      router.replace('/meals')
+      router.replace(returnTo)
     } catch (e) {
       console.error('Create meal failed', e)
     }
@@ -266,7 +268,7 @@ export default function CreateMealScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <AppBar title="Create Meal" showBackButton onBackPress={() => router.replace('/meals')} />
+      <AppBar title="Create Meal" showBackButton onBackPress={() => router.replace(returnTo)} />
 
       <View style={{ padding: 16, gap: 16 }}>
         <View>

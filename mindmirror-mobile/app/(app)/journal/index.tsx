@@ -9,13 +9,13 @@ import { VStack } from "@/components/ui/vstack";
 import { useRouter } from 'expo-router';
 import { Heart, Lightbulb } from "lucide-react-native";
 import { useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Modal, Pressable as RNPressable, TextInput } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
 import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
 import { useQuery, gql } from '@apollo/client'
 import { HABIT_STATS, GET_TODAYS_TASKS } from '@/services/api/habits'
 import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
-import { gql as gql2, useQuery as useQuery2 } from '@apollo/client'
+import { useQuery as useQuery2 } from '@apollo/client'
 import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
 import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
 import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
@@ -29,6 +29,8 @@ import { AppBar } from '@/components/common/AppBar';
 import DailyTasksList from '@/components/habits/DailyTasksList'
 import { useLocalSearchParams } from 'expo-router'
 import { getUserDisplayName } from '@/utils/user';
+import { View } from 'react-native';
+import { useMutation } from '@apollo/client';
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -60,7 +62,7 @@ function MiniDashboard() {
 
   // Meals mini-row queries
   const userId = session?.user?.id || ''
-  const MEALS_QUERY = gql2`
+  const MEALS_QUERY = gql`
     query MealsMini($userId: String!, $start: String!, $end: String!, $limit: Int) {
       mealsByUserAndDateRange(userId: $userId, startDate: $start, endDate: $end, limit: $limit) {
         id_
@@ -68,7 +70,7 @@ function MiniDashboard() {
       }
     }
   `
-  const WATER_QUERY = gql2`
+  const WATER_QUERY = gql`
     query WaterMini($userId: String!, $date: String!) {
       totalWaterConsumptionByUserAndDate(userId: $userId, dateStr: $date)
     }
@@ -129,51 +131,73 @@ function MiniDashboard() {
     )
   }
 
+  // Shrink visuals to match meals mini-row height
+  const smallSize = 68
+  const smallStroke = 8
+  const smallRadius = (smallSize - smallStroke) / 2
+  const smallCircumference = 2 * Math.PI * smallRadius
+  const smallProgress = smallCircumference * (1 - adherence)
+
+  const [chartsTab, setChartsTab] = useState<'habits' | 'meals'>('habits')
+
   return (
     <VStack className="mt-2 px-4">
-      <Box className="p-4 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
-      <HStack className="items-end justify-between">
-        {/* Left: adherence ring + counts + header */}
-        <VStack className="items-center" style={{ width: '33%' }}>
-          <Box className="items-center justify-center">
-            <Svg width={size} height={size}>
-              <G rotation="-90" origin={`${size/2}, ${size/2}`}>
-                <SvgCircle cx={size/2} cy={size/2} r={radius} stroke="#e5e7eb" strokeWidth={stroke} fill="transparent" />
-                <SvgCircle
-                  cx={size/2}
-                  cy={size/2}
-                  r={radius}
-                  stroke="#10b981"
-                  strokeWidth={stroke}
-                  strokeDasharray={`${circumference} ${circumference}`}
-                  strokeDashoffset={progress}
-                  strokeLinecap="round"
-                  fill="transparent"
-                />
-              </G>
-            </Svg>
-            <VStack className="absolute items-center">
-              <Text className="text-lg font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
-            </VStack>
-          </Box>
-          <Text className="text-typography-600 dark:text-gray-300 mt-1">{completed}/{presented}</Text>
-          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center" numberOfLines={1}>{habitTitle || 'Adherence'}</Text>
-        </VStack>
-        {/* Middle: today's changes */}
-        <VStack className="items-center" style={{ width: '33%' }}>
-          <TodayChips onDate={onDate} tasks={tasks?.todaysTasks || []} />
-          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Today's wins</Text>
-        </VStack>
-        {/* Right: current streak */}
-        <VStack className="items-center justify-end" style={{ width: '33%' }}>
-          <Text className="text-2xl font-bold text-typography-900 dark:text-white">{streak}</Text>
-          <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Current streak</Text>
-        </VStack>
-      </HStack>
-      </Box>
+      <Box className="p-3 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
+        <HStack className="items-center">
+          {/* Vertical H/M switcher */}
+          <VStack className="mr-3 space-y-2">
+            <Pressable onPress={() => setChartsTab('habits')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='habits' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+              <Text className="text-xs font-semibold">H</Text>
+            </Pressable>
+            <Pressable onPress={() => setChartsTab('meals')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='meals' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+              <Text className="text-xs font-semibold">M</Text>
+            </Pressable>
+          </VStack>
 
-      {/* Meals mini-row */}
-      <Box className="mt-3 p-3 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
+          {/* Charts content */}
+          {chartsTab === 'habits' ? (
+          <Box className="flex-1">
+          <HStack className="items-center justify-between">
+            {/* Left: adherence ring + counts + header */}
+            <VStack className="items-center" style={{ width: '33%' }}>
+              <Box className="items-center justify-center">
+                <Svg width={smallSize} height={smallSize}>
+                  <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+                    <SvgCircle cx={smallSize/2} cy={smallSize/2} r={smallRadius} stroke="#e5e7eb" strokeWidth={smallStroke} fill="transparent" />
+                    <SvgCircle
+                      cx={smallSize/2}
+                      cy={smallSize/2}
+                      r={smallRadius}
+                      stroke="#10b981"
+                      strokeWidth={smallStroke}
+                      strokeDasharray={`${smallCircumference} ${smallCircumference}`}
+                      strokeDashoffset={smallProgress}
+                      strokeLinecap="round"
+                      fill="transparent"
+                    />
+                  </G>
+                </Svg>
+                <VStack className="absolute items-center">
+                  <Text className="text-lg font-bold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+                </VStack>
+              </Box>
+              <Text className="text-typography-600 dark:text-gray-300 mt-1">{completed}/{presented}</Text>
+              <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center" numberOfLines={1}>Adherence</Text>
+            </VStack>
+            {/* Middle: today's changes */}
+            <VStack className="items-center justify-center" style={{ width: '33%' }}>
+              <Box className="w-10/12 h-2 rounded-full bg-border-200" />
+              <Text className="text-xs font-semibold text-typography-900 dark:text-white text-center mt-1">Today</Text>
+            </VStack>
+            {/* Right: current streak */}
+            <VStack className="items-center justify-center" style={{ width: '33%' }}>
+              <Text className="text-2xl font-bold text-typography-900 dark:text-white">{streak}</Text>
+              <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Current streak</Text>
+            </VStack>
+          </HStack>
+          </Box>
+          ) : (
+          <Box className="flex-1">
         <HStack className="items-center justify-between">
           {/* Macros */}
           <VStack className="items-center" style={{ width: '33%' }}>
@@ -209,6 +233,9 @@ function MiniDashboard() {
             <Donut size={60} stroke={7} progress={waterProgress} />
             <Text className="text-2xs text-typography-900 dark:text-white font-bold mt-1">{Math.round(waterOz)} oz</Text>
           </VStack>
+        </HStack>
+          </Box>
+          )}
         </HStack>
       </Box>
     </VStack>
@@ -270,6 +297,69 @@ export default function JournalScreen() {
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
   const [homeTab, setHomeTab] = useState<'habits' | 'meals'>('habits')
+  const [showFab, setShowFab] = useState(false);
+  const [showWaterModal, setShowWaterModal] = useState(false);
+  const [waterAmount, setWaterAmount] = useState('');
+  const [savingWater, setSavingWater] = useState(false);
+
+  const CREATE_WATER = gql`
+    mutation CreateWaterHome($input: WaterConsumptionCreateInput!) {
+      createWaterConsumption(input: $input) { id_ }
+    }
+  `
+  const [createWater] = useMutation(CREATE_WATER, {
+    onCompleted: () => {
+      setSavingWater(false);
+      setShowWaterModal(false);
+      show({
+        placement: "top",
+        render: ({ id }) => {
+          const toastId = "toast-" + id;
+          return (
+            <Toast nativeID={toastId} action="success" variant="solid">
+              <VStack space="xs">
+                <ToastTitle>Water Saved</ToastTitle>
+                <ToastDescription>
+                  Your water consumption has been logged successfully.
+                </ToastDescription>
+              </VStack>
+            </Toast>
+          );
+        },
+      });
+    },
+    onError: (error) => {
+      setSavingWater(false);
+      show({
+        placement: "top",
+        render: ({ id }) => {
+          const toastId = "toast-" + id;
+          return (
+            <Toast nativeID={toastId} action="error" variant="solid">
+              <VStack space="xs">
+                <ToastTitle>Error</ToastTitle>
+                <ToastDescription>
+                  Failed to log water: {error.message}
+                </ToastDescription>
+              </VStack>
+            </Toast>
+          );
+        },
+      });
+    },
+    update: (cache, { data }) => {
+      if (data?.createWaterConsumption) {
+        const newWaterConsumption = data.createWaterConsumption;
+        cache.modify({
+          fields: {
+            totalWaterConsumptionByUserAndDate(existing) {
+              return newWaterConsumption;
+            },
+          },
+        });
+      }
+    },
+  });
 
   if (authLoading && !session) {
     return (
@@ -364,9 +454,9 @@ export default function JournalScreen() {
             
             {/* Mini dashboard: current habit stats */}
             <MiniDashboard />
-            <AffirmationDisplay 
+            {/* <AffirmationDisplay 
               affirmation={isAffirmationLoading ? "Loading..." : affirmation}
-            />
+            /> */}
           </VStack>
 
           {/* Structured Journal Options */}
@@ -478,7 +568,71 @@ export default function JournalScreen() {
           onComplete={() => {}}
           className="absolute inset-0"
         />
+
+        {/* Home FAB */}
+        <RNPressable onPress={() => setShowFab(true)} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
+          <Text className="text-white" style={{ fontSize: 28, marginTop: -2 }}>＋</Text>
+        </RNPressable>
       </VStack>
+
+      {/* FAB bottom sheet */}
+      <Modal visible={showFab} transparent animationType="fade" onRequestClose={() => setShowFab(false)}>
+        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFab(false)}>
+          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+            <RNPressable onPress={() => { setShowFab(false); router.push('/meals/create?from=/journal') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>🍽️</Text>
+              <Text className="font-semibold" style={{ fontSize: 16 }}>Create New Meal</Text>
+            </RNPressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <RNPressable onPress={() => { setShowFab(false); setShowWaterModal(true) }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>💧</Text>
+              <Text className="font-semibold" style={{ fontSize: 16 }}>Log Water</Text>
+            </RNPressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <RNPressable onPress={() => { setShowFab(false); router.push('/journal-hub') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>📝</Text>
+              <Text className="font-semibold" style={{ fontSize: 16 }}>Create Journal</Text>
+            </RNPressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <RNPressable onPress={() => setShowFab(false)} style={{ paddingVertical: 12 }}>
+              <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
+            </RNPressable>
+          </View>
+        </RNPressable>
+      </Modal>
+
+      {/* Log Water modal */}
+      <Modal visible={showWaterModal} transparent animationType="fade" onRequestClose={() => setShowWaterModal(false)}>
+        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowWaterModal(false)}>
+          <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12, width: '90%' }}>
+            <Text className="font-semibold" style={{ fontSize: 16, marginBottom: 10 }}>Log Water</Text>
+            <Text className="text-typography-600" style={{ marginBottom: 6 }}>Amount (oz)</Text>
+            <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+              <TextInput
+                value={waterAmount}
+                onChangeText={setWaterAmount}
+                placeholder="e.g., 8"
+                keyboardType="numeric"
+                style={{ padding: 12 }}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <RNPressable onPress={() => setShowWaterModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                <Text style={{ color: '#666' }}>Cancel</Text>
+              </RNPressable>
+              <RNPressable disabled={savingWater} onPress={async () => {
+                const qty = parseFloat(waterAmount)
+                if (!isFinite(qty) || qty <= 0) return
+                setSavingWater(true);
+                const ml = qty * 29.5735
+                await createWater({ variables: { input: { userId, quantity: ml, consumedAt: new Date().toISOString() } } })
+              }} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>{savingWater ? 'Saving…' : 'Save'}</Text>
+              </RNPressable>
+            </View>
+          </View>
+        </RNPressable>
+      </Modal>
     </SafeAreaView>
   );
 } 

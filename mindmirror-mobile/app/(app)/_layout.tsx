@@ -22,8 +22,9 @@ export default function AppLayout() {
         >
           <Drawer.Screen name="journal" options={{ drawerLabel: 'Home', title: 'Home' }} />
           <Drawer.Screen name="programs" options={{ drawerLabel: 'Programs & Resources', title: 'Programs & Resources' }} />
-          <Drawer.Screen name="archive" options={{ drawerLabel: 'Journal Archive', title: 'Archive' }} />
+          <Drawer.Screen name="meals" options={{ drawerLabel: 'Meals', title: 'Meals' }} />
           <Drawer.Screen name="journal-hub" options={{ drawerLabel: 'Journal Hub', title: 'Journal' }} />
+          <Drawer.Screen name="archive" options={{ drawerLabel: 'Journal Archive', title: 'Archive' }} />
           <Drawer.Screen name="chat" options={{ drawerLabel: 'Chat', title: 'Chat' }} />
           <Drawer.Screen name="marketplace" options={{ drawerLabel: 'Marketplace', title: 'Marketplace' }} />
           <Drawer.Screen
@@ -33,7 +34,6 @@ export default function AppLayout() {
               title: 'Insights',
             }}
           />
-          <Drawer.Screen name="meals" options={{ drawerLabel: 'Meals', title: 'Meals' }} />
           <Drawer.Screen name="profile" options={{ drawerLabel: 'Profile', title: 'Profile' }} />
         </Drawer>
       </View>

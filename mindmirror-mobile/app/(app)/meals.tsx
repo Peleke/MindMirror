@@ -315,6 +315,11 @@ export default function MealsScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600' }}>Log Water</Text>
             </Pressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <Pressable onPress={() => { setShowFabSheet(false); router.push('/journal-hub') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>📝</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600' }}>Create Journal</Text>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
             <Pressable onPress={() => setShowFabSheet(false)} style={{ paddingVertical: 12 }}>
               <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
             </Pressable>
