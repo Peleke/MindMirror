@@ -7,6 +7,7 @@ import CalendarPicker from 'react-native-calendar-picker'
 import { useRouter } from 'expo-router'
 import Svg, { Circle } from 'react-native-svg'
 import { gql as gql2, useMutation as useMutation2 } from '@apollo/client'
+import { useQuery as useQuery3, gql as gql3 } from '@apollo/client'
 
 const LIST_MEALS = gql`
   query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
@@ -87,12 +88,24 @@ export default function MealsScreen() {
     return (meals || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0)
   }, [meals])
 
-  const dailyCalGoal = 2000
+  // User goals for charts
+  const USER_GOALS = gql3`
+    query UserGoalsMeals($userId: String!) {
+      userGoals(userId: $userId) {
+        dailyCalorieGoal
+        dailyWaterGoal
+      }
+    }
+  `
+  const goalsQ = useQuery3(USER_GOALS, { skip: !userId, variables: { userId } })
+  const goalCal = goalsQ.data?.userGoals?.dailyCalorieGoal ?? 2000
+  const dailyCalGoal = goalCal
   const calProgress = Math.max(0, Math.min(1, totalCalories / dailyCalGoal))
 
   const totalWaterMl = waterQuery.data?.totalWaterConsumptionByUserAndDate ?? 0
   const waterOz = totalWaterMl / 29.5735
-  const dailyWaterGoalOz = 64
+  const goalWaterMl = goalsQ.data?.userGoals?.dailyWaterGoal ?? 2000
+  const dailyWaterGoalOz = goalWaterMl / 29.5735
   const waterProgress = Math.max(0, Math.min(1, waterOz / dailyWaterGoalOz))
 
   const Donut = ({ size = 120, stroke = 10, progress = 0, color = '#1d4ed8', track = '#e5e7eb' }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string }) => {

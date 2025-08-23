@@ -78,6 +78,20 @@ function MiniDashboard() {
   const mealsMini = useQuery2(MEALS_QUERY, { variables: { userId, start: onDate, end: onDate, limit: 50 }, skip: authLoading || !hasSession || !userId })
   const waterMini = useQuery2(WATER_QUERY, { variables: { userId, date: onDate }, skip: authLoading || !hasSession || !userId })
 
+  // User goals
+  const USER_GOALS = gql`
+    query UserGoals($userId: String!) {
+      userGoals(userId: $userId) {
+        dailyCalorieGoal
+        dailyWaterGoal
+        dailyProteinGoal
+        dailyCarbsGoal
+        dailyFatGoal
+      }
+    }
+  `
+  const goalsQ = useQuery2(USER_GOALS, { variables: { userId }, skip: authLoading || !hasSession || !userId })
+
   // Debug logs
   // eslint-disable-next-line no-console
   console.log('[MiniDashboard] tasks loaded?', !tasksLoading, 'habitTask found?', !!firstHabit, 'habitId', habitId, 'title', habitTitle)
@@ -110,11 +124,13 @@ function MiniDashboard() {
   const totalProtein = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.protein || 0), 0), 0)
   const totalCarbs = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.carbohydrates || 0), 0), 0)
   const totalFat = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0)
-  const dailyCalGoal = 2000
+  const goalCal = goalsQ.data?.userGoals?.dailyCalorieGoal ?? 2000
+  const dailyCalGoal = goalCal
   const calProgress = Math.max(0, Math.min(1, totalCalories / dailyCalGoal))
   const totalWaterMl = waterMini.data?.totalWaterConsumptionByUserAndDate || 0
   const waterOz = totalWaterMl / 29.5735
-  const dailyWaterGoalOz = 64
+  const goalWaterMl = goalsQ.data?.userGoals?.dailyWaterGoal ?? 2000
+  const dailyWaterGoalOz = goalWaterMl / 29.5735
   const waterProgress = Math.max(0, Math.min(1, waterOz / dailyWaterGoalOz))
 
   const Donut = ({ size = 68, stroke = 8, progress = 0, color = '#1d4ed8', track = '#e5e7eb' }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string }) => {
