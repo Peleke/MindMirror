@@ -269,6 +269,7 @@ export default function JournalScreen() {
   const { user, session, loading: authLoading } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
+  const [homeTab, setHomeTab] = useState<'habits' | 'meals'>('habits')
 
   if (authLoading && !session) {
     return (
@@ -286,6 +287,23 @@ export default function JournalScreen() {
     isSubmitting,
     error,
   } = useJournalFlow();
+
+  // Today's meals (for Meals tab)
+  const onDate = todayIsoDate()
+  const userId = session?.user?.id || ''
+  const MEALS_TODAY = gql`
+    query MealsToday($userId: String!, $date: String!) {
+      mealsByUserAndDateRange(userId: $userId, startDate: $date, endDate: $date, limit: 50) {
+        id_
+        name
+        date
+        notes
+        mealFoods { id_ foodItem { calories } }
+      }
+    }
+  `
+  const { data: mealsData, loading: mealsLoading } = useQuery(MEALS_TODAY, { variables: { userId, date: onDate }, skip: !userId })
+  const todaysMeals = mealsData?.mealsByUserAndDateRange || []
 
   const handleSaveAndChat = async (entry: string) => {
     // Call submitEntry with the 'andChat' flag
@@ -403,10 +421,50 @@ export default function JournalScreen() {
           {/* Divider */}
           <Box className="h-px bg-border-200 dark:bg-border-700 mx-6" />
 
-          {/* Today's Tasks */}
-          <VStack className="px-6 py-6" space="md">
-            <DailyTasksList forceNetwork={params?.reload === '1'} />
+          {/* Habits | Meals switcher */}
+          <VStack className="px-6 py-4" space="md">
+            <HStack className="items-center space-x-3">
+              <Pressable onPress={() => setHomeTab('habits')} className={`px-3 py-2 rounded-md ${homeTab === 'habits' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                <Text className="font-semibold">Habits</Text>
+              </Pressable>
+              <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                <Text className="font-semibold">Meals</Text>
+              </Pressable>
+            </HStack>
           </VStack>
+
+          {/* Content: Habits or Meals */}
+          {homeTab === 'habits' ? (
+            <VStack className="px-6 py-2" space="md">
+              <DailyTasksList forceNetwork={params?.reload === '1'} />
+            </VStack>
+          ) : (
+            <VStack className="px-6 py-2" space="md">
+              {mealsLoading ? (
+                <ActivityIndicator />
+              ) : todaysMeals.length === 0 ? (
+                <Text className="text-typography-600 dark:text-gray-300">No meals yet today.</Text>
+              ) : (
+                todaysMeals.map((m: any) => {
+                  const kcal = Math.round((m.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))
+                  return (
+                    <Pressable key={m.id_} onPress={() => router.push(`/meals/${m.id_}`)} className="mb-3">
+                      <Box className="p-4 rounded-xl bg-background-0 border border-border-200 shadow-sm">
+                        <HStack className="items-center justify-between">
+                          <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
+                          <Box className="px-2 py-1 rounded-md" style={{ backgroundColor: '#eff6ff' }}>
+                            <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>{kcal} cal</Text>
+                          </Box>
+                        </HStack>
+                        <Text className="text-typography-600 dark:text-gray-300 mt-1">{new Date(m.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                        {m.notes ? <Text className="text-typography-600 dark:text-gray-300 mt-1">{m.notes}</Text> : null}
+                      </Box>
+                    </Pressable>
+                  )
+                })
+              )}
+            </VStack>
+          )}
           </VStack>
           
           {/* REMOVED: Old structured journal section */}
