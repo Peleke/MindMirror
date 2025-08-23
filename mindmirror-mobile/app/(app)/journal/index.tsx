@@ -15,6 +15,7 @@ import { AffirmationDisplay } from '../../../src/components/journal/AffirmationD
 import { useQuery, gql } from '@apollo/client'
 import { HABIT_STATS, GET_TODAYS_TASKS } from '@/services/api/habits'
 import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
+import { gql as gql2, useQuery as useQuery2 } from '@apollo/client'
 import { JournalEntryForm } from '../../../src/components/journal/JournalEntryForm';
 import { TransitionOverlay } from '../../../src/components/journal/TransitionOverlay';
 import { useJournalFlow } from '../../../src/hooks/useJournalFlow';
@@ -57,6 +58,24 @@ function MiniDashboard() {
   const habitTitle = firstHabit?.title || ''
   const { data: stats, loading: statsLoading } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: authLoading || !hasSession || !habitId })
 
+  // Meals mini-row queries
+  const userId = session?.user?.id || ''
+  const MEALS_QUERY = gql2`
+    query MealsMini($userId: String!, $start: String!, $end: String!, $limit: Int) {
+      mealsByUserAndDateRange(userId: $userId, startDate: $start, endDate: $end, limit: $limit) {
+        id_
+        mealFoods { foodItem { calories protein carbohydrates fat } }
+      }
+    }
+  `
+  const WATER_QUERY = gql2`
+    query WaterMini($userId: String!, $date: String!) {
+      totalWaterConsumptionByUserAndDate(userId: $userId, dateStr: $date)
+    }
+  `
+  const mealsMini = useQuery2(MEALS_QUERY, { variables: { userId, start: onDate, end: onDate, limit: 50 }, skip: authLoading || !hasSession || !userId })
+  const waterMini = useQuery2(WATER_QUERY, { variables: { userId, date: onDate }, skip: authLoading || !hasSession || !userId })
+
   // Debug logs
   // eslint-disable-next-line no-console
   console.log('[MiniDashboard] tasks loaded?', !tasksLoading, 'habitTask found?', !!firstHabit, 'habitId', habitId, 'title', habitTitle)
@@ -83,6 +102,32 @@ function MiniDashboard() {
   }
 
   // Show zeroed dashboard even if no habitId selected yet
+
+  // Meals aggregates
+  const totalCalories = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.calories || 0), 0), 0)
+  const totalProtein = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.protein || 0), 0), 0)
+  const totalCarbs = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.carbohydrates || 0), 0), 0)
+  const totalFat = (mealsMini.data?.mealsByUserAndDateRange || []).reduce((acc: number, m: any) => acc + (m.mealFoods || []).reduce((a: number, mf: any) => a + (mf.foodItem?.fat || 0), 0), 0)
+  const dailyCalGoal = 2000
+  const calProgress = Math.max(0, Math.min(1, totalCalories / dailyCalGoal))
+  const totalWaterMl = waterMini.data?.totalWaterConsumptionByUserAndDate || 0
+  const waterOz = totalWaterMl / 29.5735
+  const dailyWaterGoalOz = 64
+  const waterProgress = Math.max(0, Math.min(1, waterOz / dailyWaterGoalOz))
+
+  const Donut = ({ size = 68, stroke = 8, progress = 0, color = '#1d4ed8', track = '#e5e7eb' }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string }) => {
+    const radius = (size - stroke) / 2
+    const circumference = 2 * Math.PI * radius
+    const dash = circumference * progress
+    return (
+      <Svg width={size} height={size}>
+        <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+          <SvgCircle cx={size/2} cy={size/2} r={radius} stroke={track} strokeWidth={stroke} fill="transparent" />
+          <SvgCircle cx={size/2} cy={size/2} r={radius} stroke={color} strokeWidth={stroke} strokeDasharray={`${dash} ${circumference}`} strokeLinecap="round" fill="transparent" />
+        </G>
+      </Svg>
+    )
+  }
 
   return (
     <VStack className="mt-2 px-4">
@@ -125,6 +170,46 @@ function MiniDashboard() {
           <Text className="text-sm font-semibold text-typography-900 dark:text-white text-center">Current streak</Text>
         </VStack>
       </HStack>
+      </Box>
+
+      {/* Meals mini-row */}
+      <Box className="mt-3 p-3 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
+        <HStack className="items-center justify-between">
+          {/* Macros */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
+            <HStack className="items-center justify-between w-11/12 mb-1">
+              <Text className="text-xs font-bold" style={{ color: '#16a34a' }}>{Math.round(totalProtein)}g</Text>
+              <Text className="text-xs font-bold" style={{ color: '#d97706' }}>{Math.round(totalCarbs)}g</Text>
+              <Text className="text-xs font-bold" style={{ color: '#2563eb' }}>{Math.round(totalFat)}g</Text>
+            </HStack>
+            <Box className="w-11/12 h-2 rounded-full bg-border-200 overflow-hidden">
+              {(() => {
+                const cP = totalProtein * 4, cC = totalCarbs * 4, cF = totalFat * 9
+                const tot = Math.max(1, cP + cC + cF)
+                return (
+                  <HStack className="h-full w-full">
+                    <Box style={{ flex: cP / tot, backgroundColor: '#16a34a' }} />
+                    <Box style={{ flex: cC / tot, backgroundColor: '#d97706' }} />
+                    <Box style={{ flex: cF / tot, backgroundColor: '#2563eb' }} />
+                  </HStack>
+                )
+              })()}
+            </Box>
+          </VStack>
+          {/* Calories */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <Donut size={68} stroke={8} progress={calProgress} />
+            <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
+            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
+          </VStack>
+          {/* Water */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Water</Text>
+            <Donut size={60} stroke={7} progress={waterProgress} />
+            <Text className="text-2xs text-typography-900 dark:text-white font-bold mt-1">{Math.round(waterOz)} oz</Text>
+          </VStack>
+        </HStack>
       </Box>
     </VStack>
   )
