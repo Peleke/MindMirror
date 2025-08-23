@@ -362,4 +362,4 @@ export default function MealsScreen() {
       </Pressable>
     </SafeAreaView>
   )
-} 
+}
