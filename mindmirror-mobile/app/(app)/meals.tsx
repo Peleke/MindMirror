@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useCallback } from 'react'
-import { SafeAreaView, View, Text, FlatList, ActivityIndicator, Pressable, Modal, ScrollView, Dimensions } from 'react-native'
+import { SafeAreaView, View, Text, FlatList, ActivityIndicator, Pressable, Modal, ScrollView, Dimensions, TextInput } from 'react-native'
 import { gql, useQuery } from '@apollo/client'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { AppBar } from '@/components/common/AppBar'
 import CalendarPicker from 'react-native-calendar-picker'
 import { useRouter } from 'expo-router'
 import Svg, { Circle } from 'react-native-svg'
+import { gql as gql2, useMutation as useMutation2 } from '@apollo/client'
 
 const LIST_MEALS = gql`
   query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
@@ -40,6 +41,7 @@ export default function MealsScreen() {
   const [anchorDate, setAnchorDate] = useState<Date>(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showFabSheet, setShowFabSheet] = useState(false)
+  const [expandedMealIds, setExpandedMealIds] = useState<Record<string, boolean>>({})
 
   const { startIso, endIso, dayIso } = useMemo(() => {
     const end = anchorDate
@@ -115,6 +117,28 @@ export default function MealsScreen() {
     )
   }
 
+  // Log Water modal state and mutation
+  const [showWaterModal, setShowWaterModal] = useState(false)
+  const [waterAmount, setWaterAmount] = useState('')
+  const CREATE_WATER = gql2`
+    mutation CreateWater($input: WaterConsumptionCreateInput!) {
+      createWaterConsumption(input: $input) { id_ }
+    }
+  `
+  const [createWater, { loading: savingWater }] = useMutation2(CREATE_WATER, {
+    onCompleted: () => {
+      setShowWaterModal(false)
+      setWaterAmount('')
+      waterQuery.refetch()
+    },
+  })
+  const onSaveWater = async () => {
+    const qty = parseFloat(waterAmount)
+    if (!isFinite(qty) || qty <= 0) return
+    const ml = qty * 29.5735
+    await createWater({ variables: { input: { userId, quantity: ml, consumedAt: new Date().toISOString() } } })
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <AppBar title="Meals" />
@@ -134,10 +158,35 @@ export default function MealsScreen() {
         </View>
       </View>
 
-      {/* Top charts - simple pager */}
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ maxHeight: 200 }}>
-        {/* Calories donut */}
-        <View style={{ width: screenWidth, padding: 16 }}>
+      {/* Top charts - single row: Macros | Calories | Water */}
+      <View style={{ padding: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
+          {/* Macros */}
+          <View style={{ width: 120 }}>
+            <Text style={{ color: '#666', textAlign: 'center', marginBottom: 6, fontWeight: '700' }}>Macros</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ color: '#16a34a', fontWeight: '700' }}>{Math.round(totalProtein)}g</Text>
+              <Text style={{ color: '#d97706', fontWeight: '700' }}>{Math.round(totalCarbs)}g</Text>
+              <Text style={{ color: '#2563eb', fontWeight: '700' }}>{Math.round(totalFat)}g</Text>
+            </View>
+            <View style={{ height: 10, borderRadius: 5, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
+              {(() => {
+                const calsP = totalProtein * 4
+                const calsC = totalCarbs * 4
+                const calsF = totalFat * 9
+                const total = Math.max(1, calsP + calsC + calsF)
+                return (
+                  <View style={{ flexDirection: 'row', width: '100%', height: '100%' }}>
+                    <View style={{ flex: calsP / total, backgroundColor: '#16a34a' }} />
+                    <View style={{ flex: calsC / total, backgroundColor: '#d97706' }} />
+                    <View style={{ flex: calsF / total, backgroundColor: '#2563eb' }} />
+                  </View>
+                )
+              })()}
+            </View>
+          </View>
+
+          {/* Calories donut */}
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
             <Donut size={120} stroke={10} progress={calProgress} color="#1d4ed8" track="#e5e7eb" />
             <View style={{ position: 'absolute', alignItems: 'center' }}>
@@ -146,46 +195,16 @@ export default function MealsScreen() {
             </View>
             <Text style={{ marginTop: 8, color: '#666' }}>out of {dailyCalGoal}</Text>
           </View>
-        </View>
-        {/* Macros summary with stacked bar */}
-        <View style={{ width: screenWidth, padding: 16 }}>
-          <View style={{ marginBottom: 10, alignItems: 'center' }}>
-            <Text style={{ color: '#666' }}>Macronutrients</Text>
-          </View>
-          <View style={{ flexDirection: 'row', marginBottom: 8, justifyContent: 'space-evenly' }}>
-            <Text style={{ color: '#16a34a', fontWeight: '700' }}>{Math.round(totalProtein)}g P</Text>
-            <Text style={{ color: '#d97706', fontWeight: '700' }}>{Math.round(totalCarbs)}g C</Text>
-            <Text style={{ color: '#2563eb', fontWeight: '700' }}>{Math.round(totalFat)}g F</Text>
-          </View>
-          <View style={{ height: 14, borderRadius: 7, backgroundColor: '#e5e7eb', overflow: 'hidden' }}>
-            {(() => {
-              const calsP = totalProtein * 4
-              const calsC = totalCarbs * 4
-              const calsF = totalFat * 9
-              const total = Math.max(1, calsP + calsC + calsF)
-              return (
-                <View style={{ flexDirection: 'row', width: '100%', height: '100%' }}>
-                  <View style={{ flex: calsP / total, backgroundColor: '#16a34a' }} />
-                  <View style={{ flex: calsC / total, backgroundColor: '#d97706' }} />
-                  <View style={{ flex: calsF / total, backgroundColor: '#2563eb' }} />
-                </View>
-              )
-            })()}
-          </View>
-        </View>
-        {/* Water donut */}
-        <View style={{ width: screenWidth, padding: 16 }}>
+
+          {/* Water donut */}
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ color: '#666' }}>Water</Text>
+            <Text style={{ color: '#666', fontWeight: '700' }}>Water</Text>
             <Donut size={100} stroke={8} progress={waterProgress} color="#1d4ed8" track="#e5e7eb" />
-            <View style={{ position: 'absolute', top: 58, alignItems: 'center' }}>
-              <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>{Math.round(waterOz)}</Text>
-              <Text style={{ color: '#666' }}>oz</Text>
-            </View>
-            <Text style={{ marginTop: 8, color: '#666' }}>out of {dailyWaterGoalOz} oz</Text>
+            <Text style={{ color: '#1d4ed8', fontWeight: '700', marginTop: 6 }}>{Math.round(waterOz)} oz</Text>
+            <Text style={{ color: '#666' }}>out of {dailyWaterGoalOz}</Text>
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       {/* Content */}
       <View style={{ flex: 1, paddingHorizontal: 12 }}>
@@ -212,27 +231,40 @@ export default function MealsScreen() {
                 keyExtractor={(item) => item.id_}
                 renderItem={({ item }) => {
                   const kcal = Math.round((item.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))
+                  const expanded = !!expandedMealIds[item.id_]
                   return (
                     <View style={{ marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
-                      <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontWeight: '700' }}>{item.name}</Text>
-                        <View style={{ paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#eff6ff', borderRadius: 12 }}>
-                          <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>{kcal} cal</Text>
-                        </View>
-                      </View>
-                      <View style={{ padding: 12 }}>
-                        <Text style={{ color: '#666', marginBottom: 4 }}>{item.type} • {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                        {item.notes ? <Text style={{ color: '#666', marginBottom: 6 }}>{item.notes}</Text> : null}
-                        {(item.mealFoods?.length ?? 0) > 0 && (
-                          <View style={{ marginTop: 4 }}>
-                            {item.mealFoods.map((mf: any) => (
-                              <Text key={mf.id_} style={{ color: '#444' }}>
-                                {mf.quantity} {mf.servingUnit} — {mf.foodItem?.name}
-                              </Text>
-                            ))}
+                      <Pressable onPress={() => router.push(`/meals/${item.id_}`)}>
+                        <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={{ fontWeight: '700' }}>{item.name}</Text>
+                          <View style={{ paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#eff6ff', borderRadius: 12 }}>
+                            <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>{kcal} cal</Text>
                           </View>
-                        )}
-                      </View>
+                        </View>
+                        <View style={{ padding: 12 }}>
+                          <Text style={{ color: '#666', marginBottom: 4 }}>{item.type} • {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                          {item.notes ? <Text style={{ color: '#666', marginBottom: 6 }}>{item.notes}</Text> : null}
+                        </View>
+                      </Pressable>
+                      {(item.mealFoods?.length ?? 0) > 0 && (
+                        <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                          <Pressable onPress={() => setExpandedMealIds(prev => ({ ...prev, [item.id_]: !expanded }))} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ marginRight: 6, color: '#1f2937' }}>{expanded ? '▾' : '▸'}</Text>
+                            <Text style={{ fontWeight: '600' }}>Ingredients</Text>
+                          </Pressable>
+                          {expanded && (
+                            <View style={{ marginTop: 6 }}>
+                              {item.mealFoods.map((mf: any) => (
+                                <Pressable key={mf.id_} onPress={() => router.push(`/foods/${mf.foodItem?.id_}?from=/meals`)}>
+                                  <Text style={{ color: '#444', paddingVertical: 2 }}>
+                                    {mf.quantity} {mf.servingUnit} — {mf.foodItem?.name}
+                                  </Text>
+                                </Pressable>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
                   )
                 }}
@@ -273,13 +305,48 @@ export default function MealsScreen() {
       <Modal visible={showFabSheet} transparent animationType="fade" onRequestClose={() => setShowFabSheet(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFabSheet(false)}>
           <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-            <Pressable onPress={() => { setShowFabSheet(false); router.push('/meals/create') }} style={{ paddingVertical: 12 }}>
+            <Pressable onPress={() => { setShowFabSheet(false); router.push('/meals/create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>🍽️</Text>
               <Text style={{ fontSize: 16, fontWeight: '600' }}>Create New Meal</Text>
             </Pressable>
-            <View style={{ height: 8 }} />
-            <Pressable onPress={() => setShowFabSheet(false)} style={{ paddingVertical: 12 }}>
-              <Text style={{ fontSize: 16, color: '#666' }}>Cancel</Text>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <Pressable onPress={() => { setShowFabSheet(false); setShowWaterModal(true) }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>💧</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600' }}>Log Water</Text>
             </Pressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <Pressable onPress={() => setShowFabSheet(false)} style={{ paddingVertical: 12 }}>
+              <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Log Water modal */}
+      <Modal visible={showWaterModal} transparent animationType="fade" onRequestClose={() => setShowWaterModal(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowWaterModal(false)}>
+          <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12, width: '90%' }}>
+            <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 10 }}>Log Water</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: '#666' }}>Amount (oz)</Text>
+            </View>
+            <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+              <TextInput
+                value={waterAmount}
+                onChangeText={setWaterAmount}
+                placeholder="e.g., 8"
+                keyboardType="numeric"
+                style={{ padding: 12 }}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <Pressable onPress={() => setShowWaterModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                <Text style={{ color: '#666' }}>Cancel</Text>
+              </Pressable>
+              <Pressable disabled={savingWater} onPress={onSaveWater} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>{savingWater ? 'Saving…' : 'Save'}</Text>
+              </Pressable>
+            </View>
           </View>
         </Pressable>
       </Modal>
