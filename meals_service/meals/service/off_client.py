@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from cachetools import TTLCache
 import openfoodfacts
-import requests
+import httpx
 
 
 class OffClient:
@@ -14,7 +14,7 @@ class OffClient:
     Provides:
     - get_product_by_barcode via v2
     - search_filtered via v2 (structured filters)
-    - search_fulltext via HTTP v2 search (fallback)
+    - search_fulltext via HTTP v2 search (async)
     """
 
     def __init__(
@@ -94,11 +94,8 @@ class OffClient:
         print(f"[OFF] search_filtered results={len(products)}")
         return products
 
-    def search_fulltext(self, query: str, page_size: int = 10) -> List[Dict[str, Any]]:
-        """Full-text style search using OFF v2 HTTP search endpoint.
-
-        When enabled, call GET https://world.openfoodfacts.org/api/v2/search with search_terms.
-        """
+    async def search_fulltext(self, query: str, page_size: int = 10) -> List[Dict[str, Any]]:
+        """Full-text style search using OFF v2 HTTP search endpoint (async)."""
         if not self.searchalicous_enabled:
             print("[OFF] search_fulltext disabled by flag")
             return []
@@ -106,31 +103,27 @@ class OffClient:
         if cache_key in self._search_cache:
             return self._search_cache[cache_key]  # type: ignore[return-value]
 
-        default_fields = [
-            "code",
-            "product_name",
-            "brands",
-            "image_url",
-            "nutrition_grades",
-            "nutriscore_data",
-            "nutriments",
-            "serving_size",
-            "serving_quantity",
-        ]
+        params = {
+            "search_terms": query,
+            "page_size": page_size,
+            "fields": ",".join([
+                "code",
+                "product_name",
+                "brands",
+                "image_url",
+                "nutrition_grades",
+                "nutriscore_data",
+                "nutriments",
+                "serving_size",
+                "serving_quantity",
+            ]),
+        }
         try:
-            print(f"[OFF] search_fulltext query='{query}' page_size={page_size} (HTTP v2)")
-            resp = requests.get(
-                "https://world.openfoodfacts.org/api/v2/search",
-                params={
-                    "search_terms": query,
-                    "page_size": page_size,
-                    "fields": ",".join(default_fields),
-                },
-                headers={"User-Agent": self._ua},
-                timeout=8,
-            )
-            resp.raise_for_status()
-            data = resp.json()
+            print(f"[OFF] search_fulltext query='{query}' page_size={page_size} (HTTP v2 async)")
+            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": self._ua}) as client:
+                resp = await client.get("https://world.openfoodfacts.org/api/v2/search", params=params)
+                resp.raise_for_status()
+                data = resp.json()
             results: List[Dict[str, Any]] = data.get("products", []) if isinstance(data, dict) else []
         except Exception as exc:
             print(f"[OFF] search_fulltext error: {exc}")
