@@ -13,7 +13,7 @@ class OffClient:
     Provides:
     - get_product_by_barcode via v2
     - search_filtered via v2 (structured filters)
-    - search_fulltext via Search-a-licious (stubbed HTTP to be added later)
+    - search_fulltext via SDK fallback (Search-a-licious placeholder)
     """
 
     def __init__(
@@ -27,10 +27,15 @@ class OffClient:
         # SDK API client
         self.api = openfoodfacts.API(user_agent=ua)
         # Feature flag for Search-a-licious
-        self.searchalicous_enabled = searchalicous_enabled or os.getenv("OFF_SEARCHALICIOUS_ENABLED", "false").lower() == "true"
+        env_flag = os.getenv("OFF_SEARCHALICIOUS_ENABLED", "false").lower() == "true"
+        self.searchalicous_enabled = searchalicous_enabled or env_flag
         # Simple in-process caches
         self._detail_cache: TTLCache[str, dict] = TTLCache(maxsize=cache_maxsize, ttl=cache_ttl_seconds)
         self._search_cache: TTLCache[str, dict] = TTLCache(maxsize=cache_maxsize, ttl=cache_ttl_seconds)
+        try:
+            print(f"[OFF] Initialized API client. UA='{ua}', searchalicous_enabled={self.searchalicous_enabled}")
+        except Exception:
+            pass
 
     # ---- Public methods ----
 
@@ -46,15 +51,19 @@ class OffClient:
 
         # SDK call
         try:
+            print(f"[OFF] get_product_by_barcode code={normalized} fields={fields}")
             result = self.api.product.get(normalized, fields=fields)
-        except Exception:
+        except Exception as exc:
+            print(f"[OFF] get_product_by_barcode error: {exc}")
             result = None
 
         if not result or (isinstance(result, dict) and result.get("status") == 0):
+            print("[OFF] get_product_by_barcode: not found")
             return None
 
         # The SDK returns a dict already filtered by fields when fields is provided
         self._detail_cache[cache_key] = result
+        print("[OFF] get_product_by_barcode: hit")
         return result
 
     def search_filtered(self, filters: Dict[str, Any], fields: Optional[List[str]] = None, page_size: int = 10) -> List[Dict[str, Any]]:
@@ -70,32 +79,56 @@ class OffClient:
             return self._search_cache[cache_key]  # type: ignore[return-value]
 
         try:
+            print(f"[OFF] search_filtered filters={filters} fields={fields} page_size={page_size}")
             # SDK: returns a dict with keys like products, count, etc.
             response = self.api.product.search({**filters, "fields": fields or [], "page_size": page_size})
             products = response.get("products", []) if isinstance(response, dict) else []
-        except Exception:
+        except Exception as exc:
+            print(f"[OFF] search_filtered error: {exc}")
             products = []
 
         self._search_cache[cache_key] = products
+        print(f"[OFF] search_filtered results={len(products)}")
         return products
 
     def search_fulltext(self, query: str, page_size: int = 10) -> List[Dict[str, Any]]:
-        """Search-a-licious full-text search (beta).
+        """Full-text style search.
 
-        Currently a stub; returns empty list unless OFF_SEARCHALICIOUS_ENABLED=true.
-        The HTTP implementation can be added later.
-        Docs: https://search.openfoodfacts.org/docs
+        When enabled, use SDK fallback via search_terms to approximate Search-a-licious.
         """
         if not self.searchalicous_enabled:
+            print("[OFF] search_fulltext disabled by flag")
             return []
         cache_key = f"searcht:{query}:{page_size}"
         if cache_key in self._search_cache:
             return self._search_cache[cache_key]  # type: ignore[return-value]
 
-        # TODO: implement HTTP call to Search-a-licious API endpoint
-        # Keep as empty for now; wire later behind feature flag
-        results: List[Dict[str, Any]] = []
+        # Fallback implementation using the official SDK "search_terms"
+        default_fields = [
+            "code",
+            "product_name",
+            "brands",
+            "image_url",
+            "nutrition_grades",
+            "nutriscore_data",
+            "nutriments",
+            "serving_size",
+            "serving_quantity",
+        ]
+        try:
+            print(f"[OFF] search_fulltext query='{query}' page_size={page_size}")
+            response = self.api.product.search({
+                "search_terms": query,
+                "fields": default_fields,
+                "page_size": page_size,
+            })
+            results: List[Dict[str, Any]] = response.get("products", []) if isinstance(response, dict) else []
+        except Exception as exc:
+            print(f"[OFF] search_fulltext error: {exc}")
+            results = []
+
         self._search_cache[cache_key] = results
+        print(f"[OFF] search_fulltext results={len(results)}")
         return results
 
     # ---- Internal helpers ----

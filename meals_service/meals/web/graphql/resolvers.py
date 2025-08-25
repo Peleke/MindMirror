@@ -225,8 +225,7 @@ class Query:
                 )
 
         # If we already have enough, return
-        if len(results) >= limit:
-            return results[:limit]
+        # Do not return early; always attempt to enrich with OFF results, then trim at the end
 
         # Barcode-like query: digits and length >= 8
         is_barcode_like = query.isdigit() and len(query) >= 8
