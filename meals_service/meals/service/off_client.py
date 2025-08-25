@@ -95,7 +95,9 @@ class OffClient:
         return products
 
     async def search_fulltext(self, query: str, page_size: int = 10) -> List[Dict[str, Any]]:
-        """Full-text style search using OFF v2 HTTP search endpoint (async)."""
+        """Full-text style search using OFF Search-a-licious (POST /search) when enabled; fallback to v2 GET.
+        Docs: https://openfoodfacts.github.io/search-a-licious/users/ref-openapi/#operation/search_search_post
+        """
         if not self.searchalicous_enabled:
             print("[OFF] search_fulltext disabled by flag")
             return []
@@ -103,13 +105,9 @@ class OffClient:
         if cache_key in self._search_cache:
             return self._search_cache[cache_key]  # type: ignore[return-value]
 
-        params = {
-            "search_terms": query,
-            "search_simple": 1,
-            "sort_by": "popularity_key",
-            "page_size": page_size,
-            "lang": "en",
-            "fields": ",".join([
+        payload = {
+            "q": query,
+            "fields": [
                 "code",
                 "product_name",
                 "brands",
@@ -119,18 +117,54 @@ class OffClient:
                 "nutriments",
                 "serving_size",
                 "serving_quantity",
-            ]),
+            ],
+            "page_size": max(10, page_size),
+            "langs": ["en"],
+            "boost_phrase": True,
         }
+        results: List[Dict[str, Any]] = []
         try:
-            print(f"[OFF] search_fulltext query='{query}' page_size={page_size} (HTTP v2 async)")
-            async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": self._ua}) as client:
-                resp = await client.get("https://world.openfoodfacts.org/api/v2/search", params=params)
+            print(f"[OFF] SAL search q='{query}' page_size={page_size}")
+            async with httpx.AsyncClient(timeout=8.0, headers={
+                "User-Agent": self._ua,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }) as client:
+                resp = await client.post("https://search.openfoodfacts.org/search", json=payload)
                 resp.raise_for_status()
                 data = resp.json()
-            results: List[Dict[str, Any]] = data.get("products", []) if isinstance(data, dict) else []
+            # Robust extraction of items from SAL response
+            items = (
+                data.get("items")
+                or data.get("products")
+                or data.get("results")
+                or data.get("hits")
+                or []
+            )
+            if not isinstance(items, list):
+                items = []
+            results = items[:page_size]
         except Exception as exc:
-            print(f"[OFF] search_fulltext error: {exc}")
-            results = []
+            print(f"[OFF] SAL search error, falling back to v2: {exc}")
+            # Fallback to v2 search GET
+            params = {
+                "search_terms": query,
+                "search_simple": 1,
+                "sort_by": "popularity_key",
+                "page_size": max(20, page_size),
+                "lang": "en",
+                "fields": ",".join(payload["fields"]),
+            }
+            try:
+                async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": self._ua}) as client:
+                    resp = await client.get("https://world.openfoodfacts.org/api/v2/search", params=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+                v2_products: List[Dict[str, Any]] = data.get("products", []) if isinstance(data, dict) else []
+                results = v2_products[:page_size]
+            except Exception as exc2:
+                print(f"[OFF] v2 fallback error: {exc2}")
+                results = []
 
         self._search_cache[cache_key] = results
         print(f"[OFF] search_fulltext results={len(results)}")

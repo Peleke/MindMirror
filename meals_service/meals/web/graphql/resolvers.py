@@ -258,9 +258,15 @@ class Query:
                 off_hits.append(FoodAutocompleteResult(**mapped))
 
         # De-dupe by name+brand
-        seen = {(r.name.lower(), (r.brand or "").lower()) for r in results}
+        def _as_lower_str(val: Optional[str]) -> str:
+            try:
+                return (val or "").lower() if isinstance(val, str) else ""
+            except Exception:
+                return ""
+
+        seen = {(_as_lower_str(r.name), _as_lower_str(r.brand)) for r in results}
         for r in off_hits:
-            key = (r.name.lower(), (r.brand or "").lower())
+            key = (_as_lower_str(r.name), _as_lower_str(r.brand))
             if key not in seen:
                 results.append(r)
                 seen.add(key)
