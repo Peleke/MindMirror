@@ -310,7 +310,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  
+
   mesh-compose:
     build:
       context: ./mesh
@@ -416,6 +416,8 @@ services:
     build:
       context: ./movements_service
       dockerfile: Dockerfile
+      args:
+        BUILD_WITH_DEV: ${MOVEMENTS_BUILD_WITH_DEV:-true}
     container_name: movements_service
     env_file: ${ENV_FILE:-.env}
     environment:
