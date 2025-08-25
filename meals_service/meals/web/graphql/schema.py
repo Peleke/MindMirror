@@ -5,6 +5,7 @@ from strawberry.extensions import SchemaExtension
 
 from .resolvers import Mutation, Query
 from .types import (  # Enums and Input types are not directly part of the schema types list usually,; Strawberry infers them from Query/Mutation definitions.
+    FoodAutocompleteResult,
     FoodItemTypeGQL,
     MealFoodTypeGQL,
     MealTypeGQL,
@@ -16,6 +17,7 @@ from .types import (  # Enums and Input types are not directly part of the schem
 # This helps avoid issues with types not being found, especially with forward references or federation.
 MAIN_GQL_TYPES = (
     FoodItemTypeGQL,
+    FoodAutocompleteResult,
     MealFoodTypeGQL,
     MealTypeGQL,  # The main object type, not the enum
     UserGoalsTypeGQL,

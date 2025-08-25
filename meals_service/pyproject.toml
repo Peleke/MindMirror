@@ -27,6 +27,8 @@ opentelemetry-instrumentation-fastapi = "^0.54b0"
 prometheus-fastapi-instrumentator = "^7.1.0"
 loguru = "^0.7.3"
 opentelemetry-exporter-otlp-proto-grpc = "^1.33.0"
+openfoodfacts = "^2.9.0"
+cachetools = "^5.5.0"
 
 [tool.poetry.scripts]
 start = "meals.web.server:start"

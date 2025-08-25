@@ -45,3 +45,11 @@ class DomainFoodItem(BaseModel):
     # User association and notes
     user_id: Optional[str] = None
     notes: Optional[str] = None
+
+    # OFF provenance and display
+    brand: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    source: Optional[str] = None
+    external_source: Optional[str] = None
+    external_id: Optional[str] = None
+    external_metadata: Optional[dict] = None

@@ -39,12 +39,16 @@ from meals.repository.uow import get_uow as app_get_uow
 from meals.web.app import app
 from meals.web.graphql.dependencies import get_uow as meals_app_get_uow
 
+
+def _running_in_docker() -> bool:
+    return os.path.exists("/.dockerenv") or os.getenv("RUNNING_IN_DOCKER", "").lower() == "true"
+
 # Test configuration
 TEST_DRIVER = "asyncpg"
 TEST_USER = os.getenv("POSTGRES_USER", "postgres")
 TEST_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-TEST_HOST = os.getenv("POSTGRES_HOST", "localhost")
-TEST_POSTGRES_PORT = os.getenv("POSTGRES_PORT", 5432)
+TEST_HOST = os.getenv("POSTGRES_HOST", "postgres" if _running_in_docker() else "localhost")
+TEST_POSTGRES_PORT = int(os.getenv("MEALS_TEST_POSTGRES_PORT", "5543"))
 TEST_HTTP_PORT = os.getenv("HTTP_PORT", 8001)  # Different port from practices
 TEST_DB = os.getenv("POSTGRES_DB", "swae")
 TEST_SCHEMA = "meals"
@@ -62,11 +66,15 @@ logging.basicConfig(level=logging.WARNING)
 
 @pytest.fixture(scope="function")
 def docker_compose_up_down() -> Generator[None, None, None]:
-    """Start docker-compose before tests and tear it down after.
+    """Start docker-compose before tests and tear it down after when running locally.
 
-    This fixture manages the lifecycle of a Docker container running the test database.
-    It ensures that the container is started before tests are run and stopped afterwards.
+    When running inside the meals_service container, this is a no-op and DB is expected to be available as service `postgres`.
     """
+    if _running_in_docker():
+        # No-op in container; the compose service `postgres` is started by the outer `docker compose run`
+        yield
+        return
+
     import docker
 
     client = None
@@ -112,6 +120,7 @@ def docker_compose_up_down() -> Generator[None, None, None]:
                 },
                 ports={"5432/tcp": TEST_POSTGRES_PORT},
                 detach=True,
+                remove=True,
             )
             logging.info(f"Waiting for meals_test_db container to be ready (PID: {container.id[:12]})...")
             # Improved readiness check
@@ -147,7 +156,7 @@ def docker_compose_up_down() -> Generator[None, None, None]:
             try:
                 logging.info(f"Stopping and removing meals_test_db container (ID: {container.id[:12]}).")
                 container.stop()
-                container.remove()
+                # remove=True on run handles removal after stop
             except docker.errors.NotFound:
                 logging.warning("meals_test_db container not found during teardown (already removed?).")
             except docker.errors.APIError as e:

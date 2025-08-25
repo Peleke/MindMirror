@@ -402,3 +402,166 @@ async def test_get_total_water_consumption_no_data(client, create_tables, docker
     data = response.json()
     assert "errors" not in data
     assert data["data"]["totalWaterConsumptionByUserAndDate"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_food_items_autocomplete_local_only(client, seed_db, docker_compose_up_down, monkeypatch):
+    # Disable OFF in context by monkeypatching app module's _off_client to None
+    from meals.web import app as meals_app
+
+    monkeypatch.setattr(meals_app, "_off_client", None)
+
+    query = """
+        query Autocomplete($q: String!) {
+          foodItemsAutocomplete(query: $q, limit: 5) {
+            source
+            id_
+            name
+          }
+        }
+    """
+    variables = {"q": "Oat"}
+    response = await client.post("/graphql", json={"query": query, "variables": variables})
+    assert response.status_code == 200
+    data = response.json()
+    assert "errors" not in data
+    results = data["data"]["foodItemsAutocomplete"]
+    # Should contain local items, not OFF
+    assert any(r["source"] == "local" for r in results)
+
+
+@pytest.mark.asyncio
+async def test_food_items_autocomplete_barcode_hit(client, seed_db, docker_compose_up_down, monkeypatch):
+    # Monkeypatch OffClient.get_product_by_barcode to return a fake product
+    class FakeOff:
+        def get_product_by_barcode(self, code, fields=None):
+            return {
+                "code": code,
+                "product_name": "Nutella",
+                "brands": "Ferrero",
+                "image_url": "https://img.example/nutella.jpg",
+                "nutrition_grades": "e",
+                "nutriments": {"energy-kcal_100g": 539, "proteins_100g": 6.0, "carbohydrates_100g": 57.5, "fat_100g": 30.9},
+            }
+
+        def search_fulltext(self, query, page_size=10):
+            return []
+
+    from meals.web import app as meals_app
+
+    monkeypatch.setattr(meals_app, "_off_client", FakeOff())
+
+    query = """
+        query Autocomplete($q: String!) {
+          foodItemsAutocomplete(query: $q, limit: 5) {
+            source
+            externalId
+            name
+            brand
+          }
+        }
+    """
+    variables = {"q": "3017624010701"}
+    response = await client.post("/graphql", json={"query": query, "variables": variables})
+    assert response.status_code == 200
+    data = response.json()
+    assert "errors" not in data
+    results = data["data"]["foodItemsAutocomplete"]
+    # Should contain an OFF result
+    assert any(r["source"] == "off" and r["externalId"] == "3017624010701" for r in results)
+
+
+@pytest.mark.asyncio
+async def test_import_off_product_creates_food_item(client, create_tables, docker_compose_up_down, monkeypatch):
+    # Fake OFF product detail for import
+    class FakeOff:
+        def get_product_by_barcode(self, code, fields=None):
+            return {
+                "code": code,
+                "product_name": "Orange Juice",
+                "brands": "Generic",
+                "image_url": "https://img.example/oj.jpg",
+                "nutrition_grades": "c",
+                "nutriments": {
+                    "energy-kcal_100g": 45,
+                    "proteins_100g": 0.7,
+                    "carbohydrates_100g": 10.4,
+                    "fat_100g": 0.2,
+                    "sodium_100g": 0.005,
+                },
+                "serving_size": "240 ml",
+            }
+
+    from meals.web import app as meals_app
+
+    monkeypatch.setattr(meals_app, "_off_client", FakeOff())
+
+    mutation = """
+        mutation Import($code: String!) {
+          importOffProduct(code: $code) {
+            id_
+            name
+            brand
+            source
+            externalSource
+            externalId
+            thumbnailUrl
+            calories
+            protein
+            carbohydrates
+            fat
+            sodium
+          }
+        }
+    """
+    variables = {"code": "0000000001234"}
+    response = await client.post("/graphql", json={"query": mutation, "variables": variables})
+    assert response.status_code == 200
+    data = response.json()
+    assert "errors" not in data, data.get("errors")
+    item = data["data"]["importOffProduct"]
+    assert item["name"] == "Orange Juice"
+    assert item["brand"] == "Generic"
+    assert item["source"] == "off"
+    assert item["externalSource"] == "openfoodfacts"
+    assert item["externalId"] == "0000000001234"
+    assert item["calories"] > 0
+
+
+@pytest.mark.asyncio
+async def test_import_off_product_idempotent(client, create_tables, docker_compose_up_down, monkeypatch):
+    # Reuse the same FakeOff
+    class FakeOff:
+        def __init__(self):
+            self.calls = 0
+
+        def get_product_by_barcode(self, code, fields=None):
+            self.calls += 1
+            return {
+                "code": code,
+                "product_name": "OJ",
+                "brands": "BrandX",
+                "image_url": "https://img.example/oj.jpg",
+                "nutriments": {"energy-kcal_100g": 45, "proteins_100g": 1.0, "carbohydrates_100g": 9.0, "fat_100g": 0.1},
+            }
+
+    from meals.web import app as meals_app
+
+    fake = FakeOff()
+    monkeypatch.setattr(meals_app, "_off_client", fake)
+
+    mutation = """
+        mutation Import($code: String!) {
+          importOffProduct(code: $code) { id_ name externalId }
+        }
+    """
+    variables = {"code": "0000000002222"}
+    # First call creates
+    resp1 = await client.post("/graphql", json={"query": mutation, "variables": variables})
+    assert resp1.status_code == 200
+    data1 = resp1.json()["data"]["importOffProduct"]
+    # Second call should return existing (still OK)
+    resp2 = await client.post("/graphql", json={"query": mutation, "variables": variables})
+    assert resp2.status_code == 200
+    data2 = resp2.json()["data"]["importOffProduct"]
+    assert data1["id_"] == data2["id_"]

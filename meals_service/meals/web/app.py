@@ -16,9 +16,9 @@ from meals.repository.uow import UnitOfWork
 from meals.web.config import Config
 from meals.web.graphql.dependencies import get_uow  # Corrected import path
 from meals.web.graphql.schema import get_schema  # Corrected import path
+from meals.service.off_client import OffClient
 
 # from starlette.middleware.base import BaseHTTPMiddleware # If you add custom logging middleware
-
 
 
 API_VERSION = Config.API_VERSION
@@ -40,8 +40,15 @@ async def lifespan(app: FastAPI):
         print(f"[WARN] close_db failed during shutdown: {exc}")
 
 
+# Initialize OFF client once per process
+_off_client = OffClient(
+    user_agent=Config.off_user_agent,
+    searchalicous_enabled=Config.off_searchalicious_enabled,
+)
+
+
 async def get_context(uow: UnitOfWork = Depends(get_uow)):
-    return {"uow": uow}
+    return {"uow": uow, "off": _off_client}
 
 
 app = FastAPI(

@@ -25,10 +25,12 @@ from meals.service.services import (
     UserGoalsService,
     WaterConsumptionService,
 )
+from meals.service.off_mapping import map_off_product_to_autocomplete, map_off_product_to_food_create
 
 from .types import MealFoodInput  # For MealCreateInput
 from .types import MealTypeGQLEnum  # Use the renamed Python enum
 from .types import (
+    FoodAutocompleteResult,
     FoodItemCreateInput,
     FoodItemTypeGQL,
     FoodItemUpdateInput,
@@ -74,6 +76,11 @@ def convert_food_item_to_gql(domain_food_item: DomainFoodItem) -> FoodItemTypeGQ
         zinc=domain_food_item.zinc,
         notes=domain_food_item.notes,
         user_id=domain_food_item.user_id,
+        brand=domain_food_item.brand,
+        thumbnail_url=domain_food_item.thumbnail_url,
+        source=domain_food_item.source,
+        external_source=domain_food_item.external_source,
+        external_id=domain_food_item.external_id,
     )
 
 
@@ -180,6 +187,83 @@ class Query:
                 user_id=user_id, search_term=search_term, limit=limit, offset=offset
             )
             return [convert_food_item_to_gql(item) for item in items]
+
+    @strawberry.field
+    async def food_items_autocomplete(
+        self,
+        info: Info,
+        query: str,
+        user_id: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[FoodAutocompleteResult]:
+        """Merge local fuzzy results with OFF suggestions.
+        - If query is barcode-like: fetch OFF product detail and surface as a single OFF hit
+        - Else: try Search-a-licious (if enabled); otherwise return only local
+        """
+        uow: UnitOfWork = info.context["uow"]
+        off_client = info.context.get("off")
+        results: List[FoodAutocompleteResult] = []
+
+        # Local results first
+        async with uow:
+            repo = FoodItemRepository(uow.session)
+            service = FoodItemService(repo)
+            local_items = await service.list_food_items_for_user_with_public(
+                user_id=user_id or "", search_term=query, limit=limit
+            )
+            for item in local_items:
+                results.append(
+                    FoodAutocompleteResult(
+                        source="local",
+                        id_=strawberry.ID(str(item.id_)),
+                        external_id=item.external_id,
+                        name=item.name,
+                        brand=item.brand,
+                        thumbnail_url=item.thumbnail_url,
+                        nutrition_grades=(item.external_metadata or {}).get("nutrition_grades") if item.external_metadata else None,
+                    )
+                )
+
+        # If we already have enough, return
+        if len(results) >= limit:
+            return results[:limit]
+
+        # Barcode-like query: digits and length >= 8
+        is_barcode_like = query.isdigit() and len(query) >= 8
+        off_hits: List[FoodAutocompleteResult] = []
+        if off_client and is_barcode_like:
+            fields = [
+                "code",
+                "product_name",
+                "brands",
+                "image_url",
+                "nutrition_grades",
+                "nutriments",
+                "nutriscore_data",
+                "serving_size",
+                "serving_quantity",
+            ]
+            product = off_client.get_product_by_barcode(query, fields=fields)
+            if product:
+                mapped = map_off_product_to_autocomplete(product)
+                off_hits.append(FoodAutocompleteResult(**mapped))
+        elif off_client:
+            # Try full-text if enabled (stub returns [] when disabled)
+            for prod in off_client.search_fulltext(query, page_size=max(0, limit - len(results))):
+                mapped = map_off_product_to_autocomplete(prod)
+                off_hits.append(FoodAutocompleteResult(**mapped))
+
+        # De-dupe by name+brand
+        seen = {(r.name.lower(), (r.brand or "").lower()) for r in results}
+        for r in off_hits:
+            key = (r.name.lower(), (r.brand or "").lower())
+            if key not in seen:
+                results.append(r)
+                seen.add(key)
+            if len(results) >= limit:
+                break
+
+        return results[:limit]
 
     @strawberry.field
     async def meal(self, info: Info, id: strawberry.ID) -> Optional[MealTypeGQL]:
@@ -296,6 +380,46 @@ class Mutation:
             return convert_food_item_to_gql(created_item)
 
     @strawberry.field
+    async def import_off_product(self, info: Info, code: str, user_id: Optional[str] = None) -> Optional[FoodItemTypeGQL]:
+        """Import an OFF product by barcode into our DB, idempotently."""
+        uow: UnitOfWork = info.context["uow"]
+        off_client = info.context.get("off")
+        if not off_client:
+            return None
+
+        fields = [
+            "code",
+            "product_name",
+            "brands",
+            "image_url",
+            "nutrition_grades",
+            "nutriments",
+            "nutriscore_data",
+            "serving_size",
+            "serving_quantity",
+        ]
+        product = off_client.get_product_by_barcode(code, fields=fields)
+        if not product:
+            return None
+
+        async with uow:
+            repo = FoodItemRepository(uow.session)
+            service = FoodItemService(repo)
+
+            # Check if already imported
+            existing = await repo.search_food_items_by_name(product.get("product_name", ""), limit=50)
+            for item in existing:
+                if item.external_source == "openfoodfacts" and item.external_id == product.get("code"):
+                    return convert_food_item_to_gql(item)
+
+            # Map and create
+            create_dict = map_off_product_to_food_create(product)
+            if user_id:
+                create_dict["user_id"] = user_id
+            created = await service.create_food_item(create_dict)
+            return convert_food_item_to_gql(created)
+
+    @strawberry.field
     async def update_food_item(
         self, info: Info, id: strawberry.ID, input: FoodItemUpdateInput
     ) -> Optional[FoodItemTypeGQL]:
@@ -308,7 +432,6 @@ class Mutation:
             update_data_filtered = {k: v for k, v in update_data.items() if v is not None}
             updated_item = await service.update_food_item(UUID(str(id)), update_data_filtered)
             if updated_item:
-                await uow.commit()
                 return convert_food_item_to_gql(updated_item)
             return None
 
@@ -319,8 +442,6 @@ class Mutation:
             repo = FoodItemRepository(uow.session)
             service = FoodItemService(repo)
             result = await service.delete_food_item(UUID(str(id)))
-            if result:
-                await uow.commit()
             return result
 
     @strawberry.field
@@ -335,7 +456,6 @@ class Mutation:
                 item_data["meal_foods_data"] = [strawberry.asdict(mf_input) for mf_input in input.meal_foods_data]
 
             created_item = await service.create_meal(item_data)
-            await uow.commit()
             return convert_meal_to_gql(created_item)
 
     @strawberry.field

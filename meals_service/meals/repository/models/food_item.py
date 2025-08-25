@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Float, String, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -51,6 +52,14 @@ class FoodItemModel(Base):
     user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # For user-specific food items
     notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    # OFF provenance and display fields
+    brand: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="local")
+    external_source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    external_metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
     @property
     def id(self) -> UUID:
         return self.id_
@@ -83,4 +92,10 @@ class FoodItemModel(Base):
             "zinc": self.zinc,
             "user_id": self.user_id,
             "notes": self.notes,
+            "brand": self.brand,
+            "thumbnail_url": self.thumbnail_url,
+            "source": self.source,
+            "external_source": self.external_source,
+            "external_id": self.external_id,
+            "external_metadata": self.external_metadata,
         }

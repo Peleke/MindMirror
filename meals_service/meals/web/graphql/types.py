@@ -66,6 +66,22 @@ class FoodItemTypeGQL:
     zinc: Optional[float] = None
     notes: Optional[str] = None
     user_id: Optional[str] = None  # Assuming food items can be user-specific or global
+    brand: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    source: Optional[str] = None
+    external_source: Optional[str] = None
+    external_id: Optional[str] = None
+
+
+@strawberry.type
+class FoodAutocompleteResult:
+    source: str  # "local" | "off"
+    id_: Optional[strawberry.ID] = None
+    external_id: Optional[str] = None  # OFF barcode
+    name: str
+    brand: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    nutrition_grades: Optional[str] = None
 
 
 @strawberry.type
@@ -235,6 +251,7 @@ class WaterConsumptionUpdateInput:
 __all__ = [
     "MealTypeGQLEnum",
     "FoodItemTypeGQL",
+    "FoodAutocompleteResult",
     "MealFoodTypeGQL",
     "MealTypeGQL",
     "UserGoalsTypeGQL",
