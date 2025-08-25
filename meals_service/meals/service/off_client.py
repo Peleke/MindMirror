@@ -105,7 +105,10 @@ class OffClient:
 
         params = {
             "search_terms": query,
+            "search_simple": 1,
+            "sort_by": "popularity_key",
             "page_size": page_size,
+            "lang": "en",
             "fields": ",".join([
                 "code",
                 "product_name",
