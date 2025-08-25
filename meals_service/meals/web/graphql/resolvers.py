@@ -200,6 +200,10 @@ class Query:
         - If query is barcode-like: fetch OFF product detail and surface as a single OFF hit
         - Else: try Search-a-licious (if enabled); otherwise return only local
         """
+        try:
+            print(f"[Meals] autocomplete query='{query}' user_id={user_id} limit={limit}", flush=True)
+        except Exception:
+            pass
         uow: UnitOfWork = info.context["uow"]
         off_client = info.context.get("off")
         results: List[FoodAutocompleteResult] = []
