@@ -123,11 +123,12 @@ def map_off_product_to_food_create(product: Dict[str, Any]) -> Dict[str, Any]:
 
 def map_off_product_to_autocomplete(product: Dict[str, Any]) -> Dict[str, Any]:
     """Map a Search-a-licious or v2 product to a lightweight autocomplete entry."""
+    name = product.get("product_name") or product.get("product_name_en") or product.get("code")
     return {
         "source": "off",
         "id_": None,
         "external_id": product.get("code"),
-        "name": product.get("product_name") or product.get("code"),
+        "name": name.strip() if isinstance(name, str) else name,
         "brand": product.get("brands"),
         "thumbnail_url": product.get("image_url"),
         "nutrition_grades": product.get("nutrition_grades"),

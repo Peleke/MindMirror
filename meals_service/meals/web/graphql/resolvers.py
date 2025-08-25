@@ -247,8 +247,9 @@ class Query:
                 mapped = map_off_product_to_autocomplete(product)
                 off_hits.append(FoodAutocompleteResult(**mapped))
         elif off_client:
-            # Try full-text if enabled (async)
-            for prod in await off_client.search_fulltext(query, page_size=max(0, limit - len(results))):
+            # Try full-text if enabled (async). Request a fixed number to avoid zero-size queries.
+            off_page_size = max(1, min(8, limit or 8))
+            for prod in await off_client.search_fulltext(query, page_size=off_page_size):
                 mapped = map_off_product_to_autocomplete(prod)
                 off_hits.append(FoodAutocompleteResult(**mapped))
 
