@@ -47,6 +47,40 @@ const CREATE_FOOD_ITEM = gql`
   }
 `
 
+const AUTOCOMPLETE_FOOD_ITEMS = gql`
+  query AutocompleteFoods($q: String!, $limit: Int) {
+    foodItemsAutocomplete(query: $q, limit: $limit) {
+      source
+      id_
+      externalId
+      name
+      brand
+      thumbnailUrl
+      nutritionGrades
+    }
+  }
+`
+
+const IMPORT_OFF_PRODUCT = gql`
+  mutation ImportOff($code: String!) {
+    importOffProduct(code: $code) {
+      id_
+      name
+      servingSize
+      servingUnit
+      calories
+      protein
+      carbohydrates
+      fat
+      brand
+      thumbnailUrl
+      source
+      externalSource
+      externalId
+    }
+  }
+`
+
 const mealTypes = ['BREAKFAST','LUNCH','DINNER','SNACK'] as const
 
 type MealType = typeof mealTypes[number]
@@ -112,7 +146,17 @@ export default function CreateMealScreen() {
 
   const [createMeal, { loading: creatingMeal }] = useMutation(CREATE_MEAL)
   const [createFoodItem, { loading: creatingFood }] = useMutation(CREATE_FOOD_ITEM)
-  const [runSearch, { data: searchData, loading: searching }] = useLazyQuery(SEARCH_FOOD_ITEMS)
+  const [runSearch, { data: searchData, loading: searching }] = useLazyQuery(SEARCH_FOOD_ITEMS, {
+    fetchPolicy: 'network-only',
+    nextFetchPolicy: 'network-only',
+    notifyOnNetworkStatusChange: true,
+  })
+  const [runAutocomplete, { data: autoData, loading: autoLoading, refetch: refetchAuto }] = useLazyQuery(AUTOCOMPLETE_FOOD_ITEMS, {
+    fetchPolicy: 'no-cache',
+    nextFetchPolicy: 'no-cache',
+    notifyOnNetworkStatusChange: true,
+  })
+  const [importOff, { loading: importingOff }] = useMutation(IMPORT_OFF_PRODUCT)
   const resultsHeight = useMemo(() => {
     if (selectedForQuantity) return Platform.OS === 'web' ? 220 : 180
     return Platform.OS === 'web' ? 420 : 360
@@ -143,15 +187,51 @@ export default function CreateMealScreen() {
   }, [selectedForQuantity, qtyAnimOpacity, qtyAnimTranslateY])
 
   useEffect(() => {
+    const term = (search || '').trim()
     const h = setTimeout(() => {
-      if (showFoodModal) {
-        runSearch({ variables: { userId, search, limit: 15 } })
+      if (!showFoodModal) return
+      runSearch({ variables: { userId, search: term, limit: 15 } })
+      if (term.length > 1) {
+        runAutocomplete({ variables: { q: term, limit: 8 } })
       }
-    }, 250)
+    }, 300)
     return () => clearTimeout(h)
-  }, [search, showFoodModal, runSearch, userId])
+  }, [search, showFoodModal, runSearch, runAutocomplete, userId])
 
   const searchResults = searchData?.foodItemsForUserWithPublic ?? []
+  const offResults = useMemo(() => {
+    const list = autoData?.foodItemsAutocomplete ?? []
+    const seen = new Set<string>()
+    const filtered: any[] = []
+    for (const r of list) {
+      const key = (r.externalId || r.name) + '|' + (r.brand || '')
+      if (!seen.has(key)) { seen.add(key); filtered.push(r) }
+    }
+    return filtered.filter((r: any) => r.source === 'off')
+  }, [autoData])
+
+  const nutriColor = (grade?: string | null) => {
+    const g = (grade || '').toLowerCase()
+    if (g === 'a') return '#16a34a'
+    if (g === 'b') return '#65a30d'
+    if (g === 'c') return '#ca8a04'
+    if (g === 'd') return '#ea580c'
+    if (g === 'e') return '#dc2626'
+    return '#6b7280'
+  }
+
+  const onImportOffPress = async (externalId?: string | null) => {
+    if (!externalId) return
+    try {
+      const res = await importOff({ variables: { code: externalId } })
+      const created = res.data?.importOffProduct
+      if (created) {
+        router.push(`/foods/${created.id_}?from=${encodeURIComponent('/meals/create')}`)
+      }
+    } catch (e) {
+      console.error('Import OFF product failed', e)
+    }
+  }
 
   const input = useMemo(() => ({
     userId: userId,
@@ -361,11 +441,14 @@ export default function CreateMealScreen() {
       <Modal visible={showFoodModal} transparent animationType="fade" onRequestClose={() => setShowFoodModal(false)}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowFoodModal(false)} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-            <View style={{ alignSelf: 'center', width: '96%', backgroundColor: '#fff', height: '90%', borderRadius: 12, padding: 16, position: 'relative' }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center' }}>
+            <View style={{ width: '96%', backgroundColor: '#fff', height: '70%', maxHeight: '70%', borderRadius: 12, padding: 16, position: 'relative' }}>
               {!creatingNew ? (
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>{editIndex != null ? 'Edit Quantity' : 'Add Food'}</Text>
+                  <Pressable onPress={() => router.push('/meals/scan')} style={{ position: 'absolute', right: 16, top: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Scan Barcode</Text>
+                  </Pressable>
                   <TextInput
                     value={search}
                     onChangeText={setSearch}
@@ -377,12 +460,14 @@ export default function CreateMealScreen() {
                   <Pressable onPress={() => setCreatingNew(true)} style={{ paddingVertical: 10 }}>
                     <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>＋ Create New Item</Text>
                   </Pressable>
-                  <View style={{ flex: 1, marginTop: 6, paddingBottom: selectedForQuantity ? 150 : 0 }}>
+                  <View style={{ flex: 1, marginTop: 6 }}>
                     <FlatList
                       keyboardShouldPersistTaps="handled"
                       showsVerticalScrollIndicator={true}
                       data={searchResults}
                       keyExtractor={(item) => item.id_}
+                      style={{ flex: 1 }}
+                      contentContainerStyle={{ paddingBottom: 16 }}
                       ListEmptyComponent={!searching ? (
                         <View style={{ paddingVertical: 16, alignItems: 'center' }}>
                           <Text style={{ color: '#6b7280' }}>No matches found</Text>
@@ -390,49 +475,80 @@ export default function CreateMealScreen() {
                       ) : null}
                       renderItem={({ item }) => (
                         <Pressable onPress={() => openQuantityFor(item)} style={{ paddingVertical: 10 }}>
-                          <Text style={{ fontWeight: '600' }}>{item.name}</Text>
-                          <Text style={{ color: '#666' }}>{item.servingSize}{item.servingUnit} • {Math.round(item.calories)} kcal</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 1, paddingRight: 8 }}>
+                              <Text style={{ fontWeight: '600' }}>{item.name}</Text>
+                              <Text style={{ color: '#666' }}>{item.servingSize}{item.servingUnit} • {Math.round(item.calories)} kcal</Text>
+                            </View>
+                          </View>
                         </Pressable>
                       )}
+                      ListFooterComponent={offResults.length > 0 ? (
+                        <View style={{ marginTop: 16 }}>
+                          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Open Food Facts</Text>
+                          {offResults.map((r: any) => (
+                            <Pressable key={(r.externalId || r.name) + (r.brand || '')} onPress={() => onImportOffPress(r.externalId)} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                  <Text style={{ fontWeight: '600' }}>
+                                    {r.name}{r.brand ? ` • ${r.brand}` : ''}
+                                  </Text>
+                                </View>
+                                {!!r.nutritionGrades && (
+                                  <View style={{ minWidth: 28, height: 28, borderRadius: 6, backgroundColor: nutriColor(r.nutritionGrades), alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: '#fff', fontWeight: '800' }}>{String(r.nutritionGrades).toUpperCase()}</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                                <Pressable disabled={importingOff} onPress={() => onImportOffPress(r.externalId)}
+                                  style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#f8fafc', borderRadius: 10, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3, borderWidth: 1, borderColor: '#e5e7eb', alignSelf: 'flex-start' }}>
+                                  <Text style={{ color: '#111827', fontWeight: '700' }}>{importingOff ? 'Importing…' : 'Import  >'}</Text>
+                                </Pressable>
+                              </View>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
                     />
                   </View>
 
                   {selectedForQuantity && (
                     <Animated.View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, opacity: qtyAnimOpacity, transform: [{ translateY: qtyAnimTranslateY }] }}>
-                      <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
-                      <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
-                      <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TextInput
-                          value={quantity}
-                          onChangeText={setQuantity}
-                          keyboardType="numeric"
-                          placeholder="Quantity"
-                          placeholderTextColor="#9CA3AF"
-                          style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
-                        />
-                        <TextInput
-                          value={servingUnit}
-                          onChangeText={setServingUnit}
-                          placeholder="Unit"
-                          placeholderTextColor="#9CA3AF"
-                          style={{ width: 100, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
-                        />
-                      </View>
-                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
-                        <Pressable onPress={() => { setSelectedForQuantity(null); setEditIndex(null) }} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
-                          <Text style={{ color: '#666' }}>Cancel</Text>
-                        </Pressable>
-                        <Pressable onPress={addSelectedFood} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                          <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
-                        </Pressable>
-                      </View>
-                    </Animated.View>
+                        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
+                        <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput
+                            value={quantity}
+                            onChangeText={setQuantity}
+                            keyboardType="numeric"
+                            placeholder="Quantity"
+                            placeholderTextColor="#9CA3AF"
+                            style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
+                          />
+                          <TextInput
+                            value={servingUnit}
+                            onChangeText={setServingUnit}
+                            placeholder="Unit"
+                            placeholderTextColor="#9CA3AF"
+                            style={{ width: 100, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
+                          />
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
+                          <Pressable onPress={() => { setSelectedForQuantity(null); setEditIndex(null) }} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                            <Text style={{ color: '#666' }}>Cancel</Text>
+                          </Pressable>
+                          <Pressable onPress={addSelectedFood} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
+                          </Pressable>
+                        </View>
+                      </Animated.View>
                   )}
                 </View>
               ) : (
                 <>
                   <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>Create Food Item</Text>
-                  <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80 }}>
+                  <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
                     <TextInput value={newFood.name} onChangeText={(v) => setNewFood(s => ({ ...s, name: v }))} placeholder="Name" placeholderTextColor="#9CA3AF" style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 8 }} />
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TextInput value={newFood.serving_size} onChangeText={(v) => setNewFood(s => ({ ...s, serving_size: v }))} placeholder="Serving Size" placeholderTextColor="#9CA3AF" keyboardType="numeric" style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }} />

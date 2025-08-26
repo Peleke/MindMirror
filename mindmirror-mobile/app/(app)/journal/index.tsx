@@ -109,6 +109,9 @@ function MiniDashboard() {
   const circumference = 2 * Math.PI * radius
   const progress = circumference * (1 - adherence)
 
+  // Ensure hooks order is stable: declare state before any conditional return
+  const [chartsTab, setChartsTab] = useState<'habits' | 'meals'>('habits')
+
   if ((tasksLoading && !habitId) || (habitId && statsLoading)) {
     return (
       <VStack className="mt-2 items-center">
@@ -153,8 +156,6 @@ function MiniDashboard() {
   const smallRadius = (smallSize - smallStroke) / 2
   const smallCircumference = 2 * Math.PI * smallRadius
   const smallProgress = smallCircumference * (1 - adherence)
-
-  const [chartsTab, setChartsTab] = useState<'habits' | 'meals'>('habits')
 
   return (
     <VStack className="mt-2 px-4">
@@ -377,16 +378,7 @@ export default function JournalScreen() {
     },
   });
 
-  if (authLoading && !session) {
-    return (
-      <SafeAreaView className="h-full w-full">
-        <VStack className="h-full w-full bg-background-0 items-center justify-center">
-          <ActivityIndicator />
-        </VStack>
-      </SafeAreaView>
-    )
-  }
-  
+  // Move hooks above any conditional return to keep hook order stable
   const {
     submitEntry,
     isTransitioning: hookIsTransitioning,
@@ -410,6 +402,17 @@ export default function JournalScreen() {
   `
   const { data: mealsData, loading: mealsLoading } = useQuery(MEALS_TODAY, { variables: { userId, date: onDate }, skip: !userId })
   const todaysMeals = mealsData?.mealsByUserAndDateRange || []
+
+  // Now safe to early-return without changing hook order
+  if (authLoading && !session) {
+    return (
+      <SafeAreaView className="h-full w-full">
+        <VStack className="h-full w-full bg-background-0 items-center justify-center">
+          <ActivityIndicator />
+        </VStack>
+      </SafeAreaView>
+    )
+  }
 
   const handleSaveAndChat = async (entry: string) => {
     // Call submitEntry with the 'andChat' flag

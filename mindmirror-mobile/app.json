@@ -1,12 +1,12 @@
 {
-      "expo": {
-      "name": "MindMirror",
-      "slug": "mindmirror-mobile",
-      "version": "1.0.0",
-      "orientation": "portrait",
-      "icon": "./assets/images/icon.png",
-      "userInterfaceStyle": "light",
-      "scheme": "mindmirror",
+  "expo": {
+    "name": "MindMirror",
+    "slug": "mindmirror-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "mindmirror",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -42,7 +42,16 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-barcode-scanner"
     ]
   }
 }
