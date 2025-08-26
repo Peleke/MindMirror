@@ -19,10 +19,11 @@ ARG BUILD_WITH_DEV=false
 
 # Generate lock file if missing and export requirements
 RUN if [ ! -f poetry.lock ]; then poetry lock; fi && \
-    if [ "$BUILD_WITH_DEV" = "true" ]; then \
+    if poetry group list | grep -qE '^dev(\s|$)'; then HAS_DEV=1; else HAS_DEV=0; fi && \
+    if [ "$BUILD_WITH_DEV" = "true" ] && [ "$HAS_DEV" = "1" ]; then \
       poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
     else \
-      poetry export -f requirements.txt --output requirements.txt --without-hashes; \
+      poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
     fi
 
 # --- Runtime stage ---
@@ -54,4 +55,4 @@ COPY . .
 EXPOSE 8005
 
 # Use the module entrypoint which reads PORT from env (default 8005)
-CMD ["python", "-m", "movements.web.server"] 
+CMD ["python", "-m", "movements.web.server"]

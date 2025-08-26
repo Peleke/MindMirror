@@ -33,6 +33,8 @@ async def test_create_get_search_basic():
         })
         assert created["id_"]
         mid = created["id_"]
+        # Ensure visibility to subsequent sessions
+        await s.commit()
 
     # Get
     async with session_factory() as s:
