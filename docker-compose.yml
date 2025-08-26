@@ -322,6 +322,8 @@ services:
       - HABITS_SERVICE_URL=http://habits_service:8003
       - MEALS_SERVICE_URL=http://meals_service:8004
       - MOVEMENTS_SERVICE_URL=http://movements_service:8005
+      - PRACTICES_SERVICE_URL=http://practices_service:8000
+      - VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL:-http://web:3001}
     volumes:
       - ./mesh/build:/app/build
     networks:
@@ -336,6 +338,8 @@ services:
       meals_service:
         condition: service_healthy
       movements_service:
+        condition: service_healthy
+      practices_service:
         condition: service_healthy
 
   gateway:
@@ -412,6 +416,26 @@ services:
       timeout: 5s
       retries: 5
 
+  practices_postgres:
+    image: postgres:15-alpine
+    container_name: practices_postgres
+    env_file: ${ENV_FILE:-.env}
+    ports:
+      - "5436:5432"
+    environment:
+      - POSTGRES_USER=${PRACTICES_DB_USER:-practices_user}
+      - POSTGRES_PASSWORD=${PRACTICES_DB_PASSWORD:-practices_password}
+      - POSTGRES_DB=${PRACTICES_DB_NAME:-swae_practices}
+    volumes:
+      - practices_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   movements_service:
     build:
       context: ./movements_service
@@ -439,6 +463,28 @@ services:
       retries: 20
       start_period: 5s
 
+  practices_service:
+    build:
+      context: .
+      dockerfile: practices_service/Dockerfile
+    container_name: practices_service
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${PRACTICES_DB_USER:-practices_user}:${PRACTICES_DB_PASSWORD:-practices_password}@practices_postgres:5432/${PRACTICES_DB_NAME:-swae_practices}
+    networks:
+      - mindmirror-network
+    depends_on:
+      practices_postgres:
+        condition: service_healthy
+    ports:
+      - "8006:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
 volumes:
   postgres_data:
   qdrant_data:
@@ -446,6 +492,7 @@ volumes:
   prompts_data:
     driver: local
   movements_postgres_data:
+  practices_postgres_data:
 
 networks:
   mindmirror-network:
