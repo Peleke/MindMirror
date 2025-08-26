@@ -1,0 +1,35 @@
+# Python standard
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.\$py.class
+
+# Environments
+.env
+.venv
+venv/
+env/
+ENV/
+
+# IDE / Editor specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Firestore credentials (if accidentally committed - should be in .env)
+# *.json # Be careful with broad json ignores
+
+# Distribution / Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Other
+.pytest_cache/
+.coverage*
+htmlcov/
+*.log
+.tox/*
