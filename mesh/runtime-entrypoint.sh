@@ -7,6 +7,7 @@ echo "AGENT_SERVICE_URL=${AGENT_SERVICE_URL}"
 echo "HABITS_SERVICE_URL=${HABITS_SERVICE_URL}"
 echo "MEALS_SERVICE_URL=${MEALS_SERVICE_URL}"
 echo "MOVEMENTS_SERVICE_URL=${MOVEMENTS_SERVICE_URL}"
+echo "PRACTICES_SERVICE_URL=${PRACTICES_SERVICE_URL}"
 echo "VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL}"
 
 # Generate dynamic mesh config from env or use docker fallbacks for local
@@ -44,6 +45,17 @@ if [ -n "${MOVEMENTS_SERVICE_URL}" ] || [ -z "${K_SERVICE}" ]; then
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Movements', {
         endpoint: `${process.env.MOVEMENTS_SERVICE_URL || 'http://movements_service:8005'}/graphql`,
+      })
+    },
+EOF
+fi
+
+# Include Practices similarly
+if [ -n "${PRACTICES_SERVICE_URL}" ] || [ -z "${K_SERVICE}" ]; then
+  cat >> mesh.config.dynamic.ts <<'EOF'
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Practices', {
+        endpoint: `${process.env.PRACTICES_SERVICE_URL || 'http://practices_service:8000'}/graphql`,
       })
     },
 EOF

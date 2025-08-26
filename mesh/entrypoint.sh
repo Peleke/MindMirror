@@ -6,6 +6,8 @@ echo "Received JOURNAL_SERVICE_URL: [${JOURNAL_SERVICE_URL}]"
 echo "Received AGENT_SERVICE_URL: [${AGENT_SERVICE_URL}]"
 echo "Received HABITS_SERVICE_URL: [${HABITS_SERVICE_URL}]"
 echo "Received MEALS_SERVICE_URL: [${MEALS_SERVICE_URL}]"
+echo "Received MOVEMENTS_SERVICE_URL: [${MOVEMENTS_SERVICE_URL}]"
+echo "Received PRACTICES_SERVICE_URL: [${PRACTICES_SERVICE_URL}]"
 echo "Received VOUCHERS_WEB_BASE_URL: [${VOUCHERS_WEB_BASE_URL}]"
 echo "--- END DEBUG ---"
 
@@ -45,7 +47,16 @@ export const composeConfig = defineConfig({
         endpoint: '${MEALS_SERVICE_URL:-http://meals_service:8004}/graphql',
       })
     },
-    
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Movements', {
+        endpoint: '${MOVEMENTS_SERVICE_URL:-http://movements_service:8005}/graphql',
+      })
+    },
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Practices', {
+        endpoint: '${PRACTICES_SERVICE_URL:-http://practices_service:8000}/graphql',
+      })
+    },
   ]
 })" > mesh.config.dynamic.ts
 

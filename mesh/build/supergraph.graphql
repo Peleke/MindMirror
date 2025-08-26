@@ -96,12 +96,13 @@ enum join__Graph {
   )
   MEALS @join__graph(name: "Meals", url: "http://meals_service:8004/graphql") 
   MOVEMENTS @join__graph(name: "Movements", url: "http://movements_service:8005/graphql") 
+  PRACTICES @join__graph(name: "Practices", url: "http://practices_service:8000/graphql") 
 }
 
 """
 Date with time (isoformat)
 """
-scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS) 
+scalar DateTime @join__type(graph: AGENT)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: PRACTICES) 
 
 """
 The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
@@ -113,16 +114,21 @@ Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
 
-scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS) 
+scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  @join__type(graph: PRACTICES) 
 
 """
 Date (isoformat)
 """
-scalar Date @join__type(graph: HABITS) 
+scalar Date @join__type(graph: HABITS)  @join__type(graph: PRACTICES) 
 
 scalar UUID @join__type(graph: JOURNAL) 
 
-type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  {
+"""
+Represents NULL values
+"""
+scalar Void @join__type(graph: PRACTICES) 
+
+type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  @join__type(graph: PRACTICES)  {
   ask(
     query: String!
     tradition: String! = "canon-default"
@@ -218,6 +224,35 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
     limit: Int! = 25
     offset: Int! = 0
   ): [MovementSearchResult!]! @join__field(graph: MOVEMENTS) 
+  enrollment(id: ID!) : ProgramEnrollmentTypeGQL @join__field(graph: PRACTICES) 
+  enrollments(userId: ID!) : [ProgramEnrollmentTypeGQL!]! @join__field(graph: PRACTICES) 
+  myUpcomingPractices: [ScheduledPracticeTypeGQL!]! @join__field(graph: PRACTICES) 
+  myUpcomingPracticesInProgram(programId: ID!) : [ScheduledPracticeTypeGQL!]! @join__field(graph: PRACTICES) 
+  practiceTemplates: [PracticeTemplateType!]! @join__field(graph: PRACTICES) 
+  practiceTemplate(id: ID!) : PracticeTemplateType @join__field(graph: PRACTICES) 
+  practiceInstances(userId: ID!) : [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
+  practiceInstance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
+  programs: [ProgramType!]! @join__field(graph: PRACTICES) 
+  program(id: ID!) : ProgramType @join__field(graph: PRACTICES) 
+  programsByLevel(level: String!) : [ProgramType!]! @join__field(graph: PRACTICES) 
+  programsByTag(tag: String!) : [ProgramType!]! @join__field(graph: PRACTICES) 
+  todaysWorkouts(onDate: Date = null) : [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
+  workouts(
+    dateFrom: Date = null
+    dateTo: Date = null
+    dates: [Date!] = null
+    programId: ID = null
+    status: String = null
+  ): [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
+  setInstance(id: ID!) : SetInstanceType @join__field(graph: PRACTICES) 
+  setInstancesByTemplate(templateId: ID!) : [SetInstanceType!]! @join__field(graph: PRACTICES) 
+  movementInstance(id: ID!) : MovementInstanceType @join__field(graph: PRACTICES) 
+  movementInstancesByTemplate(templateId: ID!) : [MovementInstanceType!]! @join__field(graph: PRACTICES) 
+  prescriptionInstance(id: ID!) : PrescriptionInstanceType @join__field(graph: PRACTICES) 
+  setTemplate(id: ID!) : SetTemplateType @join__field(graph: PRACTICES) 
+  movementTemplate(id: ID!) : MovementTemplateType @join__field(graph: PRACTICES) 
+  movementTemplatesByCoach(coachId: ID = null) : [MovementTemplateType!]! @join__field(graph: PRACTICES) 
+  prescriptionTemplate(id: ID!) : PrescriptionTemplateType @join__field(graph: PRACTICES) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -246,7 +281,7 @@ type ToolRegistryHealth @join__type(graph: AGENT)  {
   error: String
 }
 
-type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  {
+type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  @join__type(graph: PRACTICES)  {
   generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
   executeTool(toolName: String!, arguments: JSON!, version: String = null) : ToolExecutionResult! @join__field(graph: AGENT) 
   executeSubtool(
@@ -294,6 +329,44 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   updateMovement(id: ID!, input: MovementUpdateInput!) : Movement @join__field(graph: MOVEMENTS) 
   deleteMovement(id: ID!) : Boolean! @join__field(graph: MOVEMENTS) 
   importExternalMovement(externalId: String!) : Movement! @join__field(graph: MOVEMENTS) 
+  enrollInProgram(programId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  enrollUserInProgram(programId: ID!, userId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  updateEnrollmentStatus(enrollmentId: ID!, status: EnrollmentStatusGQL!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  completeAndAdvanceProgress(enrollmentId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  deferPractice(enrollmentId: ID!, mode: String!) : Boolean! @join__field(graph: PRACTICES) 
+  createAdHocWorkout(input: PracticeInstanceCreateStandaloneInput!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  scheduleWorkout(templateId: ID!, date: Date!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  completeWorkout(id: ID!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  logSet(input: SetInstanceCreateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
+  createPracticeTemplate(input: PracticeTemplateCreateInput!) : PracticeTemplateType! @join__field(graph: PRACTICES) 
+  deletePracticeTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createPracticeInstanceFromTemplate(templateId: ID!, date: Date!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  updatePracticeInstance(id: ID!, input: PracticeInstanceUpdateInput!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  deletePracticeInstance(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createSetInstance(input: SetInstanceCreateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
+  updateSetInstance(id: ID!, input: SetInstanceUpdateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
+  deleteSetInstance(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  completeSetInstance(id: ID!) : SetInstanceType! @join__field(graph: PRACTICES) 
+  createMovementInstance(input: MovementInstanceCreateInput!) : MovementInstanceType! @join__field(graph: PRACTICES) 
+  updateMovementInstance(id: ID!, input: MovementInstanceUpdateInput!) : MovementInstanceType! @join__field(graph: PRACTICES) 
+  reorderMovementsInPrescription(prescriptionId: ID!, movements: [MovementOrderInput!]!) : PrescriptionInstanceType! @join__field(graph: PRACTICES) 
+  deleteMovementInstance(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createMovementInstanceFromTemplate(input: MovementInstanceFromTemplateInput!) : MovementInstanceType! @join__field(graph: PRACTICES) 
+  createPrescriptionInstance(input: PrescriptionInstanceCreateInput!) : PrescriptionInstanceType! @join__field(graph: PRACTICES) 
+  updatePrescriptionInstance(id: ID!, input: PrescriptionInstanceUpdateInput!) : PrescriptionInstanceType! @join__field(graph: PRACTICES) 
+  deletePrescriptionInstance(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createSetTemplate(input: SetTemplateCreateInput!) : SetTemplateType! @join__field(graph: PRACTICES) 
+  updateSetTemplate(id: ID!, input: SetTemplateUpdateInput!) : SetTemplateType! @join__field(graph: PRACTICES) 
+  deleteSetTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createMovementTemplate(input: MovementTemplateCreateInput!) : MovementTemplateType! @join__field(graph: PRACTICES) 
+  updateMovementTemplate(id: ID!, input: MovementTemplateUpdateInput!) : MovementTemplateType! @join__field(graph: PRACTICES) 
+  deleteMovementTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  shareMovementTemplate(templateId: ID!, userId: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  addPrescriptionTemplateToProgram(programId: ID!, prescriptionTemplateId: ID!, position: Int!) : ProgramType! @join__field(graph: PRACTICES) 
+  sharePrescriptionTemplate(templateId: ID!, userId: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createPrescriptionTemplate(input: PrescriptionTemplateCreateInput!) : PrescriptionTemplateType! @join__field(graph: PRACTICES) 
+  updatePrescriptionTemplate(id: ID!, input: PrescriptionTemplateUpdateInput!) : PrescriptionTemplateType! @join__field(graph: PRACTICES) 
+  deletePrescriptionTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -602,23 +675,23 @@ type WaterConsumptionTypeGQL @join__type(graph: MEALS)  {
   consumedAt: DateTime!
 }
 
-type Movement @join__type(graph: MOVEMENTS, key: "id_")  {
+type Movement @join__type(graph: MOVEMENTS, key: "id_")  @join__type(graph: PRACTICES, key: "id_")  {
   id_: ID!
-  name: String!
-  slug: String!
-  difficulty: String
-  bodyRegion: String
-  archetype: String
-  equipment: [String!]!
-  primaryMuscles: [String!]!
-  secondaryMuscles: [String!]!
-  movementPatterns: [String!]!
-  planesOfMotion: [String!]!
-  tags: [String!]!
-  shortVideoUrl: String
-  longVideoUrl: String
-  isPublic: Boolean!
-  userId: String
+  name: String! @join__field(graph: MOVEMENTS) 
+  slug: String! @join__field(graph: MOVEMENTS) 
+  difficulty: String @join__field(graph: MOVEMENTS) 
+  bodyRegion: String @join__field(graph: MOVEMENTS) 
+  archetype: String @join__field(graph: MOVEMENTS) 
+  equipment: [String!]! @join__field(graph: MOVEMENTS) 
+  primaryMuscles: [String!]! @join__field(graph: MOVEMENTS) 
+  secondaryMuscles: [String!]! @join__field(graph: MOVEMENTS) 
+  movementPatterns: [String!]! @join__field(graph: MOVEMENTS) 
+  planesOfMotion: [String!]! @join__field(graph: MOVEMENTS) 
+  tags: [String!]! @join__field(graph: MOVEMENTS) 
+  shortVideoUrl: String @join__field(graph: MOVEMENTS) 
+  longVideoUrl: String @join__field(graph: MOVEMENTS) 
+  isPublic: Boolean! @join__field(graph: MOVEMENTS) 
+  userId: String @join__field(graph: MOVEMENTS) 
 }
 
 type MovementSearchResult @join__type(graph: MOVEMENTS)  {
@@ -630,6 +703,200 @@ type MovementSearchResult @join__type(graph: MOVEMENTS)  {
   equipment: [String!]!
   difficulty: String
   shortVideoUrl: String
+}
+
+type Archetype @join__type(graph: PRACTICES, key: "id")  {
+  id: ID!
+}
+
+type Equipment @join__type(graph: PRACTICES, key: "id")  {
+  id: ID!
+}
+
+type ExerciseType @join__type(graph: PRACTICES, key: "id")  {
+  id: ID!
+}
+
+type MovementInstanceType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  createdAt: DateTime
+  modifiedAt: DateTime
+  position: Int
+  name: String!
+  description: String
+  metricUnit: MetricUnitGQL!
+  metricValue: Float!
+  movementClass: MovementClassGQL
+  prescribedSets: Int
+  restDuration: Float
+  notes: String
+  videoUrl: String
+  complete: Boolean!
+  completedAt: DateTime
+  prescriptionInstanceId: ID!
+  exerciseId: ID
+  movementId: ID
+  templateId: ID
+  sets: [SetInstanceType!]!
+  exercise: ExerciseType
+  movement: Movement
+}
+
+type MovementTemplateType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  position: Int
+  name: String!
+  description: String
+  metricUnit: MetricUnitGQL!
+  metricValue: Float!
+  movementClass: MovementClassGQL
+  prescribedSets: Int
+  restDuration: Float
+  videoUrl: String
+  prescriptionTemplateId: ID!
+  exerciseId: ID
+  movementId: ID
+  sets: [SetTemplateType!]!
+  exercise: ExerciseType
+  movement: Movement
+}
+
+type PracticeInstanceType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  createdAt: DateTime
+  modifiedAt: DateTime
+  title: String!
+  date: Date!
+  userId: ID!
+  templateId: ID
+  description: String
+  duration: Float
+  notes: String
+  completedAt: Date
+  prescriptions: [PrescriptionInstanceType!]!
+}
+
+type PracticeTemplateType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  title: String!
+  description: String
+  duration: Float
+  userId: ID
+  prescriptions: [PrescriptionTemplateType!]!
+}
+
+type PrescriptionInstanceType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  createdAt: DateTime
+  modifiedAt: DateTime
+  name: String
+  description: String
+  block: BlockGQL!
+  prescribedRounds: Int!
+  complete: Boolean!
+  position: Int!
+  notes: String
+  practiceInstanceId: ID!
+  templateId: ID
+  movements: [MovementInstanceType!]!
+}
+
+type PrescriptionTemplateType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  name: String
+  description: String
+  block: BlockGQL!
+  prescribedRounds: Int!
+  position: Int!
+  practiceTemplateId: ID!
+  movements: [MovementTemplateType!]!
+}
+
+type ProgramEnrollmentTypeGQL @join__type(graph: PRACTICES)  {
+  id_: ID!
+  programId: ID!
+  userId: ID!
+  enrolledByUserId: ID
+  status: EnrollmentStatusGQL!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  currentPracticeLinkId: ID
+}
+
+type ProgramPracticeLinkType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  programId: ID!
+  practiceTemplateId: ID!
+  sequenceOrder: Int!
+  intervalDaysAfter: Int!
+  practiceTemplate: PracticeTemplateType
+}
+
+type ProgramTagType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  programId: ID!
+  name: String!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+}
+
+type ProgramType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  name: String!
+  description: String
+  level: String
+  createdAt: DateTime!
+  modifiedAt: DateTime!
+  tags: [ProgramTagType!]!
+  practiceLinks: [ProgramPracticeLinkType!]!
+  practiceCount: Int!
+  totalDurationDays: Int!
+}
+
+type Progression @join__type(graph: PRACTICES, key: "id")  {
+  id: ID!
+}
+
+type Regression @join__type(graph: PRACTICES, key: "id")  {
+  id: ID!
+}
+
+type ScheduledPracticeTypeGQL @join__type(graph: PRACTICES)  {
+  id_: ID!
+  enrollmentId: ID!
+  practiceId: ID!
+  scheduledDate: Date!
+}
+
+type SetInstanceType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  createdAt: DateTime
+  modifiedAt: DateTime
+  position: Int
+  reps: Int
+  duration: Float
+  restDuration: Float
+  loadValue: Float
+  loadUnit: LoadUnitGQL
+  perceivedExertion: Int
+  complete: Boolean!
+  completedAt: DateTime
+  notes: String
+  movementInstanceId: ID!
+  templateId: ID
+}
+
+type SetTemplateType @join__type(graph: PRACTICES)  {
+  id_: ID!
+  position: Int
+  reps: Int
+  duration: Float
+  restDuration: Float
+  loadValue: Float
+  loadUnit: LoadUnitGQL
+  movementTemplateId: ID!
 }
 
 interface JournalEntryInterface @join__type(graph: JOURNAL)  {
@@ -659,6 +926,42 @@ enum MealTypeValueGQL @join__type(graph: MEALS)  {
   LUNCH @join__enumValue(graph: MEALS) 
   DINNER @join__enumValue(graph: MEALS) 
   SNACK @join__enumValue(graph: MEALS) 
+}
+
+enum BlockGQL @join__type(graph: PRACTICES)  {
+  WARMUP @join__enumValue(graph: PRACTICES) 
+  WORKOUT @join__enumValue(graph: PRACTICES) 
+  COOLDOWN @join__enumValue(graph: PRACTICES) 
+  OTHER @join__enumValue(graph: PRACTICES) 
+}
+
+enum EnrollmentStatusGQL @join__type(graph: PRACTICES)  {
+  ACTIVE @join__enumValue(graph: PRACTICES) 
+  INACTIVE @join__enumValue(graph: PRACTICES) 
+  CANCELLED @join__enumValue(graph: PRACTICES) 
+  COMPLETED @join__enumValue(graph: PRACTICES) 
+}
+
+enum LoadUnitGQL @join__type(graph: PRACTICES)  {
+  POUNDS @join__enumValue(graph: PRACTICES) 
+  KILOGRAMS @join__enumValue(graph: PRACTICES) 
+  BODYWEIGHT @join__enumValue(graph: PRACTICES) 
+  OTHER @join__enumValue(graph: PRACTICES) 
+}
+
+enum MetricUnitGQL @join__type(graph: PRACTICES)  {
+  ITERATIVE @join__enumValue(graph: PRACTICES) 
+  TEMPORAL @join__enumValue(graph: PRACTICES) 
+  BREATH @join__enumValue(graph: PRACTICES) 
+  OTHER @join__enumValue(graph: PRACTICES) 
+}
+
+enum MovementClassGQL @join__type(graph: PRACTICES)  {
+  CONDITIONING @join__enumValue(graph: PRACTICES) 
+  POWER @join__enumValue(graph: PRACTICES) 
+  STRENGTH @join__enumValue(graph: PRACTICES) 
+  MOBILITY @join__enumValue(graph: PRACTICES) 
+  OTHER @join__enumValue(graph: PRACTICES) 
 }
 
 input HabitTemplateInput @join__type(graph: HABITS)  {
@@ -852,4 +1155,208 @@ input MovementUpdateInput @join__type(graph: MOVEMENTS)  {
   tags: [String!] = null
   shortVideoUrl: String = null
   longVideoUrl: String = null
+}
+
+input MovementInstanceCreateInput @join__type(graph: PRACTICES)  {
+  prescriptionInstanceId: ID!
+  name: String!
+  position: Int!
+  metricUnit: MetricUnitGQL!
+  metricValue: Float!
+  description: String = null
+  movementClass: MovementClassGQL = null
+  prescribedSets: Int = null
+  restDuration: Float = null
+  videoUrl: String = null
+  exerciseId: ID = null
+  sets: [NestedSetInstanceCreateInput!]! = []
+}
+
+input MovementInstanceFromTemplateInput @join__type(graph: PRACTICES)  {
+  prescriptionInstanceId: ID!
+  movementTemplateId: ID!
+  position: Int!
+}
+
+input MovementInstanceUpdateInput @join__type(graph: PRACTICES)  {
+  name: String = null
+  notes: String = null
+  restDuration: Float = null
+}
+
+input MovementOrderInput @join__type(graph: PRACTICES)  {
+  movementId: ID!
+  position: Int!
+}
+
+input MovementTemplateCreateInput @join__type(graph: PRACTICES)  {
+  prescriptionTemplateId: ID!
+  name: String!
+  position: Int!
+  metricUnit: String!
+  metricValue: Float!
+  description: String = null
+  movementClass: String = null
+  prescribedSets: Int = null
+  restDuration: Float = null
+  videoUrl: String = null
+  exerciseId: ID = null
+  sets: [NestedSetTemplateCreateInput!]! = []
+}
+
+input MovementTemplateUpdateInput @join__type(graph: PRACTICES)  {
+  name: String = null
+  prescribedSets: Int = null
+  restDuration: Float = null
+}
+
+input NestedMovementInstanceCreateInput @join__type(graph: PRACTICES)  {
+  name: String!
+  position: Int!
+  metricUnit: MetricUnitGQL!
+  metricValue: Float!
+  description: String = null
+  movementClass: MovementClassGQL = null
+  prescribedSets: Int = null
+  restDuration: Float = null
+  videoUrl: String = null
+  exerciseId: ID = null
+  sets: [NestedSetInstanceCreateInput!]! = []
+}
+
+input NestedMovementTemplateCreateInput @join__type(graph: PRACTICES)  {
+  name: String!
+  position: Int!
+  metricUnit: String!
+  metricValue: Float!
+  description: String = null
+  movementClass: String = null
+  prescribedSets: Int = null
+  restDuration: Float = null
+  videoUrl: String = null
+  exerciseId: ID = null
+  sets: [NestedSetTemplateCreateInput!]! = []
+}
+
+input NestedSetInstanceCreateInput @join__type(graph: PRACTICES)  {
+  position: Int!
+  reps: Int = null
+  duration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
+  restDuration: Int = null
+  complete: Boolean! = false
+  perceivedExertion: Int = null
+  notes: String = null
+}
+
+input NestedSetTemplateCreateInput @join__type(graph: PRACTICES)  {
+  position: Int!
+  reps: Int = null
+  duration: Float = null
+  restDuration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
+}
+
+input PracticeInstanceCreateStandaloneInput @join__type(graph: PRACTICES)  {
+  title: String!
+  date: Date!
+  description: String = null
+  duration: Float = null
+  notes: String = null
+  prescriptions: [PrescriptionTemplateCreateInput!]! = []
+}
+
+input PracticeInstanceUpdateInput @join__type(graph: PRACTICES)  {
+  title: String = null
+  description: String = null
+  duration: Float = null
+  notes: String = null
+  completedAt: Date = null
+  date: Void = null
+}
+
+input PracticeTemplateCreateInput @join__type(graph: PRACTICES)  {
+  title: String!
+  description: String = null
+  duration: Float = null
+  prescriptions: [PrescriptionTemplateCreateInput!]! = []
+}
+
+input PrescriptionInstanceCreateInput @join__type(graph: PRACTICES)  {
+  practiceInstanceId: ID!
+  name: String!
+  position: Int!
+  block: String!
+  description: String = null
+  prescribedRounds: Int! = 1
+  movements: [NestedMovementInstanceCreateInput!]! = []
+}
+
+input PrescriptionInstanceUpdateInput @join__type(graph: PRACTICES)  {
+  name: String = null
+  notes: String = null
+  prescribedRounds: Int = null
+}
+
+input PrescriptionTemplateCreateInput @join__type(graph: PRACTICES)  {
+  practiceTemplateId: ID!
+  name: String!
+  position: Int!
+  block: String!
+  description: String = null
+  prescribedRounds: Int! = 1
+  movements: [NestedMovementTemplateCreateInput!]! = []
+}
+
+input PrescriptionTemplateUpdateInput @join__type(graph: PRACTICES)  {
+  name: String = null
+  description: String = null
+  prescribedRounds: Int = null
+  restDuration: Float = null
+  videoUrl: String = null
+  exerciseId: ID = null
+}
+
+input SetInstanceCreateInput @join__type(graph: PRACTICES)  {
+  movementInstanceId: ID!
+  position: Int!
+  reps: Int = null
+  duration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
+  restDuration: Int = null
+  complete: Boolean! = false
+  perceivedExertion: Int = null
+  notes: String = null
+}
+
+input SetInstanceUpdateInput @join__type(graph: PRACTICES)  {
+  reps: Int = null
+  duration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
+  restDuration: Int = null
+  complete: Boolean = null
+  perceivedExertion: Int = null
+  notes: String = null
+}
+
+input SetTemplateCreateInput @join__type(graph: PRACTICES)  {
+  movementTemplateId: ID!
+  position: Int!
+  reps: Int = null
+  duration: Float = null
+  restDuration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
+}
+
+input SetTemplateUpdateInput @join__type(graph: PRACTICES)  {
+  reps: Int = null
+  duration: Float = null
+  restDuration: Float = null
+  loadValue: Float = null
+  loadUnit: String = null
 }
