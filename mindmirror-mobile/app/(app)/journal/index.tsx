@@ -9,7 +9,7 @@ import { VStack } from "@/components/ui/vstack";
 import { useRouter } from 'expo-router';
 import { Heart, Lightbulb } from "lucide-react-native";
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable as RNPressable, TextInput } from 'react-native';
+import { ActivityIndicator, Modal, Pressable as RNPressable, TextInput, Animated, Easing } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
 import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
 import { useQuery, gql } from '@apollo/client'
@@ -31,6 +31,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { getUserDisplayName } from '@/utils/user';
 import { View } from 'react-native';
 import { useMutation } from '@apollo/client';
+import React from 'react';
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -110,7 +111,7 @@ function MiniDashboard() {
   const progress = circumference * (1 - adherence)
 
   // Ensure hooks order is stable: declare state before any conditional return
-  const [chartsTab, setChartsTab] = useState<'habits' | 'meals'>('habits')
+  const [chartsTab, setChartsTab] = useState<'habits' | 'meals' | 'all'>('habits')
 
   if ((tasksLoading && !habitId) || (habitId && statsLoading)) {
     return (
@@ -130,6 +131,19 @@ function MiniDashboard() {
   const goalCal = goalsQ.data?.userGoals?.dailyCalorieGoal ?? 2000
   const dailyCalGoal = goalCal
   const calProgress = Math.max(0, Math.min(1, totalCalories / dailyCalGoal))
+  // Macro goals (grams): use user goals if present; else default split: P=30%, C=50%, F=20% of calories
+  const userP = goalsQ.data?.userGoals?.dailyProteinGoal
+  const userC = goalsQ.data?.userGoals?.dailyCarbsGoal
+  const userF = goalsQ.data?.userGoals?.dailyFatGoal
+  const defaultProteinG = Math.round((dailyCalGoal * 0.30) / 4)
+  const defaultCarbsG = Math.round((dailyCalGoal * 0.50) / 4)
+  const defaultFatG = Math.round((dailyCalGoal * 0.20) / 9)
+  const goalProteinG = Math.max(1, userP ?? defaultProteinG)
+  const goalCarbsG = Math.max(1, userC ?? defaultCarbsG)
+  const goalFatG = Math.max(1, userF ?? defaultFatG)
+  const proteinProgress = Math.max(0, Math.min(1, totalProtein / goalProteinG))
+  const carbsProgress = Math.max(0, Math.min(1, totalCarbs / goalCarbsG))
+  const fatProgress = Math.max(0, Math.min(1, totalFat / goalFatG))
   const totalWaterMl = waterMini.data?.totalWaterConsumptionByUserAndDate || 0
   const waterOz = totalWaterMl / 29.5735
   const goalWaterMl = goalsQ.data?.userGoals?.dailyWaterGoal ?? 2000
@@ -145,6 +159,36 @@ function MiniDashboard() {
         <G rotation="-90" origin={`${size/2}, ${size/2}`}>
           <SvgCircle cx={size/2} cy={size/2} r={radius} stroke={track} strokeWidth={stroke} fill="transparent" />
           <SvgCircle cx={size/2} cy={size/2} r={radius} stroke={color} strokeWidth={stroke} strokeDasharray={`${dash} ${circumference}`} strokeLinecap="round" fill="transparent" />
+        </G>
+      </Svg>
+    )
+  }
+
+  const AnimatedCircle = Animated.createAnimatedComponent(SvgCircle)
+  const MacroDonut = ({ size = 44, stroke = 6, progress = 0, color = '#16a34a', track = '#e5e7eb', delay = 0 }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string, delay?: number }) => {
+    const radius = (size - stroke) / 2
+    const circumference = 2 * Math.PI * radius
+    const anim = React.useRef(new Animated.Value(0)).current
+    React.useEffect(() => {
+      anim.setValue(0)
+      Animated.timing(anim, { toValue: Math.max(0, Math.min(1, progress)), duration: 700, delay, easing: Easing.out(Easing.quad), useNativeDriver: false }).start()
+    }, [progress, delay])
+    const dashoffset = Animated.multiply(circumference, Animated.subtract(1, anim))
+    return (
+      <Svg width={size} height={size}>
+        <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+          <SvgCircle cx={size/2} cy={size/2} r={radius} stroke={track} strokeWidth={stroke} fill="transparent" />
+          <AnimatedCircle
+            cx={size/2}
+            cy={size/2}
+            r={radius}
+            stroke={color}
+            strokeWidth={stroke}
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={dashoffset as unknown as number}
+            strokeLinecap="round"
+            fill="transparent"
+          />
         </G>
       </Svg>
     )
@@ -168,6 +212,9 @@ function MiniDashboard() {
             </Pressable>
             <Pressable onPress={() => setChartsTab('meals')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='meals' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
               <Text className="text-xs font-semibold">M</Text>
+            </Pressable>
+            <Pressable onPress={() => setChartsTab('all')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='all' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+              <Text className="text-xs font-semibold">A</Text>
             </Pressable>
           </VStack>
 
@@ -213,48 +260,105 @@ function MiniDashboard() {
             </VStack>
           </HStack>
           </Box>
-          ) : (
+          ) : chartsTab === 'meals' ? (
           <Box className="flex-1">
         <HStack className="items-center justify-between">
-          {/* Macros */}
-          <VStack className="items-center" style={{ width: '33%' }}>
-            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
-            <HStack className="items-center justify-between w-11/12 mb-1">
-              <Text className="text-xs font-bold" style={{ color: '#16a34a' }}>{Math.round(totalProtein)}g</Text>
-              <Text className="text-xs font-bold" style={{ color: '#d97706' }}>{Math.round(totalCarbs)}g</Text>
-              <Text className="text-xs font-bold" style={{ color: '#2563eb' }}>{Math.round(totalFat)}g</Text>
-            </HStack>
-            <Box className="w-11/12 h-2 rounded-full bg-border-200 overflow-hidden">
-              {(() => {
-                const cP = totalProtein * 4, cC = totalCarbs * 4, cF = totalFat * 9
-                const tot = Math.max(1, cP + cC + cF)
-                return (
-                  <HStack className="h-full w-full">
-                    <Box style={{ flex: cP / tot, backgroundColor: '#16a34a' }} />
-                    <Box style={{ flex: cC / tot, backgroundColor: '#d97706' }} />
-                    <Box style={{ flex: cF / tot, backgroundColor: '#2563eb' }} />
-                  </HStack>
-                )
-              })()}
-            </Box>
-          </VStack>
-          {/* Calories */}
-          <VStack className="items-center" style={{ width: '33%' }}>
-            <Donut size={68} stroke={8} progress={calProgress} />
-            <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
-            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
-          </VStack>
           {/* Water */}
           <VStack className="items-center" style={{ width: '33%' }}>
             <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Water</Text>
-            <Donut size={60} stroke={7} progress={waterProgress} />
+            <MacroDonut size={60} stroke={7} progress={waterProgress} color="#06b6d4" track="#e5e7eb" delay={260} />
             <Text className="text-2xs text-typography-900 dark:text-white font-bold mt-1">{Math.round(waterOz)} oz</Text>
+          </VStack>
+          {/* Calories */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <MacroDonut size={68} stroke={8} progress={calProgress} color="#1d4ed8" track="#e5e7eb" delay={200} />
+            <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
+            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
+          </VStack>
+          {/* Macros */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
+            <HStack className="items-center justify-between w-11/12">
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={proteinProgress} color="#16a34a" track="#e5e7eb" delay={0} />
+                <Text className="text-2xs mt-1" style={{ color: '#16a34a', fontWeight: '700' }}>P {Math.round(totalProtein)}/{goalProteinG}g</Text>
+              </VStack>
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={carbsProgress} color="#d97706" track="#e5e7eb" delay={80} />
+                <Text className="text-2xs mt-1" style={{ color: '#d97706', fontWeight: '700' }}>C {Math.round(totalCarbs)}/{goalCarbsG}g</Text>
+              </VStack>
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={fatProgress} color="#2563eb" track="#e5e7eb" delay={160} />
+                <Text className="text-2xs mt-1" style={{ color: '#2563eb', fontWeight: '700' }}>F {Math.round(totalFat)}/{goalFatG}g</Text>
+              </VStack>
+            </HStack>
+          </VStack>
+        </HStack>
+          </Box>
+          ) : (
+          <Box className="flex-1">
+        <HStack className="items-center justify-between">
+          {/* All: Adherence left */}
+          <VStack className="items-center justify-center" style={{ width: '33%' }}>
+            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Adherence</Text>
+            <MacroDonut size={60} stroke={7} progress={adherence} color="#10b981" track="#e5e7eb" delay={0} />
+            <Text className="text-2xs mt-1 font-semibold text-typography-900 dark:text-white">{Math.round(adherence * 100)}%</Text>
+          </VStack>
+          {/* All: Calories center */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <MacroDonut size={68} stroke={8} progress={calProgress} color="#1d4ed8" track="#e5e7eb" delay={120} />
+            <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
+            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
+          </VStack>
+          {/* All: Macros right */}
+          <VStack className="items-center" style={{ width: '33%' }}>
+            <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
+            <HStack className="items-center justify-between w-11/12">
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={proteinProgress} color="#16a34a" track="#e5e7eb" delay={180} />
+                <Text className="text-2xs mt-1" style={{ color: '#16a34a', fontWeight: '700' }}>P {Math.round(totalProtein)}/{goalProteinG}g</Text>
+              </VStack>
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={carbsProgress} color="#d97706" track="#e5e7eb" delay={240} />
+                <Text className="text-2xs mt-1" style={{ color: '#d97706', fontWeight: '700' }}>C {Math.round(totalCarbs)}/{goalCarbsG}g</Text>
+              </VStack>
+              <VStack className="items-center">
+                <MacroDonut size={44} stroke={6} progress={fatProgress} color="#2563eb" track="#e5e7eb" delay={300} />
+                <Text className="text-2xs mt-1" style={{ color: '#2563eb', fontWeight: '700' }}>F {Math.round(totalFat)}/{goalFatG}g</Text>
+              </VStack>
+            </HStack>
           </VStack>
         </HStack>
           </Box>
           )}
         </HStack>
       </Box>
+      {(() => {
+        // Macro coach message (canned)
+        const parts: { message: string, macro: string, deficit: number }[] = []
+        const hasDeficit = (proteinProgress < 1) || (carbsProgress < 1) || (fatProgress < 1)
+        
+        if (proteinProgress >= 0.9) parts.push({ message: 'Protein on track!', macro: 'protein', deficit: goalProteinG - totalProtein })
+        if (carbsProgress >= 0.9) parts.push({ message: 'Carbs on target!', macro: 'carbs', deficit: goalCarbsG - totalCarbs })
+        if (fatProgress >= 0.9) parts.push({ message: 'Fats on pace!', macro: 'fats', deficit: goalFatG - totalFat })
+        
+        let msg = ''
+        if (parts.length === 3) {
+          msg = 'Fantastic job! You are hitting your macro targets for the day. Keep up the great work!'
+        } else if (parts.length === 2) {
+          const missingMacro = ['protein', 'carbs', 'fats'].find(macro => !parts.some(part => part.macro === macro))
+          const missingDeficit = missingMacro === 'protein' ? goalProteinG - totalProtein : missingMacro === 'carbs' ? goalCarbsG - totalCarbs : goalFatG - totalFat
+          msg = `Great job with ${parts[0].macro} and ${parts[1].macro}! Just ${missingDeficit}g of ${missingMacro} before everything is on target.`
+        } else if (hasDeficit) {
+          msg = "You're making steady progress! A balanced meal later will help you hit today's targets."
+        } else if (parts.length > 0) {
+          msg = parts.map(part => part.message).join(' • ') + '. Keep it up.'
+        } else {
+          msg = 'Nice start 🎉 Keep building toward your macro goals!'
+        }
+        
+        return <AffirmationDisplay affirmation={msg} className="mt-2" />
+      })()}
     </VStack>
   )
 }
@@ -471,11 +575,8 @@ export default function JournalScreen() {
               hideSubtext
             />
             
-            {/* Mini dashboard: current habit stats */}
+            {/* Mini dashboard: current habit stats + macro coach */}
             <MiniDashboard />
-            {/* <AffirmationDisplay 
-              affirmation={isAffirmationLoading ? "Loading..." : affirmation}
-            /> */}
           </VStack>
 
           {/* Structured Journal Options */}

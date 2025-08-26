@@ -54,6 +54,12 @@ export default function FoodDetailScreen() {
     if (form.notes !== food.notes) payload.notes = form.notes
     await updateFood({ variables: { id, input: payload } })
     q.refetch()
+    // After saving, return to the originating screen if provided
+    if (from) {
+      router.replace(from)
+    } else {
+      router.back()
+    }
   }
 
   return (

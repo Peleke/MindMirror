@@ -4,6 +4,8 @@ import { gql, useMutation, useLazyQuery } from '@apollo/client'
 import { AppBar } from '@/components/common/AppBar'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { getRecentFoods, addRecentFood } from '@/utils/recents'
+import { findMatchingTemplates, recordMealAsTemplate, MealTemplateItem } from '@/utils/templates'
 
 const CREATE_MEAL = gql`
   mutation CreateMeal($input: MealCreateInput!) {
@@ -139,7 +141,7 @@ export default function CreateMealScreen() {
   })
 
   const router = useRouter()
-  const params = useLocalSearchParams<{ from?: string }>()
+  const params = useLocalSearchParams<{ from?: string; openFoodModal?: string; importAddId?: string }>()
   const returnTo = (params?.from as string) || '/meals'
   const { session } = useAuth()
   const userId = session?.user?.id || ''
@@ -157,6 +159,11 @@ export default function CreateMealScreen() {
     notifyOnNetworkStatusChange: true,
   })
   const [importOff, { loading: importingOff }] = useMutation(IMPORT_OFF_PRODUCT)
+  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' } | null>(null)
+  const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 2500)
+  }
   const resultsHeight = useMemo(() => {
     if (selectedForQuantity) return Platform.OS === 'web' ? 220 : 180
     return Platform.OS === 'web' ? 420 : 360
@@ -187,6 +194,24 @@ export default function CreateMealScreen() {
   }, [selectedForQuantity, qtyAnimOpacity, qtyAnimTranslateY])
 
   useEffect(() => {
+    if (params?.openFoodModal === '1') {
+      setShowFoodModal(true)
+      // Clear search state when opening fresh
+      setSearch('')
+      setSelectedForQuantity(null)
+      setEditIndex(null)
+      setQuantity('1')
+    }
+    // If we were sent back with an imported item id, fetch minimal fields via search and preselect
+    const importId = params?.importAddId as string | undefined
+    if (importId && showFoodModal) {
+      // try to find it in the current user+public query by id
+      runSearch({ variables: { userId, search: '', limit: 25 } }).then((result: any) => {
+        const all = (result?.data?.foodItemsForUserWithPublic ?? []) as any[]
+        const found = all.find((f: any) => f.id_ === importId)
+        if (found) openQuantityFor(found)
+      }).catch(() => {})
+    }
     const term = (search || '').trim()
     const h = setTimeout(() => {
       if (!showFoodModal) return
@@ -196,9 +221,37 @@ export default function CreateMealScreen() {
       }
     }, 300)
     return () => clearTimeout(h)
-  }, [search, showFoodModal, runSearch, runAutocomplete, userId])
+  }, [search, showFoodModal, runSearch, runAutocomplete, userId, params?.openFoodModal, params?.importAddId])
 
   const searchResults = searchData?.foodItemsForUserWithPublic ?? []
+  const [recentFoods, setRecentFoods] = useState<any[]>([])
+  useEffect(() => {
+    (async () => {
+      if (!userId) return
+      const rec = await getRecentFoods(userId)
+      setRecentFoods(rec)
+    })()
+  }, [userId, showFoodModal])
+
+  const biasedResults = useMemo(() => {
+    const term = (search || '').trim().toLowerCase()
+    if (!term) return []
+    const matchesRecent = recentFoods
+      .filter(r => (r.name || '').toLowerCase().includes(term))
+      .map(r => ({ ...r, __recent: true }))
+    // Deduplicate by id_ then name
+    const seen = new Set<string>()
+    const merged: any[] = []
+    for (const r of [...matchesRecent, ...searchResults]) {
+      const key = r.id_ || r.name
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      merged.push(r)
+      if (merged.length >= 50) break
+    }
+    return merged
+  }, [search, searchResults, recentFoods])
+
   const offResults = useMemo(() => {
     const list = autoData?.foodItemsAutocomplete ?? []
     const seen = new Set<string>()
@@ -207,7 +260,7 @@ export default function CreateMealScreen() {
       const key = (r.externalId || r.name) + '|' + (r.brand || '')
       if (!seen.has(key)) { seen.add(key); filtered.push(r) }
     }
-    return filtered.filter((r: any) => r.source === 'off')
+    return filtered.filter((r: any) => r.source === 'off').slice(0, 4)
   }, [autoData])
 
   const nutriColor = (grade?: string | null) => {
@@ -226,10 +279,12 @@ export default function CreateMealScreen() {
       const res = await importOff({ variables: { code: externalId } })
       const created = res.data?.importOffProduct
       if (created) {
-        router.push(`/foods/${created.id_}?from=${encodeURIComponent('/meals/create')}`)
+        // Immediately open quantity selector for the imported item within the modal
+        openQuantityFor(created)
       }
     } catch (e) {
       console.error('Import OFF product failed', e)
+      showToast('Import failed. Please try again.', 'error')
     }
   }
 
@@ -252,7 +307,28 @@ export default function CreateMealScreen() {
     if (!canSubmit) return
     try {
       await createMeal({ variables: { input } })
-      router.replace(returnTo)
+      // Save/update template for this meal name
+      try {
+        if (name.trim() && selectedFoods.length > 0 && userId) {
+          const items: MealTemplateItem[] = selectedFoods.map(sf => ({
+            foodItem: {
+              id_: sf.foodItem.id_,
+              name: sf.foodItem.name,
+              servingUnit: sf.foodItem.servingUnit,
+              servingSize: sf.foodItem.servingSize,
+              calories: sf.foodItem.calories,
+              protein: sf.foodItem.protein,
+              carbohydrates: sf.foodItem.carbohydrates,
+              fat: sf.foodItem.fat,
+            },
+            quantity: sf.quantity,
+            servingUnit: sf.servingUnit || sf.foodItem.servingUnit,
+          }))
+          await recordMealAsTemplate(userId, name.trim(), items)
+        }
+      } catch {}
+      if (params?.from) router.replace(returnTo)
+      else router.replace('/meals')
     } catch (e) {
       console.error('Create meal failed', e)
     }
@@ -278,6 +354,16 @@ export default function CreateMealScreen() {
       }
       return [...prev, { foodItem: selectedForQuantity, quantity: qty, servingUnit: unit }]
     })
+    // bump recents
+    if (userId && selectedForQuantity) {
+      addRecentFood(userId, {
+        id_: selectedForQuantity.id_,
+        name: selectedForQuantity.name,
+        servingSize: selectedForQuantity.servingSize,
+        servingUnit: selectedForQuantity.servingUnit,
+        calories: selectedForQuantity.calories,
+      })
+    }
     setSelectedForQuantity(null)
     setEditIndex(null)
     setQuantity('1')
@@ -346,9 +432,26 @@ export default function CreateMealScreen() {
     return { p, c, f }
   }
 
+  const formatPreviewMacros = () => {
+    const fi = selectedForQuantity
+    if (!fi) return { p: 0, c: 0, f: 0, kcal: 0 }
+    const qtyNum = parseFloat(quantity) || 0
+    const baseSize = Number(fi.servingSize) || 0
+    const sameUnit = (servingUnit || '').toLowerCase() === (fi.servingUnit || '').toLowerCase()
+    const factor = baseSize > 0 && sameUnit ? qtyNum / baseSize : (baseSize > 0 && !sameUnit ? 1 : qtyNum)
+    const p = Math.round((fi.protein || 0) * (isFinite(factor) ? factor : 0))
+    const c = Math.round((fi.carbohydrates || 0) * (isFinite(factor) ? factor : 0))
+    const f = Math.round((fi.fat || 0) * (isFinite(factor) ? factor : 0))
+    const kcal = Math.round((fi.calories || 0) * (isFinite(factor) ? factor : 0))
+    return { p, c, f, kcal }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <AppBar title="Create Meal" showBackButton onBackPress={() => router.replace(returnTo)} />
+      <AppBar title="Create Meal" showBackButton onBackPress={() => {
+        if (params?.from) router.replace(returnTo)
+        else router.back()
+      }} />
 
       <View style={{ padding: 16, gap: 16 }}>
         <View>
@@ -359,6 +462,49 @@ export default function CreateMealScreen() {
             placeholder="Enter meal name"
             style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12 }}
           />
+          {/* Template suggestions */}
+          {name.trim().length >= 1 && (
+            <TemplateSuggestions userId={userId} query={name} onPrefill={(tpl: any) => {
+              // Prefill selectedFoods from template
+              setSelectedFoods(tpl.items.map((it: any) => ({
+                foodItem: {
+                  id_: it.foodItem.id_,
+                  name: it.foodItem.name,
+                  servingUnit: it.foodItem.servingUnit || 'g',
+                  servingSize: it.foodItem.servingSize,
+                  calories: it.foodItem.calories,
+                  protein: it.foodItem.protein,
+                  carbohydrates: it.foodItem.carbohydrates,
+                  fat: it.foodItem.fat,
+                } as any,
+                quantity: it.quantity,
+                servingUnit: it.servingUnit || it.foodItem.servingUnit || 'g'
+              })))
+            }} onQuickAdd={async (tpl: any) => {
+              // Submit immediately using current date/time
+              if (!userId) return
+              const quickItems: { foodItemId: string; quantity: number; servingUnit: string }[] = tpl.items.map((it: any) => ({
+                foodItemId: it.foodItem.id_,
+                quantity: it.quantity,
+                servingUnit: it.servingUnit || it.foodItem.servingUnit || 'g'
+              }))
+              const quickInput: any = {
+                userId,
+                name: tpl.name as string,
+                type: mealType as any,
+                date: new Date().toISOString(),
+                notes: (notes || null) as any,
+                mealFoodsData: quickItems
+              }
+              try {
+                await createMeal({ variables: { input: quickInput } })
+                await recordMealAsTemplate(userId, tpl.name, tpl.items)
+                router.replace(returnTo)
+              } catch (e: any) {
+                console.error('Quick add failed', e)
+              }
+            }} />
+          )}
         </View>
 
         <View>
@@ -438,17 +584,29 @@ export default function CreateMealScreen() {
       </View>
 
       {/* Food search modal */}
-      <Modal visible={showFoodModal} transparent animationType="fade" onRequestClose={() => setShowFoodModal(false)}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowFoodModal(false)} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center' }}>
+      <Modal visible={showFoodModal} transparent animationType="fade" onRequestClose={() => { setShowFoodModal(false); setSearch(''); setSelectedForQuantity(null); setEditIndex(null) }}>
+        <View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'center' }}>
+          <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setShowFoodModal(false); setSearch(''); setSelectedForQuantity(null); setEditIndex(null) }} />
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
             <View style={{ width: '96%', backgroundColor: '#fff', height: '70%', maxHeight: '70%', borderRadius: 12, padding: 16, position: 'relative' }}>
+              {toast && (
+                <View style={{ position: 'absolute', top: 48, left: 16, right: 16, zIndex: 10, alignItems: 'center' }}>
+                  <View style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: toast.type === 'error' ? '#ef4444' : '#16a34a' }}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>{toast.msg}</Text>
+                  </View>
+                </View>
+              )}
               {!creatingNew ? (
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>{editIndex != null ? 'Edit Quantity' : 'Add Food'}</Text>
-                  <Pressable onPress={() => router.push('/meals/scan')} style={{ position: 'absolute', right: 16, top: 16, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>Scan Barcode</Text>
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                    <Pressable onPress={() => setCreatingNew(true)} style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#1d4ed8', alignItems: 'center', backgroundColor: '#ffffff' }}>
+                      <Text style={{ color: '#1d4ed8', fontWeight: '800' }}>＋ Create New Item</Text>
+                    </Pressable>
+                    <Pressable onPress={() => router.push(`/meals/scan?from=${encodeURIComponent('/meals/create?openFoodModal=1')}`)} style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: '#111827' }}>
+                      <Text style={{ color: '#fff', fontWeight: '800' }}>Scan Barcode</Text>
+                    </Pressable>
+                  </View>
                   <TextInput
                     value={search}
                     onChangeText={setSearch}
@@ -457,20 +615,18 @@ export default function CreateMealScreen() {
                     autoFocus
                     style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 12 }}
                   />
-                  <Pressable onPress={() => setCreatingNew(true)} style={{ paddingVertical: 10 }}>
-                    <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>＋ Create New Item</Text>
-                  </Pressable>
                   <View style={{ flex: 1, marginTop: 6 }}>
                     <FlatList
+                      keyboardDismissMode="on-drag"
                       keyboardShouldPersistTaps="handled"
                       showsVerticalScrollIndicator={true}
-                      data={searchResults}
+                      data={biasedResults}
                       keyExtractor={(item) => item.id_}
                       style={{ flex: 1 }}
-                      contentContainerStyle={{ paddingBottom: 16 }}
+                      contentContainerStyle={{ paddingTop: 4, paddingBottom: selectedForQuantity ? 220 : 16, flexGrow: 1 }}
                       ListEmptyComponent={!searching ? (
                         <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                          <Text style={{ color: '#6b7280' }}>No matches found</Text>
+                          <Text style={{ color: '#6b7280' }}>{(search||'').trim().length === 0 ? 'Type to search your foods' : 'No matches found'}</Text>
                         </View>
                       ) : null}
                       renderItem={({ item }) => (
@@ -485,7 +641,9 @@ export default function CreateMealScreen() {
                       )}
                       ListFooterComponent={offResults.length > 0 ? (
                         <View style={{ marginTop: 16 }}>
-                          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Open Food Facts</Text>
+                          <View style={{ backgroundColor: '#f9fafb', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                            <Text style={{ fontWeight: '700', color: '#111827' }}>Open Food Facts</Text>
+                          </View>
                           {offResults.map((r: any) => (
                             <Pressable key={(r.externalId || r.name) + (r.brand || '')} onPress={() => onImportOffPress(r.externalId)} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -515,34 +673,51 @@ export default function CreateMealScreen() {
 
                   {selectedForQuantity && (
                     <Animated.View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, opacity: qtyAnimOpacity, transform: [{ translateY: qtyAnimTranslateY }] }}>
-                        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
-                        <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <TextInput
-                            value={quantity}
-                            onChangeText={setQuantity}
-                            keyboardType="numeric"
-                            placeholder="Quantity"
-                            placeholderTextColor="#9CA3AF"
-                            style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
-                          />
-                          <TextInput
-                            value={servingUnit}
-                            onChangeText={setServingUnit}
-                            placeholder="Unit"
-                            placeholderTextColor="#9CA3AF"
-                            style={{ width: 100, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
-                          />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
-                          <Pressable onPress={() => { setSelectedForQuantity(null); setEditIndex(null) }} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
-                            <Text style={{ color: '#666' }}>Cancel</Text>
-                          </Pressable>
-                          <Pressable onPress={addSelectedFood} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                            <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
-                          </Pressable>
-                        </View>
-                      </Animated.View>
+                      <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
+                      <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TextInput
+                          value={quantity}
+                          onChangeText={setQuantity}
+                          keyboardType="numeric"
+                          placeholder="Quantity"
+                          placeholderTextColor="#9CA3AF"
+                          style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
+                        />
+                        <TextInput
+                          value={servingUnit}
+                          onChangeText={setServingUnit}
+                          placeholder="Unit"
+                          placeholderTextColor="#9CA3AF"
+                          style={{ width: 100, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
+                        />
+                      </View>
+                      {/* Live macro preview */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}>
+                        {(() => { const m = formatPreviewMacros(); return (
+                          <>
+                            <View style={{ paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: '#f0fdf4' }}>
+                              <Text style={{ color: colors.protein, fontWeight: '700' }}>{m.p}P</Text>
+                            </View>
+                            <View style={{ paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: '#fffbeb' }}>
+                              <Text style={{ color: colors.carbs, fontWeight: '700' }}>{m.c}C</Text>
+                            </View>
+                            <View style={{ paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: '#eff6ff' }}>
+                              <Text style={{ color: colors.fat, fontWeight: '700' }}>{m.f}F</Text>
+                            </View>
+                            <Text style={{ marginLeft: 8, color: '#111827', fontWeight: '700' }}>{m.kcal} kcal</Text>
+                          </>
+                        ) })()}
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
+                        <Pressable onPress={() => { setSelectedForQuantity(null); setEditIndex(null) }} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
+                          <Text style={{ color: '#666' }}>Cancel</Text>
+                        </Pressable>
+                        <Pressable onPress={addSelectedFood} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                          <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
+                        </Pressable>
+                      </View>
+                    </Animated.View>
                   )}
                 </View>
               ) : (
@@ -607,5 +782,39 @@ export default function CreateMealScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  )
+}
+
+// Inline lightweight template suggestions component
+function TemplateSuggestions({ userId, query, onPrefill, onQuickAdd }: { userId: string; query: string; onPrefill: (tpl: any) => void; onQuickAdd: (tpl: any) => void }) {
+  const [items, setItems] = React.useState<any[]>([])
+  React.useEffect(() => {
+    let active = true
+    ;(async () => {
+      const list = await findMatchingTemplates(userId, query, 5)
+      if (active) setItems(list)
+    })()
+    return () => { active = false }
+  }, [userId, query])
+  if (!userId || !query?.trim() || items.length === 0) return null
+  return (
+    <View style={{ marginTop: 8, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+      {items.map((tpl: any, idx: number) => (
+        <View key={tpl.name + idx} style={{ padding: 10, backgroundColor: '#fff', borderTopWidth: idx === 0 ? 0 : 1, borderTopColor: '#f3f4f6' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontWeight: '600' }}>{tpl.name}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable onPress={() => onPrefill(tpl)} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#1f2937' }}>
+                <Text style={{ color: '#1f2937', fontWeight: '700' }}>Prefill</Text>
+              </Pressable>
+              <Pressable onPress={() => onQuickAdd(tpl)} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#111827' }}>
+                <Text style={{ color: '#fff', fontWeight: '800' }}>＋</Text>
+              </Pressable>
+            </View>
+          </View>
+          <Text style={{ color: '#6b7280', marginTop: 4 }}>{tpl.items.length} items</Text>
+        </View>
+      ))}
+    </View>
   )
 } 
