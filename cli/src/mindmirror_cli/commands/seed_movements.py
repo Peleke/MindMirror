@@ -35,6 +35,8 @@ async def _execute(from_csv: str, database_url: Optional[str], schema: str, env:
         else:
             database_url = "postgresql+asyncpg://movements_user:movements_password@movements_postgres:5432/swae_movements"
 
+    console.print(f"[cyan]DB:[/cyan] {database_url.split('@')[-1]}")
+
     engine = create_async_engine(
         database_url,
         future=True,
@@ -65,7 +67,7 @@ async def _execute(from_csv: str, database_url: Optional[str], schema: str, env:
 @app.callback()
 def main(
     from_csv: Optional[str] = typer.Option(None, "--from-csv", help="Path to CSV file"),
-    database_url: Optional[str] = typer.Option(None, "--db-url", envvar="DATABASE_URL"),
+    database_url: Optional[str] = typer.Option(None, "--db-url", help="Full DATABASE_URL to use (overrides env)"),
     schema: str = typer.Option("movements", "--schema", help="DB schema name to use"),
     env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
 ):
@@ -77,7 +79,7 @@ def main(
 @app.command()
 def run(
     from_csv: str = typer.Option(..., "--from-csv", help="Path to CSV file"),
-    database_url: Optional[str] = typer.Option(None, "--db-url", envvar="DATABASE_URL"),
+    database_url: Optional[str] = typer.Option(None, "--db-url", help="Full DATABASE_URL to use (overrides env)"),
     schema: str = typer.Option("movements", "--schema", help="DB schema name to use"),
     env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
 ):
