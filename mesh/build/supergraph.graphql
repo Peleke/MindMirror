@@ -1,6 +1,6 @@
 schema
     @link(url: "https://specs.apollo.dev/link/v1.0")
-    @link(url: "https://specs.apollo.dev/join/v0.3", for: EXECUTION)
+    @link(url: "https://specs.apollo.dev/join/v0.4", for: EXECUTION)
     
     
     
@@ -28,7 +28,7 @@ schema
         external: Boolean
         override: String
         usedOverridden: Boolean
-        
+        overrideLabel: String
         
       ) repeatable on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
     
@@ -89,18 +89,13 @@ enum join__Graph {
     name: "Agent"
     url: "https://agent-service-3858903851.us-east4.run.app/graphql"
   )
-  HABITS @join__graph(
-    name: "Habits"
-    url: "https://habits-service-3858903851.us-east4.run.app/graphql"
-  )
+  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
   JOURNAL @join__graph(
     name: "Journal"
     url: "https://journal-service-3858903851.us-east4.run.app/graphql"
   )
-  MEALS @join__graph(
-    name: "Meals"
-    url: "https://meals-service-3858903851.us-east4.run.app/graphql"
-  )
+  MEALS @join__graph(name: "Meals", url: "http://meals_service:8004/graphql") 
+  MOVEMENTS @join__graph(name: "Movements", url: "http://movements_service:8005/graphql") 
 }
 
 """
@@ -118,7 +113,7 @@ Represents binary data as Base64-encoded strings, using the standard alphabet.
 """
 scalar Base64 @join__type(graph: AGENT) 
 
-scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS) 
+scalar TransportOptions @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS) 
 
 """
 Date (isoformat)
@@ -127,7 +122,7 @@ scalar Date @join__type(graph: HABITS)
 
 scalar UUID @join__type(graph: JOURNAL) 
 
-type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  {
+type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  {
   ask(
     query: String!
     tradition: String! = "canon-default"
@@ -189,6 +184,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
     limit: Int = null
     offset: Int = null
   ): [FoodItemTypeGQL!]! @join__field(graph: MEALS) 
+  foodItemsAutocomplete(query: String!, userId: String = null, limit: Int! = 10) : [FoodAutocompleteResult!]! @join__field(graph: MEALS) 
   meal(id: ID!) : MealTypeGQL @join__field(graph: MEALS) 
   mealsByUserAndDateRange(
     userId: String!
@@ -213,6 +209,15 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
     offset: Int = null
   ): [WaterConsumptionTypeGQL!]! @join__field(graph: MEALS) 
   totalWaterConsumptionByUserAndDate(userId: String!, dateStr: String!) : Float! @join__field(graph: MEALS) 
+  movement(id: ID!) : Movement @join__field(graph: MOVEMENTS) 
+  searchMovements(
+    searchTerm: String = null
+    bodyRegion: String = null
+    pattern: String = null
+    equipment: String = null
+    limit: Int! = 25
+    offset: Int! = 0
+  ): [MovementSearchResult!]! @join__field(graph: MOVEMENTS) 
 }
 
 type JournalSummary @join__type(graph: AGENT)  {
@@ -241,7 +246,7 @@ type ToolRegistryHealth @join__type(graph: AGENT)  {
   error: String
 }
 
-type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  {
+type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(graph: JOURNAL)  @join__type(graph: MEALS)  @join__type(graph: MOVEMENTS)  {
   generateReview(tradition: String!) : PerformanceReview! @join__field(graph: AGENT) 
   executeTool(toolName: String!, arguments: JSON!, version: String = null) : ToolExecutionResult! @join__field(graph: AGENT) 
   executeSubtool(
@@ -269,6 +274,7 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
   deleteJournalEntry(entryId: UUID!) : Boolean! @join__field(graph: JOURNAL) 
   createFoodItem(input: FoodItemCreateInput!) : FoodItemTypeGQL! @join__field(graph: MEALS) 
+  importOffProduct(code: String!, userId: String = null) : FoodItemTypeGQL @join__field(graph: MEALS) 
   updateFoodItem(id: ID!, input: FoodItemUpdateInput!) : FoodItemTypeGQL @join__field(graph: MEALS) 
   deleteFoodItem(id: ID!) : Boolean! @join__field(graph: MEALS) 
   createMeal(input: MealCreateInput!) : MealTypeGQL! @join__field(graph: MEALS) 
@@ -283,6 +289,11 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   createWaterConsumption(input: WaterConsumptionCreateInput!) : WaterConsumptionTypeGQL! @join__field(graph: MEALS) 
   updateWaterConsumption(id: ID!, input: WaterConsumptionUpdateInput!) : WaterConsumptionTypeGQL @join__field(graph: MEALS) 
   deleteWaterConsumption(id: ID!) : Boolean! @join__field(graph: MEALS) 
+  createMovementQuick(name: String!) : Movement! @join__field(graph: MOVEMENTS) 
+  createMovement(input: MovementCreateInput!) : Movement! @join__field(graph: MOVEMENTS) 
+  updateMovement(id: ID!, input: MovementUpdateInput!) : Movement @join__field(graph: MOVEMENTS) 
+  deleteMovement(id: ID!) : Boolean! @join__field(graph: MOVEMENTS) 
+  importExternalMovement(externalId: String!) : Movement! @join__field(graph: MOVEMENTS) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -323,6 +334,7 @@ type JournalTask @join__type(graph: HABITS)  {
   title: String!
   description: String
   status: TaskStatus!
+  habitTemplateId: String
 }
 
 type ProgramTemplateType @join__type(graph: HABITS)  {
@@ -529,6 +541,21 @@ type FoodItemTypeGQL @join__type(graph: MEALS)  {
   zinc: Float
   notes: String
   userId: String
+  brand: String
+  thumbnailUrl: String
+  source: String
+  externalSource: String
+  externalId: String
+}
+
+type FoodAutocompleteResult @join__type(graph: MEALS)  {
+  source: String!
+  id_: ID
+  externalId: String
+  name: String!
+  brand: String
+  thumbnailUrl: String
+  nutritionGrades: String
 }
 
 type MealFoodTypeGQL @join__type(graph: MEALS)  {
@@ -573,6 +600,36 @@ type WaterConsumptionTypeGQL @join__type(graph: MEALS)  {
   userId: String!
   quantity: Float!
   consumedAt: DateTime!
+}
+
+type Movement @join__type(graph: MOVEMENTS, key: "id_")  {
+  id_: ID!
+  name: String!
+  slug: String!
+  difficulty: String
+  bodyRegion: String
+  archetype: String
+  equipment: [String!]!
+  primaryMuscles: [String!]!
+  secondaryMuscles: [String!]!
+  movementPatterns: [String!]!
+  planesOfMotion: [String!]!
+  tags: [String!]!
+  shortVideoUrl: String
+  longVideoUrl: String
+  isPublic: Boolean!
+  userId: String
+}
+
+type MovementSearchResult @join__type(graph: MOVEMENTS)  {
+  id_: ID
+  isExternal: Boolean!
+  externalId: String
+  name: String!
+  bodyRegion: String
+  equipment: [String!]!
+  difficulty: String
+  shortVideoUrl: String
 }
 
 interface JournalEntryInterface @join__type(graph: JOURNAL)  {
@@ -763,4 +820,36 @@ input WaterConsumptionCreateInput @join__type(graph: MEALS)  {
 input WaterConsumptionUpdateInput @join__type(graph: MEALS)  {
   quantity: Float = null
   consumedAt: String = null
+}
+
+input MovementCreateInput @join__type(graph: MOVEMENTS)  {
+  name: String!
+  slug: String = null
+  difficulty: String = null
+  bodyRegion: String = null
+  archetype: String = null
+  equipment: [String!] = null
+  primaryMuscles: [String!] = null
+  secondaryMuscles: [String!] = null
+  movementPatterns: [String!] = null
+  planesOfMotion: [String!] = null
+  tags: [String!] = null
+  shortVideoUrl: String = null
+  longVideoUrl: String = null
+}
+
+input MovementUpdateInput @join__type(graph: MOVEMENTS)  {
+  name: String = null
+  slug: String = null
+  difficulty: String = null
+  bodyRegion: String = null
+  archetype: String = null
+  equipment: [String!] = null
+  primaryMuscles: [String!] = null
+  secondaryMuscles: [String!] = null
+  movementPatterns: [String!] = null
+  planesOfMotion: [String!] = null
+  tags: [String!] = null
+  shortVideoUrl: String = null
+  longVideoUrl: String = null
 }

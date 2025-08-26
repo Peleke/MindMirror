@@ -10,6 +10,7 @@ echo "MOVEMENTS_SERVICE_URL=${MOVEMENTS_SERVICE_URL}"
 echo "VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL}"
 
 # Generate dynamic mesh config from env or use docker fallbacks for local
+rm -f mesh.config.dynamic.ts
 cat > mesh.config.dynamic.ts <<'EOF'
 import { defineConfig, loadGraphQLHTTPSubgraph } from '@graphql-mesh/compose-cli'
 
@@ -35,11 +36,20 @@ export const composeConfig = defineConfig({
         endpoint: `${process.env.MEALS_SERVICE_URL || 'http://meals_service:8004'}/graphql`,
       })
     },
+EOF
+
+# Include Movements only if URL provided (Cloud Run), or if not running on Cloud Run (local compose fallback)
+if [ -n "${MOVEMENTS_SERVICE_URL}" ] || [ -z "${K_SERVICE}" ]; then
+  cat >> mesh.config.dynamic.ts <<'EOF'
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Movements', {
         endpoint: `${process.env.MOVEMENTS_SERVICE_URL || 'http://movements_service:8005'}/graphql`,
       })
     },
+EOF
+fi
+
+cat >> mesh.config.dynamic.ts <<'EOF'
   ]
 })
 EOF
