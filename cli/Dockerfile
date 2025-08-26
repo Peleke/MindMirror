@@ -15,14 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl git && rm 
 RUN pip install --no-cache-dir poetry
 
 # Allow importing local pkgs
-ENV PYTHONPATH=/app:/app/src
+ENV PYTHONPATH=/app:/app/src:/app/movements_service
 
-# Copy CLI project
+# Copy CLI project and local editable packages
 COPY cli /app/cli
 COPY src/alembic-config /app/src/alembic-config
 COPY src/shared /app/src/shared
 COPY habits_service /app/habits_service
 COPY tools/content_parser /app/tools/content_parser
+COPY movements_service /app/movements_service
 
 WORKDIR /app/cli
 
