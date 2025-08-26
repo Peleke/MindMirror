@@ -709,6 +709,11 @@ export default function JournalScreen() {
               <Text className="font-semibold" style={{ fontSize: 16 }}>Log Water</Text>
             </RNPressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <RNPressable onPress={() => { setShowFab(false); router.push('/(app)/workout-create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>🏋️</Text>
+              <Text className="font-semibold" style={{ fontSize: 16 }}>Create Workout</Text>
+            </RNPressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
             <RNPressable onPress={() => { setShowFab(false); router.push('/journal-hub') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ marginRight: 8 }}>📝</Text>
               <Text className="font-semibold" style={{ fontSize: 16 }}>Create Journal</Text>

@@ -34,6 +34,7 @@ export default function AppLayout() {
               title: 'Insights',
             }}
           />
+          <Drawer.Screen name="workouts" options={{ drawerLabel: 'Workouts', title: 'Workouts' }} />
           <Drawer.Screen name="profile" options={{ drawerLabel: 'Profile', title: 'Profile' }} />
         </Drawer>
       </View>

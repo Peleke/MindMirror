@@ -19,7 +19,7 @@ export default function CustomDrawerContent(props: Props) {
         <DrawerItem label="Chat" onPress={() => navigation.navigate('chat')} />
         <DrawerItem label="Marketplace" onPress={() => navigation.navigate('marketplace')} />
         <DrawerItem label="Meals" onPress={() => navigation.navigate('meals')} />
-        <DrawerItem label="Workouts" onPress={() => navigation.navigate('workouts')} />
+        <DrawerItem label="Workouts" onPress={() => navigation.navigate('workout')} />
       </View>
       <View style={{ borderTopWidth: 1, borderColor: '#e5e7eb' }} />
       <View>
