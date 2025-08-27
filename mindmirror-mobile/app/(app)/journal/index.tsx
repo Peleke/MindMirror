@@ -669,7 +669,7 @@ export default function JournalScreen() {
                 todaysMeals.map((m: any) => {
                   const kcal = Math.round((m.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))
                   return (
-                    <Pressable key={m.id_} onPress={() => router.push(`/meals/${m.id_}`)} className="mb-3">
+                    <Pressable key={m.id_} onPress={() => router.push(`/meals/${m.id_}?from=/`)} className="mb-3">
                       <Box className="p-4 rounded-xl bg-background-0 border border-border-200 shadow-sm">
                         <HStack className="items-center justify-between">
                           <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>

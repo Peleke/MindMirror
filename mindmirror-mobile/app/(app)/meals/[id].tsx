@@ -3,6 +3,7 @@ import { SafeAreaView, View, Text, TextInput, Pressable, FlatList, Alert } from 
 import { gql, useMutation, useQuery } from '@apollo/client'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 
 const GET_MEAL = gql`
   query Meal($id: ID!) {
@@ -27,15 +28,26 @@ const DELETE_MEAL = gql`
   mutation DeleteMeal($id: ID!) { deleteMeal(id: $id) }
 `
 
-export default function MealDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
+const REMOVE_FOOD = gql`
+  mutation RemoveFood($mealId: ID!, $foodItemId: ID!) {
+    removeFoodFromMeal(mealId: $mealId, foodItemId: $foodItemId) { id_ }
+  }
+`
 
-  const mealQuery = useQuery(GET_MEAL, { variables: { id } })
+export default function MealDetailScreen() {
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>()
+  const router = useRouter()
+  const returnTo = (typeof from === 'string' && from) ? String(from) : null
+
+  const mealQuery = useQuery(GET_MEAL, { variables: { id }, fetchPolicy: 'network-only', notifyOnNetworkStatusChange: true })
   const [updateMeal, { loading: saving }] = useMutation(UPDATE_MEAL)
   const [deleteMeal, { loading: deleting }] = useMutation(DELETE_MEAL, {
-    onCompleted: () => router.replace('/meals'),
+    onCompleted: () => {
+      if (returnTo) router.replace(returnTo)
+      else router.replace('/meals')
+    },
   })
+  const [removeFood, { loading: removing }] = useMutation(REMOVE_FOOD)
 
   const meal = mealQuery.data?.meal
   const [name, setName] = useState<string>(meal?.name ?? '')
@@ -47,6 +59,11 @@ export default function MealDetailScreen() {
       setNotes(meal.notes || '')
     }
   }, [meal])
+
+  useFocusEffect(React.useCallback(() => {
+    mealQuery.refetch()
+    return () => {}
+  }, [id]))
 
   const onSave = async () => {
     await updateMeal({ variables: { id, input: { name, notes } } })
@@ -60,9 +77,17 @@ export default function MealDetailScreen() {
     ])
   }
 
+  const onRemoveIngredient = async (foodItemId: string) => {
+    await removeFood({ variables: { mealId: id, foodItemId } })
+    mealQuery.refetch()
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <AppBar title="Meal Details" showBackButton onBackPress={() => router.replace('/meals')} />
+      <AppBar title="Meal Details" showBackButton onBackPress={() => {
+        if (returnTo) router.replace(returnTo)
+        else router.back()
+      }} />
 
       {!meal ? (
         <View style={{ padding: 16 }}>
@@ -87,6 +112,11 @@ export default function MealDetailScreen() {
 
           <View style={{ marginTop: 24 }}>
             <Text style={{ fontWeight: '700', marginBottom: 8 }}>Ingredients</Text>
+            <View style={{ alignItems: 'flex-end', marginBottom: 8 }}>
+              <Pressable onPress={() => router.push(`/meals/add-ingredient?mealId=${id}`)} style={{ paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#111827', borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>＋ Add Ingredient</Text>
+              </Pressable>
+            </View>
             <FlatList
               data={meal.mealFoods}
               keyExtractor={(mf) => mf.id_}
@@ -96,9 +126,14 @@ export default function MealDetailScreen() {
                     <Text style={{ fontWeight: '600' }}>{item.foodItem.name}</Text>
                     <Text style={{ color: '#666' }}>{item.quantity} {item.servingUnit}</Text>
                   </View>
-                  <Pressable onPress={() => router.push(`/foods/${item.foodItem.id_}?from=/meals/${id}`)} style={{ padding: 8 }}>
-                    <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>Edit</Text>
-                  </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable onPress={() => router.push(`/foods/${item.foodItem.id_}?from=/meals/${id}`)} style={{ padding: 8 }}>
+                      <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>Edit</Text>
+                    </Pressable>
+                    <Pressable onPress={() => onRemoveIngredient(item.foodItem.id_)} style={{ padding: 8 }}>
+                      <Text style={{ color: '#ef4444', fontWeight: '600' }}>{removing ? 'Removing…' : 'Remove'}</Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
             />

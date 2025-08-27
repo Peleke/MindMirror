@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text'
 import { Input, InputField } from '@/components/ui/input'
 import { Pressable } from '@/components/ui/pressable'
 import { AppBar } from '@/components/common/AppBar'
+import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -67,6 +68,36 @@ export default function WorkoutCreateScreen() {
   const [searchTerm, setSearchTerm] = useState('')
   const [runSearch, { data: searchData, loading: searching }] = useLazySearchMovements()
 
+  // Input refs for keyboard navigation
+  const inputRefs = useRef<Record<string, TextInput | null>>({})
+  const setInputRef = (key: string) => (el: TextInput | null) => {
+    inputRefs.current[key] = el
+  }
+  const focusKey = (key: string) => {
+    const ref = inputRefs.current[key]
+    if (ref && typeof ref.focus === 'function') ref.focus()
+  }
+  const focusNextField = (pIndex: number, mIndex: number, sIndex: number, field: 'reps' | 'duration' | 'loadValue' | 'restDuration', metricUnit: string) => {
+    const order: Array<'reps' | 'duration' | 'loadValue' | 'restDuration'> = metricUnit === 'temporal' ? ['duration', 'loadValue', 'restDuration'] : ['reps', 'loadValue', 'restDuration']
+    const curIdx = order.indexOf(field)
+    if (curIdx >= 0 && curIdx < order.length - 1) {
+      const nextField = order[curIdx + 1]
+      focusKey(`${pIndex}-${mIndex}-${sIndex}-${nextField}`)
+      return
+    }
+    // Move to next row's first field if exists
+    const nextRow = sIndex + 1
+    const firstField = order[0]
+    const key = `${pIndex}-${mIndex}-${nextRow}-${firstField}`
+    if (inputRefs.current[key]) {
+      focusKey(key)
+      return
+    }
+    // Optionally add a new set and focus it
+    addSetToMovement(pIndex, mIndex)
+    setTimeout(() => focusKey(`${pIndex}-${mIndex}-${nextRow}-${firstField}`), 50)
+  }
+
   // Debounced search (DB-only results)
   useEffect(() => {
     if (!isPickerOpen) return
@@ -118,9 +149,61 @@ export default function WorkoutCreateScreen() {
       const mov = p.movements[mIndex]
       if (!mov) return prev
       const nextPos = mov.sets.length + 1
-      const newSet: SetDraft = { position: nextPos, reps: 10, restDuration: 60, loadUnit: 'bodyweight' }
+      const last = mov.sets[mov.sets.length - 1]
+      const newSet = {
+        position: nextPos,
+        reps: last?.reps ?? 10,
+        duration: (last?.duration ?? undefined) as number | undefined,
+        loadValue: (last?.loadValue ?? undefined) as number | undefined,
+        loadUnit: last?.loadUnit ?? 'bodyweight',
+        restDuration: last?.restDuration ?? 60,
+      } as SetDraft
       mov.sets = [...mov.sets, newSet]
       p.movements = p.movements.map((mm, i) => (i === mIndex ? mov : mm))
+      copy[pIndex] = p
+      return copy
+    })
+  }
+
+  const updateSetField = (
+    pIndex: number,
+    mIndex: number,
+    sIndex: number,
+    field: keyof SetDraft,
+    value: string
+  ) => {
+    setPrescriptions((prev) => {
+      const copy: PrescriptionDraft[] = [...prev]
+      const p = copy[pIndex]
+      if (!p) return prev
+      const mov = p.movements[mIndex]
+      if (!mov) return prev
+      const set = mov.sets[sIndex]
+      if (!set) return prev
+      let patched: any = value
+      if (field === 'reps' || field === 'duration' || field === 'loadValue' || field === 'restDuration') {
+        const num = parseFloat(value)
+        patched = Number.isFinite(num) ? num : undefined
+      }
+      const newSet: SetDraft = { ...set, [field]: patched }
+      const newSets = mov.sets.map((s, i) => (i === sIndex ? newSet : s))
+      const newMov: MovementDraft = { ...mov, sets: newSets }
+      p.movements = p.movements.map((mm, i) => (i === mIndex ? newMov : mm))
+      copy[pIndex] = p
+      return copy
+    })
+  }
+
+  const removeSet = (pIndex: number, mIndex: number, sIndex: number) => {
+    setPrescriptions((prev) => {
+      const copy: PrescriptionDraft[] = [...prev]
+      const p = copy[pIndex]
+      if (!p) return prev
+      const mov = p.movements[mIndex]
+      if (!mov) return prev
+      const newSets = mov.sets.filter((_, i) => i !== sIndex).map((s, i) => ({ ...s, position: i + 1 }))
+      const newMov: MovementDraft = { ...mov, sets: newSets }
+      p.movements = p.movements.map((mm, i) => (i === mIndex ? newMov : mm))
       copy[pIndex] = p
       return copy
     })
@@ -189,7 +272,7 @@ export default function WorkoutCreateScreen() {
             </Input>
           </VStack>
 
-          <VStack space="md">
+          <VStack space="md" className="mt-5">
             <Text className="text-lg font-semibold text-typography-900 dark:text-white">Blocks</Text>
             <FlatList
               data={prescriptions}
@@ -210,17 +293,116 @@ export default function WorkoutCreateScreen() {
                       <VStack space="sm">
                         {item.movements.map((m, mi) => (
                           <Box key={`${mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
-                            <VStack space="xs">
-                              <Text className="font-semibold text-typography-900 dark:text-white">{mi + 1}. {m.name}</Text>
-                              <Text className="text-typography-600 dark:text-gray-300">{m.prescribedSets ?? 0} sets · rest {m.restDuration ?? 0}s</Text>
+                            <VStack space="sm">
+                              <Box className="flex-row items-center justify-between">
+                                <Text className="font-semibold text-typography-900 dark:text-white">{mi + 1}. {m.name}</Text>
+                              </Box>
+                              <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                               <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
                                 <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
                               </Pressable>
-                              {m.sets.map((s, si) => (
-                                <Text key={`${si}`} className="text-typography-700 dark:text-gray-200 ml-1">
-                                  {`Set ${si + 1}: ${s.reps ?? '-'} reps${s.loadValue ? ` @ ${s.loadValue} ${s.loadUnit ?? ''}` : ''}`}
-                                </Text>
-                              ))}
+
+                              {/* Set editor table */}
+                              {m.sets.length > 0 && (
+                                <VStack space="xs">
+                                  {/* Header row */}
+                                  <Box className="flex-row items-center px-2 py-1">
+                                    <Box className="w-12"><Text className="text-typography-600 dark:text-gray-300">#</Text></Box>
+                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">{m.metricUnit === 'temporal' ? 'Duration (s)' : 'Reps'}</Text></Box>
+                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">Load</Text></Box>
+                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Unit</Text></Box>
+                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Rest (s)</Text></Box>
+                                    <Box className="w-14" />
+                                  </Box>
+                                  {m.sets.map((s, si) => (
+                                    <Box key={`${si}`} className="flex-row items-center px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
+                                      <Box className="w-12"><Text className="text-typography-700 dark:text-gray-200">{si + 1}</Text></Box>
+                                      <Box className="flex-1 mr-2">
+                                        <TextInput
+                                          ref={setInputRef(`${index}-${mi}-${si}-${m.metricUnit === 'temporal' ? 'duration' : 'reps'}`)}
+                                          keyboardType="numeric"
+                                          value={m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')}
+                                          onChangeText={(v) => updateSetField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)}
+                                          returnKeyType="next"
+                                          blurOnSubmit={false}
+                                          onSubmitEditing={() => focusNextField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', m.metricUnit)}
+                                          placeholder={m.metricUnit === 'temporal' ? '30' : '10'}
+                                          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                        />
+                                      </Box>
+                                      <Box className="flex-1 mr-2">
+                                        <TextInput
+                                          ref={setInputRef(`${index}-${mi}-${si}-loadValue`)}
+                                          keyboardType="numeric"
+                                          value={s.loadValue != null ? String(s.loadValue) : ''}
+                                          onChangeText={(v) => updateSetField(index, mi, si, 'loadValue', v)}
+                                          returnKeyType="next"
+                                          blurOnSubmit={false}
+                                          onSubmitEditing={() => focusNextField(index, mi, si, 'loadValue', m.metricUnit)}
+                                          placeholder="45"
+                                          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                        />
+                                      </Box>
+                                      <Box className="w-28 mr-2">
+                                        <Select selectedValue={s.loadUnit ?? ''} onValueChange={(v: any) => updateSetField(index, mi, si, 'loadUnit', v)}>
+                                          <SelectTrigger variant="outline">
+                                            <SelectInput placeholder="unit" />
+                                          </SelectTrigger>
+                                          <SelectPortal>
+                                            <SelectBackdrop />
+                                            <SelectContent>
+                                              <SelectDragIndicatorWrapper>
+                                                <SelectDragIndicator />
+                                              </SelectDragIndicatorWrapper>
+                                              <SelectItem label="lb" value="pounds" />
+                                              <SelectItem label="kg" value="kilograms" />
+                                              <SelectItem label="bw" value="bodyweight" />
+                                              <SelectItem label="other" value="other" />
+                                            </SelectContent>
+                                          </SelectPortal>
+                                        </Select>
+                                      </Box>
+                                      <Box className="w-28 mr-2">
+                                        <TextInput
+                                          ref={setInputRef(`${index}-${mi}-${si}-restDuration`)}
+                                          keyboardType="numeric"
+                                          value={s.restDuration != null ? String(s.restDuration) : ''}
+                                          onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)}
+                                          returnKeyType="next"
+                                          blurOnSubmit={false}
+                                          onSubmitEditing={() => focusNextField(index, mi, si, 'restDuration', m.metricUnit)}
+                                          placeholder="60"
+                                          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                        />
+                                      </Box>
+                                      {/* R/D toggle */}
+                                      <Box className="w-14 items-center mr-2">
+                                        <Pressable onPress={() => {
+                                          setPrescriptions(prev => {
+                                            const cp: PrescriptionDraft[] = [...prev]
+                                            const p0 = cp[index]
+                                            if (!p0) return prev
+                                            const mov0 = p0.movements[mi]
+                                            if (!mov0) return prev
+                                            const nextUnit = mov0.metricUnit === 'temporal' ? 'iterative' : 'temporal'
+                                            const updated: MovementDraft = { ...mov0, metricUnit: nextUnit }
+                                            p0.movements = p0.movements.map((mm, i) => (i === mi ? updated : mm))
+                                            cp[index] = { ...p0 }
+                                            return cp
+                                          })
+                                        }} className="px-2 py-1 rounded-md border border-border-200 bg-white dark:bg-background-0">
+                                          <Text className="text-typography-700 dark:text-gray-200 font-semibold">R/D</Text>
+                                        </Pressable>
+                                      </Box>
+                                      <Box className="w-14 items-end">
+                                        <Pressable onPress={() => removeSet(index, mi, si)} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
+                                          <Text className="text-red-700 dark:text-red-300">🗑</Text>
+                                        </Pressable>
+                                      </Box>
+                                    </Box>
+                                  ))}
+                                </VStack>
+                              )}
                             </VStack>
                           </Box>
                         ))}

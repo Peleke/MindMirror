@@ -256,7 +256,7 @@ export default function MealsScreen() {
                   const expanded = !!expandedMealIds[item.id_]
                   return (
                     <View style={{ marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
-                      <Pressable onPress={() => router.push(`/meals/${item.id_}`)}>
+                      <Pressable onPress={() => router.push(`/meals/${item.id_}?from=/meals`)}>
                         <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={{ fontWeight: '700' }}>{item.name}</Text>
                           <View style={{ paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#eff6ff', borderRadius: 12 }}>
