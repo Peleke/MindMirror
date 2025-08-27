@@ -89,6 +89,7 @@
     "expo-web-browser": "~14.2.0",
     "fp-ts": "^2.16.9",
     "graphql": "^16.11.0",
+    "inline-style-prefixer": "^5.1.2",
     "io-ts": "^2.2.22",
     "js-md5": "^0.8.3",
     "lottie-react-native": "6.7.0",

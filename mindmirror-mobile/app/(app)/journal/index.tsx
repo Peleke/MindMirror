@@ -32,6 +32,11 @@ import { getUserDisplayName } from '@/utils/user';
 import { View } from 'react-native';
 import { useMutation } from '@apollo/client';
 import React from 'react';
+import { useTodaysSchedulables } from '@/services/api/users'
+import dayjs from 'dayjs'
+import { useTodaysWorkouts } from '@/services/api/practices'
+import { useDeletePracticeInstance } from '@/services/api/practices'
+import { Swipeable } from 'react-native-gesture-handler'
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -374,13 +379,100 @@ function MiniDashboard() {
   )
 }
 
+function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
+  const { session } = useAuth()
+  const router = useRouter()
+  const hasSession = !!session?.access_token
+  const onDate = dayjs().format('YYYY-MM-DD')
+  const userId = session?.user?.id || ''
+  const { data, loading } = useTodaysSchedulables({ userId, date: onDate }, !hasSession || !userId)
+  const usersItems = (data?.schedulablesForUserOnDate || []).filter((s: any) => (s.service_id ?? 'practices') === 'practices')
+  const { data: pData, loading: pLoading } = useTodaysWorkouts(onDate)
+  const practiceItems = (pData?.todaysWorkouts || []).map((w: any) => ({
+    id_: w.id_,
+    name: w.title,
+    date: w.date,
+    service_id: 'practices',
+    entity_id: w.id_,
+    completed: !!w.completedAt,
+    __typename: 'Schedulable',
+  }))
+  const itemsMap: Record<string, any> = {}
+  for (const it of [...usersItems, ...practiceItems]) {
+    const key = `${it.service_id}:${it.entity_id || it.id_}`
+    itemsMap[key] = it
+  }
+  const items = Object.values(itemsMap)
+  const [localRemoved, setLocalRemoved] = React.useState<Record<string, boolean>>({})
+  const [deletePractice] = useDeletePracticeInstance()
+  if (!hasSession || !userId) return null
+  return (
+    <VStack className="mt-4" space="sm">
+      {showHeader && (
+        <HStack className="items-center justify-between">
+          <Text className="text-lg font-semibold">Today’s Workouts</Text>
+        </HStack>
+      )}
+      {loading && pLoading ? (
+        <ActivityIndicator />
+      ) : items.length === 0 ? (
+        <Text className="text-typography-600">No workouts scheduled today</Text>
+      ) : (
+        <VStack space="xs">
+          {items.filter((it: any) => !localRemoved[`${it.service_id}:${it.entity_id}`]).map((it: any) => {
+            const key = `${it.service_id}:${it.entity_id}`
+            const handleDelete = async () => {
+              // Optimistic local remove
+              setLocalRemoved((prev) => ({ ...prev, [key]: true }))
+              // If this is a practices item, call deletePractice; ignore others for now
+              if ((it.service_id ?? 'practices') === 'practices') {
+                try {
+                  await deletePractice({ variables: { id: it.entity_id } })
+                } catch (e) {
+                  // Revert on failure
+                  setLocalRemoved((prev) => ({ ...prev, [key]: false }))
+                }
+              }
+            }
+            return (
+              <Swipeable
+                key={key}
+                renderRightActions={() => (
+                  <HStack className="h-full items-center px-4 bg-red-600 rounded-lg">
+                    <Text className="text-white font-semibold">Delete</Text>
+                  </HStack>
+                )}
+                onSwipeableOpen={(dir) => {
+                  if (dir === 'right') handleDelete()
+                }}
+              >
+                <HStack className={`items-center justify-between p-3 rounded-lg border ${it.completed ? 'border-green-200 bg-green-50' : 'border-border-200 bg-background-50'}`}>
+                  <Pressable 
+                    onPress={() => router.push(`/(app)/workout/${it.entity_id || it.id_}`)}
+                    className="flex-1"
+                  >
+                    <HStack className="items-center justify-between">
+                      <Text className={`font-semibold ${it.completed ? 'text-green-700' : ''}`}>{it.name || 'Workout'}</Text>
+                      <Text className="text-typography-600">{it.date}</Text>
+                    </HStack>
+                  </Pressable>
+                </HStack>
+              </Swipeable>
+            )
+          })}
+        </VStack>
+      )}
+    </VStack>
+  )
+}
+
 function TodayChips({ onDate, tasks }: { onDate: string; tasks: any[] }) {
   const router = useRouter()
   const completedHabit = tasks.find((t: any) => t.__typename === 'HabitTask' && t.status === 'completed')
-  const completedLesson = tasks.find((t: any) => t.__typename === 'LessonTask' && t.status === 'completed')
+  const completedWorkout = tasks.find((t: any) => (t.__typename === 'Schedulable' && (t.service_id ?? 'practices') === 'practices' && t.completed))
   const chips: string[] = []
   if (completedHabit) chips.push('Habit ✓')
-  if (completedLesson) chips.push('Lesson ✓')
+  if (completedWorkout) chips.push('Workout ✓')
   if ((tasks || []).length === 0) {
     return (
       <VStack className="space-y-2 items-center w-full px-4">
@@ -428,7 +520,7 @@ export default function JournalScreen() {
   const { user, session, loading: authLoading } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
-  const [homeTab, setHomeTab] = useState<'habits' | 'meals'>('habits')
+  const [homeTab, setHomeTab] = useState<'habits' | 'meals' | 'workouts'>('habits')
   const [showFab, setShowFab] = useState(false);
   const [showWaterModal, setShowWaterModal] = useState(false);
   const [waterAmount, setWaterAmount] = useState('');
@@ -651,6 +743,9 @@ export default function JournalScreen() {
               <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
                 <Text className="font-semibold">Meals</Text>
               </Pressable>
+              <Pressable onPress={() => setHomeTab('workouts')} className={`px-3 py-2 rounded-md ${homeTab === 'workouts' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                <Text className="font-semibold">Workouts</Text>
+              </Pressable>
             </HStack>
           </VStack>
 
@@ -659,7 +754,7 @@ export default function JournalScreen() {
             <VStack className="px-6 py-2" space="md">
               <DailyTasksList forceNetwork={params?.reload === '1'} />
             </VStack>
-          ) : (
+          ) : homeTab === 'meals' ? (
             <VStack className="px-6 py-2" space="md">
               {mealsLoading ? (
                 <ActivityIndicator />
@@ -684,6 +779,10 @@ export default function JournalScreen() {
                   )
                 })
               )}
+            </VStack>
+          ) : (
+            <VStack className="px-6 py-2" space="md">
+              <TodaysWorkoutsRow showHeader={false} />
             </VStack>
           )}
           </VStack>

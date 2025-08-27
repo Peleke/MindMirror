@@ -11,6 +11,8 @@ import { Text } from '@/components/ui/text'
 import { Input, InputField } from '@/components/ui/input'
 import { Pressable } from '@/components/ui/pressable'
 import { AppBar } from '@/components/common/AppBar'
+import { useApolloClient } from '@apollo/client'
+import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 
 // Minimal enums to map to server values
@@ -51,9 +53,15 @@ type PrescriptionDraft = {
 
 export default function WorkoutCreateScreen() {
   const router = useRouter()
+  const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'))
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
+  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' } | null>(null)
+  const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 2500)
+  }
 
   // Pre-create Warmup, Workout, Cooldown blocks
   const [prescriptions, setPrescriptions] = useState<PrescriptionDraft[]>([
@@ -211,7 +219,7 @@ export default function WorkoutCreateScreen() {
 
   const onSubmit = async () => {
     if (!title) {
-      alert('Please enter a workout title')
+      showToast('Please enter a workout title', 'error')
       return
     }
 
@@ -219,35 +227,40 @@ export default function WorkoutCreateScreen() {
       name: p.name,
       position: p.position,
       block: p.block,
-      prescribed_rounds: p.prescribedRounds,
+      prescribedRounds: p.prescribedRounds,
       description: '',
       movements: p.movements.map((m) => ({
         name: m.name,
         position: m.position,
-        metric_unit: m.metricUnit,
-        metric_value: m.metricValue,
+        metricUnit: (m.metricUnit || 'iterative').toUpperCase(),
+        metricValue: m.metricValue,
         description: m.description ?? '',
-        movement_class: m.movementClass,
-        prescribed_sets: m.prescribedSets,
-        rest_duration: m.restDuration,
-        video_url: m.videoUrl,
-        exercise_id: m.exerciseId,
+        movementClass: (m.movementClass || 'other').toUpperCase(),
+        prescribedSets: m.prescribedSets,
+        restDuration: m.restDuration,
+        videoUrl: m.videoUrl,
+        exerciseId: m.exerciseId,
         sets: m.sets.map((s) => ({
           position: s.position,
           reps: s.reps,
           duration: s.duration,
-          load_value: s.loadValue,
-          load_unit: s.loadUnit,
-          rest_duration: s.restDuration,
+          loadValue: s.loadValue,
+          loadUnit: s.loadUnit,
+          restDuration: s.restDuration,
         })),
       })),
     }))
 
     try {
-      await createWorkout({ variables: { input: { title, date, prescriptions: gqlPrescriptions } } })
+      const variables = { input: { title, date, prescriptions: gqlPrescriptions } }
+      console.log('[CreateWorkout] Submitting variables:', variables)
+      await createWorkout({ variables })
+      showToast('Workout created', 'success')
+      await new Promise((r) => setTimeout(r, 600))
       router.back()
     } catch (e: any) {
-      alert(e?.message || 'Failed to create workout')
+      console.error('[CreateWorkout] Error:', e)
+      showToast(e?.message || 'Failed to create workout', 'error')
     }
   }
 
@@ -418,6 +431,12 @@ export default function WorkoutCreateScreen() {
             <Text className="text-white font-bold">{loading ? 'Creating…' : 'Create Workout'}</Text>
           </Pressable>
         </VStack>
+
+        {toast && (
+          <View style={{ position: 'absolute', left: 16, right: 16, bottom: 24, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, backgroundColor: toast.type === 'success' ? '#16a34a' : '#dc2626' }}>
+            <RNText style={{ color: '#fff', fontWeight: '600' }}>{toast.msg}</RNText>
+          </View>
+        )}
 
         {/* Movement search modal (patterned after Add Food) */}
         <Modal visible={isPickerOpen} transparent animationType="fade" onRequestClose={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }}>
