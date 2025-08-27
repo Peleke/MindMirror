@@ -1238,6 +1238,15 @@ input NestedMovementTemplateCreateInput @join__type(graph: PRACTICES)  {
   sets: [NestedSetTemplateCreateInput!]! = []
 }
 
+input NestedPrescriptionInstanceCreateInput @join__type(graph: PRACTICES)  {
+  name: String!
+  position: Int!
+  block: String!
+  description: String = null
+  prescribedRounds: Int! = 1
+  movements: [NestedMovementInstanceCreateInput!]! = []
+}
+
 input NestedSetInstanceCreateInput @join__type(graph: PRACTICES)  {
   position: Int!
   reps: Int = null
@@ -1265,7 +1274,7 @@ input PracticeInstanceCreateStandaloneInput @join__type(graph: PRACTICES)  {
   description: String = null
   duration: Float = null
   notes: String = null
-  prescriptions: [PrescriptionTemplateCreateInput!]! = []
+  prescriptions: [NestedPrescriptionInstanceCreateInput!]! = []
 }
 
 input PracticeInstanceUpdateInput @join__type(graph: PRACTICES)  {

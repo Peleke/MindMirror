@@ -471,6 +471,7 @@ services:
     env_file: ${ENV_FILE:-.env}
     environment:
       - DATABASE_URL=postgresql+asyncpg://${PRACTICES_DB_USER:-practices_user}:${PRACTICES_DB_PASSWORD:-practices_password}@practices_postgres:5432/${PRACTICES_DB_NAME:-swae_practices}
+      - USERS_SERVICE_URL=http://users_service:8000/graphql
     networks:
       - mindmirror-network
     depends_on:
@@ -478,6 +479,52 @@ services:
         condition: service_healthy
     ports:
       - "8006:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  users_postgres:
+    image: postgres:15-alpine
+    container_name: users_postgres
+    env_file: ${ENV_FILE:-.env}
+    ports:
+      - "5437:5432"
+    environment:
+      - POSTGRES_USER=${USERS_DB_USER:-users_user}
+      - POSTGRES_PASSWORD=${USERS_DB_PASSWORD:-users_password}
+      - POSTGRES_DB=${USERS_DB_NAME:-swae_users}
+    volumes:
+      - users_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  users_service:
+    build:
+      context: ./users_service
+      dockerfile: Dockerfile
+    container_name: users_service
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DB_HOST=users_postgres
+      - DB_PORT=5432
+      - DB_USER=${USERS_DB_USER:-users_user}
+      - DB_PASSWORD=${USERS_DB_PASSWORD:-users_password}
+      - DB_NAME=${USERS_DB_NAME:-swae_users}
+    networks:
+      - mindmirror-network
+    depends_on:
+      users_postgres:
+        condition: service_healthy
+    ports:
+      - "8007:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 2s
@@ -493,6 +540,7 @@ volumes:
     driver: local
   movements_postgres_data:
   practices_postgres_data:
+  users_postgres_data:
 
 networks:
   mindmirror-network:
