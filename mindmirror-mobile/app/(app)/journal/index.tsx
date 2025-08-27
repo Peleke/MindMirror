@@ -34,8 +34,7 @@ import { useMutation } from '@apollo/client';
 import React from 'react';
 
 function todayIsoDate(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+  return new Date().toISOString().slice(0, 10)
 }
 
 function MiniDashboard() {
@@ -347,8 +346,20 @@ function MiniDashboard() {
           msg = 'Fantastic job! You are hitting your macro targets for the day. Keep up the great work!'
         } else if (parts.length === 2) {
           const missingMacro = ['protein', 'carbs', 'fats'].find(macro => !parts.some(part => part.macro === macro))
-          const missingDeficit = missingMacro === 'protein' ? goalProteinG - totalProtein : missingMacro === 'carbs' ? goalCarbsG - totalCarbs : goalFatG - totalFat
-          msg = `Great job with ${parts[0].macro} and ${parts[1].macro}! Just ${missingDeficit}g of ${missingMacro} before everything is on target.`
+          const a = parts[0]?.macro || 'protein'
+          const b = parts[1]?.macro || (a === 'protein' ? 'carbs' : 'protein')
+          if (missingMacro === 'protein') {
+            const d = goalProteinG - totalProtein
+            msg = `Great job with ${a} and ${b}! Just ${d}g of protein before everything is on target.`
+          } else if (missingMacro === 'carbs') {
+            const d = goalCarbsG - totalCarbs
+            msg = `Great job with ${a} and ${b}! Just ${d}g of carbs before everything is on target.`
+          } else if (missingMacro === 'fats') {
+            const d = goalFatG - totalFat
+            msg = `Great job with ${a} and ${b}! Just ${d}g of fats before everything is on target.`
+          } else {
+            msg = parts.map(part => part.message).join(' • ') + '. Keep it up.'
+          }
         } else if (hasDeficit) {
           msg = "You're making steady progress! A balanced meal later will help you hit today's targets."
         } else if (parts.length > 0) {

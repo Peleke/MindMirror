@@ -38,25 +38,39 @@ export default function MealsScreen() {
   const userId = session?.user?.id || ''
   const router = useRouter()
 
-  const [showArchive, setShowArchive] = useState(false)
   const [anchorDate, setAnchorDate] = useState<Date>(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showFabSheet, setShowFabSheet] = useState(false)
   const [expandedMealIds, setExpandedMealIds] = useState<Record<string, boolean>>({})
 
+  const toUtcDateStr = useCallback((d: Date) => {
+    const yy = d.getUTCFullYear()
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
+    return `${yy}-${mm}-${dd}`
+  }, [])
+
   const { startIso, endIso, dayIso } = useMemo(() => {
     const end = anchorDate
     const start = new Date(end)
-    start.setDate(end.getDate() - (showArchive ? 180 : 14))
-    const toIso = (d: Date) => d.toISOString().slice(0, 10)
-    return { startIso: toIso(start), endIso: toIso(end), dayIso: toIso(end) }
-  }, [anchorDate, showArchive])
+    // Always bound to a single selected day
+    start.setTime(end.getTime())
+    const next = new Date(end)
+    next.setDate(end.getDate() + 1)
+    return { startIso: toUtcDateStr(start), endIso: toUtcDateStr(next), dayIso: toUtcDateStr(end) }
+  }, [anchorDate, toUtcDateStr])
 
   const mealsQuery = useQuery(LIST_MEALS, {
     skip: !userId,
     variables: { userId, start: startIso, end: endIso, limit: 50 },
     fetchPolicy: 'cache-and-network',
+    notifyOnNetworkStatusChange: true,
   })
+
+  React.useEffect(() => {
+    if (!userId) return
+    mealsQuery.refetch({ userId, start: startIso, end: endIso, limit: 50 }).catch(() => {})
+  }, [userId, startIso, endIso])
 
   const waterQuery = useQuery(TOTAL_WATER, {
     skip: !userId,
@@ -161,14 +175,9 @@ export default function MealsScreen() {
         <Pressable onPress={onOpenCalendar} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff' }}>
           <Text style={{ fontWeight: '600' }}>Calendar</Text>
         </Pressable>
-        <View style={{ flexDirection: 'row' }}>
-          <Pressable onPress={() => setShowArchive(false)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: showArchive ? '#eee' : '#cde4ff', marginRight: 8 }}>
-            <Text style={{ fontWeight: '600' }}>Today</Text>
-          </Pressable>
-          <Pressable onPress={() => setShowArchive(true)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: showArchive ? '#cde4ff' : '#eee' }}>
-            <Text style={{ fontWeight: '600' }}>Archive</Text>
-          </Pressable>
-        </View>
+        <Pressable onPress={() => { const d = new Date(); const next = new Date(d); next.setDate(d.getDate() + 1); setAnchorDate(d); setTimeout(() => mealsQuery.refetch({ userId, start: toUtcDateStr(d), end: toUtcDateStr(next), limit: 50 }), 0) }} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#cde4ff' }}>
+          <Text style={{ fontWeight: '600' }}>Today</Text>
+        </Pressable>
       </View>
 
       {/* Top charts - single row: Macros | Calories | Water */}

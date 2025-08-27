@@ -306,7 +306,21 @@ export default function CreateMealScreen() {
   const onSubmit = async () => {
     if (!canSubmit) return
     try {
-      await createMeal({ variables: { input } })
+      const dayStr = dt.toISOString().slice(0,10)
+      await createMeal({
+        variables: { input },
+        refetchQueries: [
+          {
+            query: gql`query MealsMini($userId: String!, $start: String!, $end: String!, $limit: Int) { mealsByUserAndDateRange(userId: $userId, startDate: $start, endDate: $end, limit: $limit) { id_ } }`,
+            variables: { userId, start: dayStr, end: dayStr, limit: 50 },
+          },
+          {
+            query: gql`query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) { mealsByUserAndDateRange(userId: $userId, startDate: $start, endDate: $end, limit: $limit) { id_ } }`,
+            variables: { userId, start: dayStr, end: dayStr, limit: 50 },
+          },
+        ],
+        awaitRefetchQueries: true,
+      })
       // Save/update template for this meal name
       try {
         if (name.trim() && selectedFoods.length > 0 && userId) {
