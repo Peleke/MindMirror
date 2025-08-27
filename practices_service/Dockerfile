@@ -44,12 +44,15 @@ COPY --from=builder /tmp/requirements.txt .
 # Install dependencies
 RUN pip install -r requirements.txt
 
-# Install shared package wheel built in builder stage
+# Install shared package wheel built in builder stage (force reinstall to pick up code changes)
 COPY --from=builder /shared/dist/*.whl /tmp/
-RUN pip install /tmp/*.whl
+RUN pip install --no-cache-dir --upgrade --force-reinstall /tmp/*.whl
 
 # Copy service source code
 COPY practices_service /app
+
+# Copy shared source to ensure it’s importable from /app/shared before site-packages
+COPY src/shared /app/shared
 
 # Expose port 8000 for the app
 EXPOSE 8000

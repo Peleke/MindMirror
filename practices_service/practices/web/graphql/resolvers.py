@@ -257,6 +257,17 @@ class PrescriptionInstanceUpdateInput:
     prescribed_rounds: Optional[int] = None
 
 
+# New: nested prescription instance input for standalone creation (no FK required)
+@strawberry.input
+class NestedPrescriptionInstanceCreateInput:
+    name: str
+    position: int
+    block: str
+    description: Optional[str] = None
+    prescribed_rounds: int = 1
+    movements: List[NestedMovementInstanceCreateInput] = strawberry.field(default_factory=list)
+
+
 # Phase 2: Template Input Types
 @strawberry.input
 class SetTemplateCreateInput:
@@ -363,7 +374,7 @@ class PracticeInstanceCreateStandaloneInput:
     description: Optional[str] = None
     duration: Optional[float] = None
     notes: Optional[str] = None
-    prescriptions: List[PrescriptionTemplateCreateInput] = strawberry.field(default_factory=list)
+    prescriptions: List[NestedPrescriptionInstanceCreateInput] = strawberry.field(default_factory=list)
 
 
 @strawberry.input

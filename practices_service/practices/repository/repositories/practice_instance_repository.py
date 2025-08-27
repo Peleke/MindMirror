@@ -97,24 +97,63 @@ class PracticeInstanceRepository:
 
     async def create_standalone_instance(self, instance_data: dict) -> DomainPracticeInstance:
         prescriptions_data = instance_data.pop("prescriptions", [])
-        new_instance = PracticeInstanceModel(**instance_data)
+        # Ensure we can accept camelCase keys coming from GQL layer
+        new_instance = PracticeInstanceModel(
+            title=instance_data.get("title"),
+            date=instance_data.get("date"),
+            description=instance_data.get("description"),
+            duration=instance_data.get("duration", 0.0) or 0.0,
+            notes=instance_data.get("notes"),
+            user_id=instance_data.get("user_id"),
+            template_id=instance_data.get("template_id"),
+        )
         self.session.add(new_instance)
         await self.session.flush()
 
         for pres_data in prescriptions_data:
             movements_data = pres_data.pop("movements", [])
-            new_prescription = PrescriptionInstanceModel(**pres_data, practice_instance_id=new_instance.id_)
+            # Map camelCase to model fields
+            new_prescription = PrescriptionInstanceModel(
+                name=pres_data.get("name"),
+                description=pres_data.get("description", ""),
+                block=pres_data.get("block"),
+                prescribed_rounds=pres_data.get("prescribed_rounds", pres_data.get("prescribedRounds", 1)) or 1,
+                position=pres_data.get("position", 0) or 0,
+                practice_instance_id=new_instance.id_,
+            )
             self.session.add(new_prescription)
             await self.session.flush()
 
             for mov_data in movements_data:
                 sets_data = mov_data.pop("sets", [])
-                new_movement = MovementInstanceModel(**mov_data, prescription_instance_id=new_prescription.id_)
+                new_movement = MovementInstanceModel(
+                    name=mov_data.get("name"),
+                    description=mov_data.get("description", ""),
+                    movement_class=mov_data.get("movement_class", mov_data.get("movementClass", "other")),
+                    metric_unit=mov_data.get("metric_unit", mov_data.get("metricUnit", "iterative")),
+                    metric_value=mov_data.get("metric_value", mov_data.get("metricValue", 1.0)) or 1.0,
+                    prescribed_sets=mov_data.get("prescribed_sets", mov_data.get("prescribedSets", 0)) or 0,
+                    rest_duration=mov_data.get("rest_duration", mov_data.get("restDuration", 0)) or 0,
+                    position=mov_data.get("position", 0) or 0,
+                    notes=mov_data.get("notes"),
+                    exercise_id=mov_data.get("exercise_id", mov_data.get("exerciseId")),
+                    prescription_instance_id=new_prescription.id_,
+                )
                 self.session.add(new_movement)
                 await self.session.flush()
 
                 for set_data in sets_data:
-                    new_set = SetInstanceModel(**set_data, movement_instance_id=new_movement.id_)
+                    new_set = SetInstanceModel(
+                        position=set_data.get("position", 0) or 0,
+                        reps=set_data.get("reps"),
+                        load_value=set_data.get("load_value", set_data.get("loadValue")),
+                        load_unit=set_data.get("load_unit", set_data.get("loadUnit")),
+                        duration=set_data.get("duration"),
+                        rest_duration=set_data.get("rest_duration", set_data.get("restDuration", 0)) or 0,
+                        perceived_exertion=set_data.get("perceived_exertion"),
+                        notes=set_data.get("notes"),
+                        movement_instance_id=new_movement.id_,
+                    )
                     self.session.add(new_set)
 
         await self.session.commit()
