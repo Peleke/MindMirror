@@ -8,6 +8,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
       date
       title
       description
+      completedAt
       prescriptions {
         id_
         name
@@ -30,8 +31,8 @@ export const QUERY_WORKOUTS = gql`
       id_
       date
       title
-      completed_at
-      template_id
+      completedAt
+      templateId
     }
   }
 `

@@ -37,6 +37,8 @@ import dayjs from 'dayjs'
 import { useTodaysWorkouts } from '@/services/api/practices'
 import { useDeletePracticeInstance } from '@/services/api/practices'
 import { Swipeable } from 'react-native-gesture-handler'
+import CalendarPicker from 'react-native-calendar-picker'
+import { Text as RNText } from 'react-native'
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -115,7 +117,7 @@ function MiniDashboard() {
   const progress = circumference * (1 - adherence)
 
   // Ensure hooks order is stable: declare state before any conditional return
-  const [chartsTab, setChartsTab] = useState<'habits' | 'meals' | 'all'>('habits')
+  const [chartsTab, setChartsTab] = useState<'habits' | 'meals' | 'all'>('all')
 
   if ((tasksLoading && !habitId) || (habitId && statsLoading)) {
     return (
@@ -520,6 +522,17 @@ export default function JournalScreen() {
   const { user, session, loading: authLoading } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
+  // Tasks calendar state
+  const [tasksAnchorDate, setTasksAnchorDate] = useState<Date>(new Date())
+  const [showTasksDatePicker, setShowTasksDatePicker] = useState(false)
+  const toUtcDateStr = (d: Date) => {
+    const yy = d.getUTCFullYear()
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
+    return `${yy}-${mm}-${dd}`
+  }
+  const tasksDayIso = toUtcDateStr(tasksAnchorDate)
+  const tasksDisplayDate = dayjs(tasksAnchorDate).format('M/DD')
   const [homeTab, setHomeTab] = useState<'habits' | 'meals' | 'workouts'>('habits')
   const [showFab, setShowFab] = useState(false);
   const [showWaterModal, setShowWaterModal] = useState(false);
@@ -736,23 +749,36 @@ export default function JournalScreen() {
 
           {/* Habits | Meals switcher */}
           <VStack className="px-6 py-4" space="md">
-            <HStack className="items-center space-x-3">
-              <Pressable onPress={() => setHomeTab('habits')} className={`px-3 py-2 rounded-md ${homeTab === 'habits' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
-                <Text className="font-semibold">Habits</Text>
-              </Pressable>
-              <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
-                <Text className="font-semibold">Meals</Text>
-              </Pressable>
-              <Pressable onPress={() => setHomeTab('workouts')} className={`px-3 py-2 rounded-md ${homeTab === 'workouts' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
-                <Text className="font-semibold">Workouts</Text>
-              </Pressable>
+            <HStack className="items-center justify-between">
+              <HStack className="items-center space-x-3">
+                <Pressable onPress={() => setHomeTab('habits')} className={`px-3 py-2 rounded-md ${homeTab === 'habits' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                  <Text className="font-semibold">Habits</Text>
+                </Pressable>
+                <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                  <Text className="font-semibold">Meals</Text>
+                </Pressable>
+                <Pressable onPress={() => setHomeTab('workouts')} className={`px-3 py-2 rounded-md ${homeTab === 'workouts' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                  <Text className="font-semibold">Workouts</Text>
+                </Pressable>
+              </HStack>
+              <HStack className="items-center space-x-2">
+                <Pressable onPress={() => { const prev = new Date(tasksAnchorDate); prev.setDate(prev.getDate() - 1); setTasksAnchorDate(prev) }} className="px-2 py-1 rounded-md border border-border-200">
+                  <Text className="text-typography-900">‹</Text>
+                </Pressable>
+                <Pressable onPress={() => setShowTasksDatePicker(true)} className="px-3 py-1.5 rounded-md bg-background-50 border border-border-200">
+                  <Text className="font-semibold">{tasksDisplayDate}</Text>
+                </Pressable>
+                <Pressable onPress={() => { const next = new Date(tasksAnchorDate); next.setDate(next.getDate() + 1); setTasksAnchorDate(next) }} className="px-2 py-1 rounded-md border border-border-200">
+                  <Text className="text-typography-900">›</Text>
+                </Pressable>
+              </HStack>
             </HStack>
           </VStack>
 
           {/* Content: Habits or Meals */}
           {homeTab === 'habits' ? (
             <VStack className="px-6 py-2" space="md">
-              <DailyTasksList forceNetwork={params?.reload === '1'} />
+              <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} />
             </VStack>
           ) : homeTab === 'meals' ? (
             <VStack className="px-6 py-2" space="md">
@@ -868,6 +894,37 @@ export default function JournalScreen() {
           </View>
         </RNPressable>
       </Modal>
+
+      {/* Tasks Date picker modal */}
+      <Modal visible={showTasksDatePicker} transparent animationType="fade" onRequestClose={() => setShowTasksDatePicker(false)}>
+        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowTasksDatePicker(false)}>
+          <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '94%' }}>
+            <RNText style={{ fontWeight: '600', marginBottom: 12 }}>Pick a date</RNText>
+            <CalendarPicker
+              selectedStartDate={tasksAnchorDate}
+              onDateChange={(d: Date) => setTasksAnchorDate(new Date(d))}
+              startFromMonday={true}
+              todayBackgroundColor="#f2e6ff"
+              selectedDayColor="#1d4ed8"
+              selectedDayTextColor="#ffffff"
+              headerWrapperStyle={{ paddingHorizontal: 16 }}
+              monthYearHeaderWrapperStyle={{ paddingHorizontal: 16 }}
+              dayLabelsWrapper={{ paddingHorizontal: 16 }}
+              previousTitle={'‹'}
+              nextTitle={'›'}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+              <RNPressable onPress={() => { const d = new Date(); setTasksAnchorDate(d) }} style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#e5e7eb', borderRadius: 8 }}>
+                <RNText style={{ color: '#111827', fontWeight: '600' }}>Today</RNText>
+              </RNPressable>
+              <RNPressable onPress={() => setShowTasksDatePicker(false)} style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+                <RNText style={{ color: '#fff', fontWeight: '600' }}>Done</RNText>
+              </RNPressable>
+            </View>
+          </View>
+        </RNPressable>
+      </Modal>
+
     </SafeAreaView>
   );
 } 

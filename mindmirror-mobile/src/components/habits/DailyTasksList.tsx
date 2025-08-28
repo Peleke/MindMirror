@@ -14,6 +14,7 @@ import JournalCard from './cards/JournalCard'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { useTodaysWorkouts } from '@/services/api/practices'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -23,8 +24,8 @@ function todayIsoDate(): string {
   return `${year}-${month}-${day}`
 }
 
-export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?: boolean }) {
-  const onDate = useMemo(() => todayIsoDate(), [])
+export default function DailyTasksList({ forceNetwork = false, onDate: onDateProp }: { forceNetwork?: boolean, onDate?: string }) {
+  const onDate = useMemo(() => onDateProp || todayIsoDate(), [onDateProp])
   const router = useRouter()
   const mockEnabled = ((process.env.EXPO_PUBLIC_MOCK_TASKS || Constants.expoConfig?.extra?.mockTasks) || '').toString().toLowerCase() === 'true'
   const { session, loading: authLoading } = useAuth()
@@ -82,6 +83,10 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
   const [activeTab, setActiveTab] = useState<'today' | 'completed'>('today')
   const remainingTasks = tasks.filter((t: any) => t.status !== 'completed')
   const completedTasks = tasks.filter((t: any) => t.status === 'completed')
+
+  // Completed Workouts (from Practices)
+  const { data: workoutsData } = useTodaysWorkouts(onDate)
+  const completedWorkouts = (workoutsData?.todaysWorkouts || []).filter((w: any) => !!w.completedAt)
 
   if ((authLoading || loading) && !data) {
     return (
@@ -201,6 +206,23 @@ export default function DailyTasksList({ forceNetwork = false }: { forceNetwork?
         const description = jt.description || 'Reflect or free-write.'
         return <JournalCard key={jt.taskId} task={{ ...jt, title, description }} />
       })}
+
+      {/* Completed Workouts card(s) under Completed tab */}
+      {activeTab === 'completed' && completedWorkouts.length > 0 && (
+        <VStack space="sm">
+          {completedWorkouts.map((w: any) => (
+            <Pressable key={w.id_} onPress={() => router.push(`/(app)/workout/${w.id_}`)}>
+              <Box className="p-4 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+                <HStack className="items-center justify-between">
+                  <Text className="font-semibold text-green-800 dark:text-green-200">Completed Workout</Text>
+                  <Text className="text-green-700 dark:text-green-300">{w.title || 'Workout'}</Text>
+                </HStack>
+                <Text className="text-typography-600 dark:text-gray-300 mt-1">{w.date}</Text>
+              </Box>
+            </Pressable>
+          ))}
+        </VStack>
+      )}
     </VStack>
   )
 }
