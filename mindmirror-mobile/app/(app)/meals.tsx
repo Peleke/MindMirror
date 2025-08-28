@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router'
 import Svg, { Circle } from 'react-native-svg'
 import { gql as gql2, useMutation as useMutation2 } from '@apollo/client'
 import { useQuery as useQuery3, gql as gql3 } from '@apollo/client'
+import GlobalFab from '@/components/common/GlobalFab'
 
 const LIST_MEALS = gql`
   query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
@@ -323,32 +324,6 @@ export default function MealsScreen() {
         </Pressable>
       </Modal>
 
-      {/* FAB options modal */}
-      <Modal visible={showFabSheet} transparent animationType="fade" onRequestClose={() => setShowFabSheet(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFabSheet(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-            <Pressable onPress={() => { setShowFabSheet(false); router.push('/meals/create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>🍽️</Text>
-              <Text style={{ fontSize: 16, fontWeight: '600' }}>Create New Meal</Text>
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <Pressable onPress={() => { setShowFabSheet(false); setShowWaterModal(true) }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>💧</Text>
-              <Text style={{ fontSize: 16, fontWeight: '600' }}>Log Water</Text>
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <Pressable onPress={() => { setShowFabSheet(false); router.push('/journal-hub') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>📝</Text>
-              <Text style={{ fontSize: 16, fontWeight: '600' }}>Create Journal</Text>
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <Pressable onPress={() => setShowFabSheet(false)} style={{ paddingVertical: 12 }}>
-              <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-
       {/* Log Water modal */}
       <Modal visible={showWaterModal} transparent animationType="fade" onRequestClose={() => setShowWaterModal(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowWaterModal(false)}>
@@ -378,10 +353,7 @@ export default function MealsScreen() {
         </Pressable>
       </Modal>
 
-      {/* FAB */}
-      <Pressable onPress={onFabPress} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-        <Text style={{ color: '#fff', fontSize: 28, marginTop: -2 }}>＋</Text>
-      </Pressable>
+      <GlobalFab />
     </SafeAreaView>
   )
 }

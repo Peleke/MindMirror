@@ -16,6 +16,7 @@ import { useState, useMemo } from 'react'
 import { AppBar } from '@/components/common/AppBar'
 import { Pagination } from '@/components/ui/Pagination'
 import { ActivityIndicator } from 'react-native'
+import GlobalFab from '@/components/common/GlobalFab'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
@@ -362,6 +363,7 @@ export default function ArchiveScreen() {
             loading={loading}
           />
         </VStack>
+        <GlobalFab />
       </SafeAreaView>
     )
   } 

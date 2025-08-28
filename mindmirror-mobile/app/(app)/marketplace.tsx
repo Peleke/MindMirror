@@ -11,6 +11,7 @@ import { useQuery } from '@apollo/client'
 import { LIST_PROGRAM_TEMPLATES, PROGRAM_ASSIGNMENTS } from '@/services/api/habits'
 import { useRouter } from 'expo-router'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
+import GlobalFab from '@/components/common/GlobalFab'
 
 export default function MarketplaceScreen() {
   const router = useRouter()
@@ -96,6 +97,7 @@ export default function MarketplaceScreen() {
           </VStack>
         </ScrollView>
       </VStack>
+      <GlobalFab />
     </SafeAreaView>
   )
 }

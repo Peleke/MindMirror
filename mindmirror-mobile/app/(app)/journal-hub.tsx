@@ -11,7 +11,7 @@ import { VStack } from "@/components/ui/vstack"
 import { useRouter } from 'expo-router'
 import { Heart, Lightbulb, PenTool } from "lucide-react-native"
 import { AppBar } from '@/components/common/AppBar'
-
+import GlobalFab from '@/components/common/GlobalFab'
 
 
 const JournalCard = ({ title, description, icon, onPress, testID, iconColor }: {
@@ -95,6 +95,7 @@ export default function JournalHubScreen() {
           </VStack>
         </ScrollView>
       </VStack>
+      <GlobalFab />
     </SafeAreaView>
   )
 } 

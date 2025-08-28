@@ -6,18 +6,19 @@ import { VStack } from '@/components/ui/vstack'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { Pressable } from '@/components/ui/pressable'
-import { ActivityIndicator, ScrollView, Alert, Modal } from 'react-native'
+import { ActivityIndicator, ScrollView, Alert, Modal, View } from 'react-native'
 import { Input, InputField } from '@/components/ui/input'
-import { useTodaysWorkouts, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance } from '@/services/api/practices'
+import { useTodaysWorkouts, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 
 export default function WorkoutDetailsScreen() {
-  const params = useLocalSearchParams<{ id: string }>()
+  const params = useLocalSearchParams<{ id: string, enrollmentId?: string }>()
   const router = useRouter()
   const apollo = useApolloClient()
   const workoutId = params.id
+  const enrollmentId = params.enrollmentId
   const onDate = dayjs().format('YYYY-MM-DD')
 
   const { data, loading, error } = useTodaysWorkouts(onDate)
@@ -26,6 +27,9 @@ export default function WorkoutDetailsScreen() {
   const [updateSetInstance] = useUpdateSetInstance()
   const [completeSetInstance] = useCompleteSetInstance()
   const [createSetInstance] = useCreateSetInstance()
+  const [deferPractice] = useDeferPractice()
+  const upcoming = useMyUpcomingPractices()
+  const [deferOpen, setDeferOpen] = useState(false)
 
   const serverWorkout = data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
 
@@ -229,9 +233,16 @@ export default function WorkoutDetailsScreen() {
             <VStack className="px-6 pt-4">
               <VStack className="flex-row items-center justify-between">
                 <Text className="text-2xl font-bold text-typography-900 dark:text-white">{workout.title || 'Workout'}</Text>
-                <Pressable className={`px-3 py-1 rounded-full border border-border-200 ${timerActive ? 'bg-green-50' : 'bg-background-50'}`} onPress={toggleTimer}>
-                  <Text className="text-typography-900 text-xs">{timerActive ? 'Pause' : (elapsed > 0 ? 'Resume' : 'Start')} workout</Text>
-                </Pressable>
+                <VStack className="flex-row items-center space-x-2">
+                  {enrollmentId ? (
+                    <Pressable className="px-3 py-1 rounded-full border border-border-200 bg-background-50" onPress={() => setDeferOpen(true)}>
+                      <Text className="text-typography-900 text-xs">Defer</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable className={`px-3 py-1 rounded-full border border-border-200 ${timerActive ? 'bg-green-50' : 'bg-background-50'}`} onPress={toggleTimer}>
+                    <Text className="text-typography-900 text-xs">{timerActive ? 'Pause' : (elapsed > 0 ? 'Resume' : 'Start')} workout</Text>
+                  </Pressable>
+                </VStack>
               </VStack>
               <Box className="h-2" />
               <Box className="rounded-2xl border border-border-200 bg-white dark:bg-background-100">
@@ -308,6 +319,27 @@ export default function WorkoutDetailsScreen() {
           </VStack>
         </Modal>
       </VStack>
+
+      {/* Defer modal */}
+      <Modal visible={!!deferOpen} transparent animationType="fade" onRequestClose={() => setDeferOpen(false)}>
+        <Pressable onPress={() => setDeferOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+            <Text className="text-typography-900" style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Defer Workout</Text>
+            <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId, mode: 'push' } }); setDeferOpen(false); upcoming.refetch && upcoming.refetch(); apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES] }) } catch {} }} style={{ paddingVertical: 12 }}>
+              <Text className="text-typography-900">Push today’s workout to tomorrow</Text>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb' }} />
+            <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId, mode: 'shift' } }); setDeferOpen(false); upcoming.refetch && upcoming.refetch(); apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES] }) } catch {} }} style={{ paddingVertical: 12 }}>
+              <Text className="text-typography-900">Shift entire schedule forward by one day</Text>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb' }} />
+            <Pressable onPress={() => setDeferOpen(false)} style={{ paddingVertical: 12 }}>
+              <Text style={{ color: '#ef4444', fontWeight: '600' }}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
     </SafeAreaView>
   )
 }

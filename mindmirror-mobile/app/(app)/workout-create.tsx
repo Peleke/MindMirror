@@ -14,6 +14,7 @@ import { AppBar } from '@/components/common/AppBar'
 import { useApolloClient } from '@apollo/client'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
+import { useCreatePracticeTemplate, QUERY_PRACTICE_TEMPLATES } from '@/services/api/practices'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -57,6 +58,8 @@ export default function WorkoutCreateScreen() {
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'))
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
+  const [createTemplate, { loading: savingTemplate }] = useCreatePracticeTemplate()
+  const [asTemplate, setAsTemplate] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' } | null>(null)
   const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
     setToast({ msg, type })
@@ -270,7 +273,12 @@ export default function WorkoutCreateScreen() {
         <AppBar title="Create Workout" showBackButton onBackPress={() => router.back()} />
         <VStack className="flex-1 w-full max-w-screen-md mx-auto px-6 py-6" space="lg">
           <VStack space="sm">
-            <Text className="text-2xl font-bold text-typography-900 dark:text-white">Workout Details</Text>
+            <VStack className="flex-row items-center justify-between">
+              <Text className="text-2xl font-bold text-typography-900 dark:text-white">Workout Details</Text>
+              <Pressable onPress={() => setAsTemplate(v => !v)} className={`px-3 py-1 rounded-full border ${asTemplate ? 'border-indigo-300 bg-indigo-50' : 'border-border-200 bg-background-50'}`}>
+                <Text className="text-xs font-semibold">{asTemplate ? 'Template' : 'Instance'}</Text>
+              </Pressable>
+            </VStack>
             <Text className="text-typography-600 dark:text-gray-300">Set a title and date, then add movements to each block.</Text>
           </VStack>
 
@@ -279,10 +287,14 @@ export default function WorkoutCreateScreen() {
             <Input className="bg-background-50 dark:bg-background-100">
               <InputField placeholder="e.g. Push Day" value={title} onChangeText={setTitle} />
             </Input>
-            <Text className="text-typography-600 dark:text-gray-300">Date (YYYY-MM-DD)</Text>
-            <Input className="bg-background-50 dark:bg-background-100">
-              <InputField placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} />
-            </Input>
+            {!asTemplate && (
+              <>
+                <Text className="text-typography-600 dark:text-gray-300">Date (YYYY-MM-DD)</Text>
+                <Input className="bg-background-50 dark:bg-background-100">
+                  <InputField placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} />
+                </Input>
+              </>
+            )}
           </VStack>
 
           <VStack space="md" className="mt-5">
@@ -427,8 +439,45 @@ export default function WorkoutCreateScreen() {
             />
           </VStack>
 
-          <Pressable disabled={loading} onPress={onSubmit} className="mt-2 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 disabled:bg-indigo-300">
-            <Text className="text-white font-bold">{loading ? 'Creating…' : 'Create Workout'}</Text>
+          <Pressable disabled={loading || savingTemplate} onPress={async () => {
+            if (!title) { showToast('Please enter a workout title', 'error'); return }
+            if (asTemplate) {
+              // Build PracticeTemplateCreateInput
+              const gqlPrescriptions = prescriptions.map((p) => ({
+                practiceTemplateId: 'placeholder',
+                name: p.name,
+                position: p.position,
+                block: p.block,
+                description: '',
+                prescribedRounds: p.prescribedRounds,
+                movements: p.movements.map((m) => ({
+                  name: m.name,
+                  position: m.position,
+                  metricUnit: (m.metricUnit || 'iterative').toUpperCase(),
+                  metricValue: m.metricValue,
+                  description: m.description ?? '',
+                  movementClass: (m.movementClass || 'other').toUpperCase(),
+                  prescribedSets: m.prescribedSets,
+                  restDuration: m.restDuration,
+                  videoUrl: m.videoUrl,
+                  exerciseId: m.exerciseId,
+                  sets: m.sets.map((s) => ({ position: s.position, reps: s.reps, duration: s.duration, restDuration: s.restDuration, loadValue: s.loadValue, loadUnit: s.loadUnit })),
+                })),
+              }))
+              try {
+                await createTemplate({ variables: { input: { title, description: '', prescriptions: gqlPrescriptions } } })
+                apollo.refetchQueries({ include: [QUERY_PRACTICE_TEMPLATES] })
+                showToast('Template created', 'success')
+                await new Promise((r) => setTimeout(r, 400))
+                router.back()
+              } catch (e: any) {
+                showToast(e?.message || 'Failed to create template', 'error')
+              }
+            } else {
+              await onSubmit()
+            }
+          }} className="mt-2 items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 disabled:bg-indigo-300">
+            <Text className="text-white font-bold">{(loading || savingTemplate) ? 'Creating…' : (asTemplate ? 'Create Template' : 'Create Workout')}</Text>
           </Pressable>
         </VStack>
 

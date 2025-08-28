@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react'
 import { View, Text as RNText, ActivityIndicator, Pressable as RNPressable, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Fab, FabLabel } from '@/components/ui/fab'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { AppBar } from '@/components/common/AppBar'
 import { VStack } from '@/components/ui/vstack'
@@ -10,6 +9,7 @@ import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import CalendarPicker from 'react-native-calendar-picker'
 import { useWorkouts } from '@/services/api/practices'
+import GlobalFab from '@/components/common/GlobalFab'
 
 export default function WorkoutsScreen() {
   const router = useRouter()
@@ -79,9 +79,7 @@ export default function WorkoutsScreen() {
           )}
         </VStack>
 
-        <RNPressable onPress={() => router.push('/(app)/workout-create')} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-          <RNText style={{ color: '#fff', fontSize: 28, marginTop: -2 }}>＋</RNText>
-        </RNPressable>
+        <GlobalFab />
       </VStack>
 
       {/* Date picker modal */}

@@ -39,7 +39,44 @@ export const QUERY_WORKOUTS = gql`
 
 export const QUERY_PROGRAM_TEMPLATES = gql`
   query Programs {
-    programs { id_ name description level tags { name } practice_links { sequence_order practice_template { id_ title } } }
+    programs { id_ name description level tags { name } practiceLinks { sequenceOrder intervalDaysAfter practiceTemplate { id_ title } } }
+  }
+`
+
+export const QUERY_PRACTICE_TEMPLATES = gql`
+  query PracticeTemplates {
+    practiceTemplates { id_ title description }
+  }
+`
+
+export const QUERY_PRACTICE_TEMPLATE = gql`
+  query PracticeTemplate($id: ID!) {
+    practiceTemplate(id: $id) { id_ title description prescriptions { id_ name block position movements { id_ name prescribed_sets rest_duration } } }
+  }
+`
+
+export const QUERY_PROGRAM = gql`
+  query Program($id: ID!) {
+    program(id: $id) {
+      id_
+      name
+      description
+      level
+      tags { name }
+      practiceLinks { sequenceOrder intervalDaysAfter practiceTemplate { id_ title } }
+    }
+  }
+`
+
+export const QUERY_MY_UPCOMING_PRACTICES = gql`
+  query MyUpcomingPractices {
+    my_upcoming_practices { id_ enrollment_id practice_id scheduled_date }
+  }
+`
+
+export const QUERY_MY_UPCOMING_PRACTICES_IN_PROGRAM = gql`
+  query MyUpcomingPracticesInProgram($programId: ID!) {
+    my_upcoming_practices_in_program(program_id: $programId) { id_ enrollment_id practice_id scheduled_date }
   }
 `
 
@@ -92,10 +129,46 @@ export const MUTATION_CREATE_SET_INSTANCE = gql`
   }
 `
 
+export const MUTATION_CREATE_PRACTICE_TEMPLATE = gql`
+  mutation CreatePracticeTemplate($input: PracticeTemplateCreateInput!) {
+    createPracticeTemplate(input: $input) { id_ title description }
+  }
+`
+
+export const MUTATION_CREATE_PROGRAM = gql`
+  mutation CreateProgram($input: ProgramCreateInput!) {
+    createProgram(input: $input) {
+      id_
+      name
+      description
+      level
+      tags { name }
+      practiceLinks { sequenceOrder intervalDaysAfter practiceTemplate { id_ title } }
+    }
+  }
+`
+
+export const MUTATION_DELETE_PROGRAM = gql`
+  mutation DeleteProgram($id: ID!) {
+    deleteProgram(id: $id)
+  }
+`
+
+export const MUTATION_DEFER_PRACTICE = gql`
+  mutation DeferPractice($enrollmentId: ID!, $mode: String!) {
+    deferPractice(enrollmentId: $enrollmentId, mode: $mode)
+  }
+`
+
 // Hooks
 export const useTodaysWorkouts = (onDate?: string) => useQuery(QUERY_TODAYS_WORKOUTS, { variables: { onDate }, fetchPolicy: 'cache-and-network' })
 export const useWorkouts = (vars: { dateFrom?: string, dateTo?: string, dates?: string[], programId?: string, status?: string }) => useQuery(QUERY_WORKOUTS, { variables: vars, fetchPolicy: 'cache-and-network' })
 export const usePrograms = () => useQuery(QUERY_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+export const usePracticeTemplates = () => useQuery(QUERY_PRACTICE_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+export const useProgram = (id: string) => useQuery(QUERY_PROGRAM, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
+export const usePracticeTemplate = (id: string) => useQuery(QUERY_PRACTICE_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
+export const useMyUpcomingPractices = () => useQuery(QUERY_MY_UPCOMING_PRACTICES, { fetchPolicy: 'cache-and-network' })
+export const useMyUpcomingPracticesInProgram = (programId: string) => useQuery(QUERY_MY_UPCOMING_PRACTICES_IN_PROGRAM, { variables: { programId }, skip: !programId, fetchPolicy: 'cache-and-network' })
 
 export const useCreateAdHocWorkout = () => useMutation(MUTATION_CREATE_ADHOC_WORKOUT)
 export const useScheduleWorkout = () => useMutation(MUTATION_SCHEDULE_WORKOUT)
@@ -104,4 +177,8 @@ export const useDeletePracticeInstance = () => useMutation(MUTATION_DELETE_PRACT
 export const useCompleteWorkout = () => useMutation(MUTATION_COMPLETE_WORKOUT)
 export const useUpdateSetInstance = () => useMutation(MUTATION_UPDATE_SET_INSTANCE)
 export const useCompleteSetInstance = () => useMutation(MUTATION_COMPLETE_SET_INSTANCE)
-export const useCreateSetInstance = () => useMutation(MUTATION_CREATE_SET_INSTANCE) 
+export const useCreateSetInstance = () => useMutation(MUTATION_CREATE_SET_INSTANCE)
+export const useCreateProgram = () => useMutation(MUTATION_CREATE_PROGRAM)
+export const useCreatePracticeTemplate = () => useMutation(MUTATION_CREATE_PRACTICE_TEMPLATE)
+export const useDeleteProgram = () => useMutation(MUTATION_DELETE_PROGRAM)
+export const useDeferPractice = () => useMutation(MUTATION_DEFER_PRACTICE) 

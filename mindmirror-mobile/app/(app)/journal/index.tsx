@@ -36,9 +36,11 @@ import { useTodaysSchedulables } from '@/services/api/users'
 import dayjs from 'dayjs'
 import { useTodaysWorkouts } from '@/services/api/practices'
 import { useDeletePracticeInstance } from '@/services/api/practices'
+import { useMyUpcomingPractices, useDeferPractice } from '@/services/api/practices'
 import { Swipeable } from 'react-native-gesture-handler'
 import CalendarPicker from 'react-native-calendar-picker'
 import { Text as RNText } from 'react-native'
+import GlobalFab from '@/components/common/GlobalFab';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -390,6 +392,10 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
   const { data, loading } = useTodaysSchedulables({ userId, date: onDate }, !hasSession || !userId)
   const usersItems = (data?.schedulablesForUserOnDate || []).filter((s: any) => (s.service_id ?? 'practices') === 'practices')
   const { data: pData, loading: pLoading } = useTodaysWorkouts(onDate)
+  const { data: upData } = useMyUpcomingPractices()
+  const [deferPractice] = useDeferPractice()
+  const todaysUpcoming = (upData?.my_upcoming_practices || []).filter((sp: any) => dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate)
+  const upcomingItems = todaysUpcoming.map((sp: any) => ({ id_: sp.id_, name: 'Scheduled Workout', date: onDate, service_id: 'practices', entity_id: sp.practice_id, enrollment_id: sp.enrollment_id, __typename: 'Schedulable', completed: false }))
   const practiceItems = (pData?.todaysWorkouts || []).map((w: any) => ({
     id_: w.id_,
     name: w.title,
@@ -400,7 +406,7 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
     __typename: 'Schedulable',
   }))
   const itemsMap: Record<string, any> = {}
-  for (const it of [...usersItems, ...practiceItems]) {
+  for (const it of [...usersItems, ...practiceItems, ...upcomingItems]) {
     const key = `${it.service_id}:${it.entity_id || it.id_}`
     itemsMap[key] = it
   }
@@ -450,7 +456,11 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
               >
                 <HStack className={`items-center justify-between p-3 rounded-lg border ${it.completed ? 'border-green-200 bg-green-50' : 'border-border-200 bg-background-50'}`}>
                   <Pressable 
-                    onPress={() => router.push(`/(app)/workout/${it.entity_id || it.id_}`)}
+                    onPress={() => {
+                      const wid = it.entity_id || it.id_
+                      const eid = it.enrollment_id
+                      router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
+                    }}
                     className="flex-1"
                   >
                     <HStack className="items-center justify-between">
@@ -458,6 +468,11 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
                       <Text className="text-typography-600">{it.date}</Text>
                     </HStack>
                   </Pressable>
+                  {it.enrollment_id && (
+                    <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId: it.enrollment_id, mode: 'push' } }) } catch {} }} className="ml-2 px-2 py-1 rounded border border-border-200">
+                      <Text className="text-xs">Defer</Text>
+                    </Pressable>
+                  )}
                 </HStack>
               </Swipeable>
             )
@@ -824,106 +839,9 @@ export default function JournalScreen() {
           onComplete={() => {}}
           className="absolute inset-0"
         />
-
-        {/* Home FAB */}
-        <RNPressable onPress={() => setShowFab(true)} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-          <Text className="text-white" style={{ fontSize: 28, marginTop: -2 }}>＋</Text>
-        </RNPressable>
+        {/* Global FAB */}
+        <GlobalFab />
       </VStack>
-
-      {/* FAB bottom sheet */}
-      <Modal visible={showFab} transparent animationType="fade" onRequestClose={() => setShowFab(false)}>
-        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFab(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
-            <RNPressable onPress={() => { setShowFab(false); router.push('/meals/create?from=/journal') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>🍽️</Text>
-              <Text className="font-semibold" style={{ fontSize: 16 }}>Create New Meal</Text>
-            </RNPressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <RNPressable onPress={() => { setShowFab(false); setShowWaterModal(true) }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>💧</Text>
-              <Text className="font-semibold" style={{ fontSize: 16 }}>Log Water</Text>
-            </RNPressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <RNPressable onPress={() => { setShowFab(false); router.push('/(app)/workout-create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>🏋️</Text>
-              <Text className="font-semibold" style={{ fontSize: 16 }}>Create Workout</Text>
-            </RNPressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <RNPressable onPress={() => { setShowFab(false); router.push('/journal-hub') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>📝</Text>
-              <Text className="font-semibold" style={{ fontSize: 16 }}>Create Journal</Text>
-            </RNPressable>
-            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <RNPressable onPress={() => setShowFab(false)} style={{ paddingVertical: 12 }}>
-              <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
-            </RNPressable>
-          </View>
-        </RNPressable>
-      </Modal>
-
-      {/* Log Water modal */}
-      <Modal visible={showWaterModal} transparent animationType="fade" onRequestClose={() => setShowWaterModal(false)}>
-        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowWaterModal(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12, width: '90%' }}>
-            <Text className="font-semibold" style={{ fontSize: 16, marginBottom: 10 }}>Log Water</Text>
-            <Text className="text-typography-600" style={{ marginBottom: 6 }}>Amount (oz)</Text>
-            <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-              <TextInput
-                value={waterAmount}
-                onChangeText={setWaterAmount}
-                placeholder="e.g., 8"
-                keyboardType="numeric"
-                style={{ padding: 12 }}
-              />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
-              <RNPressable onPress={() => setShowWaterModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
-                <Text style={{ color: '#666' }}>Cancel</Text>
-              </RNPressable>
-              <RNPressable disabled={savingWater} onPress={async () => {
-                const qty = parseFloat(waterAmount)
-                if (!isFinite(qty) || qty <= 0) return
-                setSavingWater(true);
-                const ml = qty * 29.5735
-                await createWater({ variables: { input: { userId, quantity: ml, consumedAt: new Date().toISOString() } } })
-              }} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                <Text style={{ color: '#fff', fontWeight: '700' }}>{savingWater ? 'Saving…' : 'Save'}</Text>
-              </RNPressable>
-            </View>
-          </View>
-        </RNPressable>
-      </Modal>
-
-      {/* Tasks Date picker modal */}
-      <Modal visible={showTasksDatePicker} transparent animationType="fade" onRequestClose={() => setShowTasksDatePicker(false)}>
-        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowTasksDatePicker(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '94%' }}>
-            <RNText style={{ fontWeight: '600', marginBottom: 12 }}>Pick a date</RNText>
-            <CalendarPicker
-              selectedStartDate={tasksAnchorDate}
-              onDateChange={(d: Date) => setTasksAnchorDate(new Date(d))}
-              startFromMonday={true}
-              todayBackgroundColor="#f2e6ff"
-              selectedDayColor="#1d4ed8"
-              selectedDayTextColor="#ffffff"
-              headerWrapperStyle={{ paddingHorizontal: 16 }}
-              monthYearHeaderWrapperStyle={{ paddingHorizontal: 16 }}
-              dayLabelsWrapper={{ paddingHorizontal: 16 }}
-              previousTitle={'‹'}
-              nextTitle={'›'}
-            />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-              <RNPressable onPress={() => { const d = new Date(); setTasksAnchorDate(d) }} style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#e5e7eb', borderRadius: 8 }}>
-                <RNText style={{ color: '#111827', fontWeight: '600' }}>Today</RNText>
-              </RNPressable>
-              <RNPressable onPress={() => setShowTasksDatePicker(false)} style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
-                <RNText style={{ color: '#fff', fontWeight: '600' }}>Done</RNText>
-              </RNPressable>
-            </View>
-          </View>
-        </RNPressable>
-      </Modal>
 
     </SafeAreaView>
   );
