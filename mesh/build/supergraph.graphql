@@ -85,15 +85,9 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(
-    name: "Agent"
-    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
-  )
+  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
   HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
-  JOURNAL @join__graph(
-    name: "Journal"
-    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
-  )
+  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
   MEALS @join__graph(name: "Meals", url: "http://meals_service:8004/graphql") 
   MOVEMENTS @join__graph(name: "Movements", url: "http://movements_service:8005/graphql") 
   PRACTICES @join__graph(name: "Practices", url: "http://practices_service:8000/graphql") 
@@ -176,7 +170,9 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
   freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
   journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
+  journalEntriesForHabit(habitTemplateId: UUID!, limit: Int! = 20, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntriesCount: Int! @join__field(graph: JOURNAL) 
+  completedLessons(limit: Int! = 50, offset: Int! = 0) : [String!]! @join__field(graph: JOURNAL) 
   foodItem(id: ID!) : FoodItemTypeGQL @join__field(graph: MEALS) 
   foodItems(
     userId: String = null
@@ -329,6 +325,7 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   updateMovement(id: ID!, input: MovementUpdateInput!) : Movement @join__field(graph: MOVEMENTS) 
   deleteMovement(id: ID!) : Boolean! @join__field(graph: MOVEMENTS) 
   importExternalMovement(externalId: String!) : Movement! @join__field(graph: MOVEMENTS) 
+  autoEnrollPractices(campaign: String!) : PracticesAutoEnrollResult! @join__field(graph: PRACTICES) 
   enrollInProgram(programId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
   enrollUserInProgram(programId: ID!, userId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
   updateEnrollmentStatus(enrollmentId: ID!, status: EnrollmentStatusGQL!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
@@ -367,6 +364,9 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   createPrescriptionTemplate(input: PrescriptionTemplateCreateInput!) : PrescriptionTemplateType! @join__field(graph: PRACTICES) 
   updatePrescriptionTemplate(id: ID!, input: PrescriptionTemplateUpdateInput!) : PrescriptionTemplateType! @join__field(graph: PRACTICES) 
   deletePrescriptionTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
+  createProgram(input: ProgramCreateInput!) : ProgramType! @join__field(graph: PRACTICES) 
+  updateProgram(id: ID!, input: ProgramUpdateInput!) : ProgramType @join__field(graph: PRACTICES) 
+  deleteProgram(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -553,6 +553,7 @@ type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: J
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: GratitudePayloadType!
 }
 
@@ -570,6 +571,7 @@ type ReflectionJournalEntry implements JournalEntryInterface @join__type(graph: 
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: ReflectionPayloadType!
 }
 
@@ -585,6 +587,7 @@ type FreeformJournalEntry implements JournalEntryInterface @join__type(graph: JO
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
   payload: String!
 }
 
@@ -787,6 +790,12 @@ type PracticeTemplateType @join__type(graph: PRACTICES)  {
   prescriptions: [PrescriptionTemplateType!]!
 }
 
+type PracticesAutoEnrollResult @join__type(graph: PRACTICES)  {
+  ok: Boolean!
+  enrolled: Boolean!
+  reason: String
+}
+
 type PrescriptionInstanceType @join__type(graph: PRACTICES)  {
   id_: ID!
   createdAt: DateTime
@@ -828,9 +837,11 @@ type ProgramEnrollmentTypeGQL @join__type(graph: PRACTICES)  {
 type ProgramPracticeLinkType @join__type(graph: PRACTICES)  {
   id_: ID!
   programId: ID!
-  practiceTemplateId: ID!
+  practiceId: ID!
   sequenceOrder: Int!
   intervalDaysAfter: Int!
+  createdAt: DateTime!
+  modifiedAt: DateTime!
   practiceTemplate: PracticeTemplateType
 }
 
@@ -851,6 +862,7 @@ type ProgramType @join__type(graph: PRACTICES)  {
   modifiedAt: DateTime!
   tags: [ProgramTagType!]!
   practiceLinks: [ProgramPracticeLinkType!]!
+  enrollments: [ProgramEnrollmentTypeGQL!]!
   practiceCount: Int!
   totalDurationDays: Int!
 }
@@ -905,6 +917,7 @@ interface JournalEntryInterface @join__type(graph: JOURNAL)  {
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
+  habitTemplateId: String
 }
 
 union Task @join__type(graph: HABITS)  @join__unionMember(graph: HABITS, member: "HabitTask")  @join__unionMember(graph: HABITS, member: "LessonTask")  @join__unionMember(graph: HABITS, member: "JournalTask")  = HabitTask | LessonTask | JournalTask
@@ -1014,16 +1027,19 @@ input GratitudeEntryInput @join__type(graph: JOURNAL)  {
   focus: String = null
   affirmation: String = null
   mood: String = null
+  habitTemplateId: String = null
 }
 
 input ReflectionEntryInput @join__type(graph: JOURNAL)  {
   wins: [String!]!
   improvements: [String!]!
   mood: String = null
+  habitTemplateId: String = null
 }
 
 input FreeformEntryInput @join__type(graph: JOURNAL)  {
   content: String!
+  habitTemplateId: String = null
 }
 
 input FoodItemCreateInput @join__type(graph: MEALS)  {
@@ -1247,6 +1263,15 @@ input NestedPrescriptionInstanceCreateInput @join__type(graph: PRACTICES)  {
   movements: [NestedMovementInstanceCreateInput!]! = []
 }
 
+input NestedPrescriptionTemplateCreateInput @join__type(graph: PRACTICES)  {
+  name: String!
+  position: Int!
+  block: String!
+  description: String = null
+  prescribedRounds: Int! = 1
+  movements: [NestedMovementTemplateCreateInput!]! = []
+}
+
 input NestedSetInstanceCreateInput @join__type(graph: PRACTICES)  {
   position: Int!
   reps: Int = null
@@ -1290,7 +1315,7 @@ input PracticeTemplateCreateInput @join__type(graph: PRACTICES)  {
   title: String!
   description: String = null
   duration: Float = null
-  prescriptions: [PrescriptionTemplateCreateInput!]! = []
+  prescriptions: [NestedPrescriptionTemplateCreateInput!]! = []
 }
 
 input PrescriptionInstanceCreateInput @join__type(graph: PRACTICES)  {
@@ -1326,6 +1351,32 @@ input PrescriptionTemplateUpdateInput @join__type(graph: PRACTICES)  {
   restDuration: Float = null
   videoUrl: String = null
   exerciseId: ID = null
+}
+
+input ProgramCreateInput @join__type(graph: PRACTICES)  {
+  name: String!
+  description: String = null
+  level: String = null
+  tags: [ProgramTagInput!]! = []
+  practiceLinks: [ProgramPracticeLinkInput!]! = []
+}
+
+input ProgramPracticeLinkInput @join__type(graph: PRACTICES)  {
+  practiceTemplateId: ID!
+  sequenceOrder: Int!
+  intervalDaysAfter: Int! = 1
+}
+
+input ProgramTagInput @join__type(graph: PRACTICES)  {
+  name: String!
+}
+
+input ProgramUpdateInput @join__type(graph: PRACTICES)  {
+  name: String = null
+  description: String = null
+  level: String = null
+  tags: [ProgramTagInput!] = null
+  practiceLinks: [ProgramPracticeLinkInput!] = null
 }
 
 input SetInstanceCreateInput @join__type(graph: PRACTICES)  {
