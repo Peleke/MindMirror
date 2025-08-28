@@ -168,50 +168,6 @@ class PrescriptionType:
     position: int
 
 
-@strawberry.type
-class ProgramTagType:
-    id_: strawberry.ID
-    program_id: strawberry.ID
-    name: str
-    created_at: datetime
-    modified_at: datetime
-
-
-@strawberry.type
-class ProgramPracticeLinkType:
-    id_: strawberry.ID
-    program_id: strawberry.ID
-    practice_template_id: strawberry.ID
-    sequence_order: int
-    interval_days_after: int
-    practice_template: Optional[
-        Annotated["PracticeTemplateType", strawberry.lazy("practices.web.graphql.practice_template_types")]
-    ] = None
-
-
-@strawberry.type
-class ProgramType:
-    id_: strawberry.ID
-    name: str
-    description: Optional[str] = None
-    level: Optional[str] = None
-    created_at: datetime
-    modified_at: datetime
-    tags: List[ProgramTagType]
-    practice_links: List[ProgramPracticeLinkType]
-
-    @strawberry.field
-    def practice_count(self) -> int:
-        """Get the number of practices in this program."""
-        return len(self.practice_links)
-
-    @strawberry.field
-    def total_duration_days(self) -> int:
-        """Calculate the total duration of the program in days."""
-        if not self.practice_links:
-            return 0
-        # Sum all intervals and add 1 for the first day (or other logic as needed)
-        return sum(link.interval_days_after for link in self.practice_links) + 1
 
 
 __all__ = [

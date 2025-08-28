@@ -21,7 +21,7 @@ from .practice_template_types import (
     SetTemplateType,
 )
 from .resolvers import Mutation, Query
-from .types import (
+from .program_types import (
     ProgramPracticeLinkType,
     ProgramTagType,
     ProgramType,

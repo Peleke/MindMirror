@@ -64,7 +64,13 @@ from .practice_template_types import (
     PrescriptionTemplateType,
     SetTemplateType,
 )
-from .types import ProgramPracticeLinkType, ProgramTagType, ProgramType
+from .program_types import (
+    ProgramPracticeLinkType,
+    ProgramTagType,
+    ProgramType,
+    ProgramCreateInput,
+    ProgramUpdateInput,
+)
 
 
 # Helper function to recursively convert Strawberry input objects to dicts
@@ -118,34 +124,6 @@ async def has_template_access(template_id: UUID, user_id: UUID) -> bool:
 
 
 # Input types for mutations
-@strawberry.input
-class ProgramTagInput:
-    name: str
-
-
-@strawberry.input
-class ProgramPracticeLinkInput:
-    practice_template_id: strawberry.ID
-    sequence_order: int
-    interval_days_after: int = 1
-
-
-@strawberry.input
-class ProgramCreateInput:
-    name: str
-    description: Optional[str] = None
-    level: Optional[str] = None
-    tags: List[ProgramTagInput] = strawberry.field(default_factory=list)
-    practice_links: List[ProgramPracticeLinkInput] = strawberry.field(default_factory=list)
-
-
-@strawberry.input
-class ProgramUpdateInput:
-    name: Optional[str] = None
-    description: Optional[str] = None
-    level: Optional[str] = None
-    tags: Optional[List[ProgramTagInput]] = None
-    practice_links: Optional[List[ProgramPracticeLinkInput]] = None
 
 
 # Phase 1: Instance Input Types
@@ -257,17 +235,6 @@ class PrescriptionInstanceUpdateInput:
     prescribed_rounds: Optional[int] = None
 
 
-# New: nested prescription instance input for standalone creation (no FK required)
-@strawberry.input
-class NestedPrescriptionInstanceCreateInput:
-    name: str
-    position: int
-    block: str
-    description: Optional[str] = None
-    prescribed_rounds: int = 1
-    movements: List[NestedMovementInstanceCreateInput] = strawberry.field(default_factory=list)
-
-
 # Phase 2: Template Input Types
 @strawberry.input
 class SetTemplateCreateInput:
@@ -359,13 +326,32 @@ class PrescriptionTemplateUpdateInput:
 
 
 # Existing input types
+
+@strawberry.input
+class NestedPrescriptionTemplateCreateInput:
+    name: str
+    position: int
+    block: str
+    description: Optional[str] = None
+    prescribed_rounds: int = 1
+    movements: List[NestedMovementTemplateCreateInput] = strawberry.field(default_factory=list)
+
 @strawberry.input
 class PracticeTemplateCreateInput:
     title: str
     description: Optional[str] = None
     duration: Optional[float] = None
-    prescriptions: List[PrescriptionTemplateCreateInput] = strawberry.field(default_factory=list)
+    prescriptions: List[NestedPrescriptionTemplateCreateInput] = strawberry.field(default_factory=list)
 
+
+@strawberry.input
+class NestedPrescriptionInstanceCreateInput:
+    name: str
+    position: int
+    block: str
+    description: Optional[str] = None
+    prescribed_rounds: int = 1
+    movements: List[NestedMovementInstanceCreateInput] = strawberry.field(default_factory=list)
 
 @strawberry.input
 class PracticeInstanceCreateStandaloneInput:
@@ -438,9 +424,11 @@ def convert_program_practice_link_to_gql(domain_link: DomainProgramPracticeLink)
     return ProgramPracticeLinkType(
         id_=domain_link.id_,
         program_id=domain_link.program_id,
-        practice_template_id=domain_link.practice_template_id,
+        practice_id=domain_link.practice_template_id,
         sequence_order=domain_link.sequence_order,
         interval_days_after=domain_link.interval_days_after,
+        created_at=getattr(domain_link, "created_at", None),
+        modified_at=getattr(domain_link, "modified_at", None),
         practice_template=(
             convert_practice_template_to_gql(domain_link.practice_template) if domain_link.practice_template else None
         ),
@@ -451,6 +439,9 @@ def convert_program_to_gql(domain_program: DomainProgram) -> ProgramType:
     """Converts a domain program model to its GraphQL counterpart."""
     # Note: Strawberry will automatically handle the nested objects if their types are defined correctly.
     # We might need to handle enum conversions if they don't map directly.
+    links_gql = [convert_program_practice_link_to_gql(link) for link in domain_program.practice_links]
+    practice_count = len(links_gql)
+    total_duration_days = (sum((l.interval_days_after or 0) for l in links_gql) + 1) if links_gql else 0
     return ProgramType(
         id_=domain_program.id_,
         name=domain_program.name,
@@ -459,7 +450,10 @@ def convert_program_to_gql(domain_program: DomainProgram) -> ProgramType:
         created_at=domain_program.created_at,
         modified_at=domain_program.modified_at,
         tags=[ProgramTagType(**tag.model_dump()) for tag in domain_program.tags],
-        practice_links=[convert_program_practice_link_to_gql(link) for link in domain_program.practice_links],
+        practice_links=links_gql,
+        enrollments=[],
+        practice_count=practice_count,
+        total_duration_days=total_duration_days,
     )
 
 
@@ -1947,3 +1941,45 @@ class Mutation(EnrollmentMutation):
             await prescription_template_service.delete_prescription_template(UUID(id))
 
         return True
+
+    # Program mutations
+    @strawberry.mutation(name="createProgram")
+    async def create_program(self, info: Info, input: ProgramCreateInput) -> ProgramType:
+        uow: UnitOfWork = info.context["uow"]
+        current_user = get_current_user_from_info(info)
+        if not current_user:
+            raise PermissionError("Authentication required.")
+        payload = input.to_dict()
+        payload["user_id"] = current_user.id
+        async with uow:
+            program_repo = ProgramRepository(uow.session)
+            program_service = ProgramService(program_repo)
+            program = await program_service.create_program(payload)
+        return convert_program_to_gql(program)
+
+    @strawberry.mutation(name="updateProgram")
+    async def update_program(self, info: Info, id: strawberry.ID, input: ProgramUpdateInput) -> Optional[ProgramType]:
+        uow: UnitOfWork = info.context["uow"]
+        async with uow:
+            program_repo = ProgramRepository(uow.session)
+            program_service = ProgramService(program_repo)
+            updated = await program_service.update_program(UUID(str(id)), input.to_dict())
+        return convert_program_to_gql(updated) if updated else None
+
+    @strawberry.mutation(name="deleteProgram")
+    async def delete_program(self, info: Info, id: strawberry.ID) -> bool:
+        uow: UnitOfWork = info.context["uow"]
+        async with uow:
+            program_repo = ProgramRepository(uow.session)
+            program_service = ProgramService(program_repo)
+            return await program_service.delete_program(UUID(str(id)))
+
+
+@strawberry.input
+class NestedPrescriptionTemplateCreateInput:
+    name: str
+    position: int
+    block: str
+    description: Optional[str] = None
+    prescribed_rounds: int = 1
+    movements: List[NestedMovementTemplateCreateInput] = strawberry.field(default_factory=list)

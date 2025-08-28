@@ -12,7 +12,7 @@ from practices.domain.models import (
 )
 
 from .enrollment_types import ProgramEnrollmentTypeGQL
-from .types import PracticeType
+from .practice_template_types import PracticeTemplateType
 
 
 @strawberry.type
@@ -35,11 +35,11 @@ class ProgramPracticeLinkType:
     practice_id: strawberry.ID
     sequence_order: int
     interval_days_after: int
-    created_at: datetime
-    modified_at: datetime
+    created_at: Optional[datetime] = None
+    modified_at: Optional[datetime] = None
 
     # Relationship field
-    practice: Optional[PracticeType] = None
+    practice_template: Optional[PracticeTemplateType] = None
 
 
 @strawberry.type
@@ -87,7 +87,7 @@ class ProgramType:
                     interval_days_after=link.interval_days_after,
                     created_at=link.created_at,
                     modified_at=link.modified_at,
-                    practice=link.practice,  # This will need to be converted if populated
+                    practice_template=link.practice,  # If populated as a template-shaped object
                 )
                 for link in domain_program.practice_links
             ],
@@ -119,7 +119,8 @@ class ProgramTagInput:
 class ProgramPracticeLinkInput:
     """Input type for linking practices to programs."""
 
-    practice_id: strawberry.ID
+    practice_template_id: Optional[strawberry.ID] = None
+    practice_id: Optional[strawberry.ID] = None
     sequence_order: int
     interval_days_after: int = 1
 
@@ -152,7 +153,7 @@ class ProgramCreateInput:
         if self.practice_links:
             result["practice_links"] = [
                 {
-                    "practice_id": UUID(link.practice_id),
+                    "practice_template_id": UUID(link.practice_template_id) if link.practice_template_id is not None else UUID(link.practice_id),
                     "sequence_order": link.sequence_order,
                     "interval_days_after": link.interval_days_after,
                 }

@@ -7,6 +7,8 @@ from graphql import GraphQLError
 from shared.auth import CurrentUser, RequireRolePermission
 from shared.clients.user_service_client import users_service_client
 from strawberry.types import Info
+import os
+import httpx
 
 from practices.domain.models import DomainProgramEnrollment
 from practices.repository.models.progress import ScheduledPracticeModel
@@ -183,6 +185,74 @@ class EnrollmentQuery:
 
 @strawberry.type
 class EnrollmentMutation:
+    @strawberry.type
+    class PracticesAutoEnrollResult:
+        ok: bool
+        enrolled: bool
+        reason: Optional[str] = None
+
+    @strawberry.mutation
+    async def autoEnrollPractices(self, campaign: str, info: Info) -> PracticesAutoEnrollResult:
+        """Proxy auto-enroll for practices: calls web vouchers autoenroll, then ensures a practices program enrollment exists when eligible."""
+        # Resolve vouchers web base URL
+        web_base = os.getenv("VOUCHERS_WEB_BASE_URL", "").strip()
+        if not web_base:
+            return EnrollmentMutation.PracticesAutoEnrollResult(ok=False, enrolled=False, reason="web_base_url_not_configured")
+        url = f"{web_base.rstrip('/')}/api/vouchers/autoenroll"
+
+        # Forward Authorization header when available
+        token = None
+        try:
+            req = info.context.get('request')
+            if req:
+                authz = req.headers.get('authorization')
+                if authz and authz.lower().startswith('bearer '):
+                    token = authz.split(' ', 1)[1]
+        except Exception:
+            pass
+        headers = {'content-type': 'application/json'}
+        if token:
+            headers['authorization'] = f"Bearer {token}"
+
+        # Call vouchers autoenroll
+        web_enrolled = False
+        web_reason: Optional[str] = None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(url, headers=headers, json={})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    web_enrolled = bool(data.get('enrolled'))
+                    web_reason = data.get('reason')
+                else:
+                    web_reason = f"web_status_{resp.status_code}"
+        except Exception:
+            return EnrollmentMutation.PracticesAutoEnrollResult(ok=False, enrolled=False, reason="web_call_failed")
+
+        # Map campaign to program template id (env)
+        campaign_l = (campaign or '').lower()
+        program_id = None
+        if campaign_l == 'uye':
+            program_id = os.getenv('PRACTICES_UYE_PROGRAM_TEMPLATE_ID')
+        elif campaign_l == 'mindmirror':
+            program_id = os.getenv('PRACTICES_MINDMIRROR_PROGRAM_TEMPLATE_ID')
+        if not program_id:
+            return EnrollmentMutation.PracticesAutoEnrollResult(ok=False, enrolled=False, reason="unknown_campaign")
+
+        # Only enroll if web reported enrolled True
+        if not web_enrolled:
+            return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=False, reason=web_reason)
+
+        # Create enrollment for current user
+        context = cast(CustomContext, info.context)
+        current_user = cast(CurrentUser, context.current_user)
+        uow = context.uow
+        async with uow:
+            repo = EnrollmentRepository(uow.session)
+            service = EnrollmentService(repo)
+            await service.enroll_user(program_id=uuid.UUID(str(program_id)), user_to_enroll_id=current_user.id, enrolling_user_id=current_user.id)
+        return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=True)
+
     @strawberry.mutation(permission_classes=[CanSelfEnroll])
     async def enroll_in_program(self, info: Info, program_id: strawberry.ID) -> ProgramEnrollmentTypeGQL:
         """

@@ -94,11 +94,35 @@ class PracticeTemplateRepository:
 
             for mov_data in movements_data:
                 sets_data = mov_data.pop("sets", [])
+                # Normalize movement fields for DB constraints
+                if mov_data.get("metric_unit") is not None:
+                    mov_data["metric_unit"] = str(mov_data["metric_unit"]).lower()
+                if mov_data.get("movement_class") is not None:
+                    mov_data["movement_class"] = str(mov_data["movement_class"]).lower()
+                if mov_data.get("rest_duration") is not None:
+                    try:
+                        mov_data["rest_duration"] = int(mov_data["rest_duration"])
+                    except Exception:
+                        pass
+                if mov_data.get("position") is not None:
+                    try:
+                        mov_data["position"] = int(mov_data["position"])
+                    except Exception:
+                        pass
                 new_movement = MovementTemplateModel(**mov_data, prescription_template_id=new_prescription.id_)
                 self.session.add(new_movement)
                 await self.session.flush()
 
                 for set_data in sets_data:
+                    # Normalize set fields for DB constraints
+                    if set_data.get("load_unit") is not None:
+                        set_data["load_unit"] = str(set_data["load_unit"]).lower()
+                    for key in ("reps", "duration", "rest_duration", "position"):
+                        if set_data.get(key) is not None:
+                            try:
+                                set_data[key] = int(set_data[key])
+                            except Exception:
+                                pass
                     new_set = SetTemplateModel(**set_data, movement_template_id=new_movement.id_)
                     self.session.add(new_set)
 
