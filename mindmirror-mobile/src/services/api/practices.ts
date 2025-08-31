@@ -160,7 +160,32 @@ export const QUERY_MOVEMENT_TEMPLATE = gql`
         planesOfMotion
         tags
       }
-      sets { id_ position reps duration rest_duration: restDuration load_value: loadValue load_unit: loadUnit movement_template_id: movementTemplateId }
+      sets { id_ position reps duration rest_duration: restDuration load_value: loadValue load_unit: LoadUnit movement_template_id: movementTemplateId }
+    }
+  }
+`
+
+export const QUERY_PRACTICE_INSTANCE = gql`
+  query PracticeInstance($id: ID!) {
+    practiceInstance: practice_instance(id: $id) {
+      id_
+      date
+      title
+      description
+      completedAt
+      prescriptions {
+        id_
+        name
+        block
+        movements {
+          id_
+          name
+          restDuration
+          videoUrl
+          movement { id_ name shortVideoUrl }
+          sets { id_ reps loadValue loadUnit restDuration complete movementInstanceId }
+        }
+      }
     }
   }
 `
@@ -180,7 +205,13 @@ export const QUERY_PROGRAM = gql`
 
 export const QUERY_MY_UPCOMING_PRACTICES = gql`
   query MyUpcomingPractices {
-    my_upcoming_practices: myUpcomingPractices { id_ enrollment_id: enrollmentId practice_id: practiceId scheduled_date: scheduledDate }
+    my_upcoming_practices: myUpcomingPractices { 
+      id_ 
+      enrollment_id: enrollmentId 
+      practice_id: practiceId 
+      practice_instance_id: practiceInstanceId
+      scheduled_date: scheduledDate 
+    }
   }
 `
 
@@ -298,6 +329,7 @@ export const usePracticeTemplates = () => useQuery(QUERY_PRACTICE_TEMPLATES, { f
 export const useProgram = (id: string) => useQuery(QUERY_PROGRAM, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const usePracticeTemplate = (id: string) => useQuery(QUERY_PRACTICE_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const useMovementTemplate = (id: string) => useQuery(QUERY_MOVEMENT_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
+export const usePracticeInstance = (id: string) => useQuery(QUERY_PRACTICE_INSTANCE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const useMyUpcomingPractices = () => useQuery(QUERY_MY_UPCOMING_PRACTICES, { fetchPolicy: 'cache-and-network' })
 export const useMyUpcomingPracticesInProgram = (programId: string) => useQuery(QUERY_MY_UPCOMING_PRACTICES_IN_PROGRAM, { variables: { programId }, skip: !programId, fetchPolicy: 'cache-and-network' })
 export const useMyEnrollments = (userId?: string) => useQuery(QUERY_MY_ENROLLMENTS, { variables: { userId }, skip: !userId, fetchPolicy: 'cache-and-network' })

@@ -43,12 +43,12 @@ export default function ProgramDetailsScreen() {
 
   const onEnroll = async () => {
     try {
-      await enrollProgram({ variables: { programId: p?.id_ }, refetchQueries: ['Programs', 'Enrollments', 'MyUpcomingPractices', 'TodaysWorkouts'], awaitRefetchQueries: true })
+      await enrollProgram({ variables: { programId: p?.id_ }, refetchQueries: ['Programs', 'Enrollments', 'MyUpcomingPractices', 'TodaysWorkouts', 'TodaysSchedulables'], awaitRefetchQueries: true })
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="success" variant="solid">
           <VStack>
             <ToastTitle>Enrolled</ToastTitle>
-            <ToastDescription>Loading your workouts…</ToastDescription>
+            <ToastDescription>Scheduled today’s workout. Updating your home…</ToastDescription>
           </VStack>
         </Toast>
       )})

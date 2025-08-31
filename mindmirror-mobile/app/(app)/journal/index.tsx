@@ -7,7 +7,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useRouter } from 'expo-router';
-import { Heart, Lightbulb } from "lucide-react-native";
+import { Heart, Lightbulb, Dumbbell } from "lucide-react-native";
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable as RNPressable, TextInput, Animated, Easing } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
@@ -405,6 +405,7 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
     date: onDate,
     service_id: 'practices',
     entity_id: sp.practice_id,
+    practice_instance_id: sp.practice_instance_id,
     enrollment_id: sp.enrollment_id,
     __typename: 'Schedulable',
     completed: false,
@@ -465,26 +466,30 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
                 <HStack className={`items-center justify-between p-3 rounded-lg border ${baseClasses}`}>
                   <Pressable 
                     onPress={() => {
-                      const wid = it.entity_id || it.id_
+                      // For practice items: use practice instance ID directly
+                      // For upcoming items: use practice_instance_id if available, otherwise entity_id (template ID)
+                      const wid = it.practice_instance_id || it.id_
                       const eid = it.enrollment_id
                       router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
                     }}
                     className="flex-1"
                   >
-                    <VStack>
-                      <HStack className="items-center justify-between">
-                        <Text className={`font-semibold ${it.completed ? 'text-green-700' : 'text-indigo-900'}`}>{it.name || 'Workout'}</Text>
-                        {!!it.level && (
-                          <Box className="px-2 py-0.5 rounded-full bg-indigo-100 border border-indigo-200">
-                            <Text className="text-xs text-indigo-700 font-semibold">{it.level}</Text>
-                          </Box>
+                    <Box className="p-4 rounded-lg border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
+                      <VStack space="sm">
+                        <HStack space="sm" className="items-center">
+                          <Icon as={Dumbbell} size="md" className="text-indigo-700 dark:text-indigo-300" />
+                          <Text className="text-lg font-semibold text-typography-900 dark:text-white">{it.name || 'Workout'}</Text>
+                          {!!it.level && (
+                            <Box className="px-2 py-0.5 rounded-full bg-indigo-100 border border-indigo-200">
+                              <Text className="text-xs text-indigo-700 font-semibold">{it.level}</Text>
+                            </Box>
+                          )}
+                        </HStack>
+                        {!!it.description && (
+                          <Text className="text-typography-600 dark:text-gray-300">{it.description}</Text>
                         )}
-                      </HStack>
-                      {!!it.description && (
-                        <Text className="text-typography-600 mt-0.5" numberOfLines={2}>{it.description}</Text>
-                      )}
-                      <Text className="text-typography-500 text-xs mt-0.5">{it.date}</Text>
-                    </VStack>
+                      </VStack>
+                    </Box>
                   </Pressable>
                   {it.enrollment_id && (
                     <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId: it.enrollment_id, mode: 'push' } }) } catch {} }} className="ml-2 px-2 py-1 rounded border border-indigo-200 bg-white/60">
@@ -790,9 +795,6 @@ export default function JournalScreen() {
                 <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
                   <Text className="font-semibold">Meals</Text>
                 </Pressable>
-                <Pressable onPress={() => setHomeTab('workouts')} className={`px-3 py-2 rounded-md ${homeTab === 'workouts' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
-                  <Text className="font-semibold">Workouts</Text>
-                </Pressable>
               </HStack>
               <HStack className="items-center space-x-2">
                 <Pressable onPress={() => { const prev = new Date(tasksAnchorDate); prev.setDate(prev.getDate() - 1); setTasksAnchorDate(prev) }} className="px-2 py-1 rounded-md border border-border-200">
@@ -812,15 +814,10 @@ export default function JournalScreen() {
           {homeTab === 'habits' ? (
             <VStack className="px-6 py-2" space="md">
               <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} />
-              <VStack space="sm">
-                <HStack className="items-center justify-between">
-                  <Text className="text-lg font-semibold">Tasks</Text>
-                </HStack>
-                {/* Reuse workouts list under Habits as Tasks for now */}
-                <TodaysWorkoutsRow showHeader={false} />
-              </VStack>
+              {/* Integrate workouts directly without separate header */}
+              <TodaysWorkoutsRow showHeader={false} />
             </VStack>
-          ) : homeTab === 'meals' ? (
+          ) : (
             <VStack className="px-6 py-2" space="md">
               {mealsLoading ? (
                 <ActivityIndicator />
@@ -846,15 +843,11 @@ export default function JournalScreen() {
                 })
               )}
             </VStack>
-          ) : (
-            <VStack className="px-6 py-2" space="md">
-              <TodaysWorkoutsRow showHeader={false} />
-            </VStack>
           )}
-          </VStack>
           
           {/* REMOVED: Old structured journal section */}
           
+          </VStack>
         </ScrollView>
         
         {/* Transition Overlay */}

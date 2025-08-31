@@ -211,7 +211,7 @@ export default function TemplateDetailsScreen() {
                                   <Pressable onPress={() => setMovementModalId(m.id_)}>
                                     <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
                                   </Pressable>
-                                  <Text className="text-typography-600 dark:text-gray-300">{buildSetSummary(m)}</Text>
+                                  <Text className="text-typography-600 dark:text-gray-300">{(() => { const sig = buildSignature(m); return sig || buildSetSummary(m) })()}</Text>
                                 </VStack>
 
                                 {/* Signature chip */}

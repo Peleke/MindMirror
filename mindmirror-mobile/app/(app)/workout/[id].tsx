@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text'
 import { Pressable } from '@/components/ui/pressable'
 import { ActivityIndicator, ScrollView, Alert, Modal, View } from 'react-native'
 import { Input, InputField } from '@/components/ui/input'
-import { useTodaysWorkouts, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
+import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
@@ -56,6 +56,7 @@ export default function WorkoutDetailsScreen() {
   const onDate = dayjs().format('YYYY-MM-DD')
 
   const { data, loading, error } = useTodaysWorkouts(onDate)
+  const fallbackQ = usePracticeInstance(workoutId || '')
   const [deletePracticeInstance] = useDeletePracticeInstance()
   const [completeWorkoutMutation] = useCompleteWorkout()
   const [updateSetInstance] = useUpdateSetInstance()
@@ -65,7 +66,7 @@ export default function WorkoutDetailsScreen() {
   const upcoming = useMyUpcomingPractices()
   const [deferOpen, setDeferOpen] = useState(false)
 
-  const serverWorkout = data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
+  const serverWorkout = data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId) || fallbackQ.data?.practiceInstance
 
   const [workout, setWorkout] = useState<any | null>(null)
   useEffect(() => { if (serverWorkout) setWorkout(JSON.parse(JSON.stringify(serverWorkout))) }, [serverWorkout])
@@ -76,6 +77,17 @@ export default function WorkoutDetailsScreen() {
   const toggleTimer = () => setTimerActive((t) => !t)
   const startTimerIfIdle = () => { if (!timerActive) setTimerActive(true) }
   const fmtMinSec = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
+
+  // Debug logging
+  console.log('DEBUG workout screen:', {
+    workoutId,
+    loading,
+    fallbackLoading: fallbackQ.loading,
+    fallbackError: fallbackQ.error,
+    fallbackData: fallbackQ.data,
+    serverWorkout,
+    workout
+  })
 
   const totals = useMemo(() => {
     const prescriptions: any[] = Array.isArray(workout?.prescriptions) ? workout!.prescriptions : []
@@ -155,11 +167,31 @@ export default function WorkoutDetailsScreen() {
     } catch {}
   }
 
-  if (loading || !workout) {
+  if ((loading || fallbackQ.loading) && !workout) {
     return (
       <SafeAreaView>
         <VStack className="h-full w-full items-center justify-center bg-background-0">
-          {loading ? <ActivityIndicator /> : <Text>Loading…</Text>}
+          <ActivityIndicator />
+          <Text className="mt-2 text-typography-500">Loading workout...</Text>
+          {fallbackQ.error && <Text className="mt-2 text-red-500">Error: {fallbackQ.error.message}</Text>}
+        </VStack>
+      </SafeAreaView>
+    )
+  }
+
+  // If both queries finished but no workout found
+  if (!loading && !fallbackQ.loading && !workout) {
+    return (
+      <SafeAreaView>
+        <VStack className="h-full w-full items-center justify-center bg-background-0">
+          <AppBar title="Workout Not Found" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
+          <Text className="text-typography-500">Workout not found</Text>
+          <Text className="mt-2 text-xs text-typography-400">ID: {workoutId}</Text>
+          {(error || fallbackQ.error) && (
+            <Text className="mt-2 text-red-500">
+              Error: {error?.message || fallbackQ.error?.message}
+            </Text>
+          )}
         </VStack>
       </SafeAreaView>
     )
@@ -256,7 +288,7 @@ export default function WorkoutDetailsScreen() {
   return (
     <SafeAreaView>
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title="Workout" showBackButton onBackPress={() => router.back()} />
+        <AppBar title="Workout" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
         <Pressable className="absolute top-0 right-0 p-2" onPress={handleDelete}>
           <Text className="text-red-600">Delete</Text>
         </Pressable>
@@ -266,7 +298,7 @@ export default function WorkoutDetailsScreen() {
             {/* Title + Metadata Panel */}
             <VStack className="px-6 pt-4">
               <VStack className="flex-row items-center justify-between">
-                <Text className="text-2xl font-bold text-typography-900 dark:text-white">{workout.title || 'Workout'}</Text>
+                <Text className="text-2xl font-bold text-typography-900 dark:text-white">{workout?.title || 'Workout'}</Text>
                 <VStack className="flex-row items-center space-x-2">
                   {enrollmentId ? (
                     <Pressable className="px-3 py-1 rounded-full border border-border-200 bg-background-50" onPress={() => setDeferOpen(true)}>
@@ -284,7 +316,7 @@ export default function WorkoutDetailsScreen() {
                   <VStack className="flex-row">
                     <Box className="flex-1">
                       <Text className="text-xs text-typography-500">Date</Text>
-                      <Text className="text-sm font-semibold text-typography-900">{dayjs(workout.date).format('MMM DD, YYYY')}</Text>
+                      <Text className="text-sm font-semibold text-typography-900">{dayjs(workout?.date).format('MMM DD, YYYY')}</Text>
                     </Box>
                     <Box className="flex-1">
                       <Text className="text-xs text-typography-500">Duration</Text>
@@ -301,7 +333,7 @@ export default function WorkoutDetailsScreen() {
                   </VStack>
                   <Box className="h-3" />
                   <Text className="text-xs text-typography-500">Notes</Text>
-                  <Text className="text-sm text-typography-900">{workout.description || '—'}</Text>
+                  <Text className="text-sm text-typography-900">{workout?.description || '—'}</Text>
                 </VStack>
               </Box>
             </VStack>
@@ -310,25 +342,25 @@ export default function WorkoutDetailsScreen() {
             <Box className="px-6 pt-6">
               <VStack className="flex-row items-center justify-between">
                 <Text className="text-sm font-semibold text-typography-900">Today's Workout</Text>
-                <Text className="text-xs text-typography-500">{dayjs(workout.date).format('dddd')}</Text>
+                <Text className="text-xs text-typography-500">{dayjs(workout?.date).format('dddd')}</Text>
               </VStack>
             </Box>
 
             {/* Divider */}
             <Box className="mx-6 my-3 h-px bg-border-200" />
 
-            {/* Frozen Blocks */}
-            <VStack className="px-6 pb-28">
-              {(Array.isArray(workout.prescriptions) ? workout.prescriptions : []).map((p: any, idx: number) => (
+            {/* Workout Blocks */}
+            <VStack className="px-6 pb-6">
+              {(Array.isArray(workout?.prescriptions) ? workout.prescriptions : []).map((p: any, idx: number) => (
                 <VStack key={idx}>
                   <BlockFrozen p={p} idx={idx} />
-                  <Box className="h-5" />
+                  <Box className="h-4" />
                 </VStack>
               ))}
             </VStack>
 
             {/* Complete Workout */}
-            <VStack className="px-6 pb-10">
+            <VStack className="px-6 pb-20">
               <Pressable className="px-4 py-3 rounded-xl border border-border-200 bg-indigo-50" onPress={onCompleteWorkout}>
                 <Text className="text-indigo-700 text-center font-semibold">Complete Workout</Text>
               </Pressable>
