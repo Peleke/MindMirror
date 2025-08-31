@@ -814,8 +814,6 @@ export default function JournalScreen() {
           {homeTab === 'habits' ? (
             <VStack className="px-6 py-2" space="md">
               <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} />
-              {/* Integrate workouts directly without separate header */}
-              <TodaysWorkoutsRow showHeader={false} />
             </VStack>
           ) : (
             <VStack className="px-6 py-2" space="md">

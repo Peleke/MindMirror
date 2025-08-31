@@ -11,10 +11,12 @@ import { Task, HabitTask, LessonTask, JournalTask } from '@/types/habits'
 import HabitCard from './cards/HabitCard'
 import LessonCard from './cards/LessonCard'
 import JournalCard from './cards/JournalCard'
+import WorkoutCard from './cards/WorkoutCard'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { useTodaysWorkouts } from '@/services/api/practices'
+import { useTodaysWorkouts, useMyUpcomingPractices, useDeferPractice } from '@/services/api/practices'
+import dayjs from 'dayjs'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -88,6 +90,54 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
   const { data: workoutsData } = useTodaysWorkouts(onDate)
   const completedWorkouts = (workoutsData?.todaysWorkouts || []).filter((w: any) => !!w.completedAt)
 
+  // Get workout data for integration
+  const { data: upcomingData } = useMyUpcomingPractices()
+  const [deferPractice] = useDeferPractice()
+  
+  // Create workout tasks from scheduled practices and actual instances
+  const todaysUpcoming = (upcomingData?.my_upcoming_practices || []).filter((sp: any) => 
+    dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate
+  )
+  const todaysWorkoutsMap: Record<string, any> = {}
+  for (const w of (workoutsData?.todaysWorkouts || [])) { 
+    todaysWorkoutsMap[w.id_] = w 
+  }
+  
+  const workoutTasks = [
+    // Actual practice instances
+    ...(workoutsData?.todaysWorkouts || []).map((w: any) => ({
+      __typename: 'WorkoutTask',
+      taskId: w.id_,
+      id_: w.id_,
+      name: w.title || 'Workout',
+      description: w.description || '',
+      level: w.level,
+      date: w.date,
+      completed: !!w.completedAt,
+      practice_instance_id: w.id_,
+      status: w.completedAt ? 'completed' : 'pending'
+    })),
+    // Upcoming scheduled practices (only if no instance exists)
+    ...todaysUpcoming.filter((sp: any) => !sp.practice_instance_id).map((sp: any) => ({
+      __typename: 'WorkoutTask', 
+      taskId: sp.id_,
+      id_: sp.id_,
+      name: todaysWorkoutsMap[sp.practice_id]?.title || 'Workout',
+      description: todaysWorkoutsMap[sp.practice_id]?.description || '',
+      level: todaysWorkoutsMap[sp.practice_id]?.level,
+      date: onDate,
+      completed: false,
+      enrollment_id: sp.enrollment_id,
+      practice_instance_id: sp.practice_instance_id,
+      status: 'pending'
+    }))
+  ]
+
+  // Combine all tasks
+  const allTasks = [...tasks, ...workoutTasks]
+  const allRemainingTasks = allTasks.filter((t: any) => t.status !== 'completed')
+  const allCompletedTasks = allTasks.filter((t: any) => t.status === 'completed')
+
   if ((authLoading || loading) && !data) {
     return (
       <Box className="items-center py-8">
@@ -104,7 +154,7 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
     )
   }
 
-  if (!tasks.length) {
+  if (!allTasks.length) {
     return (
       <VStack space="md">
         {/* Tabs placeholder to keep layout consistent */}
@@ -148,13 +198,13 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
         </Pressable>
       </HStack>
 
-      {(activeTab==='today' ? remainingTasks : completedTasks).length === 0 ? (
+      {(activeTab==='today' ? allRemainingTasks : allCompletedTasks).length === 0 ? (
         <Box className="items-center py-8">
           <Text className="text-typography-600 dark:text-gray-300">{activeTab==='today' ? '✨ Wow, you nailed everything!' : 'No completed tasks yet'}</Text>
         </Box>
       ) : null}
 
-      {(activeTab==='today' ? remainingTasks : completedTasks).map((t) => {
+      {(activeTab==='today' ? allRemainingTasks : allCompletedTasks).map((t) => {
         // eslint-disable-next-line no-console
         console.log('[DailyTasksList] task item', t)
         if (t.__typename === 'HabitTask') {
@@ -198,6 +248,32 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
               onComplete={async () => {
                 await markLessonCompleted({ variables: { lessonTemplateId: lt.lessonTemplateId, onDate } })
               }}
+            />
+          )
+        }
+        if (t.__typename === 'WorkoutTask') {
+          const wt = t as any // Assuming WorkoutTask is a custom type or has specific fields
+          const title = wt.name || 'Workout'
+          const description = wt.description || ''
+          const level = wt.level || 'Beginner'
+          const date = wt.date || onDate
+          const completed = wt.completed
+          const status = wt.status || 'pending'
+
+          return (
+            <WorkoutCard
+              key={wt.taskId}
+              task={{ ...wt, name: title, description, level, date, completed }}
+              onPress={() => {
+                const wid = wt.practice_instance_id || wt.id_
+                const eid = wt.enrollment_id
+                router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
+              }}
+              onDefer={wt.enrollment_id ? async () => {
+                try { 
+                  await deferPractice({ variables: { enrollmentId: wt.enrollment_id, mode: 'push' } }) 
+                } catch {} 
+              } : undefined}
             />
           )
         }
