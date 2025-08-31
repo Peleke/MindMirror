@@ -17,10 +17,38 @@ export const QUERY_TODAYS_WORKOUTS = gql`
           id_
           name
           restDuration
-          movement { id_ }
+          videoUrl
+          movement {
+            id_
+            name
+            shortVideoUrl
+            longVideoUrl
+            difficulty
+            bodyRegion
+            archetype
+            equipment
+            primaryMuscles
+            secondaryMuscles
+            movementPatterns
+            planesOfMotion
+            tags
+          }
           sets { id_ reps loadValue loadUnit restDuration complete movementInstanceId }
         }
       }
+    }
+  }
+`
+
+export const QUERY_SEARCH_MOVEMENTS = gql`
+  query SearchMovements($term: String!, $limit: Int) {
+    searchMovements(searchTerm: $term, limit: $limit) {
+      id_
+      name
+      difficulty
+      bodyRegion
+      equipment
+      shortVideoUrl
     }
   }
 `
@@ -51,7 +79,89 @@ export const QUERY_PRACTICE_TEMPLATES = gql`
 
 export const QUERY_PRACTICE_TEMPLATE = gql`
   query PracticeTemplate($id: ID!) {
-    practiceTemplate(id: $id) { id_ title description prescriptions { id_ name block position movements { id_ name prescribed_sets rest_duration } } }
+    practiceTemplate(id: $id) {
+      id_
+      title
+      description
+      prescriptions {
+        id_
+        name
+        block
+        position
+        movements {
+          id_
+          name
+          description
+          metric_unit: metricUnit
+          metric_value: metricValue
+          movement_class: movementClass
+          prescribed_sets: prescribedSets
+          rest_duration: restDuration
+          video_url: videoUrl
+          exercise_id: exerciseId
+          movement_id: movementId
+          movement {
+            id_
+            name
+            shortVideoUrl
+            longVideoUrl
+            difficulty
+            bodyRegion
+            archetype
+            equipment
+            primaryMuscles
+            secondaryMuscles
+            movementPatterns
+            planesOfMotion
+            tags
+          }
+          sets {
+            id_
+            position
+            reps
+            duration
+            rest_duration: restDuration
+            load_value: loadValue
+            load_unit: loadUnit
+            movement_template_id: movementTemplateId
+          }
+        }
+      }
+    }
+  }
+`
+
+export const QUERY_MOVEMENT_TEMPLATE = gql`
+  query MovementTemplate($id: ID!) {
+    movementTemplate(id: $id) {
+      id_
+      name
+      description
+      metric_unit: metricUnit
+      metric_value: metricValue
+      movement_class: movementClass
+      prescribed_sets: prescribedSets
+      rest_duration: restDuration
+      video_url: videoUrl
+      exercise_id: exerciseId
+      movement_id: movementId
+      movement {
+        id_
+        name
+        shortVideoUrl
+        longVideoUrl
+        difficulty
+        bodyRegion
+        archetype
+        equipment
+        primaryMuscles
+        secondaryMuscles
+        movementPatterns
+        planesOfMotion
+        tags
+      }
+      sets { id_ position reps duration rest_duration: restDuration load_value: loadValue load_unit: loadUnit movement_template_id: movementTemplateId }
+    }
   }
 `
 
@@ -70,13 +180,23 @@ export const QUERY_PROGRAM = gql`
 
 export const QUERY_MY_UPCOMING_PRACTICES = gql`
   query MyUpcomingPractices {
-    my_upcoming_practices { id_ enrollment_id practice_id scheduled_date }
+    my_upcoming_practices: myUpcomingPractices { id_ enrollment_id: enrollmentId practice_id: practiceId scheduled_date: scheduledDate }
   }
 `
 
 export const QUERY_MY_UPCOMING_PRACTICES_IN_PROGRAM = gql`
   query MyUpcomingPracticesInProgram($programId: ID!) {
-    my_upcoming_practices_in_program(program_id: $programId) { id_ enrollment_id practice_id scheduled_date }
+    my_upcoming_practices_in_program: myUpcomingPracticesInProgram(programId: $programId) { id_ enrollment_id: enrollmentId practice_id: practiceId scheduled_date: scheduledDate }
+  }
+`
+
+export const QUERY_MY_ENROLLMENTS = gql`
+  query Enrollments($userId: ID!) {
+    enrollments(userId: $userId) {
+      id_
+      program_id: programId
+      status
+    }
   }
 `
 
@@ -89,13 +209,22 @@ export const MUTATION_CREATE_ADHOC_WORKOUT = gql`
 
 export const MUTATION_SCHEDULE_WORKOUT = gql`
   mutation ScheduleWorkout($templateId: ID!, $date: Date!) {
-    scheduleWorkout(template_id: $templateId, date: $date) { id_ date title }
+    scheduleWorkout(templateId: $templateId, date: $date) { id_ date title }
   }
 `
 
 export const MUTATION_ENROLL_IN_PROGRAM = gql`
   mutation EnrollInProgram($programId: ID!) {
-    enrollInProgram(program_id: $programId) { id_ program_id user_id status }
+    enrollInProgram(programId: $programId) { id_ programId userId status }
+  }
+`
+
+export const MUTATION_UPDATE_ENROLLMENT_STATUS = gql`
+  mutation UpdateEnrollmentStatus($enrollmentId: ID!, $status: EnrollmentStatusGQL!) {
+    updateEnrollmentStatus(enrollmentId: $enrollmentId, status: $status) {
+      id_
+      status
+    }
   }
 `
 
@@ -162,17 +291,21 @@ export const MUTATION_DEFER_PRACTICE = gql`
 
 // Hooks
 export const useTodaysWorkouts = (onDate?: string) => useQuery(QUERY_TODAYS_WORKOUTS, { variables: { onDate }, fetchPolicy: 'cache-and-network' })
+export const useSearchMovements = (term: string, limit = 1) => useQuery(QUERY_SEARCH_MOVEMENTS, { variables: { term, limit }, skip: !term, fetchPolicy: 'cache-and-network' })
 export const useWorkouts = (vars: { dateFrom?: string, dateTo?: string, dates?: string[], programId?: string, status?: string }) => useQuery(QUERY_WORKOUTS, { variables: vars, fetchPolicy: 'cache-and-network' })
 export const usePrograms = () => useQuery(QUERY_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
 export const usePracticeTemplates = () => useQuery(QUERY_PRACTICE_TEMPLATES, { fetchPolicy: 'cache-and-network' })
 export const useProgram = (id: string) => useQuery(QUERY_PROGRAM, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const usePracticeTemplate = (id: string) => useQuery(QUERY_PRACTICE_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
+export const useMovementTemplate = (id: string) => useQuery(QUERY_MOVEMENT_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const useMyUpcomingPractices = () => useQuery(QUERY_MY_UPCOMING_PRACTICES, { fetchPolicy: 'cache-and-network' })
 export const useMyUpcomingPracticesInProgram = (programId: string) => useQuery(QUERY_MY_UPCOMING_PRACTICES_IN_PROGRAM, { variables: { programId }, skip: !programId, fetchPolicy: 'cache-and-network' })
+export const useMyEnrollments = (userId?: string) => useQuery(QUERY_MY_ENROLLMENTS, { variables: { userId }, skip: !userId, fetchPolicy: 'cache-and-network' })
 
 export const useCreateAdHocWorkout = () => useMutation(MUTATION_CREATE_ADHOC_WORKOUT)
 export const useScheduleWorkout = () => useMutation(MUTATION_SCHEDULE_WORKOUT)
 export const useEnrollInProgram = () => useMutation(MUTATION_ENROLL_IN_PROGRAM)
+export const useUpdateEnrollmentStatus = () => useMutation(MUTATION_UPDATE_ENROLLMENT_STATUS)
 export const useDeletePracticeInstance = () => useMutation(MUTATION_DELETE_PRACTICE_INSTANCE)
 export const useCompleteWorkout = () => useMutation(MUTATION_COMPLETE_WORKOUT)
 export const useUpdateSetInstance = () => useMutation(MUTATION_UPDATE_SET_INSTANCE)

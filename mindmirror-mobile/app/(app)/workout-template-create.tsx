@@ -12,12 +12,82 @@ import { Pressable } from '@/components/ui/pressable'
 import { AppBar } from '@/components/common/AppBar'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { useApolloClient } from '@apollo/client'
-import { QUERY_PRACTICE_TEMPLATES, useCreatePracticeTemplate } from '@/services/api/practices'
+import { QUERY_PRACTICE_TEMPLATES, useCreatePracticeTemplate, useMovementTemplate } from '@/services/api/practices'
+import { Button, ButtonText } from '@/components/ui/button'
+import { HStack } from '@/components/ui/hstack'
+import { WebView } from 'react-native-webview'
 
 // Reuse builder types
 type SetDraft = { position: number; reps?: number; duration?: number; loadValue?: number; loadUnit?: string; restDuration?: number }
 type MovementDraft = { name: string; position: number; metricUnit: 'iterative' | 'temporal' | 'breath' | 'other'; metricValue: number; description?: string; movementClass?: 'conditioning' | 'power' | 'strength' | 'mobility' | 'other'; prescribedSets?: number; restDuration?: number; videoUrl?: string; exerciseId?: string; movementId?: string; sets: SetDraft[] }
 type PrescriptionDraft = { name: string; position: number; block: 'warmup' | 'workout' | 'cooldown' | 'other'; prescribedRounds: number; movements: MovementDraft[] }
+
+function YouTubeEmbed({ url }: { url: string }) {
+  const vid = useMemo(() => {
+    try {
+      const u = new URL(url)
+      if (u.hostname.includes('youtube.com')) {
+        const v = u.searchParams.get('v')
+        if (v) return v
+        const parts = u.pathname.split('/')
+        const idx = parts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'watch')
+        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1]
+      }
+      if (u.hostname.includes('youtu.be')) {
+        return u.pathname.replace('/', '')
+      }
+    } catch {}
+    return null
+  }, [url])
+  if (!vid) return null
+  const src = `https://www.youtube.com/embed/${vid}?playsinline=1`
+  return (
+    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+      <WebView source={{ uri: src }} allowsInlineMediaPlayback javaScriptEnabled />
+    </Box>
+  )
+}
+
+function formatUnit(unit?: string | null) {
+  if (!unit) return ''
+  const s = String(unit).toLowerCase()
+  if (s === 'bodyweight') return 'BW'
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function formatLoad(loadValue?: number | null, loadUnit?: string | null) {
+  const unit = (loadUnit || '').toString().toLowerCase()
+  if (unit === 'bodyweight') return 'BW'
+  if (typeof loadValue === 'number' && !Number.isNaN(loadValue)) {
+    const prettyUnit = formatUnit(loadUnit as any)
+    return `${loadValue} ${prettyUnit}`.trim()
+  }
+  return '—'
+}
+
+function DetailsTable({ movement }: { movement?: any }) {
+  if (!movement) return null
+  const rows: Array<{ label: string; value: string | null }> = [
+    { label: 'Difficulty', value: movement.difficulty || null },
+    { label: 'Body Region', value: movement.bodyRegion || null },
+    { label: 'Equipment', value: Array.isArray(movement.equipment) && movement.equipment.length ? movement.equipment.join(', ') : null },
+    { label: 'Primary Muscles', value: Array.isArray(movement.primaryMuscles) && movement.primaryMuscles.length ? movement.primaryMuscles.join(', ') : null },
+    { label: 'Secondary Muscles', value: Array.isArray(movement.secondaryMuscles) && movement.secondaryMuscles.length ? movement.secondaryMuscles.join(', ') : null },
+    { label: 'Movement Patterns', value: Array.isArray(movement.movementPatterns) && movement.movementPatterns.length ? movement.movementPatterns.join(', ') : null },
+    { label: 'Planes of Motion', value: Array.isArray(movement.planesOfMotion) && movement.planesOfMotion.length ? movement.planesOfMotion.join(', ') : null },
+  ].filter((r) => r.value)
+  if (rows.length === 0) return null
+  return (
+    <VStack className="rounded-xl border border-border-200 divide-y divide-border-200 bg-background-0">
+      {rows.map((r, i) => (
+        <VStack key={`${r.label}-${i}`} className="flex-row items-start p-3">
+          <Box className="w-40"><Text className="text-typography-700 text-sm font-semibold">{r.label}</Text></Box>
+          <Box className="flex-1"><Text className="text-typography-900 text-sm dark:text-white">{r.value}</Text></Box>
+        </VStack>
+      ))}
+    </VStack>
+  )
+}
 
 export default function WorkoutTemplateCreateScreen() {
   const router = useRouter()
@@ -136,6 +206,7 @@ export default function WorkoutTemplateCreateScreen() {
           restDuration: m.restDuration,
           videoUrl: m.videoUrl,
           exerciseId: m.exerciseId,
+          movementId: m.movementId,
           sets: m.sets.map((s) => ({ position: s.position, reps: s.reps, duration: s.duration, restDuration: s.restDuration, loadValue: s.loadValue, loadUnit: s.loadUnit })),
         })),
       })),
@@ -151,6 +222,11 @@ export default function WorkoutTemplateCreateScreen() {
       }
     } catch {}
   }
+
+  const [previewMovementId, setPreviewMovementId] = useState<string | null>(null)
+  const [previewDraft, setPreviewDraft] = useState<MovementDraft | null>(null)
+  const movementQ = useMovementTemplate(previewMovementId || '')
+  const mt = movementQ.data?.movementTemplate
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -182,7 +258,9 @@ export default function WorkoutTemplateCreateScreen() {
                           <Box key={`${mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
                             <VStack space="sm">
                               <Box className="flex-row items-center justify-between">
-                                <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
+                                <Pressable onPress={() => { setPreviewMovementId(m.movementId || ''); setPreviewDraft(m) }}>
+                                  <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
+                                </Pressable>
                                 <Pressable onPress={() => {
                                   setPrescriptions(prev => {
                                     const copy = [...prev]
@@ -284,6 +362,81 @@ export default function WorkoutTemplateCreateScreen() {
             </KeyboardAvoidingView>
           </View>
         </Modal>
+
+      {/* Movement preview modal */}
+      {previewMovementId ? (
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700">
+            <VStack space="md">
+              <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
+              {mt?.movement?.shortVideoUrl ? (
+                <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+                  <WebView source={{ uri: `https://www.youtube.com/embed/${new URL(mt.movement.shortVideoUrl).searchParams.get('v')}` }} allowsInlineMediaPlayback javaScriptEnabled />
+                </Box>
+              ) : (
+                <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text className="text-typography-600">🎥 Video placeholder</Text>
+                </Box>
+              )}
+              {mt?.description ? <Text className="text-typography-700 dark:text-gray-300">{mt.description}</Text> : null}
+
+              {(Array.isArray(mt?.sets) && mt!.sets.length > 0) ? (
+                <VStack>
+                  <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
+                    <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
+                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Reps/Dur</Text></Box>
+                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
+                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
+                  </VStack>
+                  {mt!.sets.map((s: any, i: number) => (
+                    <VStack key={s.id_ || i}>
+                      <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
+                        <Box className="w-10"><Text className="text-typography-700">{i + 1}</Text></Box>
+                        <Box className="flex-1"><Text className="text-typography-900">{s.reps ?? s.duration ?? '—'}</Text></Box>
+                        <Box className="flex-1"><Text className="text-typography-900">{formatLoad(s.load_value, s.load_unit)}</Text></Box>
+                        <Box className="flex-1"><Text className="text-typography-900">{s.rest_duration ? `${s.rest_duration}s` : '—'}</Text></Box>
+                      </VStack>
+                      <Box className="h-px bg-border-200" />
+                    </VStack>
+                  ))}
+                </VStack>
+              ) : null}
+
+              <DetailsTable movement={mt?.movement} />
+
+              <HStack className="justify-end space-x-3">
+                <Button className="bg-gray-600" onPress={() => setPreviewMovementId(null)}>
+                  <ButtonText>Dismiss</ButtonText>
+                </Button>
+                <Button className="bg-primary-600" onPress={() => { 
+                  const id = previewMovementId;
+                  const prefetch = previewDraft ? encodeURIComponent(JSON.stringify({
+                    name: previewDraft.name,
+                    description: previewDraft.description,
+                    movement: undefined,
+                    sets: (previewDraft.sets || []).map((s) => ({
+                      reps: s.reps,
+                      duration: s.duration,
+                      rest_duration: s.restDuration,
+                      load_value: s.loadValue,
+                      load_unit: s.loadUnit,
+                    })),
+                    metric_value: previewDraft.metricValue,
+                    metric_unit: previewDraft.metricUnit,
+                    prescribed_sets: previewDraft.prescribedSets,
+                    rest_duration: previewDraft.restDuration,
+                    video_url: previewDraft.videoUrl,
+                  })) : ''
+                  setPreviewMovementId(null); setPreviewDraft(null);
+                  router.push(`/(app)/exercise/${id}?${prefetch ? `prefetch=${prefetch}&` : ''}returnTo=${encodeURIComponent('/workout-template-create')}`)
+                }}>
+                  <ButtonText>More info</ButtonText>
+                </Button>
+              </HStack>
+            </VStack>
+          </Box>
+        </View>
+      ) : null}
       </VStack>
     </SafeAreaView>
   )

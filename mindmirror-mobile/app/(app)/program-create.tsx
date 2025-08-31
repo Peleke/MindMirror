@@ -65,7 +65,13 @@ export default function ProgramCreateScreen() {
       }
       await createProgram({ variables: { input } })
       apollo.refetchQueries({ include: [QUERY_PROGRAM_TEMPLATES] })
-      router.back()
+      // Navigate to detail of the most recently created program by refetching list and using the first match by name
+      try {
+        const res = await apollo.query({ query: QUERY_PROGRAM_TEMPLATES, fetchPolicy: 'network-only' })
+        const match = (res.data?.programs || []).find((p: any) => p.name === name)
+        if (match?.id_) router.replace(`/(app)/program/${match.id_}`)
+        else router.replace('/programs')
+      } catch { router.replace('/programs') }
     } catch {}
   }
 

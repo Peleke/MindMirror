@@ -12,8 +12,9 @@ import { useLocalSearchParams } from 'expo-router'
 import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES, RECENT_LESSON_COMPLETIONS } from '@/services/api/habits'
 import { Pressable } from '@/components/ui/pressable'
 import { useRouter } from 'expo-router'
-import { usePrograms as useWorkoutPrograms, useEnrollInProgram as useEnrollInWorkoutProgram } from '@/services/api/practices'
 import GlobalFab from '@/components/common/GlobalFab'
+import { usePrograms as useWorkoutPrograms, useMyEnrollments } from '@/services/api/practices'
+import { useAuth } from '@/features/auth/context/AuthContext'
 
 export default function ProgramsAndResourcesScreen() {
   const router = useRouter()
@@ -22,13 +23,10 @@ export default function ProgramsAndResourcesScreen() {
   const { data: templates } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
   const { data: completedLessons } = useQuery(RECENT_LESSON_COMPLETIONS, { fetchPolicy: 'cache-and-network', variables: { limit: 50 } })
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<'habits' | 'lessons' | 'workouts'>('habits')
+  const [category, setCategory] = useState<'habits' | 'lessons' | 'workouts'>('workouts')
+  const { session } = useAuth()
 
-  // Workouts programs (from practices service)
-  const workoutProgramsQ = useWorkoutPrograms()
-  const [enrollProgram] = useEnrollInWorkoutProgram()
-  const [locallyEnrolled, setLocallyEnrolled] = useState<Record<string, boolean>>({})
-
+  // Habits enrollments (web side)
   const enrolled = useMemo(() => {
     const as = assignments?.programAssignments || []
     const map = new Map<string, any>()
@@ -39,6 +37,20 @@ export default function ProgramsAndResourcesScreen() {
     const arr = Array.from(map.values())
     return arr.filter((p: any) => p.title.toLowerCase().includes(search.toLowerCase()))
   }, [assignments?.programAssignments, templates?.programTemplates, search])
+
+  // Workout enrollments (practices side)
+  const workoutProgramsQ = useWorkoutPrograms()
+  const myEnrollmentsQ = useMyEnrollments(session?.user?.id)
+  const enrolledWorkouts = useMemo(() => {
+    const enrolls = (myEnrollmentsQ.data?.enrollments || []).filter((e: any) => (e.status || '').toLowerCase() === 'active')
+    const programs = workoutProgramsQ.data?.programs || []
+    const set = new Map<string, any>()
+    for (const e of enrolls) {
+      const p = programs.find((x: any) => x.id_ === e.program_id)
+      if (p?.id_) set.set(p.id_, p)
+    }
+    return Array.from(set.values()).filter((p: any) => (p.name || '').toLowerCase().includes(search.toLowerCase()))
+  }, [myEnrollmentsQ.data?.enrollments, workoutProgramsQ.data?.programs, search])
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -67,9 +79,9 @@ export default function ProgramsAndResourcesScreen() {
                       <SelectDragIndicatorWrapper>
                         <SelectDragIndicator />
                       </SelectDragIndicatorWrapper>
+                      <SelectItem label="Workouts" value="workouts" />
                       <SelectItem label="Habits" value="habits" />
                       <SelectItem label="Lessons" value="lessons" />
-                      <SelectItem label="Workouts" value="workouts" />
                     </SelectContent>
                   </SelectPortal>
                 </Select>
@@ -77,49 +89,34 @@ export default function ProgramsAndResourcesScreen() {
             </VStack>
 
             {category === 'workouts' ? (
-              <VStack space="md">
-                <Pressable onPress={() => router.push('/program-create')} className="self-start px-3 py-1.5 rounded-md border border-indigo-300 bg-indigo-50">
-                  <Text className="text-indigo-700 font-semibold">＋ Create Program</Text>
-                </Pressable>
-                {(() => {
-                  const list = (workoutProgramsQ.data?.programs || []).filter((p: any) => (p.name || '').toLowerCase().includes(search.toLowerCase()))
-                  if (workoutProgramsQ.loading) { return (<Text className="text-typography-600 dark:text-gray-300">Loading…</Text>) }
-                  if (!list.length) { return (<Text className="text-typography-600 dark:text-gray-300">No workout programs found.</Text>) }
-                  return (
-                    <VStack space="md">
-                      {list.map((p: any) => {
-                        const enrolledLocal = !!locallyEnrolled[p.id_]
-                        const tags = (p.tags || []).map((t: any) => t.name).join(', ')
-                        const workoutCount = (p.practice_links || []).length
-                        return (
-                          <Pressable key={p.id_} onPress={() => router.push(`/(app)/program/${p.id_}`)}>
-                            <Box className="p-5 rounded-2xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
-                              <VStack space="xs">
-                                <Text className="text-lg font-semibold text-typography-900 dark:text-white">{p.name}</Text>
-                                {p.description ? <Text className="text-typography-600 dark:text-gray-300">{p.description}</Text> : null}
-                                <Text className="text-typography-500 dark:text-gray-400">{workoutCount} workouts{tags ? ` • ${tags}` : ''}</Text>
-                                <VStack className="flex-row items-center space-x-3 mt-2">
-                                  <Pressable onPress={() => router.push(`/marketplace?filter=workouts`)} className="px-3 py-1.5 rounded-md border border-border-200">
-                                    <Text className="font-semibold">View</Text>
-                                  </Pressable>
-                                  <Pressable disabled={enrolledLocal} onPress={async () => {
-                                    try {
-                                      await enrollProgram({ variables: { programId: p.id_ } })
-                                      setLocallyEnrolled((prev) => ({ ...prev, [p.id_]: true }))
-                                    } catch {}
-                                  }} className={`px-3 py-1.5 rounded-md border ${enrolledLocal ? 'bg-green-50 border-green-200' : 'bg-indigo-50 border-indigo-200'}`}>
-                                    <Text className={`font-semibold ${enrolledLocal ? 'text-green-700' : 'text-indigo-700'}`}>{enrolledLocal ? 'Enrolled' : 'Enroll'}</Text>
-                                  </Pressable>
-                                </VStack>
-                              </VStack>
-                            </Box>
-                          </Pressable>
-                        )
-                      })}
-                    </VStack>
-                  )
-                })()}
-              </VStack>
+              myEnrollmentsQ.loading || workoutProgramsQ.loading ? (
+                <Text className="text-typography-600 dark:text-gray-300">Loading…</Text>
+              ) : myEnrollmentsQ.error || workoutProgramsQ.error ? (
+                <Text className="text-red-600 dark:text-red-400">Failed to load workout programs</Text>
+              ) : enrolledWorkouts.length === 0 ? (
+                <VStack space="md">
+                  <Text className="text-typography-600 dark:text-gray-300">No workout programs enrolled yet.</Text>
+                  <Pressable onPress={() => router.push('/marketplace?filter=workouts')} className="self-start px-3 py-1.5 rounded-md border border-indigo-300 bg-indigo-50">
+                    <Text className="text-indigo-700 font-semibold">Browse workout programs</Text>
+                  </Pressable>
+                </VStack>
+              ) : (
+                <VStack space="md">
+                  {enrolledWorkouts.map((p: any) => (
+                    <Pressable key={p.id_} onPress={() => router.push(`/(app)/program/${p.id_}`)}>
+                      <Box className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
+                        <VStack space="xs">
+                          <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.name}</Text>
+                          {p.description ? (
+                            <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                          ) : null}
+                          <Text className="self-start px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-green-200 text-green-700 shadow-sm dark:bg-green-900 dark:border-green-700 dark:text-green-100">Enrolled</Text>
+                        </VStack>
+                      </Box>
+                    </Pressable>
+                  ))}
+                </VStack>
+              )
             ) : category === 'lessons' ? (
               <VStack space="md">
                 {((completedLessons?.recentLessonCompletions as any[]) || []).length === 0 ? (

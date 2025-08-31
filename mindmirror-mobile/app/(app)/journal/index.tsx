@@ -395,20 +395,36 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
   const { data: upData } = useMyUpcomingPractices()
   const [deferPractice] = useDeferPractice()
   const todaysUpcoming = (upData?.my_upcoming_practices || []).filter((sp: any) => dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate)
-  const upcomingItems = todaysUpcoming.map((sp: any) => ({ id_: sp.id_, name: 'Scheduled Workout', date: onDate, service_id: 'practices', entity_id: sp.practice_id, enrollment_id: sp.enrollment_id, __typename: 'Schedulable', completed: false }))
+  // Map of today’s workouts by id for name/description enrichment
+  const todaysMap: Record<string, any> = {}
+  for (const w of (pData?.todaysWorkouts || [])) { todaysMap[w.id_] = w }
+  const upcomingItems = todaysUpcoming.map((sp: any) => ({
+    id_: sp.id_,
+    name: (todaysMap[sp.practice_id]?.title || 'Workout'),
+    description: todaysMap[sp.practice_id]?.description || '',
+    date: onDate,
+    service_id: 'practices',
+    entity_id: sp.practice_id,
+    enrollment_id: sp.enrollment_id,
+    __typename: 'Schedulable',
+    completed: false,
+    level: todaysMap[sp.practice_id]?.level || null,
+  }))
   const practiceItems = (pData?.todaysWorkouts || []).map((w: any) => ({
     id_: w.id_,
-    name: w.title,
+    name: w.title || 'Workout',
+    description: w.description || '',
     date: w.date,
     service_id: 'practices',
     entity_id: w.id_,
     completed: !!w.completedAt,
     __typename: 'Schedulable',
+    level: w.level || null,
   }))
   const itemsMap: Record<string, any> = {}
   for (const it of [...usersItems, ...practiceItems, ...upcomingItems]) {
     const key = `${it.service_id}:${it.entity_id || it.id_}`
-    itemsMap[key] = it
+    itemsMap[key] = { ...(itemsMap[key] || {}), ...it }
   }
   const items = Object.values(itemsMap)
   const [localRemoved, setLocalRemoved] = React.useState<Record<string, boolean>>({})
@@ -430,18 +446,12 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
           {items.filter((it: any) => !localRemoved[`${it.service_id}:${it.entity_id}`]).map((it: any) => {
             const key = `${it.service_id}:${it.entity_id}`
             const handleDelete = async () => {
-              // Optimistic local remove
               setLocalRemoved((prev) => ({ ...prev, [key]: true }))
-              // If this is a practices item, call deletePractice; ignore others for now
               if ((it.service_id ?? 'practices') === 'practices') {
-                try {
-                  await deletePractice({ variables: { id: it.entity_id } })
-                } catch (e) {
-                  // Revert on failure
-                  setLocalRemoved((prev) => ({ ...prev, [key]: false }))
-                }
+                try { await deletePractice({ variables: { id: it.entity_id } }) } catch { setLocalRemoved((prev) => ({ ...prev, [key]: false })) }
               }
             }
+            const baseClasses = it.completed ? 'border-green-200 bg-green-50' : 'border-indigo-200 bg-indigo-50'
             return (
               <Swipeable
                 key={key}
@@ -450,11 +460,9 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
                     <Text className="text-white font-semibold">Delete</Text>
                   </HStack>
                 )}
-                onSwipeableOpen={(dir) => {
-                  if (dir === 'right') handleDelete()
-                }}
+                onSwipeableOpen={(dir) => { if (dir === 'right') handleDelete() }}
               >
-                <HStack className={`items-center justify-between p-3 rounded-lg border ${it.completed ? 'border-green-200 bg-green-50' : 'border-border-200 bg-background-50'}`}>
+                <HStack className={`items-center justify-between p-3 rounded-lg border ${baseClasses}`}>
                   <Pressable 
                     onPress={() => {
                       const wid = it.entity_id || it.id_
@@ -463,14 +471,24 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
                     }}
                     className="flex-1"
                   >
-                    <HStack className="items-center justify-between">
-                      <Text className={`font-semibold ${it.completed ? 'text-green-700' : ''}`}>{it.name || 'Workout'}</Text>
-                      <Text className="text-typography-600">{it.date}</Text>
-                    </HStack>
+                    <VStack>
+                      <HStack className="items-center justify-between">
+                        <Text className={`font-semibold ${it.completed ? 'text-green-700' : 'text-indigo-900'}`}>{it.name || 'Workout'}</Text>
+                        {!!it.level && (
+                          <Box className="px-2 py-0.5 rounded-full bg-indigo-100 border border-indigo-200">
+                            <Text className="text-xs text-indigo-700 font-semibold">{it.level}</Text>
+                          </Box>
+                        )}
+                      </HStack>
+                      {!!it.description && (
+                        <Text className="text-typography-600 mt-0.5" numberOfLines={2}>{it.description}</Text>
+                      )}
+                      <Text className="text-typography-500 text-xs mt-0.5">{it.date}</Text>
+                    </VStack>
                   </Pressable>
                   {it.enrollment_id && (
-                    <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId: it.enrollment_id, mode: 'push' } }) } catch {} }} className="ml-2 px-2 py-1 rounded border border-border-200">
-                      <Text className="text-xs">Defer</Text>
+                    <Pressable onPress={async () => { try { await deferPractice({ variables: { enrollmentId: it.enrollment_id, mode: 'push' } }) } catch {} }} className="ml-2 px-2 py-1 rounded border border-indigo-200 bg-white/60">
+                      <Text className="text-xs text-indigo-700">Defer</Text>
                     </Pressable>
                   )}
                 </HStack>
@@ -794,6 +812,13 @@ export default function JournalScreen() {
           {homeTab === 'habits' ? (
             <VStack className="px-6 py-2" space="md">
               <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} />
+              <VStack space="sm">
+                <HStack className="items-center justify-between">
+                  <Text className="text-lg font-semibold">Tasks</Text>
+                </HStack>
+                {/* Reuse workouts list under Habits as Tasks for now */}
+                <TodaysWorkoutsRow showHeader={false} />
+              </VStack>
             </VStack>
           ) : homeTab === 'meals' ? (
             <VStack className="px-6 py-2" space="md">

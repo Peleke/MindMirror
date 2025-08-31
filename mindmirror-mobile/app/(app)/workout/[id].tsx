@@ -12,6 +12,40 @@ import { useTodaysWorkouts, useDeletePracticeInstance, useCompleteWorkout, useUp
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
+import { WebView } from 'react-native-webview'
+
+function YouTubeEmbed({ url }: { url: string }) {
+  const vid = React.useMemo(() => {
+    try {
+      const u = new URL(url)
+      if (u.hostname.includes('youtube.com')) {
+        const v = u.searchParams.get('v')
+        if (v) return v
+        const parts = u.pathname.split('/')
+        const idx = parts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'watch')
+        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1]
+      }
+      if (u.hostname.includes('youtu.be')) {
+        return u.pathname.replace('/', '')
+      }
+    } catch {}
+    return null
+  }, [url])
+  if (!vid) return null
+  const src = `https://www.youtube.com/embed/${vid}?playsinline=1`
+  return (
+    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+      <WebView source={{ uri: src }} allowsInlineMediaPlayback javaScriptEnabled />
+    </Box>
+  )
+}
+
+function fmtLoadBW(loadValue?: number, loadUnit?: string) {
+  const unit = (loadUnit || '').toString().toLowerCase()
+  if (unit === 'bodyweight') return 'BW'
+  if (typeof loadValue === 'number' && !Number.isNaN(loadValue)) return `${loadValue} ${unit}`
+  return '—'
+}
 
 export default function WorkoutDetailsScreen() {
   const params = useLocalSearchParams<{ id: string, enrollmentId?: string }>()
@@ -139,6 +173,7 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-500 text-sm">{(Array.isArray(m.sets) ? m.sets.length : 0)} sets</Text>
         </VStack>
         <Box className="h-2" />
+        {m.videoUrl ? <YouTubeEmbed url={m.videoUrl} /> : null}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
             <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
@@ -185,7 +220,6 @@ export default function WorkoutDetailsScreen() {
                       const secs = (typeof s.restDuration === 'number' && s.restDuration > 0) ? s.restDuration : (typeof m.restDuration === 'number' ? m.restDuration : 60)
                       openRestTimer(pIdx, mIdx, i, secs)
                       startTimerIfIdle()
-                      // immediately persist completion on skip or finish (handled in closeRestTimer)
                     }}
                   >
                     <Text className={`${s.complete ? 'text-typography-400' : 'text-typography-700'}`}>✓</Text>
