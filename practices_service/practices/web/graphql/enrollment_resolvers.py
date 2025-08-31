@@ -24,6 +24,8 @@ from practices.service.services.progress_service import (
 )
 from practices.web.graphql.dependencies import CustomContext
 
+from practices.repository.repositories.program_repository import ProgramRepository
+
 from .enrollment_types import EnrollmentStatusGQL, ProgramEnrollmentTypeGQL
 from .progress_types import ScheduledPracticeTypeGQL
 
@@ -250,7 +252,7 @@ class EnrollmentMutation:
         async with uow:
             repo = EnrollmentRepository(uow.session)
             service = EnrollmentService(repo)
-            await service.enroll_user(program_id=uuid.UUID(str(program_id)), user_to_enroll_id=current_user.id, enrolling_user_id=current_user.id)
+            domain_enrollment = await service.enroll_user(program_id=uuid.UUID(str(program_id)), user_to_enroll_id=current_user.id, enrolling_user_id=current_user.id)
         return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=True)
 
     @strawberry.mutation(permission_classes=[CanSelfEnroll])
@@ -270,6 +272,26 @@ class EnrollmentMutation:
                 user_to_enroll_id=current_user.id,
                 enrolling_user_id=current_user.id,  # For self-enrollment
             )
+
+            # Seed initial progress: set current practice to first link and schedule today's workout
+            program_repo = ProgramRepository(uow.session)
+            program_uuid = uuid.UUID(str(program_id))
+            program = await program_repo.get_program_by_id(program_uuid)
+            if program and program.practice_links:
+                first_link = sorted(program.practice_links, key=lambda pl: pl.sequence_order)[0]
+                # Fetch the enrollment model to update its current_practice_link_id
+                enrollment_model = await repo.get_enrollment_by_id(uuid.UUID(str(domain_enrollment.id_)))
+                if enrollment_model:
+                    enrollment_model.current_practice_link_id = first_link.id_
+                    # Schedule today's practice for the first link
+                    sp_repo = ScheduledPracticeRepository(uow.session)
+                    scheduled = ScheduledPracticeModel(
+                        enrollment_id=enrollment_model.id_,
+                        practice_template_id=first_link.practice_template_id,
+                        scheduled_date=date.today(),
+                    )
+                    await sp_repo.add(scheduled)
+
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
 

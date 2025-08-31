@@ -40,6 +40,7 @@ class DomainMovementTemplate(BaseModel):
     video_url: Optional[str] = None
     prescription_template_id: UUID
     exercise_id: Optional[UUID] = None
+    movement_id: Optional[UUID] = None
     sets: List[DomainSetTemplate] = []
 
 

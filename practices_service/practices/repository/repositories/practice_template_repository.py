@@ -60,6 +60,7 @@ class PracticeTemplateRepository:
                             "rest_duration": mov.rest_duration,
                             "position": mov.position,
                             "exercise_id": mov.exercise_id,
+                            "movement_id": getattr(mov, "movement_id", None),
                             "sets": [],
                         }
                         if mov.sets:
@@ -109,6 +110,7 @@ class PracticeTemplateRepository:
                         mov_data["position"] = int(mov_data["position"])
                     except Exception:
                         pass
+                # movement_id may be provided by client; pass through if present
                 new_movement = MovementTemplateModel(**mov_data, prescription_template_id=new_prescription.id_)
                 self.session.add(new_movement)
                 await self.session.flush()

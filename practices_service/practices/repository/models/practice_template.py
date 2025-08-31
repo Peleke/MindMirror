@@ -115,6 +115,7 @@ class MovementTemplateModel(Base):
     rest_duration: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     exercise_id: Mapped[Optional[UUID]] = mapped_column(PGUUID, nullable=True)
+    movement_id: Mapped[Optional[UUID]] = mapped_column(PGUUID, nullable=True)
     prescription_template_id: Mapped[UUID] = mapped_column(
         PGUUID,
         ForeignKey("practices.prescription_templates.id", ondelete="CASCADE"),

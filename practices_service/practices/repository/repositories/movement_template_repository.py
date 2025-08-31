@@ -61,6 +61,7 @@ class MovementTemplateRepository:
             "rest_duration": record.rest_duration,
             "video_url": record.video_url,
             "exercise_id": record.exercise_id,
+            "movement_id": record.movement_id,
             "sets": [],
         }
 
@@ -111,6 +112,7 @@ class MovementTemplateRepository:
                 "rest_duration": record.rest_duration,
                 "video_url": record.video_url,
                 "exercise_id": record.exercise_id,
+                "movement_id": record.movement_id,
                 "created_at": record.created_at,
                 "modified_at": record.modified_at,
                 "sets": [],
@@ -166,6 +168,7 @@ class MovementTemplateRepository:
                 "rest_duration": record.rest_duration,
                 "video_url": record.video_url,
                 "exercise_id": record.exercise_id,
+                "movement_id": record.movement_id,
                 "created_at": record.created_at,
                 "modified_at": record.modified_at,
                 "sets": [],

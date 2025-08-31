@@ -279,6 +279,7 @@ class MovementTemplateCreateInput:
     rest_duration: Optional[float] = None
     video_url: Optional[str] = None
     exercise_id: Optional[strawberry.ID] = None
+    movement_id: Optional[strawberry.ID] = None
     sets: List[NestedSetTemplateCreateInput] = strawberry.field(default_factory=list)
 
 
@@ -287,6 +288,7 @@ class MovementTemplateUpdateInput:
     name: Optional[str] = None
     prescribed_sets: Optional[int] = None
     rest_duration: Optional[float] = None
+    movement_id: Optional[strawberry.ID] = None
 
 
 @strawberry.input
@@ -301,6 +303,7 @@ class NestedMovementTemplateCreateInput:
     rest_duration: Optional[float] = None
     video_url: Optional[str] = None
     exercise_id: Optional[strawberry.ID] = None
+    movement_id: Optional[strawberry.ID] = None
     sets: List[NestedSetTemplateCreateInput] = strawberry.field(default_factory=list)
 
 
