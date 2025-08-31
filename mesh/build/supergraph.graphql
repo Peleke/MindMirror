@@ -237,7 +237,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   practiceTemplates: [PracticeTemplateType!]! @join__field(graph: PRACTICES) 
   practiceTemplate(id: ID!) : PracticeTemplateType @join__field(graph: PRACTICES) 
   practiceInstances(userId: ID!) : [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
-  practiceInstance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
+  practice_instance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
   programs: [ProgramType!]! @join__field(graph: PRACTICES) 
   program(id: ID!) : ProgramType @join__field(graph: PRACTICES) 
   programsByLevel(level: String!) : [ProgramType!]! @join__field(graph: PRACTICES) 
@@ -886,6 +886,7 @@ type ScheduledPracticeTypeGQL @join__type(graph: PRACTICES)  {
   id_: ID!
   enrollmentId: ID!
   practiceId: ID!
+  practiceInstanceId: ID
   scheduledDate: Date!
 }
 
