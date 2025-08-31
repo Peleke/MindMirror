@@ -25,6 +25,8 @@ from practices.service.services.progress_service import (
 from practices.web.graphql.dependencies import CustomContext
 
 from practices.repository.repositories.program_repository import ProgramRepository
+from practices.repository.repositories.practice_instance_repository import PracticeInstanceRepository
+from practices.repository.models.practice_instance import PracticeInstanceModel
 
 from .enrollment_types import EnrollmentStatusGQL, ProgramEnrollmentTypeGQL
 from .progress_types import ScheduledPracticeTypeGQL
@@ -71,6 +73,7 @@ def to_gql_scheduled_practice(scheduled_practice: ScheduledPracticeModel) -> Sch
         id_=scheduled_practice.id_,
         enrollment_id=scheduled_practice.enrollment_id,
         practice_id=scheduled_practice.practice_template_id,
+        practice_instance_id=scheduled_practice.practice_instance_id,
         scheduled_date=scheduled_practice.scheduled_date,
     )
 
@@ -291,6 +294,26 @@ class EnrollmentMutation:
                         scheduled_date=date.today(),
                     )
                     await sp_repo.add(scheduled)
+                    # Materialize today's instance if one does not already exist
+                    # Avoid duplicates: check by user, date, template
+                    from sqlalchemy import select
+                    exists_stmt = (
+                        select(PracticeInstanceModel)
+                        .where(PracticeInstanceModel.user_id == current_user.id)
+                        .where(PracticeInstanceModel.date == date.today())
+                        .where(PracticeInstanceModel.template_id == first_link.practice_template_id)
+                    )
+                    result = await uow.session.execute(exists_stmt)
+                    existing = result.scalar_one_or_none()
+                    if not existing:
+                        pir = PracticeInstanceRepository(uow.session)
+                        new_instance = await pir.create_instance_from_template(
+                            template_id=first_link.practice_template_id,
+                            user_id=current_user.id,
+                            date=date.today(),
+                        )
+                        # Link the instance to the scheduled practice
+                        scheduled.practice_instance_id = new_instance.id_
 
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)

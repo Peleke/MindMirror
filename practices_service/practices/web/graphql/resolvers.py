@@ -562,6 +562,21 @@ class Query(EnrollmentQuery):
             instances = await repo.list_instances_by_date_range(current_user.id, df, dt, program_uuid, status)
         return [convert_practice_instance_to_gql(i) for i in instances]
 
+    @strawberry.field(name="practice_instance")
+    async def practice_instance(self, id: strawberry.ID, info: Info) -> Optional[PracticeInstanceType]:
+        uow: UnitOfWork = info.context["uow"]
+        current_user = get_current_user_from_info(info)
+        if not current_user:
+            raise PermissionError("Authentication required")
+        repo = PracticeInstanceRepository(uow.session)
+        instance = await repo.get_instance_by_id(UUID(str(id)))
+        if not instance:
+            return None
+        # Ownership check
+        if getattr(instance, "user_id", None) and instance.user_id != current_user.id:
+            raise PermissionError("Not authorized")
+        return convert_practice_instance_to_gql(instance)
+
     # Phase 1: Instance Queries
     @strawberry.field
     async def set_instance(self, id: strawberry.ID, info: Info) -> Optional[SetInstanceType]:
