@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import date
 from typing import List, Optional, cast
@@ -29,6 +30,7 @@ from practices.repository.repositories.practice_instance_repository import Pract
 from practices.repository.models.practice_instance import PracticeInstanceModel
 
 from .enrollment_types import EnrollmentStatusGQL, ProgramEnrollmentTypeGQL
+from .practice_instance_types import PracticeInstanceType
 from .progress_types import ScheduledPracticeTypeGQL
 
 
@@ -186,6 +188,68 @@ class EnrollmentQuery:
                 enrollment_ids=[target_enrollment.id_], from_date=date.today()
             )
             return [to_gql_scheduled_practice(p) for p in upcoming_practices]
+
+    @strawberry.field
+    async def workoutsForUser(
+        self, 
+        info: Info, 
+        userId: strawberry.ID, 
+        dateFrom: Optional[str] = None, 
+        dateTo: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> List[PracticeInstanceType]:
+        """
+        Retrieves workouts (practice instances) for a user.
+        
+        Authorization Rules:
+        - A user can retrieve their own workouts.
+        - A coach can retrieve workouts of their verified client.
+        """
+        uow: UnitOfWork = info.context["uow"]
+        current_user: CurrentUser = info.context["current_user"]
+        target_user_uuid = uuid.UUID(str(userId))
+
+        # Authorization Check
+        is_owner = target_user_uuid == current_user.id
+        is_authorized_coach = False
+        if current_user.has_role("coach", "practices"):
+            is_authorized_coach = await users_service_client.verify_coach_client_relationship(
+                coach_id=current_user.id, client_id=target_user_uuid, domain="practices"
+            )
+
+        if not is_owner and not is_authorized_coach:
+            # Return empty list if not authorized
+            return []
+
+        # Parse dates if provided
+        from_date = None
+        to_date = None
+        if dateFrom:
+            try:
+                from_date = date.fromisoformat(dateFrom)
+            except ValueError:
+                raise GraphQLError(f"Invalid dateFrom format: {dateFrom}")
+        if dateTo:
+            try:
+                to_date = date.fromisoformat(dateTo)
+            except ValueError:
+                raise GraphQLError(f"Invalid dateTo format: {dateTo}")
+
+        async with uow:
+            from practices.repository.repositories.practice_instance_repository import PracticeInstanceRepository
+            instance_repo = PracticeInstanceRepository(uow.session)
+            
+            # Get practice instances for the user
+            instances = await instance_repo.get_instances_for_user(
+                user_id=target_user_uuid,
+                date_from=from_date,
+                date_to=to_date,
+                status=status
+            )
+            
+            # Convert to GraphQL types
+            from practices.web.graphql.practice_instance_resolvers import to_gql_practice_instance
+            return [to_gql_practice_instance(instance) for instance in instances]
 
 
 @strawberry.type
@@ -444,3 +508,63 @@ class EnrollmentMutation:
             return True
         except ProgressServiceError as e:
             raise GraphQLError(str(e))
+
+    @strawberry.mutation(permission_classes=[CanEnrollOthers])
+    async def assignProgramToClient(
+        self, info: Info, programId: strawberry.ID, clientId: strawberry.ID, campaign: Optional[str] = None
+    ) -> bool:
+        """
+        Coach assigns a workout program to a client by issuing a voucher.
+        Requires coach role and verified coach-client relationship.
+        """
+        context = cast(CustomContext, info.context)
+        current_user = cast(CurrentUser, context.current_user)
+        uow = context.uow
+
+        if not current_user:
+            raise Exception("Authentication required.")
+
+        # Verify coach role
+        if not current_user.has_role(role="coach", domain="practices"):
+            raise Exception("You do not have a COACH role in the practices domain.")
+
+        # Verify coach-client relationship
+        client_uuid = uuid.UUID(str(clientId))
+        is_verified_coach = await users_service_client.verify_coach_client_relationship(
+            coach_id=current_user.id, client_id=client_uuid, domain="practices"
+        )
+        if not is_verified_coach:
+            raise Exception("You are not authorized to assign programs to this client.")
+
+        # Determine campaign from argument or env mapping
+        final_campaign = campaign
+        if not final_campaign:
+            # Map programId to campaign via environment variable
+            program_campaign_map_str = os.getenv("PRACTICES_PROGRAM_CAMPAIGN_MAP", "{}")
+            try:
+                program_campaign_map = json.loads(program_campaign_map_str)
+                final_campaign = program_campaign_map.get(str(programId))
+            except (json.JSONDecodeError, AttributeError):
+                pass
+            
+            # Fallback to template IDs from env
+            if not final_campaign:
+                uye_template_id = os.getenv("PRACTICES_UYE_PROGRAM_TEMPLATE_ID")
+                mindmirror_template_id = os.getenv("PRACTICES_MINDMIRROR_PROGRAM_TEMPLATE_ID")
+                if str(programId) == uye_template_id:
+                    final_campaign = "uye"
+                elif str(programId) == mindmirror_template_id:
+                    final_campaign = "mindmirror"
+                else:
+                    final_campaign = "default"
+
+        # Get client email (simplified - in production you'd get from users service)
+        # For now, we'll use a placeholder since we need the client's email
+        async with uow:
+            # TODO: Get client email from users service
+            # For now, raise not implemented
+            raise NotImplementedError("Client email lookup not implemented yet. Voucher issuance requires client email.")
+
+        # Call vouchers web API to mint/assign voucher
+        # This would be implemented once we have the client email lookup working
+        return True
