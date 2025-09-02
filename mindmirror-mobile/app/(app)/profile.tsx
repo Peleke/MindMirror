@@ -58,6 +58,7 @@ import { VStack } from "@/components/ui/vstack";
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { UPDATE_USER_METADATA } from '../../src/services/api/mutations';
 import { LIST_TRADITIONS } from '../../src/services/api/queries';
+import { useUserById, useAssignRole } from '@/services/api/users';
 import { useMutation, useQuery } from '@apollo/client';
 import { gql as gqlP } from '@apollo/client';
 import { cn } from "@gluestack-ui/nativewind-utils/cn";
@@ -70,6 +71,7 @@ import { Keyboard, Platform } from "react-native";
 import { z } from "zod";
 import { getAvatarUrlSync } from '@/utils/avatar';
 import { getUserDisplayName } from '@/utils/user';
+import { ROLES, DOMAINS, isCoachInPractices } from '@/constants/roles';
 
 // Placeholder icons - you can replace these with actual icons
 const ProfileIcon = SettingsIcon;
@@ -425,6 +427,12 @@ const MainContent = () => {
   const { user, signOut } = useAuth();
   const toast = useToast();
   const userId = user?.id || ''
+  
+  // Get user details to check for coach role
+  const { data: userData, refetch: refetchUser } = useUserById(userId)
+  const [assignRole] = useAssignRole()
+  
+  const isCoach = isCoachInPractices(userData?.userById?.roles || [])
 
   // Meals goals GQL
   const USER_GOALS = gqlP`
@@ -517,6 +525,29 @@ const MainContent = () => {
         metadata: updatedMetadata
       }
     });
+  };
+
+  const handleBecomeCoach = async () => {
+    try {
+      await assignRole({
+        variables: {
+          userId: userId,
+          role: ROLES.COACH,
+          domain: DOMAINS.PRACTICES
+        }
+      });
+      await refetchUser();
+      toast.show({
+        title: "Success",
+        description: "You are now a coach! You can now manage clients and assign programs.",
+      });
+    } catch (error: any) {
+      toast.show({
+        title: "Error",
+        description: error.message || "Failed to upgrade to coach. Please try again.",
+        action: "error",
+      });
+    }
   };
 
   const handleSignOut = async () => {
@@ -686,6 +717,18 @@ const MainContent = () => {
                 </Button>
               </HStack>
             </VStack>
+            
+            {/* Coach Escalation Button */}
+            {!isCoach && (
+              <Button
+                variant="outline"
+                action="primary"
+                onPress={handleBecomeCoach}
+                className="gap-3 border-blue-500"
+              >
+                <ButtonText className="text-blue-600">Become Coach</ButtonText>
+              </Button>
+            )}
             
             <Button
               variant="outline"

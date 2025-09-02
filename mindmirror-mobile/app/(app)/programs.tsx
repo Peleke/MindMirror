@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
+import { HStack } from '@/components/ui/hstack'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
@@ -13,8 +14,16 @@ import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES, RECENT_LESSON_COMPLETIONS 
 import { Pressable } from '@/components/ui/pressable'
 import { useRouter } from 'expo-router'
 import GlobalFab from '@/components/common/GlobalFab'
-import { usePrograms as useWorkoutPrograms, useMyEnrollments } from '@/services/api/practices'
+import { usePrograms as useWorkoutPrograms, useMyEnrollments, useAssignProgramToClient } from '@/services/api/practices'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { useMyClients, useUserById } from '@/services/api/users'
+import { isCoachInPractices } from '@/constants/roles'
+import { Modal, ModalBackdrop, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter } from '@/components/ui/modal'
+import { Heading } from '@/components/ui/heading'
+import { CloseIcon, Icon } from '@/components/ui/icon'
+import { Alert, AlertIcon, AlertText } from '@/components/ui/alert'
+import { CheckCircleIcon, AlertCircleIcon } from 'lucide-react-native'
+import { Button, ButtonText } from '@/components/ui/button'
 
 export default function ProgramsAndResourcesScreen() {
   const router = useRouter()
@@ -24,7 +33,21 @@ export default function ProgramsAndResourcesScreen() {
   const { data: completedLessons } = useQuery(RECENT_LESSON_COMPLETIONS, { fetchPolicy: 'cache-and-network', variables: { limit: 50 } })
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<'habits' | 'lessons' | 'workouts'>('workouts')
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedProgram, setSelectedProgram] = useState<any>(null)
+  const [assignStatus, setAssignStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const { session } = useAuth()
+
+  // Get user details to check for coach role
+  const { data: userData } = useUserById(session?.user?.id || '')
+  const isCoach = isCoachInPractices(userData?.userById?.roles || [])
+
+  // Get clients for assign modal
+  const { data: clientsData } = useMyClients()
+  const clients = clientsData?.myClients || []
+
+  const [assignProgramToClient] = useAssignProgramToClient()
 
   // Habits enrollments (web side)
   const enrolled = useMemo(() => {
@@ -51,6 +74,44 @@ export default function ProgramsAndResourcesScreen() {
     }
     return Array.from(set.values()).filter((p: any) => (p.name || '').toLowerCase().includes(search.toLowerCase()))
   }, [myEnrollmentsQ.data?.enrollments, workoutProgramsQ.data?.programs, search])
+
+  const handleAssignProgram = (program: any) => {
+    setSelectedProgram(program)
+    setShowAssignModal(true)
+    setAssignStatus('idle')
+    setErrorMessage('')
+  }
+
+  const handleAssignToClient = async (clientId: string) => {
+    if (!selectedProgram) return
+
+    setAssignStatus('loading')
+    try {
+      await assignProgramToClient({
+        variables: {
+          programId: selectedProgram.id_,
+          clientId: clientId,
+          campaign: null // Let the backend determine campaign
+        }
+      })
+      setAssignStatus('success')
+      setTimeout(() => {
+        setShowAssignModal(false)
+        setSelectedProgram(null)
+        setAssignStatus('idle')
+      }, 2000)
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to assign program')
+      setAssignStatus('error')
+    }
+  }
+
+  const handleCloseAssignModal = () => {
+    setShowAssignModal(false)
+    setSelectedProgram(null)
+    setAssignStatus('idle')
+    setErrorMessage('')
+  }
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -103,17 +164,31 @@ export default function ProgramsAndResourcesScreen() {
               ) : (
                 <VStack space="md">
                   {enrolledWorkouts.map((p: any) => (
-                    <Pressable key={p.id_} onPress={() => router.push(`/(app)/program/${p.id_}`)}>
-                      <Box className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
-                        <VStack space="xs">
-                          <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.name}</Text>
-                          {p.description ? (
-                            <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
-                          ) : null}
-                          <Text className="self-start px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-green-200 text-green-700 shadow-sm dark:bg-green-900 dark:border-green-700 dark:text-green-100">Enrolled</Text>
-                        </VStack>
-                      </Box>
-                    </Pressable>
+                    <Box key={p.id_} className="p-5 min-h-[120px] rounded-2xl border bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800 shadow">
+                      <VStack space="xs">
+                        <Pressable onPress={() => router.push(`/(app)/program/${p.id_}`)}>
+                          <VStack space="xs">
+                            <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.name}</Text>
+                            {p.description ? (
+                              <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                            ) : null}
+                          </VStack>
+                        </Pressable>
+                        <HStack className="items-center justify-between">
+                          <Text className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-green-200 text-green-700 shadow-sm dark:bg-green-900 dark:border-green-700 dark:text-green-100">Enrolled</Text>
+                          {isCoach && clients.length > 0 && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onPress={() => handleAssignProgram(p)}
+                              className="border-indigo-300 bg-white/50"
+                            >
+                              <ButtonText className="text-indigo-700">Assign</ButtonText>
+                            </Button>
+                          )}
+                        </HStack>
+                      </VStack>
+                    </Box>
                   ))}
                 </VStack>
               )
@@ -159,6 +234,75 @@ export default function ProgramsAndResourcesScreen() {
           </VStack>
         </ScrollView>
       </VStack>
+
+      {/* Assign Program Modal */}
+      <Modal isOpen={showAssignModal} onClose={handleCloseAssignModal}>
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="lg">Assign Program</Heading>
+            <ModalCloseButton>
+              <Icon as={CloseIcon} />
+            </ModalCloseButton>
+          </ModalHeader>
+          <ModalBody>
+            <VStack space="md">
+              {selectedProgram && (
+                <VStack space="xs">
+                  <Text className="text-typography-900 dark:text-white font-semibold">
+                    {selectedProgram.name}
+                  </Text>
+                  <Text className="text-typography-600 dark:text-gray-300 text-sm">
+                    Select a client to assign this program to:
+                  </Text>
+                </VStack>
+              )}
+              
+              {assignStatus === 'error' && (
+                <Alert action="error" variant="solid">
+                  <AlertIcon as={AlertCircleIcon} />
+                  <AlertText>{errorMessage}</AlertText>
+                </Alert>
+              )}
+              
+              {assignStatus === 'success' && (
+                <Alert action="success" variant="solid">
+                  <AlertIcon as={CheckCircleIcon} />
+                  <AlertText>Program assigned successfully! The client will be notified.</AlertText>
+                </Alert>
+              )}
+
+              {clients.length === 0 ? (
+                <Text className="text-typography-600 dark:text-gray-300 text-center">
+                  No clients available. Add clients first to assign programs.
+                </Text>
+              ) : (
+                <VStack space="sm">
+                  {clients.map((client: any) => (
+                    <Button
+                      key={client.id_}
+                      variant="outline"
+                      onPress={() => handleAssignToClient(client.id_)}
+                      disabled={assignStatus === 'loading' || assignStatus === 'success'}
+                      className="justify-start p-4"
+                    >
+                      <ButtonText className="text-left">
+                        {assignStatus === 'loading' ? 'Assigning...' : `Client ${client.supabaseId.substring(0, 8)}...`}
+                      </ButtonText>
+                    </Button>
+                  ))}
+                </VStack>
+              )}
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onPress={handleCloseAssignModal} className="flex-1">
+              <ButtonText>Close</ButtonText>
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       <GlobalFab />
     </SafeAreaView>
   )

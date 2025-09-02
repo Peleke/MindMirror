@@ -314,6 +314,25 @@ export const MUTATION_DELETE_PROGRAM = gql`
   }
 `
 
+export const MUTATION_ASSIGN_PROGRAM_TO_CLIENT = gql`
+  mutation AssignProgramToClient($programId: ID!, $clientId: ID!, $campaign: String) {
+    assignProgramToClient(programId: $programId, clientId: $clientId, campaign: $campaign)
+  }
+`
+
+export const QUERY_WORKOUTS_FOR_USER = gql`
+  query WorkoutsForUser($userId: ID!, $dateFrom: String, $dateTo: String, $status: String) {
+    workoutsForUser(userId: $userId, dateFrom: $dateFrom, dateTo: $dateTo, status: $status) {
+      id_
+      date
+      title
+      description
+      completedAt
+      templateId
+    }
+  }
+`
+
 export const MUTATION_DEFER_PRACTICE = gql`
   mutation DeferPractice($enrollmentId: ID!, $mode: String!) {
     deferPractice(enrollmentId: $enrollmentId, mode: $mode)
@@ -346,4 +365,12 @@ export const useCreateSetInstance = () => useMutation(MUTATION_CREATE_SET_INSTAN
 export const useCreateProgram = () => useMutation(MUTATION_CREATE_PROGRAM)
 export const useCreatePracticeTemplate = () => useMutation(MUTATION_CREATE_PRACTICE_TEMPLATE)
 export const useDeleteProgram = () => useMutation(MUTATION_DELETE_PROGRAM)
-export const useDeferPractice = () => useMutation(MUTATION_DEFER_PRACTICE) 
+export const useDeferPractice = () => useMutation(MUTATION_DEFER_PRACTICE)
+export const useAssignProgramToClient = () => useMutation(MUTATION_ASSIGN_PROGRAM_TO_CLIENT)
+export const useWorkoutsForUser = (userId: string, dateFrom?: string, dateTo?: string, status?: string) => {
+  return useQuery(QUERY_WORKOUTS_FOR_USER, {
+    variables: { userId, dateFrom, dateTo, status },
+    skip: !userId,
+    fetchPolicy: 'cache-and-network',
+  })
+} 

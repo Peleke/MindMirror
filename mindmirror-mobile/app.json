@@ -54,7 +54,8 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-router"
     ]
   }
 }
