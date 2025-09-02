@@ -33,6 +33,14 @@ class CoachClientAssociationGQL:
     pass
 
 
+class CoachingRequestGQL:
+    pass
+
+
+class UserSummaryGQL:
+    pass
+
+
 # --- GraphQL Enums ---
 
 
@@ -193,6 +201,9 @@ class UserTypeGQL:
     modified_at: datetime
     supabase_id: str
     keycloak_id: Optional[str] = None
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
     service_links: List[Annotated["UserServiceLinkTypeGQL", strawberry.lazy("users.web.graphql.types")]] = (
         strawberry.field(default_factory=list)
@@ -228,6 +239,74 @@ class UserTypeGQL:
 
 
 @strawberry.federation.type(keys=["id_"])
+class UserSummaryGQL:
+    """GraphQL type for user summary (to avoid circular dependencies)."""
+
+    id_: strawberry.ID
+    created_at: datetime
+    modified_at: datetime
+    supabase_id: str
+    keycloak_id: Optional[str] = None
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+    @classmethod
+    async def resolve_reference(
+        cls,
+        id_: strawberry.ID,
+        supabase_id: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        modified_at: Optional[datetime] = None,
+        keycloak_id: Optional[str] = None,
+    ):
+        return cls(
+            id_=id_,
+            supabase_id=supabase_id or "resolved_supabase_id",
+            created_at=created_at or datetime.now(),
+            modified_at=modified_at or datetime.now(),
+            keycloak_id=keycloak_id,
+        )
+
+
+@strawberry.federation.type(keys=["id_"])
+class CoachingRequestGQL:
+    """GraphQL type for a coaching request."""
+
+    id_: strawberry.ID
+    coach_user_id: strawberry.ID
+    client_user_id: strawberry.ID
+    status: AssociationStatusGQL
+    requested_by: str
+    created_at: datetime
+    modified_at: datetime
+
+    coach: Optional[UserSummaryGQL] = None
+    client: Optional[UserSummaryGQL] = None
+
+    @classmethod
+    async def resolve_reference(
+        cls,
+        id_: strawberry.ID,
+        coach_user_id: strawberry.ID,
+        client_user_id: strawberry.ID,
+        status: AssociationStatusGQL,
+        requested_by: str,
+        created_at: Optional[datetime] = None,
+        modified_at: Optional[datetime] = None,
+    ):
+        return cls(
+            id_=id_,
+            coach_user_id=coach_user_id,
+            client_user_id=client_user_id,
+            status=status,
+            requested_by=requested_by,
+            created_at=created_at or datetime.now(),
+            modified_at=modified_at or datetime.now(),
+        )
+
+
+@strawberry.federation.type(keys=["id_"])
 class CoachClientAssociationGQL:
     """GraphQL type for a coach-client association."""
 
@@ -248,9 +327,11 @@ __all__ = [
     "UserServiceLinkTypeGQL",
     "SchedulableTypeGQL",
     "UserTypeGQL",
+    "UserSummaryGQL",
     "RoleGQL",
     "DomainGQL",
     "UserRoleTypeGQL",
     "AssociationStatusGQL",
     "CoachClientAssociationGQL",
+    "CoachingRequestGQL",
 ]

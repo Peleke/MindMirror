@@ -61,6 +61,43 @@ class DomainUserSummary(BaseModel):
     modified_at: datetime
     supabase_id: str
     keycloak_id: Optional[str] = None
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
+class DomainCoachClientRelationship(BaseModel):
+    """Domain model for simplified coach-client relationship (new structure)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id_: UUID
+    coach_user_id: UUID
+    client_user_id: UUID
+    status: DomainAssociationStatus
+    requested_by: str  # 'coach' or 'client'
+    created_at: datetime
+    modified_at: datetime
+
+    # Use a non-recursive summary model here to break the validation cycle
+    coach: Optional[DomainUserSummary] = None
+    client: Optional[DomainUserSummary] = None
+
+
+class DomainCoachingRequest(BaseModel):
+    """Domain model for a coaching request (for GraphQL responses)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id_: UUID
+    coach_user_id: UUID
+    client_user_id: UUID
+    status: DomainAssociationStatus
+    requested_by: str
+    created_at: datetime
+    modified_at: datetime
+    coach: Optional[DomainUserSummary] = None
+    client: Optional[DomainUserSummary] = None
 
 
 class DomainCoachClientAssociation(BaseModel):
@@ -120,6 +157,12 @@ class DomainUser(DomainUserSummary):
     service_links: List[DomainUserServiceLink] = []
     schedulables: List[DomainSchedulable] = []
     roles: List[DomainUserRole] = []
+    
+    # New simplified coach-client relationships
+    client_relationships: List[DomainCoachClientRelationship] = []
+    coach_relationships: List[DomainCoachClientRelationship] = []
+    
+    # Existing coach-client associations
     coaching_clients: List[DomainCoachClientAssociation] = []
     coaches: List[DomainCoachClientAssociation] = []
 

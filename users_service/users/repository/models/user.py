@@ -72,6 +72,42 @@ class UserRoleModel(Base):
         }
 
 
+class CoachClientRelationshipModel(Base):
+    """Model for simplified coach-client relationships (new structure for coaching plan)."""
+
+    __tablename__ = "coach_client_relationships"
+    __table_args__ = (
+        UniqueConstraint("coach_user_id", "client_user_id", name="uq_coach_client"),
+        {"schema": "users"},
+    )
+
+    id_: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4, name="id")
+    coach_user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.users.id"), nullable=False)
+    client_user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.users.id"), nullable=False)
+    status: Mapped[AssociationStatusModel] = mapped_column(
+        Enum(AssociationStatusModel, name="association_status_enum", schema="users"),
+        nullable=False,
+        default=AssociationStatusModel.pending,
+    )
+    requested_by: Mapped[str] = mapped_column(String(10), nullable=False)  # 'coach' or 'client'
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("clock_timestamp()"))
+    modified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("clock_timestamp()"))
+
+    coach: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[coach_user_id], back_populates="client_relationships")
+    client: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[client_user_id], back_populates="coach_relationships")
+
+    def to_dict(self) -> dict:
+        return {
+            "id_": str(self.id_),
+            "coach_user_id": str(self.coach_user_id),
+            "client_user_id": str(self.client_user_id),
+            "status": self.status.value,
+            "requested_by": self.requested_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "modified_at": self.modified_at.isoformat() if self.modified_at else None,
+        }
+
+
 class CoachClientAssociationModel(Base):
     """Model linking coaches to clients."""
 
@@ -120,6 +156,9 @@ class UserModel(Base):
     id_: Mapped[UUID] = mapped_column(PGUUID, primary_key=True, default=uuid4, name="id")
     supabase_id: Mapped[str] = mapped_column(String(256), nullable=False, unique=True, index=True)
     keycloak_id: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, unique=True, index=True)
+    email: Mapped[Optional[str]] = mapped_column(String(256), nullable=True, index=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("clock_timestamp()"))
     modified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("clock_timestamp()"))
 
@@ -139,7 +178,23 @@ class UserModel(Base):
         lazy="selectin",
     )
 
-    # Relationships for coach-client associations
+    # Relationships for new coach-client relationships
+    client_relationships: Mapped[List["CoachClientRelationshipModel"]] = relationship(
+        "CoachClientRelationshipModel",
+        foreign_keys="CoachClientRelationshipModel.coach_user_id",
+        back_populates="coach",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    coach_relationships: Mapped[List["CoachClientRelationshipModel"]] = relationship(
+        "CoachClientRelationshipModel",
+        foreign_keys="CoachClientRelationshipModel.client_user_id",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    # Relationships for coach-client associations (existing)
     coaching_clients: Mapped[List["CoachClientAssociationModel"]] = relationship(
         "CoachClientAssociationModel",
         foreign_keys="CoachClientAssociationModel.coach_id",

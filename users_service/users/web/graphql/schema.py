@@ -9,6 +9,7 @@ from .scalars import UUID, DomainScalar
 from .types import (
     AssociationStatusGQL,
     CoachClientAssociationGQL,
+    CoachingRequestGQL,
     DomainGQL,
     RoleGQL,
     SchedulableTypeGQL,
@@ -16,6 +17,7 @@ from .types import (
     ServiceTypeGQL_Type,
     UserRoleTypeGQL,
     UserServiceLinkTypeGQL,
+    UserSummaryGQL,
     UserTypeGQL,
 )
 
@@ -26,11 +28,13 @@ def get_schema(extensions: Optional[List[Any]] = None):
         mutation=Mutation,
         types=[
             UserTypeGQL,
+            UserSummaryGQL,
             ServiceTypeGQL_Type,
             SchedulableTypeGQL,
             UserServiceLinkTypeGQL,
             UserRoleTypeGQL,
             CoachClientAssociationGQL,
+            CoachingRequestGQL,
         ],
         enable_federation_2=True,
         extensions=extensions or [],

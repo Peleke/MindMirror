@@ -4,6 +4,7 @@ from .service import ServiceEnum, ServiceModel
 from .user import (
     AssociationStatusModel,
     CoachClientAssociationModel,
+    CoachClientRelationshipModel,
     DomainModel,
     RoleModel,
     UserModel,

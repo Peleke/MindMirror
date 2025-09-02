@@ -9,6 +9,9 @@ from strawberry.types import Info
 from users.domain.models import (
     DomainAssociationStatus,
     DomainCoachClientAssociation,
+    DomainCoachClientRelationship,
+    DomainCoachingRequest,
+    DomainUserSummary,
 )
 from users.domain.models import DomainDomain as DomainModelDomain
 from users.domain.models import DomainRole as DomainModelRole  # Pydantic domain models
@@ -22,6 +25,7 @@ from users.domain.models import (
 from users.repository.models import (
     AssociationStatusModel,
     CoachClientAssociationModel,
+    CoachClientRelationshipModel,
     DomainModel,
     RoleModel,
     SchedulableModel,
@@ -46,6 +50,7 @@ from .scalars import UUID
 from .types import (  # GraphQL Types
     AssociationStatusGQL,
     CoachClientAssociationGQL,
+    CoachingRequestGQL,
     DomainGQL,
     RoleGQL,
     SchedulableTypeGQL,
@@ -53,6 +58,7 @@ from .types import (  # GraphQL Types
     ServiceTypeGQL_Type,
     UserRoleTypeGQL,
     UserServiceLinkTypeGQL,
+    UserSummaryGQL,
     UserTypeGQL,
 )
 
@@ -62,6 +68,22 @@ from .types import (  # GraphQL Types
 
 def to_domain_user(user_model: UserModel) -> DomainUser:
     return DomainUser.model_validate(user_model)  # Uses Pydantic v2 model_validate (from_orm equivalent)
+
+
+def to_domain_user_summary(user_model: UserModel) -> DomainUserSummary:
+    return DomainUserSummary.model_validate(user_model)
+
+
+def to_domain_coaching_request(relationship_model: CoachClientRelationshipModel) -> DomainCoachingRequest:
+    return DomainCoachingRequest.model_validate(relationship_model)
+
+
+def to_domain_coach_client_relationship(relationship_model: CoachClientRelationshipModel) -> DomainCoachClientRelationship:
+    return DomainCoachClientRelationship.model_validate(relationship_model)
+
+
+def to_domain_coach_client_association(association_model: CoachClientAssociationModel) -> DomainCoachClientAssociation:
+    return DomainCoachClientAssociation.model_validate(association_model)
 
 
 def to_domain_service(service_model: ServiceModel) -> DomainService:
@@ -93,16 +115,28 @@ def to_domain_coach_client_association(association_model: CoachClientAssociation
 
 
 async def get_uow_from_info(info: Info) -> UnitOfWork:
-    return cast(UnitOfWork, info.context["uow"])
+    """
+    Get UnitOfWork from GraphQL info context.
+    The UoW is already managed by the GraphQL router dependencies via get_request_uow,
+    so it's already in an active context and should NOT be wrapped in another async with.
+    """
+    uow = cast(UnitOfWork, info.context["uow"])
+    return uow
 
 
 async def get_current_user_from_info(info: Info) -> DomainUser:
     """Retrieves the current user from the GraphQL context."""
     current_user = info.context.get("current_user")
     if not current_user:
-        # This will be caught by FastAPI's dependency injection before it gets here,
-        # but it's good practice to have a safeguard.
-        raise Exception("Unauthorized: Current user not found in context.")
+        # Check if this is due to missing authentication headers
+        request = info.context.get("request")
+        auth_header = request.headers.get("authorization") if request else None
+        internal_id_header = request.headers.get("x-internal-id") if request else None
+        
+        if not auth_header and not internal_id_header:
+            raise Exception("Unauthorized: Missing authentication headers (Authorization or X-Internal-Id)")
+        else:
+            raise Exception("Unauthorized: User not found or invalid authentication")
     return current_user
 
 
@@ -122,6 +156,16 @@ class Query:
         async with uow:
             repo = UserRepository(session=uow.session)
             user_model = await repo.get_user_by_id(id)
+            return to_domain_user(user_model) if user_model else None
+
+    @strawberry.field
+    async def userById(self, info: Info, id: strawberry.ID) -> Optional[UserTypeGQL]:
+        """Alias for user_by_id to match mobile app expectations."""
+        # Convert strawberry.ID to UUID and implement the same logic
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            user_model = await repo.get_user_by_id(uuid.UUID(str(id)))
             return to_domain_user(user_model) if user_model else None
 
     @strawberry.field
@@ -386,6 +430,68 @@ class Query:
             )
             return is_verified
 
+    # --- New Coaching Queries ---
+
+    @strawberry.field
+    async def myPendingCoachingRequests(self, info: Info) -> List[CoachingRequestGQL]:
+        """Gets pending coaching requests where current user is the client."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            relationships = await repo.get_pending_coaching_requests_for_client(current_user.id_)
+            return [to_domain_coaching_request(rel) for rel in relationships]
+
+    @strawberry.field
+    async def myClients(self, info: Info) -> List[UserSummaryGQL]:
+        """Gets accepted clients for current coach."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            relationships = await repo.get_my_clients(current_user.id_)
+            return [to_domain_user_summary(rel.client) for rel in relationships if rel.client]
+
+    @strawberry.field
+    async def myCoaches(self, info: Info) -> List[UserSummaryGQL]:
+        """Gets accepted coaches for current client."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            relationships = await repo.get_my_coaches(current_user.id_)
+            return [to_domain_user_summary(rel.coach) for rel in relationships if rel.coach]
+
+    @strawberry.field
+    async def isCoachForClient(self, info: Info, clientId: UUID) -> bool:
+        """Checks if current user is coach for the specified client."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            return await repo.is_coach_for_client(
+                coach_user_id=current_user.id_,
+                client_user_id=uuid.UUID(str(clientId))
+            )
+
+    @strawberry.field
+    async def searchUsers(self, info: Info, query: str) -> List[UserSummaryGQL]:
+        """Search users by email or name."""
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            users = await repo.search_users(query, limit=10)
+            return [to_domain_user_summary(user) for user in users]
+
+    @strawberry.field
+    async def searchUsers(self, info: Info, query: str) -> List[UserSummaryGQL]:
+        """Search users by email or name."""
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            users = await repo.search_users(query, limit=10)
+            return [to_domain_user_summary(user) for user in users]
+
 
 # --- Input Types for Mutations ---
 @strawberry.input
@@ -583,12 +689,19 @@ class Mutation:
             return success
 
     @strawberry.mutation
-    async def get_or_create_user(self, info: Info, supabase_id: str) -> UserTypeGQL:
+    async def get_or_create_user(self, info: Info, supabase_id: str, email: Optional[str] = None, first_name: Optional[str] = None, last_name: Optional[str] = None) -> UserTypeGQL:
         """Get an existing user by Supabase ID or create a new one if not found."""
         uow = await get_uow_from_info(info)
         async with uow:
             repo = UserRepository(session=uow.session)
-            user_model = await repo.get_or_create_user(supabase_id)
+            profile_data = {}
+            if email:
+                profile_data['email'] = email
+            if first_name:
+                profile_data['first_name'] = first_name
+            if last_name:
+                profile_data['last_name'] = last_name
+            user_model = await repo.get_or_create_user(supabase_id, profile_data if profile_data else None)
             await uow.commit()
             return to_domain_user(user_model)
 
@@ -717,6 +830,96 @@ class Mutation:
             )
             await uow.commit()
             return True
+
+    # --- New Simplified Coaching Mutations (per plan) ---
+
+    @strawberry.mutation
+    async def requestCoaching(self, info: Info, clientEmail: str) -> bool:
+        """Coach requests to coach a client by email. Creates user if not exists."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            
+            # Check if user has coach role
+            if not any(r.role == DomainModelRole.COACH and r.domain == DomainModelDomain.PRACTICES for r in current_user.roles):
+                raise Exception("You do not have a COACH role in the practices domain.")
+            
+            try:
+                await repo.create_coaching_request(current_user.id_, clientEmail)
+                await uow.commit()
+                return True
+            except ValueError as e:
+                raise Exception(str(e))
+            except Exception as e:
+                raise Exception(f"Failed to create coaching request: {str(e)}")
+
+    @strawberry.mutation
+    async def requestCoachingByUserId(self, info: Info, clientUserId: UUID) -> bool:
+        """Coach requests to coach a client by user ID (for testing)."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            
+            # Check if current user has coach role in practices domain
+            if not any(r.role == DomainModelRole.COACH and r.domain == DomainModelDomain.PRACTICES for r in current_user.roles):
+                raise Exception("You do not have a COACH role in the practices domain.")
+            
+            try:
+                await repo.request_coaching_by_user_id(
+                    coach_user_id=current_user.id_,
+                    client_user_id=uuid.UUID(str(clientUserId))
+                )
+                await uow.commit()
+                return True
+            except ValueError as e:
+                raise Exception(str(e))
+
+    @strawberry.mutation
+    async def acceptCoaching(self, info: Info, coachUserId: UUID) -> bool:
+        """Client accepts a coaching request from a coach."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            
+            relationship = await repo.accept_coaching_request(
+                client_user_id=current_user.id_,
+                coach_user_id=uuid.UUID(str(coachUserId))
+            )
+            
+            if not relationship:
+                raise Exception("No pending coaching request found from this coach.")
+            
+            await uow.commit()
+            return True
+
+    @strawberry.mutation
+    async def assignRoleToUser(self, info: Info, userId: strawberry.ID, role: str, domain: str) -> bool:
+        """Assigns a role to a user in a specific domain."""
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            
+            try:
+                # Convert string inputs to enum values
+                role_enum = RoleModel(role)
+                domain_enum = DomainModel(domain)
+                
+                await repo.assign_role_to_user(
+                    user_id=uuid.UUID(str(userId)),
+                    role=role_enum,
+                    domain=domain_enum
+                )
+                await uow.commit()
+                return True
+            except ValueError as e:
+                raise Exception(f"Invalid role or domain: {str(e)}")
+            except Exception as e:
+                raise Exception(f"Failed to assign role: {str(e)}")
+
+
 
 
 __all__ = ["Query", "Mutation"]
