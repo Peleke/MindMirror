@@ -8,6 +8,7 @@ echo "Received HABITS_SERVICE_URL: [${HABITS_SERVICE_URL}]"
 echo "Received MEALS_SERVICE_URL: [${MEALS_SERVICE_URL}]"
 echo "Received MOVEMENTS_SERVICE_URL: [${MOVEMENTS_SERVICE_URL}]"
 echo "Received PRACTICES_SERVICE_URL: [${PRACTICES_SERVICE_URL}]"
+echo "Received USERS_SERVICE_URL: [${USERS_SERVICE_URL}]"
 echo "Received VOUCHERS_WEB_BASE_URL: [${VOUCHERS_WEB_BASE_URL}]"
 echo "--- END DEBUG ---"
 
@@ -19,6 +20,8 @@ echo "JOURNAL_SERVICE_URL: ${JOURNAL_SERVICE_URL}"
 echo "AGENT_SERVICE_URL: ${AGENT_SERVICE_URL}"
 echo "HABITS_SERVICE_URL: ${HABITS_SERVICE_URL}"
 echo "MEALS_SERVICE_URL: ${MEALS_SERVICE_URL}"
+echo "PRACTICES_SERVICE_URL: ${PRACTICES_SERVICE_URL}"
+echo "USERS_SERVICE_URL: ${USERS_SERVICE_URL}"
 echo "VOUCHERS_WEB_BASE_URL: ${VOUCHERS_WEB_BASE_URL}"
 
 # Generate the dynamic mesh config file.
@@ -55,6 +58,11 @@ export const composeConfig = defineConfig({
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Practices', {
         endpoint: '${PRACTICES_SERVICE_URL:-http://practices_service:8000}/graphql',
+      })
+    },
+    {
+      sourceHandler: loadGraphQLHTTPSubgraph('Users', {
+        endpoint: '${USERS_SERVICE_URL:-http://users_service:8000}/graphql',
       })
     },
   ]

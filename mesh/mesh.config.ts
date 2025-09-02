@@ -4,11 +4,14 @@ export const composeConfig = defineConfig({
   subgraphs: [
     // NOTE: This file is only used if you run the static mesh compose. In docker-compose, we use
     // entrypoint.sh to generate mesh.config.dynamic.ts at runtime with HABITS_SERVICE_URL, etc.
-    // Keeping Habits here for local direct runs as well.
+    // Keeping all services here for static builds as well.
     { sourceHandler: loadGraphQLHTTPSubgraph('Journal', { endpoint: 'http://journal_service:8001/graphql' }) },
     { sourceHandler: loadGraphQLHTTPSubgraph('Agent', { endpoint: 'http://agent_service:8000/graphql' }) },
     { sourceHandler: loadGraphQLHTTPSubgraph('Habits', { endpoint: 'http://habits_service:8003/graphql' }) },
     { sourceHandler: loadGraphQLHTTPSubgraph('Meals', { endpoint: 'http://meals_service:8004/graphql' }) },
+    { sourceHandler: loadGraphQLHTTPSubgraph('Movements', { endpoint: 'http://movements_service:8005/graphql' }) },
+    { sourceHandler: loadGraphQLHTTPSubgraph('Practices', { endpoint: 'http://practices_service:8000/graphql' }) },
+    { sourceHandler: loadGraphQLHTTPSubgraph('Users', { endpoint: 'http://users_service:8000/graphql' }) },
     // Voucher REST endpoints exposed via OpenAPI (simple wrapper)
     {
       sourceHandler: loadOpenAPISubgraph('Vouchers', {
