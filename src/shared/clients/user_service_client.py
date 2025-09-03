@@ -130,7 +130,7 @@ class UsersServiceClient:
         Verifies that an 'ACCEPTED' coach-client relationship exists in the users service.
         """
         query = """
-            query VerifyCoachClient($coachId: ID!, $clientId: ID!, $domain: DomainGQL!) {
+            query VerifyCoachClient($coachId: UUID!, $clientId: UUID!, $domain: DomainGQL!) {
                 verifyCoachClientRelationship(coachId: $coachId, clientId: $clientId, domain: $domain)
             }
         """
