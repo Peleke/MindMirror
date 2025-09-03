@@ -6,7 +6,7 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useUserById, useTerminateCoachingForClient } from '@/services/api/users'
 import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useAssignProgramToClient, useUpdateEnrollmentStatus } from '@/services/api/practices'
 import GlobalFab from '@/components/common/GlobalFab'
@@ -15,9 +15,12 @@ import { AlertCircleIcon } from 'lucide-react-native'
 import { Avatar, AvatarFallbackText, AvatarImage, AvatarBadge } from '@/components/ui/avatar'
 import { Badge, BadgeText } from '@/components/ui/badge'
 import { Button, ButtonText } from '@/components/ui/button'
+import { Pressable } from '@/components/ui/pressable'
+import { gql, useQuery } from '@apollo/client'
 
 export default function ClientProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<'workouts' | 'meals'>('workouts')
   const [removing, setRemoving] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [assigningProgramId, setAssigningProgramId] = useState<string | null>(null)
@@ -77,6 +80,40 @@ export default function ClientProfileScreen() {
   const recentWorkouts = workouts.filter((workout: any) => 
     new Date(workout.date) >= sevenDaysAgo
   )
+
+  // Meals: recent (last 7 days)
+  const toUtcDateStr = (d: Date) => {
+    const yy = d.getUTCFullYear()
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(d.getUTCDate()).padStart(2, '0')
+    return `${yy}-${mm}-${dd}`
+  }
+  const mealsStart = useMemo(() => toUtcDateStr(sevenDaysAgo), [])
+  const mealsEnd = useMemo(() => {
+    const next = new Date()
+    next.setDate(next.getDate() + 1)
+    return toUtcDateStr(next)
+  }, [])
+
+  const LIST_MEALS = gql`
+    query MealsByUser($userId: String!, $start: String!, $end: String!, $limit: Int) {
+      mealsByUserAndDateRange(userId: $userId, startDate: $start, endDate: $end, limit: $limit) {
+        id_
+        name
+        type
+        date
+        notes
+        mealFoods {
+          id_
+          quantity
+          servingUnit
+          foodItem { id_ name calories protein carbohydrates fat }
+        }
+      }
+    }
+  `
+  const mealsQ = useQuery(LIST_MEALS, { skip: !id, variables: { userId: id, start: mealsStart, end: mealsEnd, limit: 50 }, fetchPolicy: 'cache-and-network' })
+  const meals = mealsQ.data?.mealsByUserAndDateRange || []
 
   const [terminateCoaching] = useTerminateCoachingForClient()
   const handleRemoveClient = async () => {
@@ -167,10 +204,10 @@ export default function ClientProfileScreen() {
               </VStack>
               <VStack className="items-center">
                 <Text className="text-2xl font-bold text-typography-900 dark:text-white">
-                  0
+                  {meals.length}
                 </Text>
                 <Text className="text-typography-600 dark:text-gray-300 text-sm text-center">
-                  Meals Logged
+                  Meals (7d)
                 </Text>
               </VStack>
             </HStack>
@@ -219,36 +256,37 @@ export default function ClientProfileScreen() {
                 ) : (
                   <VStack space="md">
                     {workouts.slice(0, 10).map((workout: any) => (
-                      <Box 
-                        key={workout.id_} 
-                        className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700"
-                      >
-                        <VStack space="xs">
-                          <HStack className="items-center justify-between">
-                            <Text className="text-base font-semibold text-typography-900 dark:text-white">
-                              {workout.title || 'Workout'}
-                            </Text>
-                            <Text className="text-typography-500 dark:text-gray-400 text-sm">
-                              {new Date(workout.date).toLocaleDateString()}
-                            </Text>
-                          </HStack>
-                          {workout.description && (
-                            <Text className="text-typography-600 dark:text-gray-300 text-sm">
-                              {workout.description}
-                            </Text>
-                          )}
-                          <HStack className="items-center justify-between">
-                            <Badge variant="solid" className="bg-green-100 border-green-200">
-                              <BadgeText className="text-green-800">Completed</BadgeText>
-                            </Badge>
-                            {workout.completedAt && (
-                              <Text className="text-typography-500 dark:text-gray-400 text-xs">
-                                Completed {new Date(workout.completedAt).toLocaleString()}
+                      <Pressable key={workout.id_} onPress={() => router.push(`/(app)/workout/${workout.id_}`)}>
+                        <Box 
+                          className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700"
+                        >
+                          <VStack space="xs">
+                            <HStack className="items-center justify-between">
+                              <Text className="text-base font-semibold text-typography-900 dark:text-white">
+                                {workout.title || 'Workout'}
+                              </Text>
+                              <Text className="text-typography-500 dark:text-gray-400 text-sm">
+                                {new Date(workout.date).toLocaleDateString()}
+                              </Text>
+                            </HStack>
+                            {workout.description && (
+                              <Text className="text-typography-600 dark:text-gray-300 text-sm">
+                                {workout.description}
                               </Text>
                             )}
-                          </HStack>
-                        </VStack>
-                      </Box>
+                            <HStack className="items-center justify-between">
+                              <Badge variant="solid" className="bg-green-100 border-green-200">
+                                <BadgeText className="text-green-800">Completed</BadgeText>
+                              </Badge>
+                              {workout.completedAt && (
+                                <Text className="text-typography-500 dark:text-gray-400 text-xs">
+                                  Completed {new Date(workout.completedAt).toLocaleString()}
+                                </Text>
+                              )}
+                            </HStack>
+                          </VStack>
+                        </Box>
+                      </Pressable>
                     ))}
                     {workouts.length > 10 && (
                       <Text className="text-typography-500 dark:text-gray-400 text-sm text-center">
@@ -343,16 +381,39 @@ export default function ClientProfileScreen() {
             ) : (
               <VStack space="md">
                 <Text className="text-lg font-semibold text-typography-900 dark:text-white">
-                  Meal Log
+                  Recent Meals (7d)
                 </Text>
-                <VStack space="md" className="items-center py-8">
-                  <Text className="text-typography-600 dark:text-gray-300 text-center">
-                    Meal tracking not yet implemented.
-                  </Text>
-                  <Text className="text-typography-500 dark:text-gray-400 text-sm text-center">
-                    This feature will show the client's logged meals and nutrition data.
-                  </Text>
-                </VStack>
+                {mealsQ.loading ? (
+                  <Text className="text-typography-600 dark:text-gray-300">Loading meals...</Text>
+                ) : mealsQ.error ? (
+                  <Alert action="error" variant="solid">
+                    <AlertIcon as={AlertCircleIcon} />
+                    <AlertText>Failed to load meals</AlertText>
+                  </Alert>
+                ) : meals.length === 0 ? (
+                  <VStack space="md" className="items-center py-8">
+                    <Text className="text-typography-600 dark:text-gray-300 text-center">
+                      No meals logged in the last 7 days.
+                    </Text>
+                  </VStack>
+                ) : (
+                  <VStack space="sm">
+                    {meals.map((m: any) => {
+                      const kcal = Math.round((m.mealFoods || []).reduce((acc: number, mf: any) => acc + (mf.foodItem?.calories || 0), 0))
+                      return (
+                        <Box key={m.id_} className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                          <HStack className="items-center justify-between">
+                            <VStack>
+                              <Text className="text-base font-semibold text-typography-900 dark:text-white">{m.name}</Text>
+                              <Text className="text-typography-500 dark:text-gray-400 text-sm">{m.type} • {new Date(m.date).toLocaleDateString()}</Text>
+                            </VStack>
+                            <Text className="text-indigo-700 font-semibold">{kcal} cal</Text>
+                          </HStack>
+                        </Box>
+                      )
+                    })}
+                  </VStack>
+                )}
               </VStack>
             )}
           </VStack>
