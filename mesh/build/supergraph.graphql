@@ -410,15 +410,22 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   deleteSchedulable(id: UUID!) : Boolean! @join__field(graph: USERS) 
   linkUserToService(userId: UUID!, serviceId: UUID!) : UserServiceLink @join__field(graph: USERS) 
   unlinkUserFromService(userId: UUID!, serviceId: UUID!) : Boolean! @join__field(graph: USERS) 
-  getOrCreateUser(supabaseId: String!) : UserTypeGQL! @join__field(graph: USERS) 
+  getOrCreateUser(
+    supabaseId: String!
+    email: String = null
+    firstName: String = null
+    lastName: String = null
+  ): UserTypeGQL! @join__field(graph: USERS) 
   assignRoleToUser(userId: ID!, role: String!, domain: String!) : Boolean! @join__field(graph: USERS) 
   removeRoleFromUser(userId: UUID!, role: RoleGQL!, domain: DomainGQL!) : Boolean! @join__field(graph: USERS) 
   sendCoachingRequest(clientId: UUID!, domain: DomainGQL!) : CoachClientAssociationGQL! @join__field(graph: USERS) 
   requestCoaching(clientEmail: String!) : Boolean! @join__field(graph: USERS) 
   respondToCoachingRequest(associationId: UUID!, accept: Boolean!) : CoachClientAssociationGQL @join__field(graph: USERS) 
   terminateCoachingRelationship(associationId: UUID!) : Boolean! @join__field(graph: USERS) 
+  terminateCoachingForClient(clientId: UUID!) : Boolean! @join__field(graph: USERS) 
   requestCoachingByUserId(clientUserId: UUID!) : Boolean! @join__field(graph: USERS) 
-  acceptCoaching(coachUserId: UUID!) : Boolean! @join__field(graph: USERS) 
+  acceptCoaching(coachUserId: ID!) : Boolean! @join__field(graph: USERS) 
+  rejectCoaching(coachUserId: ID!) : Boolean! @join__field(graph: USERS) 
 }
 
 type PerformanceReview @join__type(graph: AGENT)  {
@@ -1045,6 +1052,9 @@ type UserTypeGQL @join__type(graph: USERS, key: "id_")  {
   modifiedAt: DateTime!
   supabaseId: String!
   keycloakId: String
+  email: String
+  firstName: String
+  lastName: String
   serviceLinks: [UserServiceLink!]!
   schedulables: [SchedulableTypeGQL!]!
   roles: [UserRoleTypeGQL!]!
