@@ -831,6 +831,26 @@ class Mutation:
             await uow.commit()
             return True
 
+    @strawberry.mutation
+    async def terminateCoachingForClient(self, info: Info, clientId: UUID) -> bool:
+        """Coach convenience mutation: terminate the accepted relationship with a given client."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            # Find the accepted association between current coach and the client
+            associations = await repo.list_associations_for_user(
+                user_id=current_user.id_, as_role="coach", status=AssociationStatusModel.accepted
+            )
+            target = next((a for a in associations if str(a.client_id) == str(clientId)), None)
+            if not target:
+                raise Exception("No accepted coaching relationship found for this client.")
+            await repo.update_association_status(
+                association_id=uuid.UUID(str(target.id_)), status=AssociationStatusModel.terminated
+            )
+            await uow.commit()
+            return True
+
     # --- New Simplified Coaching Mutations (per plan) ---
 
     @strawberry.mutation
@@ -877,7 +897,7 @@ class Mutation:
                 raise Exception(str(e))
 
     @strawberry.mutation
-    async def acceptCoaching(self, info: Info, coachUserId: UUID) -> bool:
+    async def acceptCoaching(self, info: Info, coachUserId: strawberry.ID) -> bool:
         """Client accepts a coaching request from a coach."""
         current_user = await get_current_user_from_info(info)
         uow = await get_uow_from_info(info)
@@ -890,6 +910,25 @@ class Mutation:
             )
             
             if not relationship:
+                raise Exception("No pending coaching request found from this coach.")
+            
+            await uow.commit()
+            return True
+
+    @strawberry.mutation
+    async def rejectCoaching(self, info: Info, coachUserId: strawberry.ID) -> bool:
+        """Client rejects a coaching request from a coach."""
+        current_user = await get_current_user_from_info(info)
+        uow = await get_uow_from_info(info)
+        async with uow:
+            repo = UserRepository(session=uow.session)
+            
+            success = await repo.reject_coaching_request(
+                client_user_id=current_user.id_,
+                coach_user_id=uuid.UUID(str(coachUserId))
+            )
+            
+            if not success:
                 raise Exception("No pending coaching request found from this coach.")
             
             await uow.commit()

@@ -554,6 +554,26 @@ class UserRepository:
         
         return relationship
 
+    async def reject_coaching_request(
+        self, client_user_id: uuid.UUID, coach_user_id: uuid.UUID
+    ) -> bool:
+        """Client rejects a coaching request from coach."""
+        stmt = select(CoachClientRelationshipModel).where(
+            CoachClientRelationshipModel.coach_user_id == coach_user_id,
+            CoachClientRelationshipModel.client_user_id == client_user_id,
+            CoachClientRelationshipModel.status == AssociationStatusModel.pending,
+        )
+        result = await self.session.execute(stmt)
+        relationship = result.scalars().first()
+        
+        if relationship:
+            relationship.status = AssociationStatusModel.rejected
+            await self.session.flush()
+            await self.session.refresh(relationship, attribute_names=["coach", "client"])
+            return True
+        
+        return False
+
     async def get_my_clients(self, coach_user_id: uuid.UUID) -> List[CoachClientRelationshipModel]:
         """Gets accepted client relationships for a coach."""
         stmt = (
