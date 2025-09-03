@@ -8,14 +8,15 @@ import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { Icon } from '@/components/ui/icon'
 import { InboxIcon } from 'lucide-react-native'
-import { useMyPendingCoachingRequests, useAcceptCoaching } from '@/services/api/users'
-import { useToast } from '@/components/ui/toast'
+import { useMyPendingCoachingRequests, useAcceptCoaching, useRejectCoaching } from '@/services/api/users'
+import { Toast, ToastTitle, useToast } from '@/components/ui/toast'
 import InboxMessageCard from '@/components/inbox/InboxMessageCard'
 
 export default function InboxScreen() {
   const toast = useToast()
   const { data: requestsData, loading, refetch } = useMyPendingCoachingRequests()
   const [acceptCoaching] = useAcceptCoaching()
+  const [rejectCoaching] = useRejectCoaching()
   
   const requests = requestsData?.myPendingCoachingRequests || []
 
@@ -26,23 +27,53 @@ export default function InboxScreen() {
       })
       
       toast.show({
-        description: "Coaching request accepted!",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="success">
+            <ToastTitle>Coaching request accepted!</ToastTitle>
+          </Toast>
+        ),
       })
       
       await refetch()
     } catch (error: any) {
       toast.show({
-        description: error.message || "Failed to accept coaching request.",
-        action: "error",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="error">
+            <ToastTitle>{error.message || "Failed to accept coaching request."}</ToastTitle>
+          </Toast>
+        ),
       })
     }
   }
 
-  const handleRejectRequest = async (requestId: string) => {
-    // TODO: Implement reject functionality
-    toast.show({
-      description: "Reject functionality coming soon.",
-    })
+  const handleRejectRequest = async (coachUserId: string) => {
+    try {
+      await rejectCoaching({
+        variables: { coachUserId }
+      })
+      
+      toast.show({
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="success">
+            <ToastTitle>Coaching request declined.</ToastTitle>
+          </Toast>
+        ),
+      })
+      
+      await refetch()
+    } catch (error: any) {
+      toast.show({
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="error">
+            <ToastTitle>{error.message || "Failed to decline coaching request."}</ToastTitle>
+          </Toast>
+        ),
+      })
+    }
   }
 
   return (
@@ -91,7 +122,7 @@ export default function InboxScreen() {
                   key={request.id_}
                   request={request}
                   onAccept={() => handleAcceptRequest(request.coach.id_)}
-                  onReject={() => handleRejectRequest(request.id_)}
+                  onReject={() => handleRejectRequest(request.coach.id_)}
                 />
               ))}
             </VStack>

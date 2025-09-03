@@ -29,9 +29,6 @@ export const MY_CLIENTS = gql`
     myClients {
       id_
       supabaseId
-      email
-      firstName
-      lastName
       createdAt
       modifiedAt
     }
@@ -60,9 +57,6 @@ export const USER_BY_ID = gql`
     userById(id: $id) {
       id_
       supabaseId
-      email
-      firstName
-      lastName
       createdAt
       modifiedAt
       roles {
@@ -134,12 +128,6 @@ export const ASSIGN_ROLE = gql`
   }
 `
 
-export const TERMINATE_COACHING_FOR_CLIENT = gql`
-  mutation TerminateCoachingForClient($clientId: ID!) {
-    terminateCoachingForClient(clientId: $clientId)
-  }
-`
-
 // Hooks
 export const useMyPendingCoachingRequests = () => {
   return useQuery(MY_PENDING_COACHING_REQUESTS, {
@@ -175,10 +163,6 @@ export const useRejectCoaching = () => {
   return useMutation(REJECT_COACHING)
 }
 
-export const useAssignRole = () => {
-  return useMutation(ASSIGN_ROLE)
-}
-
 export const useUserById = (id: string) => {
   return useQuery(USER_BY_ID, {
     variables: { id },
@@ -203,14 +187,14 @@ export const useTodaysSchedulables = (params: { userId: string; date?: string },
   })
 }
 
+export const useAssignRole = () => {
+  return useMutation(ASSIGN_ROLE)
+}
+
 export const useSearchUsers = (query: string) => {
   return useQuery(SEARCH_USERS, {
     variables: { query },
     skip: !query || query.length < 2,
     fetchPolicy: 'cache-and-network',
   })
-}
-
-export const useTerminateCoachingForClient = () => {
-  return useMutation(TERMINATE_COACHING_FOR_CLIENT)
 } 

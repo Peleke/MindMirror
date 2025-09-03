@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
 import { HStack } from '@/components/ui/hstack'
@@ -7,8 +7,8 @@ import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams } from 'expo-router'
-import { useUserById } from '@/services/api/users'
-import { useWorkoutsForUser } from '@/services/api/practices'
+import { useUserById, useTerminateCoachingForClient } from '@/services/api/users'
+import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useAssignProgramToClient, useUpdateEnrollmentStatus } from '@/services/api/practices'
 import GlobalFab from '@/components/common/GlobalFab'
 import { Alert, AlertIcon, AlertText } from '@/components/ui/alert'
 import { AlertCircleIcon } from 'lucide-react-native'
@@ -19,8 +19,11 @@ import { Button, ButtonText } from '@/components/ui/button'
 export default function ClientProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<'workouts' | 'meals'>('workouts')
+  const [removing, setRemoving] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [assigningProgramId, setAssigningProgramId] = useState<string | null>(null)
+  const [unassigningEnrollmentId, setUnassigningEnrollmentId] = useState<string | null>(null)
 
-  const { data: clientData, loading: clientLoading, error: clientError } = useUserById(id || '')
+  const { data: clientData, loading: clientLoading, error: clientError, refetch: refetchClient } = useUserById(id || '')
   const { data: workoutsData, loading: workoutsLoading, error: workoutsError } = useWorkoutsForUser(
     id || '', 
     undefined, // dateFrom
@@ -28,8 +31,45 @@ export default function ClientProfileScreen() {
     'completed'  // status
   )
 
+  // Workouts programs and client enrollments
+  const programsQ = useWorkoutPrograms()
+  const enrollmentsQ = useMyEnrollments(id || '')
+  const [assignProgramToClient] = useAssignProgramToClient()
+  const [updateEnrollmentStatus] = useUpdateEnrollmentStatus()
+
   const client = clientData?.userById
   const workouts = workoutsData?.workoutsForUser || []
+  const programs = programsQ.data?.programs || [] // Workout programs only
+  const enrollments = enrollmentsQ.data?.enrollments || []
+  const activeEnrollments = useMemo(() => (enrollments || []).filter((e: any) => (e.status || '').toLowerCase() === 'active'), [enrollments])
+
+  const activeProgramIds = useMemo(() => new Set<string>(activeEnrollments.map((e: any) => e.program_id)), [activeEnrollments])
+  const programIdToProgram = useMemo(() => {
+    const map = new Map<string, any>()
+    for (const p of programs) map.set(p.id_, p)
+    return map
+  }, [programs])
+
+  const handleAssignProgram = async (programId: string) => {
+    if (!id) return
+    try {
+      setAssigningProgramId(programId)
+      await assignProgramToClient({ variables: { programId, clientId: id, campaign: null } })
+      await enrollmentsQ.refetch()
+    } finally {
+      setAssigningProgramId(null)
+    }
+  }
+
+  const handleUnassignEnrollment = async (enrollmentId: string) => {
+    try {
+      setUnassigningEnrollmentId(enrollmentId)
+      await updateEnrollmentStatus({ variables: { enrollmentId, status: 'CANCELLED' } })
+      await enrollmentsQ.refetch()
+    } finally {
+      setUnassigningEnrollmentId(null)
+    }
+  }
 
   // Get last 7 days for recent workouts
   const sevenDaysAgo = new Date()
@@ -37,6 +77,19 @@ export default function ClientProfileScreen() {
   const recentWorkouts = workouts.filter((workout: any) => 
     new Date(workout.date) >= sevenDaysAgo
   )
+
+  const [terminateCoaching] = useTerminateCoachingForClient()
+  const handleRemoveClient = async () => {
+    if (!id || removing === 'loading') return
+    setRemoving('loading')
+    try {
+      await terminateCoaching({ variables: { clientId: id } })
+      setRemoving('success')
+      await refetchClient()
+    } catch (e) {
+      setRemoving('error')
+    }
+  }
 
   if (clientLoading) {
     return (
@@ -77,13 +130,13 @@ export default function ClientProfileScreen() {
             <VStack space="md" className="items-center">
               <Avatar size="xl">
                 <AvatarFallbackText>
-                  {client.supabaseId.substring(0, 2).toUpperCase()}
+                  {(client.firstName?.[0] || client.email?.[0] || client.supabaseId.substring(0, 2)).toUpperCase()}
                 </AvatarFallbackText>
                 <AvatarBadge />
               </Avatar>
               <VStack space="xs" className="items-center">
                 <Text className="text-xl font-bold text-typography-900 dark:text-white">
-                  Client {client.supabaseId.substring(0, 8)}...
+                  {client.firstName && client.lastName ? `${client.firstName} ${client.lastName}` : (client.email || `Client ${client.supabaseId.substring(0, 8)}...`)}
                 </Text>
                 <Text className="text-typography-600 dark:text-gray-300 text-sm">
                   Member since {new Date(client.createdAt).toLocaleDateString()}
@@ -204,6 +257,88 @@ export default function ClientProfileScreen() {
                     )}
                   </VStack>
                 )}
+
+                {/* Assign Workout Program */}
+                <VStack space="sm" className="mt-6">
+                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">Assign Program</Text>
+                  {programsQ.loading ? (
+                    <Text className="text-typography-600 dark:text-gray-300">Loading programs…</Text>
+                  ) : programsQ.error ? (
+                    <Text className="text-red-600 dark:text-red-400">Failed to load programs</Text>
+                  ) : programs.length === 0 ? (
+                    <Text className="text-typography-600 dark:text-gray-300">No workout programs available.</Text>
+                  ) : (
+                    <VStack space="sm">
+                      {programs.map((p: any) => (
+                        <HStack key={p.id_} className="items-center justify-between p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                          <VStack>
+                            <Text className="text-typography-900 dark:text-white font-medium">{p.name}</Text>
+                            {p.description ? (
+                              <Text className="text-typography-600 dark:text-gray-300 text-sm">{p.description}</Text>
+                            ) : null}
+                          </VStack>
+                          <Button
+                            size="sm"
+                            variant={activeProgramIds.has(p.id_) ? 'outline' : 'solid'}
+                            disabled={assigningProgramId === p.id_ || activeProgramIds.has(p.id_)}
+                            onPress={() => handleAssignProgram(p.id_)}
+                          >
+                            <ButtonText>
+                              {activeProgramIds.has(p.id_) ? 'Assigned' : (assigningProgramId === p.id_ ? 'Assigning…' : 'Assign')}
+                            </ButtonText>
+                          </Button>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </VStack>
+
+                {/* Current Assignments */}
+                <VStack space="sm" className="mt-4">
+                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">Current Assignments</Text>
+                  {enrollmentsQ.loading ? (
+                    <Text className="text-typography-600 dark:text-gray-300">Loading assignments…</Text>
+                  ) : activeEnrollments.length === 0 ? (
+                    <Text className="text-typography-600 dark:text-gray-300">No active assignments.</Text>
+                  ) : (
+                    <VStack space="sm">
+                      {activeEnrollments.map((e: any) => {
+                        const program = programIdToProgram.get(e.program_id)
+                        return (
+                          <HStack key={e.id_} className="items-center justify-between p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                            <VStack>
+                              <Text className="text-typography-900 dark:text-white font-medium">{program?.name || 'Program'}</Text>
+                              <Text className="text-typography-600 dark:text-gray-300 text-sm">Status: {e.status}</Text>
+                            </VStack>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={unassigningEnrollmentId === e.id_}
+                              onPress={() => handleUnassignEnrollment(e.id_)}
+                            >
+                              <ButtonText>{unassigningEnrollmentId === e.id_ ? 'Unassigning…' : 'Unassign'}</ButtonText>
+                            </Button>
+                          </HStack>
+                        )
+                      })}
+                    </VStack>
+                  )}
+                </VStack>
+
+                {/* Danger zone */}
+                <VStack className="mt-8" space="xs">
+                  <Text className="text-typography-700">Danger zone</Text>
+                  <Button
+                    variant="outline"
+                    className="border-red-300"
+                    onPress={handleRemoveClient}
+                    disabled={removing === 'loading' || removing === 'success'}
+                  >
+                    <ButtonText className="text-red-700">
+                      {removing === 'loading' ? 'Removing…' : removing === 'success' ? 'Removed' : 'Remove Client'}
+                    </ButtonText>
+                  </Button>
+                </VStack>
               </VStack>
             ) : (
               <VStack space="md">

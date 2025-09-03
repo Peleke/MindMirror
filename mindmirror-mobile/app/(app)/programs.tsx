@@ -287,7 +287,11 @@ export default function ProgramsAndResourcesScreen() {
                       className="justify-start p-4"
                     >
                       <ButtonText className="text-left">
-                        {assignStatus === 'loading' ? 'Assigning...' : `Client ${client.supabaseId.substring(0, 8)}...`}
+                        {assignStatus === 'loading' 
+                          ? 'Assigning...' 
+                          : (client.firstName && client.lastName 
+                              ? `${client.firstName} ${client.lastName}` 
+                              : (client.email || `Client ${client.supabaseId.substring(0, 8)}...`))}
                       </ButtonText>
                     </Button>
                   ))}

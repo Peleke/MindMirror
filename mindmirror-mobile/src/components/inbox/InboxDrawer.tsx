@@ -12,7 +12,7 @@ import { Heading } from '@/components/ui/heading'
 import { CloseIcon, Icon } from '@/components/ui/icon'
 import { InboxIcon, XIcon } from 'lucide-react-native'
 import { useMyPendingCoachingRequests, useAcceptCoaching } from '@/services/api/users'
-import { useToast } from '@/components/ui/toast'
+import { Toast, ToastTitle, useToast } from '@/components/ui/toast'
 import InboxMessageCard from './InboxMessageCard'
 
 interface InboxDrawerProps {
@@ -35,14 +35,23 @@ export default function InboxDrawer({ isOpen, onClose }: InboxDrawerProps) {
       })
       
       toast.show({
-        description: "Coaching request accepted!",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="success">
+            <ToastTitle>Coaching request accepted!</ToastTitle>
+          </Toast>
+        ),
       })
       
       await refetch()
     } catch (error: any) {
       toast.show({
-        description: error.message || "Failed to accept coaching request.",
-        action: "error",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="error">
+            <ToastTitle>{error.message || "Failed to accept coaching request."}</ToastTitle>
+          </Toast>
+        ),
       })
     }
   }
@@ -50,7 +59,12 @@ export default function InboxDrawer({ isOpen, onClose }: InboxDrawerProps) {
   const handleRejectRequest = async (requestId: string) => {
     // TODO: Implement reject functionality
     toast.show({
-      description: "Reject functionality coming soon.",
+      placement: "bottom right",
+      render: ({ id }) => (
+        <Toast nativeID={id} action="muted">
+          <ToastTitle>Reject functionality coming soon.</ToastTitle>
+        </Toast>
+      ),
     })
   }
 

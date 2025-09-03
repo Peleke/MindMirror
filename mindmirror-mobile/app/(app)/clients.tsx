@@ -16,7 +16,7 @@ import { Heading } from '@/components/ui/heading'
 import { CloseIcon, Icon } from '@/components/ui/icon'
 import { Alert, AlertIcon, AlertText } from '@/components/ui/alert'
 import { CheckCircleIcon, AlertCircleIcon, UserIcon, SearchIcon } from 'lucide-react-native'
-import { useToast } from '@/components/ui/toast'
+import { Toast, ToastTitle, useToast } from '@/components/ui/toast'
 import { Avatar, AvatarFallbackText } from '@/components/ui/avatar'
 
 export default function ClientsScreen() {
@@ -25,6 +25,7 @@ export default function ClientsScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [clientEmail, setClientEmail] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   
   // Data fetching
   const { data: clientsData, loading, refetch } = useMyClients()
@@ -42,10 +43,14 @@ export default function ClientsScreen() {
 
   const handleAddClient = async () => {
     if (!clientEmail.trim()) {
-      toast.show({
-        description: "Please enter a client email address.",
-        action: "error",
-      })
+              toast.show({
+          placement: "bottom right",
+          render: ({ id }) => (
+            <Toast nativeID={id} action="error">
+              <ToastTitle>Please enter a client email address.</ToastTitle>
+            </Toast>
+          ),
+        })
       return
     }
 
@@ -55,16 +60,26 @@ export default function ClientsScreen() {
       })
       
       toast.show({
-        description: "Coaching request sent successfully!",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="success">
+            <ToastTitle>Coaching request sent successfully!</ToastTitle>
+          </Toast>
+        ),
       })
       
       setClientEmail('')
+      setSelectedUserId(null)
       setShowAddModal(false)
       await refetch()
     } catch (error: any) {
       toast.show({
-        description: error.message || "Failed to send coaching request.",
-        action: "error",
+        placement: "bottom right",
+        render: ({ id }) => (
+          <Toast nativeID={id} action="error">
+            <ToastTitle>{error.message || "Failed to send coaching request."}</ToastTitle>
+          </Toast>
+        ),
       })
     }
   }
@@ -121,14 +136,14 @@ export default function ClientsScreen() {
                   <HStack className="items-center" space="md">
                     <Avatar size="md">
                       <AvatarFallbackText>
-                        {client.firstName?.[0] || client.email?.[0] || 'C'}
+                        {(client.firstName?.[0] || client.email?.[0] || 'C').toUpperCase()}
                       </AvatarFallbackText>
                     </Avatar>
                     <VStack className="flex-1">
                       <Text className="font-semibold text-typography-900">
                         {client.firstName && client.lastName 
                           ? `${client.firstName} ${client.lastName}`
-                          : client.email || 'Unknown Client'
+                          : (client.email || 'Unknown Client')
                         }
                       </Text>
                       {client.email && (
@@ -181,8 +196,15 @@ export default function ClientsScreen() {
                       {searchResults.slice(0, 3).map((user: any) => (
                         <Pressable
                           key={user.id_}
-                          onPress={() => setClientEmail(user.email || '')}
-                          className="p-2 bg-background-100 rounded border border-border-200"
+                          onPress={() => {
+                            setClientEmail(user.email || '')
+                            setSelectedUserId(user.id_)
+                          }}
+                          className={`p-2 rounded border ${
+                            selectedUserId === user.id_
+                              ? 'bg-primary-50 border-primary-300 border-2'
+                              : 'bg-background-100 border-border-200'
+                          }`}
                         >
                           <Text className="text-sm">
                             {user.firstName && user.lastName 
@@ -206,6 +228,7 @@ export default function ClientsScreen() {
                 onPress={() => {
                   setShowAddModal(false)
                   setClientEmail('')
+                  setSelectedUserId(null)
                 }}
                 className="flex-1"
               >
