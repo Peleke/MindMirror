@@ -240,16 +240,43 @@ class EnrollmentQuery:
             instance_repo = PracticeInstanceRepository(uow.session)
             
             # Get practice instances for the user
-            instances = await instance_repo.get_instances_for_user(
-                user_id=target_user_uuid,
-                date_from=from_date,
-                date_to=to_date,
-                status=status
-            )
+            # Note: Adjusted to call existing repository methods (list_*), since get_instances_for_user
+            # was not implemented. This preserves intended filtering semantics.
+            if from_date and to_date:
+                instances = await instance_repo.list_instances_by_date_range(
+                    user_id=target_user_uuid,
+                    date_from=from_date,
+                    date_to=to_date,
+                    status=status
+                )
+            else:
+                # Fallback to all instances for user, with optional status filtering
+                instances = await instance_repo.list_instances_for_user(user_id=target_user_uuid)
+                if status:
+                    s = status.lower()
+                    today = date.today()
+                    if s == "completed":
+                        instances = [i for i in instances if i.completed_at is not None]
+                    elif s == "scheduled":
+                        instances = [i for i in instances if i.completed_at is None and i.date >= today]
+                    elif s == "missed":
+                        instances = [i for i in instances if i.completed_at is None and i.date < today]
             
-            # Convert to GraphQL types
-            from practices.web.graphql.practice_instance_resolvers import to_gql_practice_instance
-            return [to_gql_practice_instance(instance) for instance in instances]
+            # Convert to GraphQL types (top-level fields only)
+            from practices.web.graphql.practice_instance_types import PracticeInstanceType
+            return [
+                PracticeInstanceType(
+                    id_=inst.id_,
+                    title=inst.title or "",
+                    date=inst.date,
+                    user_id=inst.user_id,
+                    template_id=inst.template_id,
+                    description=inst.description,
+                    completed_at=inst.completed_at,
+                    prescriptions=[],
+                )
+                for inst in instances
+            ]
 
 
 @strawberry.type

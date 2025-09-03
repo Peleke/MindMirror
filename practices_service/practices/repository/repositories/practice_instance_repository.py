@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from practices.domain.models import DomainPracticeInstance  # To be created
+from practices.domain.models import DomainPracticeInstance
 from practices.repository.models import (
     MovementInstanceModel,
     MovementTemplateModel,
