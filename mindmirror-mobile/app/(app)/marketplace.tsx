@@ -13,14 +13,22 @@ import { useRouter } from 'expo-router'
 import { usePrograms as useWorkoutPrograms } from '@/services/api/practices'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 import GlobalFab from '@/components/common/GlobalFab'
+import { useFocusEffect } from '@react-navigation/native'
 
 export default function MarketplaceScreen() {
   const router = useRouter()
-  const { data, loading, error } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
-  const { data: assignmentsData } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
+  const { data, loading, error, refetch } = useQuery(LIST_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+  const { data: assignmentsData, refetch: refetchAssignments } = useQuery(PROGRAM_ASSIGNMENTS, { fetchPolicy: 'cache-and-network' })
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<'habits' | 'workouts'>('habits')
   const workoutProgramsQ = useWorkoutPrograms()
+
+  useFocusEffect(React.useCallback(() => {
+    refetch().catch(() => {})
+    refetchAssignments().catch(() => {})
+    if (typeof workoutProgramsQ.refetch === 'function') { try { (workoutProgramsQ as any).refetch() } catch {} }
+    return () => {}
+  }, []))
 
   const programs = useMemo(() => {
     const rows: any[] = data?.programTemplates || []

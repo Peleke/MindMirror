@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { View } from 'react-native'
+import { View, Modal } from 'react-native'
+import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { DrawerContentScrollView, DrawerItem, DrawerContentComponentProps } from '@react-navigation/drawer'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useUserById, useMyPendingCoachingRequests } from '@/services/api/users'
@@ -11,12 +12,37 @@ import { Box } from '@/components/ui/box'
 import { Pressable } from '@/components/ui/pressable'
 import InboxDrawer from '@/components/inbox/InboxDrawer'
 import { isCoachInPractices } from '@/constants/roles'
+import { ThemeVariants, useThemeVariant } from '@/theme/ThemeContext'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+function ThemeSelectModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { themeId, setThemeId } = useThemeVariant()
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable className="flex-1 bg-black/40 justify-end" onPress={onClose}>
+        <Box className="bg-background-0 p-4 border-t border-border-200">
+          <Text className="text-base font-semibold mb-2">Select Theme</Text>
+          <Box className="pb-2">
+            {ThemeVariants.map((t) => (
+              <Pressable key={t.id} onPress={() => { setThemeId(t.id); onClose(); }} className={`px-3 py-3 rounded-md mb-2 border ${themeId === t.id ? 'bg-primary-50 border-primary-200' : 'bg-background-50 border-border-200'}`}>
+                <Text className="text-typography-900">{t.label}</Text>
+              </Pressable>
+            ))}
+          </Box>
+        </Box>
+      </Pressable>
+    </Modal>
+  )
+}
 
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { navigation } = props
   const { user } = useAuth()
   const [showInbox, setShowInbox] = useState(false)
   const [expandedPrograms, setExpandedPrograms] = useState(false)
+  const [showThemeModal, setShowThemeModal] = useState(false)
+  const { themeId } = useThemeVariant()
+  const insets = useSafeAreaInsets()
   
   // Get user details to check for coach role
   const { data: userData } = useUserById(user?.id || '')
@@ -32,7 +58,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
   }
 
   return (
-    <>
+    <View style={{ flex: 1, paddingTop: insets.top }}>
       <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, paddingTop: 0 }}>
         <View style={{ flexGrow: 1 }}>
           {/* Main Navigation */}
@@ -66,7 +92,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
               <DrawerItem 
                 label="  Workouts" 
                 onPress={() => {
-                  navigation.navigate('workouts')
+                  navigation.navigate('workout')
                   navigation.closeDrawer()
                 }} 
                 labelStyle={{ fontSize: 14, color: '#6B7280' }}
@@ -121,7 +147,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
           }} />
         </View>
         
-        <View style={{ paddingBottom: 20 }}>
+        <View style={{ paddingBottom: Math.max(20, insets.bottom) }}>
           {/* Coach-only Clients section */}
           <DrawerItem label="Profile" onPress={() => {
             navigation.navigate('profile')
@@ -133,12 +159,14 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
               navigation.closeDrawer()
             }} />
           )}
+          <DrawerItem label={`Theme (${themeId})`} onPress={() => setShowThemeModal(true)} />
         </View>
       </DrawerContentScrollView>
       
       {/* Inbox Drawer */}
       <InboxDrawer isOpen={showInbox} onClose={() => setShowInbox(false)} />
-    </>
+      <ThemeSelectModal visible={showThemeModal} onClose={() => setShowThemeModal(false)} />
+    </View>
   )
 }
 

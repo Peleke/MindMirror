@@ -36,8 +36,20 @@ export default function ProgramDetailsScreen() {
 
   const onDelete = async () => {
     try {
-      await deleteProgram({ variables: { id } })
-      router.replace('/programs?reload=1')
+      await deleteProgram({ variables: { id }, refetchQueries: ['Programs'], awaitRefetchQueries: true })
+      show({ placement: 'top', render: ({ id }) => (
+        <Toast nativeID={`toast-${id}`} action="success" variant="solid">
+          <VStack>
+            <ToastTitle>Program deleted</ToastTitle>
+            <ToastDescription>Refreshing list…</ToastDescription>
+          </VStack>
+        </Toast>
+      )})
+      try {
+        router.back()
+      } catch {
+        router.replace('/programs?reload=1')
+      }
     } catch {}
   }
 
@@ -72,7 +84,7 @@ export default function ProgramDetailsScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title={p?.name || 'Program'} showBackButton onBackPress={() => router.replace('/programs?reload=1')} />
+        <AppBar title={p?.name || 'Program'} showBackButton onBackPress={() => { try { router.back() } catch { router.replace('/programs?reload=1') } }} />
         <ScrollView className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto px-6 py-6" space="lg">
             {loading ? (

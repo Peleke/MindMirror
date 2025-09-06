@@ -9,6 +9,7 @@ import { JournalTask } from '@/types/habits'
 import { useRouter } from 'expo-router'
 // Swipe gestures removed per spec; keep UI stable with tap only
 import { PenTool } from 'lucide-react-native'
+import { useThemeVariant } from '@/theme/ThemeContext'
 
 export default function JournalCard({ task }: { task: JournalTask }) {
   const router = useRouter()
@@ -16,13 +17,15 @@ export default function JournalCard({ task }: { task: JournalTask }) {
   const placeholder = task.description || ''
   const habitTemplateId = (task as any).habitTemplateId || ''
   const route = `/journal/freeform?placeholder=${encodeURIComponent(placeholder)}${habitTemplateId ? `&habitTemplateId=${encodeURIComponent(habitTemplateId)}` : ''}`
+  const { themeId } = useThemeVariant()
+  const isClassic = themeId === 'classic'
   return (
     <>
       <Pressable className="w-full" onPress={() => router.push(route)}>
-        <Box className="p-4 rounded-lg border bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 shadow">
+        <Box className={`p-4 rounded-lg border shadow ${isClassic ? 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700' : 'bg-background-200 dark:bg-background-700 border-border-300 dark:border-border-700'}`}>
           <VStack space="sm">
             <HStack space="sm" className="items-center">
-              <Icon as={PenTool} size="md" className="text-stone-700 dark:text-stone-300" />
+              <Icon as={PenTool} size="md" className={isClassic ? 'text-stone-700 dark:text-stone-300' : 'text-primary-700 dark:text-primary-300'} />
               <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
             </HStack>
             {dismissed ? (

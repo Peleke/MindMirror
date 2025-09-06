@@ -41,6 +41,8 @@ import { Swipeable } from 'react-native-gesture-handler'
 import CalendarPicker from 'react-native-calendar-picker'
 import { Text as RNText } from 'react-native'
 import GlobalFab from '@/components/common/GlobalFab';
+import { useThemeVariant } from '@/theme/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -48,6 +50,8 @@ function todayIsoDate(): string {
 
 function MiniDashboard() {
   const { session, loading: authLoading } = useAuth()
+  const { themeId } = useThemeVariant()
+  const isClassic = themeId === 'classic'
   const hasSession = !!session?.access_token
   const onDate = todayIsoDate()
   const MINI_TASKS = gql`
@@ -63,11 +67,11 @@ function MiniDashboard() {
       }
     }
   `
-  const { data: tasks, loading: tasksLoading } = useQuery(MINI_TASKS, { variables: { onDate }, fetchPolicy: 'cache-and-network', skip: authLoading || !hasSession })
+  const { data: tasks, loading: tasksLoading, refetch: refetchMini } = useQuery(MINI_TASKS, { variables: { onDate }, fetchPolicy: 'cache-and-network', skip: authLoading || !hasSession })
   const firstHabit = (tasks?.todaysTasks || []).find((t: any) => t.__typename === 'HabitTask' && t.habitTemplateId)
   const habitId = firstHabit?.habitTemplateId || (global as any).__preferredHabitId || ''
   const habitTitle = firstHabit?.title || ''
-  const { data: stats, loading: statsLoading } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: authLoading || !hasSession || !habitId })
+  const { data: stats, loading: statsLoading, refetch: refetchStats } = useQuery(HABIT_STATS, { variables: { habitTemplateId: habitId, lookbackDays: 21 }, skip: authLoading || !hasSession || !habitId })
 
   // Meals mini-row queries
   const userId = session?.user?.id || ''
@@ -158,6 +162,54 @@ function MiniDashboard() {
   const dailyWaterGoalOz = goalWaterMl / 29.5735
   const waterProgress = Math.max(0, Math.min(1, waterOz / dailyWaterGoalOz))
 
+  // Macro stacked bar helper
+  const MacroStackBar = ({ p, c, f }: { p: number; c: number; f: number }) => {
+    const sumRaw = p + c + f
+    const hasData = sumRaw > 0
+    const sum = Math.max(1, sumRaw)
+    const pct = (x: number) => Math.round((x / sum) * 100)
+    return (
+      <VStack className="w-full items-center">
+        {/* Percent labels */}
+        <HStack className="w-11/12 items-center mb-0.5">
+          <Box style={{ flex: hasData ? p / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#16a34a', fontWeight: '700' }}>{hasData ? `${pct(p)}%` : '0%'}</Text>
+          </Box>
+          <Box style={{ flex: hasData ? c / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#d97706', fontWeight: '700' }}>{hasData ? `${pct(c)}%` : '0%'}</Text>
+          </Box>
+          <Box style={{ flex: hasData ? f / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#2563eb', fontWeight: '700' }}>{hasData ? `${pct(f)}%` : '0%'}</Text>
+          </Box>
+        </HStack>
+        {/* Bar */}
+        <HStack className="w-11/12 items-center" style={{ height: 10, borderRadius: 6, overflow: 'hidden' }}>
+          {hasData ? (
+            <>
+              <Box style={{ flex: p / sum, backgroundColor: '#16a34a', height: '100%' }} />
+              <Box style={{ flex: c / sum, backgroundColor: '#d97706', height: '100%' }} />
+              <Box style={{ flex: f / sum, backgroundColor: '#2563eb', height: '100%' }} />
+            </>
+          ) : (
+            <Box style={{ flex: 1, backgroundColor: '#e5e7eb', height: '100%' }} />
+          )}
+        </HStack>
+        {/* Letters centered under segments by giving same flex distribution */}
+        <HStack className="w-11/12 items-center mt-1">
+          <Box style={{ flex: hasData ? p / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#16a34a', fontWeight: '700' }}>P</Text>
+          </Box>
+          <Box style={{ flex: hasData ? c / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#d97706', fontWeight: '700' }}>C</Text>
+          </Box>
+          <Box style={{ flex: hasData ? f / sum : 1/3, alignItems: 'center' }}>
+            <Text className="text-2xs" style={{ color: '#2563eb', fontWeight: '700' }}>F</Text>
+          </Box>
+        </HStack>
+      </VStack>
+    )
+  }
+
   const Donut = ({ size = 68, stroke = 8, progress = 0, color = '#1d4ed8', track = '#e5e7eb' }: { size?: number, stroke?: number, progress?: number, color?: string, track?: string }) => {
     const radius = (size - stroke) / 2
     const circumference = 2 * Math.PI * radius
@@ -209,19 +261,25 @@ function MiniDashboard() {
   const smallCircumference = 2 * Math.PI * smallRadius
   const smallProgress = smallCircumference * (1 - adherence)
 
+  // Expose a refresh function via global for quick hook-up
+  ;(global as any).__refreshHomeMiniDashboard = async () => {
+    try { await refetchMini(); } catch {}
+    try { if (habitId) await refetchStats(); } catch {}
+  }
+
   return (
     <VStack className="mt-2 px-4">
-      <Box className="p-3 rounded-2xl bg-background-50 dark:bg-background-100 border border-border-200 dark:border-border-700 shadow">
+      <Box className={`p-3 rounded-2xl ${isClassic ? 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700' : 'bg-background-200 dark:bg-background-700 border border-border-300 dark:border-border-700'} shadow-brand`}>
         <HStack className="items-center">
           {/* Vertical H/M switcher */}
           <VStack className="mr-3 space-y-2">
-            <Pressable onPress={() => setChartsTab('habits')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='habits' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+            <Pressable onPress={() => setChartsTab('habits')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='habits' ? (isClassic ? 'bg-indigo-100 border-indigo-300' : 'bg-primary-200 border-primary-400') : 'bg-background-100 border-border-200'} ${chartsTab==='habits' ? 'dark:bg-background-700' : 'dark:bg-background-100'}`}>
               <Text className="text-xs font-semibold">H</Text>
             </Pressable>
-            <Pressable onPress={() => setChartsTab('meals')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='meals' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+            <Pressable onPress={() => setChartsTab('meals')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='meals' ? (isClassic ? 'bg-indigo-100 border-indigo-300' : 'bg-primary-200 border-primary-400') : 'bg-background-100 border-border-200'} ${chartsTab==='meals' ? 'dark:bg-background-700' : 'dark:bg-background-100'}`}>
               <Text className="text-xs font-semibold">M</Text>
             </Pressable>
-            <Pressable onPress={() => setChartsTab('all')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='all' ? 'bg-indigo-100 dark:bg-gray-800 border-indigo-300' : 'bg-background-50 dark:bg-background-100 border-border-200'}`}>
+            <Pressable onPress={() => setChartsTab('all')} className={`w-8 h-8 rounded-md items-center justify-center border ${chartsTab==='all' ? (isClassic ? 'bg-indigo-100 border-indigo-300' : 'bg-primary-200 border-primary-400') : 'bg-background-100 border-border-200'} ${chartsTab==='all' ? 'dark:bg-background-700' : 'dark:bg-background-100'}`}>
               <Text className="text-xs font-semibold">A</Text>
             </Pressable>
           </VStack>
@@ -281,25 +339,12 @@ function MiniDashboard() {
           <VStack className="items-center" style={{ width: '33%' }}>
             <MacroDonut size={68} stroke={8} progress={calProgress} color="#1d4ed8" track="#e5e7eb" delay={200} />
             <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
-            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
+            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal} kcal</Text>
           </VStack>
           {/* Macros */}
           <VStack className="items-center" style={{ width: '33%' }}>
             <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
-            <HStack className="items-center justify-between w-11/12">
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={proteinProgress} color="#16a34a" track="#e5e7eb" delay={0} />
-                <Text className="text-2xs mt-1" style={{ color: '#16a34a', fontWeight: '700' }}>P {Math.round(totalProtein)}/{goalProteinG}g</Text>
-              </VStack>
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={carbsProgress} color="#d97706" track="#e5e7eb" delay={80} />
-                <Text className="text-2xs mt-1" style={{ color: '#d97706', fontWeight: '700' }}>C {Math.round(totalCarbs)}/{goalCarbsG}g</Text>
-              </VStack>
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={fatProgress} color="#2563eb" track="#e5e7eb" delay={160} />
-                <Text className="text-2xs mt-1" style={{ color: '#2563eb', fontWeight: '700' }}>F {Math.round(totalFat)}/{goalFatG}g</Text>
-              </VStack>
-            </HStack>
+            <MacroStackBar p={totalProtein} c={totalCarbs} f={totalFat} />
           </VStack>
         </HStack>
           </Box>
@@ -316,25 +361,12 @@ function MiniDashboard() {
           <VStack className="items-center" style={{ width: '33%' }}>
             <MacroDonut size={68} stroke={8} progress={calProgress} color="#1d4ed8" track="#e5e7eb" delay={120} />
             <Text className="text-sm font-bold text-typography-900 dark:text-white">{Math.round(totalCalories)}</Text>
-            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal}</Text>
+            <Text className="text-2xs text-typography-600 dark:text-gray-300">/ {dailyCalGoal} kcal</Text>
           </VStack>
           {/* All: Macros right */}
           <VStack className="items-center" style={{ width: '33%' }}>
             <Text className="text-xs font-semibold text-typography-700 dark:text-gray-200 mb-1">Macros</Text>
-            <HStack className="items-center justify-between w-11/12">
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={proteinProgress} color="#16a34a" track="#e5e7eb" delay={180} />
-                <Text className="text-2xs mt-1" style={{ color: '#16a34a', fontWeight: '700' }}>P {Math.round(totalProtein)}/{goalProteinG}g</Text>
-              </VStack>
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={carbsProgress} color="#d97706" track="#e5e7eb" delay={240} />
-                <Text className="text-2xs mt-1" style={{ color: '#d97706', fontWeight: '700' }}>C {Math.round(totalCarbs)}/{goalCarbsG}g</Text>
-              </VStack>
-              <VStack className="items-center">
-                <MacroDonut size={44} stroke={6} progress={fatProgress} color="#2563eb" track="#e5e7eb" delay={300} />
-                <Text className="text-2xs mt-1" style={{ color: '#2563eb', fontWeight: '700' }}>F {Math.round(totalFat)}/{goalFatG}g</Text>
-              </VStack>
-            </HStack>
+            <MacroStackBar p={totalProtein} c={totalCarbs} f={totalFat} />
           </VStack>
         </HStack>
           </Box>
@@ -714,10 +746,17 @@ export default function JournalScreen() {
 
   const userName = getUserDisplayName(user);
 
+  // Focus-based refresh for dashboard charts
+  useFocusEffect(React.useCallback(() => {
+    const fn = (global as any).__refreshHomeMiniDashboard
+    if (typeof fn === 'function') { fn() }
+    return () => {}
+  }, []))
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title="Journal" />
+        <AppBar title="Home" />
         
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto">
@@ -745,13 +784,9 @@ export default function JournalScreen() {
                   onPress={handleGratitudePress}
                   className="flex-1"
                 >
-                  <Box className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 items-center">
-                    <Icon 
-                      as={Heart}
-                      size="lg"
-                      className="text-blue-600 dark:text-blue-400 mb-2"
-                    />
-                    <Text className="text-sm font-medium text-blue-900 dark:text-blue-100 text-center">
+                  <Box className="p-4 bg-primary-50 dark:bg-background-800 rounded-lg border border-primary-200 dark:border-border-700 items-center">
+
+                    <Text className="text-sm font-medium text-primary-900 dark:text-primary-100 text-center">
                       Morning Gratitude
                     </Text>
                   </Box>
@@ -767,13 +802,9 @@ export default function JournalScreen() {
                   onPress={handleReflectionPress}
                   className="flex-1"
                 >
-                  <Box className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800 items-center">
-                    <Icon 
-                      as={Lightbulb}
-                      size="lg"
-                      className="text-indigo-600 dark:text-indigo-400 mb-2"
-                    />
-                    <Text className="text-sm font-medium text-indigo-900 dark:text-indigo-100 text-center">
+                  <Box className="p-4 bg-primary-50 dark:bg-background-800 rounded-lg border border-primary-200 dark:border-border-700 items-center">
+
+                    <Text className="text-sm font-medium text-primary-900 dark:text-primary-100 text-center">
                       Evening Reflection
                     </Text>
                   </Box>
@@ -789,10 +820,10 @@ export default function JournalScreen() {
           <VStack className="px-6 py-4" space="md">
             <HStack className="items-center justify-between">
               <HStack className="items-center space-x-3">
-                <Pressable onPress={() => setHomeTab('habits')} className={`px-3 py-2 rounded-md ${homeTab === 'habits' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                <Pressable onPress={() => setHomeTab('habits')} className={`px-3 py-2 rounded-md ${homeTab === 'habits' ? 'bg-primary-200 dark:bg-background-700 border-primary-400' : 'bg-background-100 dark:bg-background-100 border-border-200'} border`}>
                   <Text className="font-semibold">Habits</Text>
                 </Pressable>
-                <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-indigo-100 dark:bg-gray-800' : 'bg-background-50 dark:bg-background-100'} border border-border-200`}>
+                <Pressable onPress={() => setHomeTab('meals')} className={`px-3 py-2 rounded-md ${homeTab === 'meals' ? 'bg-primary-200 dark:bg-background-700 border-primary-400' : 'bg-background-100 dark:bg-background-100 border-border-200'} border`}>
                   <Text className="font-semibold">Meals</Text>
                 </Pressable>
               </HStack>
@@ -813,7 +844,7 @@ export default function JournalScreen() {
           {/* Content: Habits or Meals */}
           {homeTab === 'habits' ? (
             <VStack className="px-6 py-2" space="md">
-              <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} />
+              <DailyTasksList forceNetwork={params?.reload === '1'} onDate={tasksDayIso} onAfterHabitResponse={() => { const fn = (global as any).__refreshHomeMiniDashboard; if (typeof fn === 'function') fn() }} />
             </VStack>
           ) : (
             <VStack className="px-6 py-2" space="md">

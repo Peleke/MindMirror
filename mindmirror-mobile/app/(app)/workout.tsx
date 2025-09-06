@@ -28,6 +28,10 @@ export default function WorkoutsScreen() {
   const { data, loading, error, refetch } = useWorkouts({ dates: [dayIso] })
   const workouts = data?.workouts || []
 
+  const displayDate = useMemo(() => {
+    return new Date(anchorDate).toLocaleDateString([], { month: 'numeric', day: 'numeric' })
+  }, [anchorDate])
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
@@ -36,12 +40,18 @@ export default function WorkoutsScreen() {
         <VStack className="px-6 py-3" space="md">
           {/* Controls */}
           <HStack className="items-center justify-between">
-            <HStack className="space-x-2">
-              <RNPressable onPress={() => setShowDatePicker(true)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe' }}>
-                <RNText style={{ fontWeight: '600' }}>Calendar</RNText>
+            <RNPressable onPress={() => setShowDatePicker(true)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe' }}>
+              <RNText style={{ fontWeight: '600' }}>Calendar</RNText>
+            </RNPressable>
+            <HStack className="items-center space-x-2">
+              <RNPressable onPress={() => { const prev = new Date(anchorDate); prev.setDate(prev.getDate() - 1); setAnchorDate(prev); refetch({ dates: [toUtcDateStr(prev)] }).catch(() => {}) }} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgb(229,231,235)' }}>
+                <RNText style={{ fontWeight: '600' }}>‹</RNText>
               </RNPressable>
               <RNPressable onPress={() => { const d = new Date(); setAnchorDate(d); refetch({ dates: [toUtcDateStr(d)] }).catch(() => {}) }} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#e0f2fe', borderWidth: 1, borderColor: '#bae6fd' }}>
                 <RNText style={{ fontWeight: '600' }}>Today</RNText>
+              </RNPressable>
+              <RNPressable onPress={() => { const next = new Date(anchorDate); next.setDate(next.getDate() + 1); setAnchorDate(next); refetch({ dates: [toUtcDateStr(next)] }).catch(() => {}) }} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgb(229,231,235)' }}>
+                <RNText style={{ fontWeight: '600' }}>›</RNText>
               </RNPressable>
             </HStack>
           </HStack>

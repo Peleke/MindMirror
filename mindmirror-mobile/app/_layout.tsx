@@ -1,4 +1,6 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import React from "react";
+import { ThemeVariantProvider, useThemeVariant } from "@/theme/ThemeContext";
 import { AuthStateHandler } from '@/features/auth/components/AuthStateHandler';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
 import { ApolloProviderWrapper, SimpleApolloProvider } from '@/services/api/apollo-provider';
@@ -50,14 +52,19 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <ThemeVariantProvider>
+      <RootLayoutNav />
+    </ThemeVariantProvider>
+  );
 }
 
 function RootLayoutNav() {
   const { colorScheme } = useColorScheme();
+  const { themeId } = useThemeVariant();
 
   return (
-    <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
+    <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"} themeId={themeId}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <SimpleApolloProvider>
           <AuthProvider>
@@ -73,5 +80,13 @@ function RootLayoutNav() {
         </SimpleApolloProvider>
       </ThemeProvider>
     </GluestackUIProvider>
+  );
+}
+
+export function RootLayoutProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeVariantProvider>
+      {children}
+    </ThemeVariantProvider>
   );
 }

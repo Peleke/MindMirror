@@ -176,9 +176,17 @@ export default function MealsScreen() {
         <Pressable onPress={onOpenCalendar} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff' }}>
           <Text style={{ fontWeight: '600' }}>Calendar</Text>
         </Pressable>
-        <Pressable onPress={() => { const d = new Date(); const next = new Date(d); next.setDate(d.getDate() + 1); setAnchorDate(d); setTimeout(() => mealsQuery.refetch({ userId, start: toUtcDateStr(d), end: toUtcDateStr(next), limit: 50 }), 0) }} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#cde4ff' }}>
-          <Text style={{ fontWeight: '600' }}>Today</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable onPress={() => { const prev = new Date(anchorDate); prev.setDate(prev.getDate() - 1); const next = new Date(prev); next.setDate(prev.getDate() + 1); setAnchorDate(prev); setTimeout(() => mealsQuery.refetch({ userId, start: toUtcDateStr(prev), end: toUtcDateStr(next), limit: 50 }), 0) }} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgb(229,231,235)', marginRight: 8 }}>
+            <Text style={{ fontWeight: '600' }}>‹</Text>
+          </Pressable>
+          <Pressable onPress={() => { const d = new Date(); const next = new Date(d); next.setDate(d.getDate() + 1); setAnchorDate(d); setTimeout(() => mealsQuery.refetch({ userId, start: toUtcDateStr(d), end: toUtcDateStr(next), limit: 50 }), 0) }} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#cde4ff', marginRight: 8 }}>
+            <Text style={{ fontWeight: '600' }}>Today</Text>
+          </Pressable>
+          <Pressable onPress={() => { const next = new Date(anchorDate); next.setDate(next.getDate() + 1); const next2 = new Date(next); next2.setDate(next.getDate() + 1); setAnchorDate(next); setTimeout(() => mealsQuery.refetch({ userId, start: toUtcDateStr(next), end: toUtcDateStr(next2), limit: 50 }), 0) }} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgb(229,231,235)' }}>
+            <Text style={{ fontWeight: '600' }}>›</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Top charts - single row: Macros | Calories | Water */}

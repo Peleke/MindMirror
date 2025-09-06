@@ -17,6 +17,7 @@ import Constants from 'expo-constants'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useTodaysWorkouts, useMyUpcomingPractices, useDeferPractice } from '@/services/api/practices'
 import dayjs from 'dayjs'
+import LottieView from 'lottie-react-native'
 
 function todayIsoDate(): string {
   const now = new Date()
@@ -26,12 +27,15 @@ function todayIsoDate(): string {
   return `${year}-${month}-${day}`
 }
 
-export default function DailyTasksList({ forceNetwork = false, onDate: onDateProp }: { forceNetwork?: boolean, onDate?: string }) {
+export default function DailyTasksList({ forceNetwork = false, onDate: onDateProp, onAfterHabitResponse }: { forceNetwork?: boolean, onDate?: string, onAfterHabitResponse?: () => void }) {
   const onDate = useMemo(() => onDateProp || todayIsoDate(), [onDateProp])
   const router = useRouter()
   const mockEnabled = ((process.env.EXPO_PUBLIC_MOCK_TASKS || Constants.expoConfig?.extra?.mockTasks) || '').toString().toLowerCase() === 'true'
   const { session, loading: authLoading } = useAuth()
   const hasSession = !!session?.access_token
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [prevRemainingCount, setPrevRemainingCount] = useState<number | null>(null)
+  const isToday = useMemo(() => onDate === todayIsoDate(), [onDate])
 
   const GET_TODAYS_TASKS_INLINE = gql`
     query TodaysTasksInline($onDate: Date!) {
@@ -73,7 +77,10 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
   })
 
   const [recordHabitResponse] = useMutation(RECORD_HABIT_RESPONSE, {
-    onCompleted: () => refetch(),
+    onCompleted: async () => {
+      await refetch()
+      if (onAfterHabitResponse) onAfterHabitResponse()
+    },
   })
 
   const [recordLessonOpened] = useMutation(RECORD_LESSON_OPENED)
@@ -85,6 +92,19 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
   const [activeTab, setActiveTab] = useState<'today' | 'completed'>('today')
   const remainingTasks = tasks.filter((t: any) => t.status !== 'completed')
   const completedTasks = tasks.filter((t: any) => t.status === 'completed')
+
+  // Confetti trigger: only for Today, only on the current day, and only when count transitions >0 -> 0
+  React.useEffect(() => {
+    if (!isToday || activeTab !== 'today') { setPrevRemainingCount(remainingTasks.length); return }
+    const current = remainingTasks.length
+    if (prevRemainingCount !== null && prevRemainingCount > 0 && current === 0) {
+      setShowConfetti(true)
+    }
+    setPrevRemainingCount(current)
+  }, [isToday, remainingTasks.length, activeTab])
+
+  // Reset confetti state when changing date
+  React.useEffect(() => { setShowConfetti(false); setPrevRemainingCount(null) }, [onDate])
 
   // Completed Workouts (from Practices)
   const { data: workoutsData } = useTodaysWorkouts(onDate)
@@ -140,8 +160,13 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
 
   if ((authLoading || loading) && !data) {
     return (
-      <Box className="items-center py-8">
-        <ActivityIndicator />
+      <Box className="items-center py-8" style={{ minHeight: 200, justifyContent: 'center' }}>
+        <LottieView
+          autoPlay
+          loop
+          source={require('../../../assets/lottie/loading.lottie')}
+          style={{ width: 110, height: 110, transform: [{ translateY: -20 }] }}
+        />
       </Box>
     )
   }
@@ -182,6 +207,17 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
 
   return (
     <VStack space="md">
+      {showConfetti && (
+        <Box className="absolute inset-0 items-center justify-center" style={{ zIndex: 10 }}>
+          <LottieView
+            autoPlay
+            loop={false}
+            source={require('../../../assets/lottie/confetti.lottie')}
+            style={{ width: 260, height: 260 }}
+            onAnimationFinish={() => setShowConfetti(false)}
+          />
+        </Box>
+      )}
       {/* Tabs */}
       <HStack className="w-full border-b border-border-200 dark:border-border-700">
         <Pressable
@@ -200,7 +236,11 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
 
       {(activeTab==='today' ? allRemainingTasks : allCompletedTasks).length === 0 ? (
         <Box className="items-center py-8">
-          <Text className="text-typography-600 dark:text-gray-300">{activeTab==='today' ? '✨ Wow, you nailed everything!' : 'No completed tasks yet'}</Text>
+          {activeTab==='today' ? (
+            <Text className="text-typography-600 dark:text-gray-300">✨ Wow, you nailed everything!</Text>
+          ) : (
+            <Text className="text-typography-600 dark:text-gray-300">No completed tasks yet</Text>
+          )}
         </Box>
       ) : null}
 
@@ -269,11 +309,7 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
                 const eid = wt.enrollment_id
                 router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
               }}
-              onDefer={wt.enrollment_id ? async () => {
-                try { 
-                  await deferPractice({ variables: { enrollmentId: wt.enrollment_id, mode: 'push' } }) 
-                } catch {} 
-              } : undefined}
+              onDefer={wt.enrollment_id ? (async () => { try { await deferPractice({ variables: { enrollmentId: wt.enrollment_id, mode: 'push' } }) } catch {} }) : (() => {})}
             />
           )
         }

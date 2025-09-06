@@ -7,6 +7,7 @@ import { setFlushStyles } from '@gluestack-ui/nativewind-utils/flush';
 import { script } from './script';
 
 export type ModeType = 'light' | 'dark' | 'system';
+export type ThemeVariantId = keyof typeof config['variants'] | undefined;
 
 const variableStyleTagId = 'nativewind-style';
 const createStyle = (styleTagId: string) => {
@@ -21,23 +22,39 @@ export const useSafeLayoutEffect =
 
 export function GluestackUIProvider({
   mode = 'light',
+  themeId,
   ...props
 }: {
   mode?: ModeType;
+  themeId?: ThemeVariantId;
   children?: React.ReactNode;
 }) {
   let cssVariablesWithMode = ``;
-  Object.keys(config).forEach((configKey) => {
+  (['light', 'dark'] as const).forEach((configKey) => {
     cssVariablesWithMode +=
       configKey === 'dark' ? `\n .dark {\n ` : `\n:root {\n`;
-    const cssVariables = Object.keys(
-      config[configKey as keyof typeof config]
-    ).reduce((acc: string, curr: string) => {
-      acc += `${curr}:${config[configKey as keyof typeof config][curr]}; `;
+    const scheme = config[configKey] as Record<string, string>;
+    const cssVariables = Object.keys(scheme).reduce((acc: string, curr: string) => {
+      acc += `${curr}:${scheme[curr]}; `;
       return acc;
     }, '');
     cssVariablesWithMode += `${cssVariables} \n}`;
   });
+
+  // Inject variant variables as classes like .theme-brand
+  const variants = (config as any).variants as Record<string, Record<string, string>> | undefined;
+  if (variants) {
+    Object.keys(variants || {}).forEach((key) => {
+      const cls = `.theme-${key}`;
+      const variantVars = variants[key] || {};
+      const cssVariables = Object.keys(variantVars || {}).reduce((acc: string, curr: string) => {
+        const val = variantVars[curr as keyof typeof variantVars];
+        acc += `${curr}:${val}; `;
+        return acc;
+      }, '');
+      cssVariablesWithMode += `\n${cls} {\n ${cssVariables} \n}`;
+    });
+  }
 
   setFlushStyles(cssVariablesWithMode);
 
@@ -52,9 +69,17 @@ export function GluestackUIProvider({
         documentElement.classList.add(mode);
         documentElement.classList.remove(mode === 'light' ? 'dark' : 'light');
         documentElement.style.colorScheme = mode;
+        if (themeId) {
+          // Remove any prior theme-* classes
+          documentElement.className = documentElement.className
+            .split(' ')
+            .filter((c) => !/^theme-/.test(c))
+            .join(' ');
+          documentElement.classList.add(`theme-${themeId}`);
+        }
       }
     }
-  }, [mode]);
+  }, [mode, themeId]);
 
   useSafeLayoutEffect(() => {
     if (mode !== 'system') return;

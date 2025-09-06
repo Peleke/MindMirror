@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { SafeAreaView, View, Text, TextInput, Pressable, Modal, FlatList, KeyboardAvoidingView, ScrollView, Platform, Animated, Easing } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { gql, useMutation, useLazyQuery } from '@apollo/client'
 import { AppBar } from '@/components/common/AppBar'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -107,6 +108,8 @@ export default function CreateMealScreen() {
   const [notes, setNotes] = useState('')
   const [mealType, setMealType] = useState<MealType>('BREAKFAST')
   const [dt, setDt] = useState<Date>(new Date())
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showTimePicker, setShowTimePicker] = useState(false)
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([])
 
   const [showFoodModal, setShowFoodModal] = useState(false)
@@ -524,13 +527,30 @@ export default function CreateMealScreen() {
         <View>
           <Text style={{ fontWeight: '600', marginBottom: 6 }}>DATE & TIME</Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Pressable onPress={() => setDt(new Date(Date.now()))} style={{ padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8 }}>
+            <Pressable onPress={() => setShowDatePicker(true)} style={{ padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8 }}>
               <Text>{dt.toLocaleDateString()}</Text>
             </Pressable>
-            <Pressable onPress={() => setDt(new Date(Date.now()))} style={{ padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8 }}>
+            <Pressable onPress={() => setShowTimePicker(true)} style={{ padding: 10, borderWidth: 1, borderColor: '#ddd', borderRadius: 8 }}>
               <Text>{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
             </Pressable>
           </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={dt}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={(_: any, d?: Date) => { setShowDatePicker(false); if (d) { const newDt = new Date(dt); newDt.setFullYear(d.getFullYear(), d.getMonth(), d.getDate()); setDt(newDt) } }}
+            />
+          )}
+          {showTimePicker && (
+            <DateTimePicker
+              value={dt}
+              mode="time"
+              is24Hour={false}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_: any, d?: Date) => { setShowTimePicker(false); if (d) { const newDt = new Date(dt); newDt.setHours(d.getHours(), d.getMinutes(), 0, 0); setDt(newDt) } }}
+            />
+          )}
         </View>
 
         <View>

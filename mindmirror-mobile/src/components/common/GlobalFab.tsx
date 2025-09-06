@@ -3,10 +3,12 @@ import { Pressable as RNPressable, Text, Modal, View, TextInput } from 'react-na
 import { useRouter } from 'expo-router'
 import { gql, useMutation } from '@apollo/client'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { useThemeVariant } from '@/theme/ThemeContext'
 
 export default function GlobalFab({ onPress, label }: { onPress?: () => void, label?: string }) {
   const router = useRouter()
   const { session } = useAuth()
+  const { toggle, themeId } = useThemeVariant()
   const userId = session?.user?.id || ''
   const [showFab, setShowFab] = useState(false)
   const [showWaterModal, setShowWaterModal] = useState(false)
@@ -26,14 +28,14 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
 
   return (
     <>
-      <RNPressable onPress={onPress || (() => setShowFab(true))} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#1d4ed8', justifyContent: 'center', alignItems: 'center', elevation: 6, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-        <Text style={{ color: '#fff', fontSize: 28, marginTop: -2 }}>{label || '＋'}</Text>
+      <RNPressable onPress={onPress || (() => setShowFab(true))} style={{ position: 'absolute', right: 16, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#ffffff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', justifyContent: 'center', alignItems: 'center', elevation: 8, zIndex: 50, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 3 } }}>
+        <Text style={{ color: '#000', fontSize: 28, marginTop: -2 }}>{label || '＋'}</Text>
       </RNPressable>
 
       {/* FAB bottom sheet */}
       <Modal visible={showFab} transparent animationType="fade" onRequestClose={() => setShowFab(false)}>
-        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowFab(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+        <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setShowFab(false)}>
+          <View style={{ backgroundColor: 'rgb(var(--color-background-0))', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderTopWidth: 1, borderColor: 'rgb(var(--color-border-200))', shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 12 }}>
             <RNPressable onPress={() => { setShowFab(false); router.push('/meals/create?from=/'); }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ marginRight: 8 }}>🍽️</Text>
               <Text style={{ fontSize: 16, fontWeight: '600' }}>Create New Meal</Text>
@@ -54,6 +56,11 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
               <Text style={{ fontSize: 16, fontWeight: '600' }}>Create Journal</Text>
             </RNPressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
+            <RNPressable onPress={() => { toggle(); }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ marginRight: 8 }}>🎨</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600' }}>Toggle Theme ({themeId})</Text>
+            </RNPressable>
+            <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
             <RNPressable onPress={() => setShowFab(false)} style={{ paddingVertical: 12 }}>
               <Text style={{ fontSize: 16, color: '#ef4444' }}>Cancel</Text>
             </RNPressable>
@@ -64,7 +71,7 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
       {/* Log Water modal */}
       <Modal visible={showWaterModal} transparent animationType="fade" onRequestClose={() => setShowWaterModal(false)}>
         <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setShowWaterModal(false)}>
-          <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12, width: '90%' }}>
+          <View style={{ backgroundColor: 'rgb(var(--color-background-0))', padding: 16, borderRadius: 12, width: '90%', borderWidth: 1, borderColor: 'rgb(var(--color-border-200))' }}>
             <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 10 }}>Log Water</Text>
             <Text style={{ marginBottom: 6, color: '#374151' }}>Amount (oz)</Text>
             <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
@@ -79,7 +86,7 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
                 if (!isFinite(qty) || qty <= 0 || !userId) return
                 const ml = qty * 29.5735
                 await createWater({ variables: { input: { userId, quantity: ml, consumedAt: new Date().toISOString() } } })
-              }} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1d4ed8', borderRadius: 8 }}>
+              }} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgb(var(--color-primary-600))', borderRadius: 8 }}>
                 <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
               </RNPressable>
             </View>
