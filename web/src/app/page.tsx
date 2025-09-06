@@ -182,6 +182,12 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href="/projects/swae-os"
+              className="px-6 py-3 text-gray-700 hover:text-gray-900 font-semibold transition-colors duration-200"
+            >
+              For Investors
+            </Link>
+            <Link
               href="/login"
               className="px-6 py-3 text-gray-700 hover:text-gray-900 font-semibold transition-colors duration-200"
             >
