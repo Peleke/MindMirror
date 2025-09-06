@@ -95,13 +95,17 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
 
   // Confetti trigger: only for Today, only on the current day, and only when count transitions >0 -> 0
   React.useEffect(() => {
-    if (!isToday || activeTab !== 'today') { setPrevRemainingCount(remainingTasks.length); return }
+    // Only evaluate when data is settled and visible for Today on the current day
+    if (!isToday || activeTab !== 'today' || loading || authLoading) return
     const current = remainingTasks.length
+    const total = tasks.length
+    // Ignore empty state while query is still filling in
+    if (total === 0) return
     if (prevRemainingCount !== null && prevRemainingCount > 0 && current === 0) {
       setShowConfetti(true)
     }
     setPrevRemainingCount(current)
-  }, [isToday, remainingTasks.length, activeTab])
+  }, [isToday, activeTab, loading, authLoading, remainingTasks.length, tasks.length])
 
   // Reset confetti state when changing date
   React.useEffect(() => { setShowConfetti(false); setPrevRemainingCount(null) }, [onDate])
