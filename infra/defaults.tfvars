@@ -22,7 +22,7 @@ celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmir
 habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:3b3e40593f8990da0e099688740afbf4d108cef6"
 meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:20a8f95fa473cfc2d0f65f25d4c92bde03a26786"
 
-users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:2688e7b04019f7f997f4a774f0f178e82b4b39d8"
+users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:74774db17dfe8d38a759261d0b22b2009f11118b"
 movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:2688e7b04019f7f997f4a774f0f178e82b4b39d8"
 practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:2688e7b04019f7f997f4a774f0f178e82b4b39d8"
 
