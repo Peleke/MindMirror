@@ -18,6 +18,9 @@ jobs:
       AGENT_SERVICE_URL: https://agent-service-3858903851.us-east4.run.app
       HABITS_SERVICE_URL: https://habits-service-3858903851.us-east4.run.app
       MEALS_SERVICE_URL: https://meals-service-3858903851.us-east4.run.app
+      PRACTICES_SERVICE_URL: https://practices-service-3858903851.us-east4.run.app
+      MOVEMENTS_SERVICE_URL: https://movements-service-3858903851.us-east4.run.app
+      USERS_SERVICE_URL: https://users-service-3858903851.us-east4.run.app
       # Vouchers Web Base (used by Mesh OpenAPI subgraph for vouchers/autoenroll)
       VOUCHERS_WEB_BASE_URL: https://mind-mirror-seven.vercel.app
 
@@ -81,6 +84,18 @@ jobs:
           echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:${{ env.tag }}"
           echo "::notice title=meals_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:${{ env.tag }}"
 
+      - name: Docker build users_service
+        if: env.service == 'users_service' || env.service == 'all'
+        run: |
+          docker build -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:${{ env.tag }} -f users_service/Dockerfile ./users_service
+
+      - name: Echo push command for users_service
+        if: env.service == 'users_service' || env.service == 'all'
+        run: |
+          echo "Build complete. To push the image, run:"
+          echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:${{ env.tag }}"
+          echo "::notice title=users_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:${{ env.tag }}"
+
       - name: Docker build movements_service
         if: env.service == 'movements_service' || env.service == 'all'
         run: |
@@ -92,6 +107,21 @@ jobs:
           echo "Build complete. To push the image, run:"
           echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:${{ env.tag }}"
           echo "::notice title=movements_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:${{ env.tag }}"
+
+      - name: Docker build practices_service (prod)
+        if: env.service == 'practices_service' || env.service == 'all'
+        run: |
+          docker build \
+            --build-arg PROD=1 \
+            -t us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:${{ env.tag }} \
+            -f practices_service/Dockerfile .
+
+      - name: Echo push command for practices_service
+        if: env.service == 'practices_service' || env.service == 'all'
+        run: |
+          echo "Build complete. To push the image, run:"
+          echo "docker push us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:${{ env.tag }}"
+          echo "::notice title=practices_service image tag::us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:${{ env.tag }}"
 
       - name: Docker build celery-worker
         if: env.service == 'celery-worker' || env.service == 'all'
@@ -124,7 +154,9 @@ jobs:
             --env AGENT_SERVICE_URL=${AGENT_SERVICE_URL:-https://agent-service-3858903851.us-east4.run.app} \
             --env HABITS_SERVICE_URL=${HABITS_SERVICE_URL:-https://habits-service-3858903851.us-east4.run.app} \
             --env MEALS_SERVICE_URL=${MEALS_SERVICE_URL:-https://meals-service-3858903851.us-east4.run.app} \
+            --env PRACTICES_SERVICE_URL=${PRACTICES_SERVICE_URL:-https://practices-service-3858903851.us-east4.run.app} \
             --env MOVEMENTS_SERVICE_URL=${MOVEMENTS_SERVICE_URL:-https://movements-service-3858903851.us-east4.run.app} \
+            --env USERS_SERVICE_URL=${USERS_SERVICE_URL:-https://users-service-3858903851.us-east4.run.app} \
             --env VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL:-https://mind-mirror-seven.vercel.app} \
             us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }} \
             npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql
