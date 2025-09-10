@@ -125,3 +125,40 @@ data "google_secret_manager_secret" "supabase_service_role_key" {
   secret_id = "SUPABASE_SERVICE_ROLE_KEY"
   project   = var.project_id
 }
+
+# Service accounts for additional services
+resource "google_service_account" "movements_service" {
+  account_id   = "movements-service"
+  display_name = "Service Account for Movements Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "movements_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.movements_service.email}"
+}
+
+resource "google_service_account" "practices_service" {
+  account_id   = "practices-service"
+  display_name = "Service Account for Practices Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "practices_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.practices_service.email}"
+}
+
+resource "google_service_account" "users_service" {
+  account_id   = "users-service"
+  display_name = "Service Account for Users Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "users_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.users_service.email}"
+}

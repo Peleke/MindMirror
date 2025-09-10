@@ -10,6 +10,18 @@ output "traditions_bucket_name" {
   value = google_storage_bucket.traditions.name
 }
 
+output "movements_service_sa_email" {
+  value = google_service_account.movements_service.email
+}
+
+output "practices_service_sa_email" {
+  value = google_service_account.practices_service.email
+}
+
+output "users_service_sa_email" {
+  value = google_service_account.users_service.email
+}
+
 output "secret_names" {
   value = {
     DATABASE_URL              = data.google_secret_manager_secret.database_url.name,

@@ -123,3 +123,8 @@ variable "daily_journaling_program_template_id" {
 # Meals vars
 variable "meals_image" { type = string }
 variable "meals_env" { type = map(string) }
+
+# New service images
+variable "users_image" { type = string }
+variable "movements_image" { type = string }
+variable "practices_image" { type = string }

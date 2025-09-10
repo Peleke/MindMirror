@@ -251,3 +251,55 @@ module "meals_service" {
 output "meals_service_url" {
   value = module.meals_service.service_url
 }
+
+module "movements_service" {
+  source       = "./modules/movements"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = "movements-service"
+  image        = var.movements_image
+  env          = {}
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.movements_service_sa_email
+}
+
+output "movements_service_url" {
+  value = module.movements_service.service_url
+}
+
+module "practices_service" {
+  source       = "./modules/practices"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = "practices-service"
+  image        = var.practices_image
+  env          = {}
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.practices_service_sa_email
+}
+
+output "practices_service_url" {
+  value = module.practices_service.service_url
+}
+
+module "users_service" {
+  source       = "./modules/users"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = "users-service"
+  image        = var.users_image
+  env = {
+    AGENT_SERVICE_URL    = data.google_secret_manager_secret_version.agent_service_url.secret_data
+    JOURNAL_SERVICE_URL  = data.google_secret_manager_secret_version.journal_service_url.secret_data
+    HABITS_SERVICE_URL   = data.google_secret_manager_secret_version.habits_service_url.secret_data
+    MEALS_SERVICE_URL    = data.google_secret_manager_secret_version.meals_service_url.secret_data
+    MOVEMENTS_SERVICE_URL = module.movements_service.service_url
+    PRACTICES_SERVICE_URL = module.practices_service.service_url
+  }
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.users_service_sa_email
+}
+
+output "users_service_url" {
+  value = module.users_service.service_url
+}
