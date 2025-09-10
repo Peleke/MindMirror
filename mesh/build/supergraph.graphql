@@ -85,13 +85,34 @@ schema
   
   
 enum join__Graph {
-  AGENT @join__graph(name: "Agent", url: "http://agent_service:8000/graphql") 
-  HABITS @join__graph(name: "Habits", url: "http://habits_service:8003/graphql") 
-  JOURNAL @join__graph(name: "Journal", url: "http://journal_service:8001/graphql") 
-  MEALS @join__graph(name: "Meals", url: "http://meals_service:8004/graphql") 
-  MOVEMENTS @join__graph(name: "Movements", url: "http://movements_service:8005/graphql") 
-  PRACTICES @join__graph(name: "Practices", url: "http://practices_service:8000/graphql") 
-  USERS @join__graph(name: "Users", url: "http://users_service:8000/graphql") 
+  AGENT @join__graph(
+    name: "Agent"
+    url: "https://agent-service-3858903851.us-east4.run.app/graphql"
+  )
+  HABITS @join__graph(
+    name: "Habits"
+    url: "https://habits-service-3858903851.us-east4.run.app/graphql"
+  )
+  JOURNAL @join__graph(
+    name: "Journal"
+    url: "https://journal-service-3858903851.us-east4.run.app/graphql"
+  )
+  MEALS @join__graph(
+    name: "Meals"
+    url: "https://meals-service-3858903851.us-east4.run.app/graphql"
+  )
+  MOVEMENTS @join__graph(
+    name: "Movements"
+    url: "https://movements-service-3858903851.us-east4.run.app/graphql"
+  )
+  PRACTICES @join__graph(
+    name: "Practices"
+    url: "https://practices-service-3858903851.us-east4.run.app/graphql"
+  )
+  USERS @join__graph(
+    name: "Users"
+    url: "https://users-service-3858903851.us-east4.run.app/graphql"
+  )
 }
 
 """
@@ -174,9 +195,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   reflectionEntries(limit: Int! = 10, offset: Int! = 0) : [ReflectionJournalEntry!]! @join__field(graph: JOURNAL) 
   freeformEntries(limit: Int! = 10, offset: Int! = 0) : [FreeformJournalEntry!]! @join__field(graph: JOURNAL) 
   journalEntryExistsToday(entryType: String!) : Boolean! @join__field(graph: JOURNAL) 
-  journalEntriesForHabit(habitTemplateId: UUID!, limit: Int! = 20, offset: Int! = 0) : [JournalEntryInterface!]! @join__field(graph: JOURNAL) 
   journalEntriesCount: Int! @join__field(graph: JOURNAL) 
-  completedLessons(limit: Int! = 50, offset: Int! = 0) : [String!]! @join__field(graph: JOURNAL) 
   foodItem(id: ID!) : FoodItemTypeGQL @join__field(graph: MEALS) 
   foodItems(
     userId: String = null
@@ -612,7 +631,6 @@ type GratitudeJournalEntry implements JournalEntryInterface @join__type(graph: J
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
-  habitTemplateId: String
   payload: GratitudePayloadType!
 }
 
@@ -630,7 +648,6 @@ type ReflectionJournalEntry implements JournalEntryInterface @join__type(graph: 
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
-  habitTemplateId: String
   payload: ReflectionPayloadType!
 }
 
@@ -646,7 +663,6 @@ type FreeformJournalEntry implements JournalEntryInterface @join__type(graph: JO
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
-  habitTemplateId: String
   payload: String!
 }
 
@@ -1068,7 +1084,6 @@ interface JournalEntryInterface @join__type(graph: JOURNAL)  {
   entryType: String!
   createdAt: DateTime!
   modifiedAt: DateTime
-  habitTemplateId: String
 }
 
 union Task @join__type(graph: HABITS)  @join__unionMember(graph: HABITS, member: "HabitTask")  @join__unionMember(graph: HABITS, member: "LessonTask")  @join__unionMember(graph: HABITS, member: "JournalTask")  = HabitTask | LessonTask | JournalTask
@@ -1206,19 +1221,16 @@ input GratitudeEntryInput @join__type(graph: JOURNAL)  {
   focus: String = null
   affirmation: String = null
   mood: String = null
-  habitTemplateId: String = null
 }
 
 input ReflectionEntryInput @join__type(graph: JOURNAL)  {
   wins: [String!]!
   improvements: [String!]!
   mood: String = null
-  habitTemplateId: String = null
 }
 
 input FreeformEntryInput @join__type(graph: JOURNAL)  {
   content: String!
-  habitTemplateId: String = null
 }
 
 input FoodItemCreateInput @join__type(graph: MEALS)  {

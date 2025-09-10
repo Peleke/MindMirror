@@ -159,7 +159,7 @@ jobs:
             --env USERS_SERVICE_URL=${USERS_SERVICE_URL:-https://users-service-3858903851.us-east4.run.app} \
             --env VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL:-https://mind-mirror-seven.vercel.app} \
             us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh-compose:${{ env.tag }} \
-            npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql
+            sh -lc "npx mesh-compose -c mesh.config.dynamic.ts -o /app/build/supergraph.graphql && ls -la /app/build"
 
       - name: Docker build mesh (with generated supergraph)
         if: env.service == 'mesh' || env.service == 'all'
