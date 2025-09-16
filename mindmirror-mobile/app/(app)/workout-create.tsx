@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import CalendarPicker from 'react-native-calendar-picker'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
 import { useCreateAdHocWorkout } from '@/services/api/practices'
@@ -58,6 +60,8 @@ export default function WorkoutCreateScreen() {
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showDatePickerWeb, setShowDatePickerWeb] = useState(false)
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
   const [createTemplate, { loading: savingTemplate }] = useCreatePracticeTemplate()
   const [asTemplate, setAsTemplate] = useState(false)
@@ -131,7 +135,7 @@ export default function WorkoutCreateScreen() {
     const term = (searchTerm || '').trim()
     const h = setTimeout(() => {
       if (term.length === 0) return
-      runSearch({ variables: { searchTerm: term, limit: 25 } })
+      runSearch({ variables: { searchTerm: term, limit: 15 } })
     }, 250)
     return () => clearTimeout(h)
   }, [isPickerOpen, searchTerm, runSearch])
@@ -305,15 +309,41 @@ export default function WorkoutCreateScreen() {
             </Input>
             {!asTemplate && (
               <>
-                <Text className="text-typography-600 dark:text-gray-300">Date (YYYY-MM-DD)</Text>
-                <Input className="bg-background-50 dark:bg-background-100">
-                  <InputField placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} />
-                </Input>
+                <Text className="text-typography-600 dark:text-gray-300">Date</Text>
+                <Pressable onPress={() => { if (Platform.OS === 'web') setShowDatePickerWeb(true); else setShowDatePicker(true) }} className="rounded-lg border border-border-200 bg-background-50 dark:bg-background-100 px-3 py-3">
+                  <Text className="text-typography-900 dark:text-white font-semibold">{dayjs(date).format('YYYY-MM-DD')}</Text>
+                </Pressable>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dayjs(date).toDate()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(_: any, d?: Date) => { setShowDatePicker(false); if (d) { setDate(dayjs(d).format('YYYY-MM-DD')) } }}
+                  />
+                )}
+                {showDatePickerWeb && Platform.OS === 'web' && (
+                  <Modal visible transparent animationType="fade" onRequestClose={() => setShowDatePickerWeb(false)}>
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowDatePickerWeb(false)} />
+                      <View style={{ marginTop: 80, width: 340, maxWidth: '96%', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                        <CalendarPicker
+                          onDateChange={(d: any) => { setDate(dayjs(d).format('YYYY-MM-DD')); setShowDatePickerWeb(false) }}
+                          selectedStartDate={dayjs(date).toDate() as any}
+                        />
+                        <RNPressable onPress={() => setShowDatePickerWeb(false)} style={{ alignSelf: 'flex-end', marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                          <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
+                        </RNPressable>
+                      </View>
+                    </View>
+                  </Modal>
+                )}
               </>
             )}
           </VStack>
 
-          <VStack space="md" className="mt-5">
+          {/* Stabilize layout with a divider and larger margin to prevent overlap */}
+          <Box className="h-px bg-border-200 dark:bg-border-700 my-4" />
+          <VStack space="md" className="mt-4">
             <Text className="text-lg font-semibold text-typography-900 dark:text-white">Blocks</Text>
             <FlatList
               data={prescriptions}
@@ -337,6 +367,18 @@ export default function WorkoutCreateScreen() {
                             <VStack space="sm">
                               <Box className="flex-row items-center justify-between">
                                 <Text className="font-semibold text-typography-900 dark:text-white">{mi + 1}. {m.name}</Text>
+                                <Pressable onPress={() => {
+                                  setPrescriptions(prev => {
+                                    const cp = [...prev]
+                                    const pb = cp[index]
+                                    if (!pb) return prev
+                                    pb.movements = pb.movements.filter((_, i) => i !== mi).map((mm, i) => ({ ...mm, position: i + 1 }))
+                                    cp[index] = { ...pb }
+                                    return cp
+                                  })
+                                }} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
+                                  <Text className="text-red-700 dark:text-red-300">Remove</Text>
+                                </Pressable>
                               </Box>
                               <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                               <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
@@ -508,67 +550,69 @@ export default function WorkoutCreateScreen() {
           <View style={{ flex: 1, alignItems: 'center' }}>
             <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-              <View style={{ width: '96%', height: '70%', maxHeight: '70%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
+              <View style={{ width: '96%', maxHeight: '65%', borderRadius: 16, backgroundColor: '#fff', padding: 16, flexDirection: 'column' }}>
                 <RNText style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Add Movement</RNText>
                 <View style={{ marginBottom: 12 }}>
                   <TextInput placeholder="Search movements…" value={searchTerm} onChangeText={setSearchTerm} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
                 </View>
-                <FlatList
-                  keyboardDismissMode="on-drag"
-                  keyboardShouldPersistTaps="handled"
-                  data={searchResults}
-                  keyExtractor={(item: any, i) => item.id_ ?? item.externalId ?? `${i}`}
-                  renderItem={({ item }) => (
-                    <RNPressable onPress={() => {
-                      if (item.isExternal && item.externalId) {
-                        // Import into local via GraphQL, then add with returned id
-                        (async () => {
-                          try {
-                            const res = await importExternal({ variables: { externalId: item.externalId } })
-                            const local = res.data?.importExternalMovement
-                            if (local && pickerForBlock != null) {
-                              addMovementToPrescription(pickerForBlock, { ...local, id_: local.id_ })
-                            }
-                          } catch {}
+                <View style={{ flex: 1, minHeight: 240 }}>
+                  <FlatList
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                    data={searchResults}
+                    keyExtractor={(item: any, i) => item.id_ ?? item.externalId ?? `${i}`}
+                    renderItem={({ item }) => (
+                      <RNPressable onPress={() => {
+                        if (item.isExternal && item.externalId) {
+                          (async () => {
+                            try {
+                              const res = await importExternal({ variables: { externalId: item.externalId } })
+                              const local = res.data?.importExternalMovement
+                              if (local && pickerForBlock != null) {
+                                addMovementToPrescription(pickerForBlock, { ...local, id_: local.id_ })
+                              }
+                            } catch {}
+                            setPickerOpen(false); setPickerForBlock(null)
+                          })()
+                        } else {
+                          if (pickerForBlock != null) addMovementToPrescription(pickerForBlock, item)
                           setPickerOpen(false); setPickerForBlock(null)
-                        })()
-                      } else {
-                        if (pickerForBlock != null) addMovementToPrescription(pickerForBlock, item)
-                        setPickerOpen(false); setPickerForBlock(null)
-                      }
-                    }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
-                          <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                        }
+                      }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
+                            <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                          </View>
+                          {item.isExternal ? (
+                            <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe' }}>
+                              <RNText style={{ color: '#1d4ed8', fontWeight: '700' }}>ExerciseDB</RNText>
+                            </View>
+                          ) : (
+                            <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' }}>
+                              <RNText style={{ color: '#16a34a', fontWeight: '700' }}>Local</RNText>
+                            </View>
+                          )}
                         </View>
-                        {item.isExternal ? (
-                          <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe' }}>
-                            <RNText style={{ color: '#1d4ed8', fontWeight: '700' }}>ExerciseDB</RNText>
-                          </View>
-                        ) : (
-                          <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' }}>
-                            <RNText style={{ color: '#16a34a', fontWeight: '700' }}>Local</RNText>
-                          </View>
-                        )}
+                      </RNPressable>
+                    )}
+                    ListEmptyComponent={!searching ? (
+                      <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                        <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
                       </View>
-                    </RNPressable>
-                  )}
-                  ListEmptyComponent={!searching ? (
-                    <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                      <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
-                    </View>
-                  ) : null}
-                  style={{ flex: 1 }}
-                  contentContainerStyle={{ paddingBottom: 12 }}
-                />
-                {/* Create Exercise CTA */}
-                <RNPressable onPress={() => { setShowCreateExercise(true) }} style={{ alignSelf: 'flex-start', marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                  <RNText style={{ color: '#111827', fontWeight: '700' }}>＋ Create Exercise</RNText>
-                </RNPressable>
-                <RNPressable onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} style={{ alignSelf: 'flex-end', marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                  <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
-                </RNPressable>
+                    ) : null}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                  <RNPressable onPress={() => { setShowCreateExercise(true) }} style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                    <RNText style={{ color: '#111827', fontWeight: '700' }}>＋ Create Exercise</RNText>
+                  </RNPressable>
+                  <RNPressable onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                    <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
+                  </RNPressable>
+                </View>
               </View>
             </KeyboardAvoidingView>
           </View>
