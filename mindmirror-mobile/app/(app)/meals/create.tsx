@@ -622,7 +622,7 @@ export default function CreateMealScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'center' }}>
           <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setShowFoodModal(false); setSearch(''); setSelectedForQuantity(null); setEditIndex(null) }} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-            <View style={{ width: '96%', backgroundColor: '#fff', height: '70%', maxHeight: '70%', borderRadius: 12, padding: 16, position: 'relative' }}>
+            <View style={{ width: '96%', backgroundColor: '#fff', maxHeight: '80%', borderRadius: 12, padding: 16, position: 'relative' }}>
               {toast && (
                 <View style={{ position: 'absolute', top: 48, left: 16, right: 16, zIndex: 10, alignItems: 'center' }}>
                   <View style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: toast.type === 'error' ? '#ef4444' : '#16a34a' }}>
@@ -706,7 +706,8 @@ export default function CreateMealScreen() {
                   </View>
 
                   {selectedForQuantity && (
-                    <Animated.View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, opacity: qtyAnimOpacity, transform: [{ translateY: qtyAnimTranslateY }] }}>
+                    <Animated.View style={{ position: 'absolute', left: 16, right: 16, bottom: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, opacity: qtyAnimOpacity, transform: [{ translateY: qtyAnimTranslateY }], maxHeight: '50%' }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 200 }}>
                       <Text style={{ fontWeight: '600', marginBottom: 6 }}>Set Quantity</Text>
                       <Text style={{ marginBottom: 6 }}>{selectedForQuantity.name}</Text>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -751,7 +752,8 @@ export default function CreateMealScreen() {
                           <Text style={{ color: '#fff', fontWeight: '700' }}>{editIndex != null ? 'Update' : 'Add'}</Text>
                         </Pressable>
                       </View>
-                    </Animated.View>
+                    </ScrollView>
+      </Animated.View>
                   )}
                 </View>
               ) : (
