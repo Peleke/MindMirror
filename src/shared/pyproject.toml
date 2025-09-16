@@ -13,7 +13,8 @@ pyjwt = "^2.10.1"
 httpx = "^0.28.1"
 starlette = "^0.46.2"
 strawberry-graphql = "^0.275.5"
+packaging = "^25.0"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api" 
+requires = ["poetry-core>=1.0.0", "packaging>=21.0,<24.0"]
+build-backend = "poetry.core.masonry.api"
