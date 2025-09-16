@@ -3,6 +3,13 @@ from uuid import UUID
 import strawberry
 from strawberry.types import Info
 
+from ..repository.movements_repo import MovementsRepoPg
+from ..repository.database import get_session  # if available in service layer
+from ..clients.local_db_client import ExerciseDBLocalClient
+from ..clients.exercisedb_api_client import ExerciseDBApiClient
+from ..clients.composite_client import CompositeExerciseClient
+from ..mappers.external_to_local import external_to_local_row
+
 
 @strawberry.federation.type(keys=["id_"])
 class Movement:
@@ -175,10 +182,16 @@ class Query:
         limit: int = 25,
         offset: int = 0,
     ) -> List[MovementSearchResult]:
-        repo, client, _ = get_repos(info)
-        local = await repo.search(searchTerm=searchTerm, bodyRegion=bodyRegion, pattern=pattern, equipment=equipment, limit=limit, offset=offset)
-        external = await client.search(searchTerm, bodyRegion, equipment, limit)
-        return [map_row_to_search_result(r, is_external=False) for r in local] + [map_row_to_search_result(r, is_external=True) for r in external]
+        repo, _, _ = get_repos(info)
+        # Build composite client from context or fallbacks
+        local_client = ExerciseDBLocalClient(repo=repo) if isinstance(repo, MovementsRepoPg) else ExerciseDBLocalClient(repo)  # type: ignore
+        external_client = ExerciseDBApiClient()
+        composite = CompositeExerciseClient(local=local_client, external=external_client)
+        merged = await composite.search(searchTerm, bodyRegion, equipment, limit, offset)
+        out: List[MovementSearchResult] = []
+        for r in merged:
+            out.append(map_row_to_search_result(r, is_external=(r.get("source") == "exercise_db")))
+        return out
 
 
 @strawberry.type
@@ -208,9 +221,22 @@ class Mutation:
 
     @strawberry.mutation(name="importExternalMovement")
     async def import_external_movement(self, info: Info, externalId: str) -> Movement:
-        repo, client, user_id = get_repos(info)
-        data = await client.fetch(externalId)
-        row = await repo.create(user_id, {**(data or {}), "source": "exercise-db", "externalId": externalId})
+        repo, _, user_id = get_repos(info)
+        api = ExerciseDBApiClient()
+        data = await api.get_by_id(externalId)
+        if not data:
+            raise Exception("NOT_FOUND")
+        payload = external_to_local_row(data)
+        # Idempotent: check if exists by (source, externalId)
+        existing = None
+        try:
+            # @ts-ignore: repo may be a concrete MovementsRepoPg with helper
+            existing = await repo.get_by_external("exercise-db", externalId)  # type: ignore
+        except Exception:
+            existing = None
+        if existing:
+            return map_row_to_movement(existing)
+        row = await repo.create(user_id, payload)
         return map_row_to_movement(row)
 
 

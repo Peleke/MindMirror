@@ -108,9 +108,24 @@ async def _apply_links(session: AsyncSession, movement_id: str, data: dict) -> N
 class MovementsRepoPg:
     def __init__(self, session: AsyncSession):
         self.session = session
+        # NOTE: DB should ideally enforce unique (source, external_id) to ensure idempotent imports.
+        # See data/alter_movements_external.sql for an index option.
 
     async def get(self, id_: str) -> Optional[dict]:
         res = await self.session.execute(select(MovementModel).where(MovementModel.id_ == id_))
+        row = res.scalar_one_or_none()
+        if not row:
+            return None
+        data = _row_to_dict(row)
+        data.update(await _links_to_lists(self.session, row.id_))
+        return data
+
+    async def get_by_external(self, source: str, external_id: str) -> Optional[dict]:
+        if not source or not external_id:
+            return None
+        res = await self.session.execute(
+            select(MovementModel).where(MovementModel.source == source, MovementModel.external_id == external_id)
+        )
         row = res.scalar_one_or_none()
         if not row:
             return None

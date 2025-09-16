@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
 import { useCreateAdHocWorkout } from '@/services/api/practices'
 import { useLazySearchMovements } from '@/services/api/movements'
+import { useCreateMovement, useImportExternalMovement } from '@/services/api/movements'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { VStack } from '@/components/ui/vstack'
 import { Box } from '@/components/ui/box'
@@ -78,6 +79,21 @@ export default function WorkoutCreateScreen() {
   const [pickerForBlock, setPickerForBlock] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [runSearch, { data: searchData, loading: searching }] = useLazySearchMovements()
+  const [importExternal] = useImportExternalMovement()
+  const [createMovementMutation] = useCreateMovement()
+  const [showCreateExercise, setShowCreateExercise] = useState(false)
+  const [newExerciseName, setNewExerciseName] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advDifficulty, setAdvDifficulty] = useState('')
+  const [advBodyRegion, setAdvBodyRegion] = useState('')
+  const [advEquipmentCsv, setAdvEquipmentCsv] = useState('')
+  const [advPrimaryMusclesCsv, setAdvPrimaryMusclesCsv] = useState('')
+  const [advSecondaryMusclesCsv, setAdvSecondaryMusclesCsv] = useState('')
+  const [advPatternsCsv, setAdvPatternsCsv] = useState('')
+  const [advPlanesCsv, setAdvPlanesCsv] = useState('')
+  const [advTagsCsv, setAdvTagsCsv] = useState('')
+  const [advShortVideoUrl, setAdvShortVideoUrl] = useState('')
+  const [advLongVideoUrl, setAdvLongVideoUrl] = useState('')
 
   // Input refs for keyboard navigation
   const inputRefs = useRef<Record<string, TextInput | null>>({})
@@ -122,8 +138,8 @@ export default function WorkoutCreateScreen() {
 
   const searchResults = useMemo(() => {
     const list = searchData?.searchMovements ?? []
-    // DB-only
-    return list.filter((r: any) => r?.isExternal === false)
+    // Show both sources; external items labeled in UI
+    return list
   }, [searchData])
 
   const addMovementToPrescription = (pIndex: number, m: any) => {
@@ -501,12 +517,40 @@ export default function WorkoutCreateScreen() {
                   keyboardDismissMode="on-drag"
                   keyboardShouldPersistTaps="handled"
                   data={searchResults}
-                  keyExtractor={(item: any, i) => item.id_ ?? `${i}`}
+                  keyExtractor={(item: any, i) => item.id_ ?? item.externalId ?? `${i}`}
                   renderItem={({ item }) => (
-                    <RNPressable onPress={() => { if (pickerForBlock != null) addMovementToPrescription(pickerForBlock, item); setPickerOpen(false); setPickerForBlock(null); }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                      <View>
-                        <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
-                        <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                    <RNPressable onPress={() => {
+                      if (item.isExternal && item.externalId) {
+                        // Import into local via GraphQL, then add with returned id
+                        (async () => {
+                          try {
+                            const res = await importExternal({ variables: { externalId: item.externalId } })
+                            const local = res.data?.importExternalMovement
+                            if (local && pickerForBlock != null) {
+                              addMovementToPrescription(pickerForBlock, { ...local, id_: local.id_ })
+                            }
+                          } catch {}
+                          setPickerOpen(false); setPickerForBlock(null)
+                        })()
+                      } else {
+                        if (pickerForBlock != null) addMovementToPrescription(pickerForBlock, item)
+                        setPickerOpen(false); setPickerForBlock(null)
+                      }
+                    }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
+                          <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                        </View>
+                        {item.isExternal ? (
+                          <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe' }}>
+                            <RNText style={{ color: '#1d4ed8', fontWeight: '700' }}>ExerciseDB</RNText>
+                          </View>
+                        ) : (
+                          <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' }}>
+                            <RNText style={{ color: '#16a34a', fontWeight: '700' }}>Local</RNText>
+                          </View>
+                        )}
                       </View>
                     </RNPressable>
                   )}
@@ -518,9 +562,98 @@ export default function WorkoutCreateScreen() {
                   style={{ flex: 1 }}
                   contentContainerStyle={{ paddingBottom: 12 }}
                 />
+                {/* Create Exercise CTA */}
+                <RNPressable onPress={() => { setShowCreateExercise(true) }} style={{ alignSelf: 'flex-start', marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                  <RNText style={{ color: '#111827', fontWeight: '700' }}>＋ Create Exercise</RNText>
+                </RNPressable>
                 <RNPressable onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} style={{ alignSelf: 'flex-end', marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                   <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
                 </RNPressable>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
+
+        {/* Create Exercise Modal (minimal top section; advanced fields TBD) */}
+        <Modal visible={showCreateExercise} transparent animationType="fade" onRequestClose={() => setShowCreateExercise(false)}>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowCreateExercise(false)} />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
+              <View style={{ width: '96%', maxHeight: '80%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
+                <RNText style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Create Exercise</RNText>
+                <View style={{ marginBottom: 12 }}>
+                  <TextInput placeholder="Exercise name" value={newExerciseName} onChangeText={setNewExerciseName} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                </View>
+                {/* Advanced section: optional details */}
+                <RNPressable onPress={() => setShowAdvanced(v => !v)} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
+                  <RNText style={{ color: '#1f2937', fontWeight: '700' }}>{showAdvanced ? '▾' : '▸'} Additional info</RNText>
+                </RNPressable>
+                {showAdvanced && (
+                  <View style={{ gap: 8, marginBottom: 8 }}>
+                    <TextInput placeholder="Difficulty (e.g., Beginner)" value={advDifficulty} onChangeText={setAdvDifficulty} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Body Region (e.g., Upper Body)" value={advBodyRegion} onChangeText={setAdvBodyRegion} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Equipment (comma-separated)" value={advEquipmentCsv} onChangeText={setAdvEquipmentCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Primary Muscles (comma-separated)" value={advPrimaryMusclesCsv} onChangeText={setAdvPrimaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Secondary Muscles (comma-separated)" value={advSecondaryMusclesCsv} onChangeText={setAdvSecondaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Movement Patterns (comma-separated)" value={advPatternsCsv} onChangeText={setAdvPatternsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Planes of Motion (comma-separated)" value={advPlanesCsv} onChangeText={setAdvPlanesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Tags (comma-separated)" value={advTagsCsv} onChangeText={setAdvTagsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Short Video URL" value={advShortVideoUrl} onChangeText={setAdvShortVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                    <TextInput placeholder="Long Video URL" value={advLongVideoUrl} onChangeText={setAdvLongVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                  <RNPressable onPress={() => setShowCreateExercise(false)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginRight: 8 }}>
+                    <RNText style={{ color: '#374151', fontWeight: '600' }}>Cancel</RNText>
+                  </RNPressable>
+                  <RNPressable onPress={async () => {
+                    const name = (newExerciseName || '').trim()
+                    if (!name) return
+                    try {
+                      const parseCsv = (s: string) => (s || '').split(',').map(t => t.trim()).filter(Boolean)
+                      const input: any = {
+                        name,
+                      }
+                      if (advDifficulty.trim()) input.difficulty = advDifficulty.trim()
+                      if (advBodyRegion.trim()) input.bodyRegion = advBodyRegion.trim()
+                      const eq = parseCsv(advEquipmentCsv)
+                      if (eq.length) input.equipment = eq
+                      const pm = parseCsv(advPrimaryMusclesCsv)
+                      if (pm.length) input.primaryMuscles = pm
+                      const sm = parseCsv(advSecondaryMusclesCsv)
+                      if (sm.length) input.secondaryMuscles = sm
+                      const mp = parseCsv(advPatternsCsv)
+                      if (mp.length) input.movementPatterns = mp
+                      const pl = parseCsv(advPlanesCsv)
+                      if (pl.length) input.planesOfMotion = pl
+                      const tg = parseCsv(advTagsCsv)
+                      if (tg.length) input.tags = tg
+                      if (advShortVideoUrl.trim()) input.shortVideoUrl = advShortVideoUrl.trim()
+                      if (advLongVideoUrl.trim()) input.longVideoUrl = advLongVideoUrl.trim()
+
+                      const res = await createMovementMutation({ variables: { input } })
+                      const local = res.data?.createMovement
+                      if (local && pickerForBlock != null) {
+                        addMovementToPrescription(pickerForBlock, { ...local, id_: local.id_ })
+                      }
+                      setShowCreateExercise(false)
+                      setNewExerciseName('')
+                      setShowAdvanced(false)
+                      setAdvDifficulty('')
+                      setAdvBodyRegion('')
+                      setAdvEquipmentCsv('')
+                      setAdvPrimaryMusclesCsv('')
+                      setAdvSecondaryMusclesCsv('')
+                      setAdvPatternsCsv('')
+                      setAdvPlanesCsv('')
+                      setAdvTagsCsv('')
+                      setAdvShortVideoUrl('')
+                      setAdvLongVideoUrl('')
+                    } catch {}
+                  }} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#111827' }}>
+                    <RNText style={{ color: '#fff', fontWeight: '700' }}>Save</RNText>
+                  </RNPressable>
+                </View>
               </View>
             </KeyboardAvoidingView>
           </View>
