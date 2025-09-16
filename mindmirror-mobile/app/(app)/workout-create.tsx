@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import CalendarPicker from 'react-native-calendar-picker'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
 import { useCreateAdHocWorkout } from '@/services/api/practices'
@@ -59,9 +58,8 @@ export default function WorkoutCreateScreen() {
   const router = useRouter()
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [dt, setDt] = useState<Date>(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [showDatePickerWeb, setShowDatePickerWeb] = useState(false)
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
   const [createTemplate, { loading: savingTemplate }] = useCreatePracticeTemplate()
   const [asTemplate, setAsTemplate] = useState(false)
@@ -275,7 +273,7 @@ export default function WorkoutCreateScreen() {
     }))
 
     try {
-      const variables = { input: { title, date, prescriptions: gqlPrescriptions } }
+      const variables = { input: { title, date: dayjs(dt).format('YYYY-MM-DD'), prescriptions: gqlPrescriptions } }
       console.log('[CreateWorkout] Submitting variables:', variables)
       await createWorkout({ variables })
       showToast('Workout created', 'success')
@@ -310,32 +308,23 @@ export default function WorkoutCreateScreen() {
             {!asTemplate && (
               <>
                 <Text className="text-typography-600 dark:text-gray-300">Date</Text>
-                <Pressable onPress={() => { if (Platform.OS === 'web') setShowDatePickerWeb(true); else setShowDatePicker(true) }} className="rounded-lg border border-border-200 bg-background-50 dark:bg-background-100 px-3 py-3">
-                  <Text className="text-typography-900 dark:text-white font-semibold">{dayjs(date).format('YYYY-MM-DD')}</Text>
+                <Pressable onPress={() => setShowDatePicker(true)} className="rounded-lg border border-border-200 bg-background-50 dark:bg-background-100 px-3 py-3">
+                  <Text className="text-typography-900 dark:text-white font-semibold">{dayjs(dt).format('YYYY-MM-DD')}</Text>
                 </Pressable>
                 {showDatePicker && (
                   <DateTimePicker
-                    value={dayjs(date).toDate()}
+                    value={dt}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                    onChange={(_: any, d?: Date) => { setShowDatePicker(false); if (d) { setDate(dayjs(d).format('YYYY-MM-DD')) } }}
+                    onChange={(_: any, d?: Date) => {
+                      setShowDatePicker(false)
+                      if (d) {
+                        const newDt = new Date(dt)
+                        newDt.setFullYear(d.getFullYear(), d.getMonth(), d.getDate())
+                        setDt(newDt)
+                      }
+                    }}
                   />
-                )}
-                {showDatePickerWeb && Platform.OS === 'web' && (
-                  <Modal visible transparent animationType="fade" onRequestClose={() => setShowDatePickerWeb(false)}>
-                    <View style={{ flex: 1, alignItems: 'center' }}>
-                      <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowDatePickerWeb(false)} />
-                      <View style={{ marginTop: 80, width: 340, maxWidth: '96%', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                        <CalendarPicker
-                          onDateChange={(d: any) => { setDate(dayjs(d).format('YYYY-MM-DD')); setShowDatePickerWeb(false) }}
-                          selectedStartDate={dayjs(date).toDate() as any}
-                        />
-                        <RNPressable onPress={() => setShowDatePickerWeb(false)} style={{ alignSelf: 'flex-end', marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                          <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
-                        </RNPressable>
-                      </View>
-                    </View>
-                  </Modal>
                 )}
               </>
             )}
@@ -550,12 +539,12 @@ export default function WorkoutCreateScreen() {
           <View style={{ flex: 1, alignItems: 'center' }}>
             <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-              <View style={{ width: '96%', maxHeight: '65%', borderRadius: 16, backgroundColor: '#fff', padding: 16, flexDirection: 'column' }}>
+              <View style={{ width: '96%', maxWidth: 560, maxHeight: 520, borderRadius: 16, backgroundColor: '#fff', padding: 16, flexDirection: 'column', alignSelf: 'center', borderWidth: 1, borderColor: '#e5e7eb' }}>
                 <RNText style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Add Movement</RNText>
                 <View style={{ marginBottom: 12 }}>
                   <TextInput placeholder="Search movements…" value={searchTerm} onChangeText={setSearchTerm} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
                 </View>
-                <View style={{ flex: 1, minHeight: 240 }}>
+                <View style={{ flex: 1, minHeight: 240, overflow: 'hidden' }}>
                   <FlatList
                     keyboardDismissMode="on-drag"
                     keyboardShouldPersistTaps="handled"
