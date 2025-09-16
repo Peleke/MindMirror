@@ -48,7 +48,7 @@ export default function ProgramDetailsScreen() {
       try {
         router.back()
       } catch {
-        router.replace('/programs?reload=1')
+      router.replace('/programs?reload=1')
       }
     } catch {}
   }

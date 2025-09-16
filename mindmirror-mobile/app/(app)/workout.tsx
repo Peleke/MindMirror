@@ -40,8 +40,8 @@ export default function WorkoutsScreen() {
         <VStack className="px-6 py-3" space="md">
           {/* Controls */}
           <HStack className="items-center justify-between">
-            <RNPressable onPress={() => setShowDatePicker(true)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe' }}>
-              <RNText style={{ fontWeight: '600' }}>Calendar</RNText>
+              <RNPressable onPress={() => setShowDatePicker(true)} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe' }}>
+                <RNText style={{ fontWeight: '600' }}>Calendar</RNText>
             </RNPressable>
             <HStack className="items-center space-x-2">
               <RNPressable onPress={() => { const prev = new Date(anchorDate); prev.setDate(prev.getDate() - 1); setAnchorDate(prev); refetch({ dates: [toUtcDateStr(prev)] }).catch(() => {}) }} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: 'rgb(229,231,235)' }}>

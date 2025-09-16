@@ -42,7 +42,7 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
             </RNPressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
             <RNPressable onPress={() => { setShowFab(false); setShowWaterModal(true) }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ marginRight: 8 }}>��</Text>
+              <Text style={{ marginRight: 8 }}>💧</Text>
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Log Water</Text>
             </RNPressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />

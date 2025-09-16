@@ -29,12 +29,12 @@ export default function HabitCard({ task, onRespond, onPress }: { task: HabitTas
             <HStack className="justify-between" space="sm">
               {isClassic ? (
                 <>
-                  <Button onPress={() => { setLastResponse('yes'); onRespond('yes') }} className={`flex-1 ${lastResponse==='yes' ? 'bg-blue-500' : 'bg-blue-400'}`}>
-                    <ButtonText>Yes</ButtonText>
-                  </Button>
-                  <Button onPress={() => { setLastResponse('no'); onRespond('no') }} className={`flex-1 ${lastResponse==='no' ? 'bg-red-500' : 'bg-red-400'}`}>
-                    <ButtonText>No</ButtonText>
-                  </Button>
+              <Button onPress={() => { setLastResponse('yes'); onRespond('yes') }} className={`flex-1 ${lastResponse==='yes' ? 'bg-blue-500' : 'bg-blue-400'}`}>
+                <ButtonText>Yes</ButtonText>
+              </Button>
+              <Button onPress={() => { setLastResponse('no'); onRespond('no') }} className={`flex-1 ${lastResponse==='no' ? 'bg-red-500' : 'bg-red-400'}`}>
+                <ButtonText>No</ButtonText>
+              </Button>
                 </>
               ) : (
                 <>
