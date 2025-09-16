@@ -197,6 +197,7 @@ class MovementsRepoPg:
         self.session.add(model)
         await self.session.flush()
         await _apply_links(self.session, model.id_, data)
+        await self.session.commit()
         await self.session.refresh(model)
         d = _row_to_dict(model)
         d.update(await _links_to_lists(self.session, model.id_))
@@ -237,6 +238,7 @@ class MovementsRepoPg:
         # Links
         await _apply_links(self.session, id_, data)
         await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(model)
         d = _row_to_dict(model)
         d.update(await _links_to_lists(self.session, model.id_))
@@ -255,4 +257,5 @@ class MovementsRepoPg:
         await self.session.execute(delete(MovementInstruction).where(MovementInstruction.movement_id == id_))
         await self.session.delete(model)
         await self.session.flush()
+        await self.session.commit()
         return True 

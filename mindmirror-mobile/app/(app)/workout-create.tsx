@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
+import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
@@ -59,6 +59,7 @@ export default function WorkoutCreateScreen() {
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [dt, setDt] = useState<Date>(new Date())
+  const [dateText, setDateText] = useState(dayjs(new Date()).format('YYYY-MM-DD'))
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
   const [createTemplate, { loading: savingTemplate }] = useCreatePracticeTemplate()
@@ -273,7 +274,7 @@ export default function WorkoutCreateScreen() {
     }))
 
     try {
-      const variables = { input: { title, date: dayjs(dt).format('YYYY-MM-DD'), prescriptions: gqlPrescriptions } }
+      const variables = { input: { title, date: dateText, prescriptions: gqlPrescriptions } }
       console.log('[CreateWorkout] Submitting variables:', variables)
       await createWorkout({ variables })
       showToast('Workout created', 'success')
@@ -307,25 +308,10 @@ export default function WorkoutCreateScreen() {
             </Input>
             {!asTemplate && (
               <>
-                <Text className="text-typography-600 dark:text-gray-300">Date</Text>
-                <Pressable onPress={() => setShowDatePicker(true)} className="rounded-lg border border-border-200 bg-background-50 dark:bg-background-100 px-3 py-3">
-                  <Text className="text-typography-900 dark:text-white font-semibold">{dayjs(dt).format('YYYY-MM-DD')}</Text>
-                </Pressable>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={dt}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                    onChange={(_: any, d?: Date) => {
-                      setShowDatePicker(false)
-                      if (d) {
-                        const newDt = new Date(dt)
-                        newDt.setFullYear(d.getFullYear(), d.getMonth(), d.getDate())
-                        setDt(newDt)
-                      }
-                    }}
-                  />
-                )}
+                <Text className="text-typography-600 dark:text-gray-300">Date (YYYY-MM-DD)</Text>
+                <Input className="bg-background-50 dark:bg-background-100">
+                  <InputField placeholder="YYYY-MM-DD" value={dateText} onChangeText={setDateText} autoCapitalize="none" autoCorrect={false} />
+                </Input>
               </>
             )}
           </VStack>
@@ -607,35 +593,43 @@ export default function WorkoutCreateScreen() {
           </View>
         </Modal>
 
-        {/* Create Exercise Modal (minimal top section; advanced fields TBD) */}
+        {/* Create Exercise Modal */}
         <Modal visible={showCreateExercise} transparent animationType="fade" onRequestClose={() => setShowCreateExercise(false)}>
           <View style={{ flex: 1, alignItems: 'center' }}>
             <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowCreateExercise(false)} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-              <View style={{ width: '96%', maxHeight: '80%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
+              <View style={{ width: '96%', maxWidth: 560, maxHeight: 560, borderRadius: 16, backgroundColor: '#fff', padding: 16, borderWidth: 1, borderColor: '#e5e7eb' }}>
                 <RNText style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Create Exercise</RNText>
-                <View style={{ marginBottom: 12 }}>
-                  <TextInput placeholder="Exercise name" value={newExerciseName} onChangeText={setNewExerciseName} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                </View>
-                {/* Advanced section: optional details */}
-                <RNPressable onPress={() => setShowAdvanced(v => !v)} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
-                  <RNText style={{ color: '#1f2937', fontWeight: '700' }}>{showAdvanced ? '▾' : '▸'} Additional info</RNText>
-                </RNPressable>
-                {showAdvanced && (
-                  <View style={{ gap: 8, marginBottom: 8 }}>
-                    <TextInput placeholder="Difficulty (e.g., Beginner)" value={advDifficulty} onChangeText={setAdvDifficulty} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Body Region (e.g., Upper Body)" value={advBodyRegion} onChangeText={setAdvBodyRegion} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Equipment (comma-separated)" value={advEquipmentCsv} onChangeText={setAdvEquipmentCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Primary Muscles (comma-separated)" value={advPrimaryMusclesCsv} onChangeText={setAdvPrimaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Secondary Muscles (comma-separated)" value={advSecondaryMusclesCsv} onChangeText={setAdvSecondaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Movement Patterns (comma-separated)" value={advPatternsCsv} onChangeText={setAdvPatternsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Planes of Motion (comma-separated)" value={advPlanesCsv} onChangeText={setAdvPlanesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Tags (comma-separated)" value={advTagsCsv} onChangeText={setAdvTagsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Short Video URL" value={advShortVideoUrl} onChangeText={setAdvShortVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
-                    <TextInput placeholder="Long Video URL" value={advLongVideoUrl} onChangeText={setAdvLongVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <View style={{ marginBottom: 12 }}>
+                    <TextInput placeholder="Exercise name" value={newExerciseName} onChangeText={setNewExerciseName} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
                   </View>
-                )}
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                  <RNPressable onPress={() => setShowAdvanced(v => !v)} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
+                    <RNText style={{ color: '#1f2937', fontWeight: '700' }}>{showAdvanced ? '▾' : '▸'} Additional info</RNText>
+                  </RNPressable>
+                  {showAdvanced && (
+                    <View style={{ flex: 1 }}>
+                      <FlatList
+                        data={[{ k: 'd' }, { k: 'br' }, { k: 'eq' }, { k: 'pm' }, { k: 'sm' }, { k: 'mp' }, { k: 'pl' }, { k: 'tg' }, { k: 'sv' }, { k: 'lv' }]}
+                        keyExtractor={(it) => it.k}
+                        renderItem={({ item }) => {
+                          if (item.k === 'd') return <TextInput placeholder="Difficulty (e.g., Beginner)" value={advDifficulty} onChangeText={setAdvDifficulty} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'br') return <TextInput placeholder="Body Region (e.g., Upper Body)" value={advBodyRegion} onChangeText={setAdvBodyRegion} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'eq') return <TextInput placeholder="Equipment (comma-separated)" value={advEquipmentCsv} onChangeText={setAdvEquipmentCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'pm') return <TextInput placeholder="Primary Muscles (comma-separated)" value={advPrimaryMusclesCsv} onChangeText={setAdvPrimaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'sm') return <TextInput placeholder="Secondary Muscles (comma-separated)" value={advSecondaryMusclesCsv} onChangeText={setAdvSecondaryMusclesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'mp') return <TextInput placeholder="Movement Patterns (comma-separated)" value={advPatternsCsv} onChangeText={setAdvPatternsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'pl') return <TextInput placeholder="Planes of Motion (comma-separated)" value={advPlanesCsv} onChangeText={setAdvPlanesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'tg') return <TextInput placeholder="Tags (comma-separated)" value={advTagsCsv} onChangeText={setAdvTagsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'sv') return <TextInput placeholder="Short Video URL" value={advShortVideoUrl} onChangeText={setAdvShortVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'lv') return <TextInput placeholder="Long Video URL" value={advLongVideoUrl} onChangeText={setAdvLongVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          return null
+                        }}
+                      />
+                    </View>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
                   <RNPressable onPress={() => setShowCreateExercise(false)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginRight: 8 }}>
                     <RNText style={{ color: '#374151', fontWeight: '600' }}>Cancel</RNText>
                   </RNPressable>

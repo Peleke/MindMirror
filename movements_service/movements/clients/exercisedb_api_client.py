@@ -22,47 +22,55 @@ class ExerciseDBApiClient:
             return []
         url = f"{self.base_url}/exercises/search"
         params = {"search": search}
-        async with httpx.AsyncClient(timeout=self.timeout_s, headers=self._headers()) as client:
-            resp = await client.get(url, params=params)
-            resp.raise_for_status()
-            data = resp.json() or {}
-            items = data.get("data") or []
-            out: List[Dict[str, Any]] = []
-            for it in items[:limit]:
-                out.append({
-                    "externalId": it.get("exerciseId"),
-                    "name": it.get("name") or "",
-                    "imageUrl": it.get("imageUrl"),
-                    "source": "exercise_db",
-                })
-            return out
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_s, headers=self._headers()) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code != 200:
+                    return []
+                data = resp.json() or {}
+                items = data.get("data") or []
+        except Exception:
+            return []
+        out: List[Dict[str, Any]] = []
+        for it in items[:limit]:
+            out.append({
+                "externalId": it.get("exerciseId"),
+                "name": it.get("name") or "",
+                "imageUrl": it.get("imageUrl"),
+                "source": "exercise_db",
+            })
+        return out
 
     async def get_by_id(self, external_id: str) -> Optional[Dict[str, Any]]:
         if not external_id:
             return None
         url = f"{self.base_url}/exercises/{external_id}"
-        async with httpx.AsyncClient(timeout=self.timeout_s, headers=self._headers()) as client:
-            resp = await client.get(url)
-            if resp.status_code == 404:
-                return None
-            resp.raise_for_status()
-            data = (resp.json() or {}).get("data") or {}
-            # Normalize to a richer dict to map into local
-            return {
-                "externalId": data.get("exerciseId"),
-                "name": data.get("name") or "",
-                "imageUrl": data.get("imageUrl"),
-                "videoUrl": data.get("videoUrl"),
-                "exerciseType": data.get("exerciseType"),
-                "bodyParts": data.get("bodyParts") or [],
-                "equipments": data.get("equipments") or [],
-                "targetMuscles": data.get("targetMuscles") or [],
-                "secondaryMuscles": data.get("secondaryMuscles") or [],
-                "keywords": data.get("keywords") or [],
-                "overview": data.get("overview"),
-                "instructions": data.get("instructions") or [],
-                "exerciseTips": data.get("exerciseTips") or [],
-                "variations": data.get("variations") or [],
-                "relatedExternalIds": data.get("relatedExerciseIds") or [],
-                "source": "exercise_db",
-            } 
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_s, headers=self._headers()) as client:
+                resp = await client.get(url)
+                if resp.status_code == 404:
+                    return None
+                if resp.status_code != 200:
+                    return None
+                data = (resp.json() or {}).get("data") or {}
+        except Exception:
+            return None
+        # Normalize
+        return {
+            "externalId": data.get("exerciseId"),
+            "name": data.get("name") or "",
+            "imageUrl": data.get("imageUrl"),
+            "videoUrl": data.get("videoUrl"),
+            "exerciseType": data.get("exerciseType"),
+            "bodyParts": data.get("bodyParts") or [],
+            "equipments": data.get("equipments") or [],
+            "targetMuscles": data.get("targetMuscles") or [],
+            "secondaryMuscles": data.get("secondaryMuscles") or [],
+            "keywords": data.get("keywords") or [],
+            "overview": data.get("overview"),
+            "instructions": data.get("instructions") or [],
+            "exerciseTips": data.get("exerciseTips") or [],
+            "variations": data.get("variations") or [],
+            "relatedExternalIds": data.get("relatedExerciseIds") or [],
+            "source": "exercise_db",
+        } 
