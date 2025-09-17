@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions } from 'react-native'
+import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions, Image } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
@@ -17,6 +17,11 @@ import { useApolloClient } from '@apollo/client'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 import { useCreatePracticeTemplate, QUERY_PRACTICE_TEMPLATES } from '@/services/api/practices'
+import GlobalFab from '@/components/common/GlobalFab'
+import { useThemeVariant } from '@/theme/ThemeContext'
+import { useFocusEffect } from '@react-navigation/native'
+import { WebView } from 'react-native-webview'
+import { useVideoPlayer, VideoView } from 'expo-video'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -44,6 +49,9 @@ type MovementDraft = {
   exerciseId?: string
   movementId?: string
   sets: SetDraft[]
+  imageUrl?: string
+  shortVideoUrl?: string
+  longVideoUrl?: string
 }
 
 type PrescriptionDraft = {
@@ -52,6 +60,31 @@ type PrescriptionDraft = {
   block: typeof BLOCKS[number]
   prescribedRounds: number
   movements: MovementDraft[]
+}
+
+function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; videoUrl: string | undefined }) {
+  const isImage = typeof imageUrl === 'string' && /\.(png|jpg|jpeg|gif)$/i.test(imageUrl)
+  const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+  if (isImage) {
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: imageUrl as string }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+      </Box>
+    )
+  }
+  if (isMp4) {
+    const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+      </Box>
+    )
+  }
+  return (
+    <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
+      <Text className="text-typography-500">No preview</Text>
+    </Box>
+  )
 }
 
 export default function WorkoutCreateScreen() {
@@ -355,6 +388,7 @@ export default function WorkoutCreateScreen() {
                                   <Text className="text-red-700 dark:text-red-300">Remove</Text>
                                 </Pressable>
                               </Box>
+                              <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
                               <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                               <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
                                 <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
@@ -531,12 +565,12 @@ export default function WorkoutCreateScreen() {
                   <TextInput placeholder="Search movements…" value={searchTerm} onChangeText={setSearchTerm} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
                 </View>
                 <View style={{ flex: 1, minHeight: 240, overflow: 'hidden' }}>
-                  <FlatList
-                    keyboardDismissMode="on-drag"
-                    keyboardShouldPersistTaps="handled"
-                    data={searchResults}
+                <FlatList
+                  keyboardDismissMode="on-drag"
+                  keyboardShouldPersistTaps="handled"
+                  data={searchResults}
                     keyExtractor={(item: any, i) => item.id_ ?? item.externalId ?? `${i}`}
-                    renderItem={({ item }) => (
+                  renderItem={({ item }) => (
                       <RNPressable onPress={() => {
                         if (item.isExternal && item.externalId) {
                           (async () => {
@@ -556,8 +590,8 @@ export default function WorkoutCreateScreen() {
                       }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <View style={{ flex: 1, paddingRight: 8 }}>
-                            <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
-                            <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                        <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
+                        <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
                           </View>
                           {item.isExternal ? (
                             <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe' }}>
@@ -568,15 +602,15 @@ export default function WorkoutCreateScreen() {
                               <RNText style={{ color: '#16a34a', fontWeight: '700' }}>Local</RNText>
                             </View>
                           )}
-                        </View>
-                      </RNPressable>
-                    )}
-                    ListEmptyComponent={!searching ? (
-                      <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                        <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
                       </View>
-                    ) : null}
-                    style={{ flex: 1 }}
+                    </RNPressable>
+                  )}
+                  ListEmptyComponent={!searching ? (
+                    <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                      <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
+                    </View>
+                  ) : null}
+                  style={{ flex: 1 }}
                     contentContainerStyle={{ paddingBottom: 8 }}
                   />
                 </View>
@@ -585,8 +619,8 @@ export default function WorkoutCreateScreen() {
                     <RNText style={{ color: '#111827', fontWeight: '700' }}>＋ Create Exercise</RNText>
                   </RNPressable>
                   <RNPressable onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
-                    <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
-                  </RNPressable>
+                  <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
+                </RNPressable>
                 </View>
               </View>
             </KeyboardAvoidingView>

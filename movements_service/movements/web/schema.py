@@ -48,6 +48,7 @@ class MovementSearchResult:
     equipment: List[str] = strawberry.field(default_factory=list)
     difficulty: Optional[str] = None
     shortVideoUrl: Optional[str] = None
+    imageUrl: Optional[str] = None
 
 
 @strawberry.input
@@ -153,6 +154,7 @@ def map_row_to_search_result(row: dict, is_external: bool = False) -> MovementSe
         equipment=row.get("equipment") or [],
         difficulty=row.get("difficulty"),
         shortVideoUrl=row.get("shortVideoUrl"),
+        imageUrl=(row.get("imageUrl") or row.get("gifUrl")),
     )
 
 

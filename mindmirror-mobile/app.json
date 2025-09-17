@@ -55,7 +55,8 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-video"
     ]
   }
 }

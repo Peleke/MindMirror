@@ -6,13 +6,14 @@ import { VStack } from '@/components/ui/vstack'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { Pressable } from '@/components/ui/pressable'
-import { ActivityIndicator, ScrollView, Alert, Modal, View } from 'react-native'
+import { ActivityIndicator, ScrollView, Alert, Modal, View, Image, Platform } from 'react-native'
 import { Input, InputField } from '@/components/ui/input'
 import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
+import { Video, ResizeMode } from 'expo-av'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -205,7 +206,38 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-500 text-sm">{(Array.isArray(m.sets) ? m.sets.length : 0)} sets</Text>
         </VStack>
         <Box className="h-2" />
-        {m.videoUrl ? <YouTubeEmbed url={m.videoUrl} /> : null}
+        {/* Thumbnail: prefer image (png/gif), else mp4 video, else YouTube, else placeholder */}
+        {(() => {
+          const imgUrl = m.imageUrl || m.gifUrl
+          const vidUrl = m.shortVideoUrl || m.longVideoUrl || m.videoUrl
+          if (typeof imgUrl === 'string' && /\.(png|jpg|jpeg|gif)$/i.test(imgUrl)) {
+            return (
+              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
+                <Image source={{ uri: imgUrl }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+              </Box>
+            )
+          }
+          if (typeof vidUrl === 'string' && /\.mp4$/i.test(vidUrl)) {
+            return (
+              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
+                <Video
+                  style={{ width: '100%', height: '100%' }}
+                  source={{ uri: vidUrl }}
+                  useNativeControls
+                  resizeMode={ResizeMode.COVER}
+                />
+              </Box>
+            )
+          }
+          if (typeof vidUrl === 'string' && (vidUrl.includes('youtube.com') || vidUrl.includes('youtu.be'))) {
+            return <YouTubeEmbed url={vidUrl} />
+          }
+          return (
+            <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-typography-500">No preview</Text>
+            </Box>
+          )
+        })()}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
             <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
