@@ -20,7 +20,6 @@ import { useCreatePracticeTemplate, QUERY_PRACTICE_TEMPLATES } from '@/services/
 import GlobalFab from '@/components/common/GlobalFab'
 import { useThemeVariant } from '@/theme/ThemeContext'
 import { useFocusEffect } from '@react-navigation/native'
-import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
 
 // Minimal enums to map to server values
@@ -80,11 +79,7 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; v
       </Box>
     )
   }
-  return (
-    <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
-      <Text className="text-typography-500">No preview</Text>
-    </Box>
-  )
+  return null
 }
 
 export default function WorkoutCreateScreen() {
