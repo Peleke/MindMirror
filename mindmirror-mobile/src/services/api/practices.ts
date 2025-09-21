@@ -354,6 +354,7 @@ export const MUTATION_CREATE_PROGRAM = gql`
       name
       description
       level
+      habitsProgramTemplateId
       tags { name }
       practiceLinks { sequenceOrder intervalDaysAfter practiceTemplate { id_ title } }
     }
@@ -465,4 +466,20 @@ export const useWorkoutsForUser = (userId: string, dateFrom?: string, dateTo?: s
     skip: !userId,
     fetchPolicy: 'cache-and-network',
   })
-} 
+}
+
+export const QUERY_HABITS_PROGRAM_TEMPLATES = gql`
+  query ListProgramTemplates {
+    programTemplates {
+      id
+      slug
+      title
+      description
+      subtitle
+    }
+  }
+`;
+
+export const useHabitsProgramTemplates = () => {
+  return useQuery(QUERY_HABITS_PROGRAM_TEMPLATES);
+}; 

@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text'
 import { Input, InputField } from '@/components/ui/input'
 import { Pressable } from '@/components/ui/pressable'
 import { ScrollView } from '@/components/ui/scroll-view'
-import { usePracticeTemplates, useCreateProgram, useLazySearchPracticeTemplates } from '@/services/api/practices'
+import { usePracticeTemplates, useCreateProgram, useLazySearchPracticeTemplates, useHabitsProgramTemplates } from '@/services/api/practices'
 import { QUERY_PROGRAM_TEMPLATES } from '@/services/api/practices'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList, Pressable as RNPressable, ScrollView as RNSV } from 'react-native'
@@ -24,13 +24,23 @@ export default function ProgramCreateScreen() {
   const [description, setDescription] = useState('')
   const [level, setLevel] = useState('')
   const [links, setLinks] = useState<Array<{ practice_template_id: string; sequence_order: number; interval_days_after: number }>>([])
+  const [selectedHabitsProgram, setSelectedHabitsProgram] = useState<{id: string, title: string, description?: string} | null>(null)
   const [createProgram, { loading: saving }] = useCreateProgram()
+  
+  // Habits program templates
+  const { data: habitsData, loading: habitsLoading } = useHabitsProgramTemplates()
+  const habitsPrograms = (habitsData?.programTemplates || []) as Array<{ id: string, title: string, description?: string, subtitle?: string }>
 
   // Template search modal state
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [runSearch, { data: searchData, loading: searching }] = useLazySearchPracticeTemplates()
   const serverResults = (searchData?.searchPracticeTemplates || []) as Array<{ id_: string, title: string, description?: string }>
+
+  // Habits program search modal state
+  const [habitsSearchOpen, setHabitsSearchOpen] = useState(false)
+  const [habitsSearch, setHabitsSearch] = useState('')
+  const [pairingCollapsed, setPairingCollapsed] = useState(true)
 
   // Debounced server search when term length >= 2
   React.useEffect(() => {
@@ -53,6 +63,16 @@ export default function ProgramCreateScreen() {
     }
     return templates.filter(t => t.title.toLowerCase().includes(q))
   }, [search, serverResults, templates, searching])
+
+  const filteredHabitsPrograms = useMemo(() => {
+    const q = (habitsSearch || '').trim().toLowerCase()
+    if (!q) return habitsPrograms
+    return habitsPrograms.filter(p => 
+      p.title.toLowerCase().includes(q) || 
+      (p.description || '').toLowerCase().includes(q) ||
+      (p.subtitle || '').toLowerCase().includes(q)
+    )
+  }, [habitsSearch, habitsPrograms])
 
   React.useEffect(() => {
     const tplId = params?.addTemplateId
@@ -80,6 +100,7 @@ export default function ProgramCreateScreen() {
         name,
         description: description || null,
         level: level || null,
+        habitsProgramTemplateId: selectedHabitsProgram?.id || null,
         tags: [],
         practiceLinks: links.map(l => ({ practiceTemplateId: l.practice_template_id, sequenceOrder: l.sequence_order, intervalDaysAfter: l.interval_days_after })),
       }
@@ -129,6 +150,47 @@ export default function ProgramCreateScreen() {
                 </Box>
               ) : null}
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Level (optional)" value={level} onChangeText={setLevel} /></Input>
+            </VStack>
+            
+            {/* Habits Program Pairing */}
+            <VStack space="sm">
+              <Pressable 
+                onPress={() => setPairingCollapsed(!pairingCollapsed)}
+                className="flex-row items-center justify-between"
+              >
+                <Text className="text-lg font-semibold text-typography-900 dark:text-white">Pair with Lessons Program (Optional)</Text>
+                <Text className="text-2xl text-typography-600 dark:text-gray-400">{pairingCollapsed ? '+' : '−'}</Text>
+              </Pressable>
+              
+              {!pairingCollapsed && (
+                <VStack space="sm">
+                  <Text className="text-sm text-typography-600 dark:text-gray-400">Select a lessons program to auto-enroll users when they join this workout program.</Text>
+                  
+                  {selectedHabitsProgram ? (
+                    <Box className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100">
+                      <VStack space="xs">
+                        <Text className="font-semibold text-typography-900 dark:text-white">{selectedHabitsProgram.title}</Text>
+                        {selectedHabitsProgram.description && (
+                          <Text className="text-sm text-typography-600 dark:text-gray-400">{selectedHabitsProgram.description}</Text>
+                        )}
+                        <Pressable 
+                          onPress={() => setSelectedHabitsProgram(null)}
+                          className="self-start mt-2 px-3 py-1 rounded-md bg-red-100 dark:bg-red-900"
+                        >
+                          <Text className="text-red-700 dark:text-red-300 text-sm">Remove</Text>
+                        </Pressable>
+                      </VStack>
+                    </Box>
+                  ) : (
+                    <Pressable
+                      onPress={() => setHabitsSearchOpen(true)}
+                      className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100 active:bg-background-100 dark:active:bg-background-200"
+                    >
+                      <Text className="text-typography-600 dark:text-gray-400">Search for lessons program...</Text>
+                    </Pressable>
+                  )}
+                </VStack>
+              )}
             </VStack>
 
             <VStack space="sm">
@@ -220,6 +282,58 @@ export default function ProgramCreateScreen() {
                     <Text style={{ color: '#374151', fontWeight: '600' }}>Close</Text>
                   </RNPressable>
                 </View>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
+
+        {/* Habits Program Search Modal */}
+        <Modal visible={habitsSearchOpen} animationType="slide" presentationStyle="pageSheet">
+          <View style={{ backgroundColor: '#f9fafb', flex: 1 }}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                <TextInput
+                  placeholder="Search lessons programs..."
+                  value={habitsSearch}
+                  onChangeText={setHabitsSearch}
+                  style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, backgroundColor: '#fff' }}
+                  autoFocus
+                />
+              </View>
+              <View style={{ flex: 1, margin: 16, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
+                <FlatList
+                  nestedScrollEnabled
+                  keyboardDismissMode="on-drag"
+                  keyboardShouldPersistTaps="handled"
+                  data={filteredHabitsPrograms}
+                  keyExtractor={(item: any, i) => item.id ?? `${i}`}
+                  renderItem={({ item }) => (
+                    <RNPressable onPress={() => { setSelectedHabitsProgram(item); setHabitsSearchOpen(false); setHabitsSearch('') }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={{ fontWeight: '600' }}>{item.title}</Text>
+                          {item.subtitle ? <Text style={{ color: '#6b7280', fontSize: 14 }}>{item.subtitle}</Text> : null}
+                          {item.description ? <Text style={{ color: '#6b7280', fontSize: 12 }} numberOfLines={2}>{item.description}</Text> : null}
+                        </View>
+                        <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a' }}>
+                          <Text style={{ color: '#d97706', fontWeight: '700' }}>Lessons</Text>
+                        </View>
+                      </View>
+                    </RNPressable>
+                  )}
+                  ListEmptyComponent={(
+                    <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                      <Text style={{ color: '#6b7280' }}>{habitsLoading ? 'Loading lessons programs...' : ((habitsSearch||'').trim().length === 0 ? 'Type to search lessons programs' : 'No matches found')}</Text>
+                    </View>
+                  )}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ paddingBottom: 8 }}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: 16, marginBottom: 16 }}>
+                <RNPressable onPress={() => { setHabitsSearchOpen(false); setHabitsSearch('') }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                  <Text style={{ color: '#374151', fontWeight: '600' }}>Close</Text>
+                </RNPressable>
               </View>
             </KeyboardAvoidingView>
           </View>
