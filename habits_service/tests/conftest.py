@@ -8,7 +8,7 @@ import pytest_asyncio
 from sqlalchemy import text
 import importlib
 
-from habits_service.habits_service.app.db.models import Base
+from habits_service.app.db.models import Base
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
 
@@ -31,9 +31,9 @@ async def db_session() -> AsyncSession:
     os.environ["DATABASE_SCHEMA"] = schema
     os.environ["ENVIRONMENT"] = "test"
     os.environ["REQUIRE_AUTH"] = "false"
-    from habits_service.habits_service.app.config import get_settings as _get_settings
+    from habits_service.app.config import get_settings as _get_settings
     _get_settings.cache_clear()
-    from habits_service.habits_service.app.db import session as session_module
+    from habits_service.app.db import session as session_module
     importlib.reload(session_module)
 
     # Build a test-scoped engine with schema translation so GraphQL and repos share it
@@ -46,11 +46,11 @@ async def db_session() -> AsyncSession:
     session_module.engine = test_engine
     session_module.async_session_maker = async_sessionmaker(bind=test_engine, expire_on_commit=False, class_=AsyncSession)
     # Also rebind UnitOfWork's session maker to this test one
-    from habits_service.habits_service.app.db import uow as uow_module
+    from habits_service.app.db import uow as uow_module
     uow_module.async_session_maker = session_module.async_session_maker
 
     # Ensure models are loaded so Base.metadata has all tables
-    import habits_service.habits_service.app.db.tables  # noqa: F401
+    import habits_service.app.db.tables  # noqa: F401
 
     # Prepare schema and tables using the test engine
     async with test_engine.begin() as conn:
@@ -73,7 +73,7 @@ async def db_session() -> AsyncSession:
 @pytest_asyncio.fixture(scope="function")
 async def test_app(db_session):
     # Import app after db_session wired engine/session for this test
-    from habits_service.habits_service.app import main as app_main
+    from habits_service.app import main as app_main
     yield app_main.app
 
 

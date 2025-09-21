@@ -152,4 +152,13 @@ class HabitsReadRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_lesson_tasks_for_user_and_date(self, user_id: str, date: date) -> List[LessonTask]:
+        """Get all lesson tasks for a user on a specific date."""
+        stmt: Select = select(LessonTask).where(
+            LessonTask.user_id == user_id,
+            LessonTask.date == date
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
 

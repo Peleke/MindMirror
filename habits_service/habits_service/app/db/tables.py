@@ -54,6 +54,9 @@ class LessonTemplate(Base):
     content_hash = Column(String, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="true")
     metadata_json = Column(JSON, nullable=True)
+    # Segmentation support
+    segments_json = Column(JSON, nullable=True)  # Array of {id, label, selector} objects
+    default_segment = Column(String, nullable=True)  # Default segment ID to use when none specified
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -215,6 +218,27 @@ class JournalTaskEvent(Base):
     date = Column(Date, nullable=False)
     action = Column(String, nullable=False)  # opened|dismissed|completed
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class LessonTask(Base):
+    """Persistent lesson task instances created for specific users and dates."""
+    __tablename__ = "lesson_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, nullable=False, index=True)
+    lesson_template_id = Column(
+        UUID(as_uuid=True), ForeignKey("lesson_templates.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    date = Column(Date, nullable=False)
+    segment_ids_json = Column(JSON, nullable=True)  # Array of segment IDs to render
+    program_enrollment_id = Column(String, nullable=True)  # Optional link to practices_service enrollment
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_lesson_tasks_user_date", "user_id", "date"),
+        UniqueConstraint("user_id", "lesson_template_id", "date", name="uq_lesson_task_uniqueness"),
+    )
 
 
 # --- ACL & Provenance ---

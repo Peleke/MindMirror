@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import strawberry
 from strawberry.types import Info
-from habits_service.habits_service.app.graphql.context import get_current_user_from_context
+from habits_service.app.graphql.context import get_current_user_from_context
 from datetime import date
 from typing import Optional
 
@@ -357,3 +357,33 @@ class Mutation:
             # Daily journaling program auto-enrollment intentionally disabled
             await uow.session.commit()
         return AutoEnrollResult(ok=True, enrolled=True)
+
+    @strawberry.mutation
+    async def createLessonTask(
+        self,
+        info: Info,
+        userId: str,
+        date: date,
+        lessonTemplateId: str,
+        segmentIds: Optional[List[str]] = None
+    ) -> bool:
+        """Create a lesson task for a specific user and date with optional segments.
+
+        This mutation creates a persistent LessonTask record that the planner will pick up.
+        It's primarily intended for practices_service integration to attach lessons to workouts.
+        """
+        from habits_service.habits_service.app.db.repositories.write import LessonTaskRepository
+        from habits_service.habits_service.app.db.tables import LessonTask
+
+        async with UnitOfWork() as uow:
+            repo = LessonTaskRepository(uow.session)
+            lesson_task = LessonTask(
+                user_id=userId,
+                lesson_template_id=lessonTemplateId,
+                date=date,
+                segment_ids_json=segmentIds,
+                program_enrollment_id=None,  # Can be set later if needed
+            )
+            await repo.add(lesson_task)
+            await uow.session.commit()
+            return True

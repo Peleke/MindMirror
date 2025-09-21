@@ -139,51 +139,89 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
             )
 
         # Lessons for the day (segment-aware)
-        # Prefer explicit segment from daily plan; else fall back to mapped step lessons
-        if 'daily_plan' not in locals():
-            daily_plan = await repo.get_step_daily_plan_for_day(str(active_step.id), day_index)
-        segment_used = False
-        if daily_plan and daily_plan.lesson_segment_id:
-            seg = await repo.get_lesson_segment_by_id(str(daily_plan.lesson_segment_id))
-            if seg:
-                # Use parent lesson id for identity; title/summary from segment
-                parent_id = str(seg.lesson_template_id)
-                status = TaskStatus.pending
-                # Fallback for summary when segment lacks one: derive from excerpt content
-                seg_summary = seg.summary or ((seg.markdown_content or "")[:200] + ("…" if seg.markdown_content and len(seg.markdown_content) > 200 else ""))
+        # First check for explicit LessonTask records (created by practices_service integration)
+        explicit_lesson_tasks = await repo.get_lesson_tasks_for_user_and_date(user_id, on_date)
+        for lesson_task in explicit_lesson_tasks:
+            lesson_template = await repo.get_lesson_template_by_id(str(lesson_task.lesson_template_id))
+            if lesson_template:
+                # Use segments if specified
+                if lesson_task.segment_ids_json:
+                    # Render specific segments
+                    segments = await repo.list_lesson_segments_by_lesson(str(lesson_template.id))
+                    from habits_service.habits_service.app.services.lesson_render_service import LessonRenderService
+                    from habits_service.habits_service.app.services.lesson_loader import LessonLoader
+
+                    segment_objects = LessonLoader.segments_from_json(LessonLoader.segments_to_json(segments))
+                    if segment_objects:
+                        rendered_content = LessonRenderService.render_segments(
+                            lesson_template.markdown_content or "",
+                            segment_objects,
+                            lesson_task.segment_ids_json,
+                            lesson_template.default_segment
+                        )
+                        summary = (rendered_content[:200] + ("…" if len(rendered_content) > 200 else "")) or None
+                    else:
+                        summary = lesson_template.summary
+                else:
+                    summary = lesson_template.summary
+
                 tasks.append(
                     LessonTask(
-                        taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", parent_id),
+                        taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson_template.id)),
                         type=TaskType.lesson,
-                        lessonTemplateId=parent_id,
-                        title=seg.title,
-                        summary=seg_summary or None,
-                        status=status,
+                        lessonTemplateId=str(lesson_template.id),
+                        title=lesson_template.title,
+                        summary=summary,
+                        status=TaskStatus.pending,  # LessonTasks are always pending until completed
                     )
                 )
-                segment_used = True
-        if not segment_used:
-            step_lessons = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
-            lesson_ids = [str(sl.lesson_template_id) for sl in step_lessons]
-            lessons = await repo.get_lesson_templates(lesson_ids)
-            if lessons:
-                # Consider lesson completed if a 'completed' event exists; else pending
-                lesson_events = await repo.find_lesson_events(user_id, [str(l.id) for l in lessons], on_date)
-                completed_ids = {str(le.lesson_template_id) for le in lesson_events if le.event_type == "completed"}
-                for lesson in lessons:
-                    status = TaskStatus.completed if str(lesson.id) in completed_ids else TaskStatus.pending
-                    # Fallback for summary when lesson lacks one: derive from lesson markdown
-                    summary = lesson.summary or ((lesson.markdown_content or "")[:200] + ("…" if lesson.markdown_content and len(lesson.markdown_content) > 200 else "")) or None
+
+        # If no explicit lesson tasks, fall back to program-based lessons
+        if not explicit_lesson_tasks:
+            if 'daily_plan' not in locals():
+                daily_plan = await repo.get_step_daily_plan_for_day(str(active_step.id), day_index)
+            segment_used = False
+            if daily_plan and daily_plan.lesson_segment_id:
+                seg = await repo.get_lesson_segment_by_id(str(daily_plan.lesson_segment_id))
+                if seg:
+                    # Use parent lesson id for identity; title/summary from segment
+                    parent_id = str(seg.lesson_template_id)
+                    status = TaskStatus.pending
+                    # Fallback for summary when segment lacks one: derive from excerpt content
+                    seg_summary = seg.summary or ((seg.markdown_content or "")[:200] + ("…" if seg.markdown_content and len(seg.markdown_content) > 200 else ""))
                     tasks.append(
                         LessonTask(
-                            taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson.id)),
+                            taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", parent_id),
                             type=TaskType.lesson,
-                            lessonTemplateId=str(lesson.id),
-                            title=lesson.title,
-                            summary=summary,
+                            lessonTemplateId=parent_id,
+                            title=seg.title,
+                            summary=seg_summary or None,
                             status=status,
                         )
                     )
+                    segment_used = True
+            if not segment_used:
+                step_lessons = await repo.get_step_lessons_for_day(str(active_step.id), day_index)
+                lesson_ids = [str(sl.lesson_template_id) for sl in step_lessons]
+                lessons = await repo.get_lesson_templates(lesson_ids)
+                if lessons:
+                    # Consider lesson completed if a 'completed' event exists; else pending
+                    lesson_events = await repo.find_lesson_events(user_id, [str(l.id) for l in lessons], on_date)
+                    completed_ids = {str(le.lesson_template_id) for le in lesson_events if le.event_type == "completed"}
+                    for lesson in lessons:
+                        status = TaskStatus.completed if str(lesson.id) in completed_ids else TaskStatus.pending
+                        # Fallback for summary when lesson lacks one: derive from lesson markdown
+                        summary = lesson.summary or ((lesson.markdown_content or "")[:200] + ("…" if lesson.markdown_content and len(lesson.markdown_content) > 200 else "")) or None
+                        tasks.append(
+                            LessonTask(
+                                taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", str(lesson.id)),
+                                type=TaskType.lesson,
+                                lessonTemplateId=str(lesson.id),
+                                title=lesson.title,
+                                summary=summary,
+                                status=status,
+                            )
+                        )
 
         # Journal prompt from daily plan -> JournalTask
         if daily_plan and daily_plan.journal_prompt_text:

@@ -229,3 +229,51 @@ class ProgramTemplateRepository:
         return await self.get_by_id(str(existing.id))
 
 
+class LessonTaskRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def add(self, lesson_task) -> None:
+        """Add a new lesson task to the database."""
+        self.session.add(lesson_task)
+        await self.session.flush()
+
+    async def get_by_id(self, id: str) -> Optional[LessonTask]:
+        """Get a lesson task by ID."""
+        uid = uuid.UUID(str(id))
+        res = await self.session.execute(select(LessonTask).where(LessonTask.id == uid))
+        return res.scalars().first()
+
+    async def get_for_user_and_date(self, user_id: str, date: date) -> List[LessonTask]:
+        """Get all lesson tasks for a user on a specific date."""
+        res = await self.session.execute(
+            select(LessonTask).where(
+                LessonTask.user_id == user_id,
+                LessonTask.date == date
+            )
+        )
+        return list(res.scalars().all())
+
+    async def get_for_user_date_and_lesson(
+        self, user_id: str, date: date, lesson_template_id: str
+    ) -> Optional[LessonTask]:
+        """Get a specific lesson task for a user, date, and lesson template."""
+        lid = uuid.UUID(str(lesson_template_id))
+        res = await self.session.execute(
+            select(LessonTask).where(
+                LessonTask.user_id == user_id,
+                LessonTask.date == date,
+                LessonTask.lesson_template_id == lid
+            )
+        )
+        return res.scalars().first()
+
+    async def delete(self, id: str) -> bool:
+        """Delete a lesson task by ID."""
+        uid = uuid.UUID(str(id))
+        res = await self.session.execute(
+            delete(LessonTask).where(LessonTask.id == uid)
+        )
+        return res.rowcount is not None and res.rowcount > 0
+
+
