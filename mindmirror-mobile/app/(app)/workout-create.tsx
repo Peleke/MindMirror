@@ -21,6 +21,7 @@ import GlobalFab from '@/components/common/GlobalFab'
 import { useThemeVariant } from '@/theme/ThemeContext'
 import { useFocusEffect } from '@react-navigation/native'
 import { useVideoPlayer, VideoView } from 'expo-video'
+import { WebView } from 'react-native-webview'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -62,8 +63,9 @@ type PrescriptionDraft = {
 }
 
 function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; videoUrl: string | undefined }) {
-  const isImage = typeof imageUrl === 'string' && /\.(png|jpg|jpeg|gif)$/i.test(imageUrl)
+  const isImage = typeof imageUrl === 'string' && /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(imageUrl)
   const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+
   if (isImage) {
     return (
       <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
@@ -71,6 +73,7 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; v
       </Box>
     )
   }
+
   if (isMp4) {
     const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
     return (
@@ -79,6 +82,47 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; v
       </Box>
     )
   }
+
+  // Handle YouTube/Vimeo embeds via WebView when a non-mp4 video URL is provided
+  if (typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
+    const url = videoUrl.trim()
+    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url)
+    const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(url)
+
+    let embedUrl = url
+    if (isYouTube) {
+      try {
+        const u = new URL(url)
+        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+      } catch {}
+    } else if (isVimeo) {
+      try {
+        if (!/player\.vimeo\.com\/video\//i.test(url)) {
+          // Convert https://vimeo.com/{id} -> https://player.vimeo.com/video/{id}
+          const m = url.match(/vimeo\.com\/(\d+)/i)
+          if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
+        }
+      } catch {}
+    }
+
+    // On web, prefer a native iframe; on native, use WebView
+    if (Platform.OS === 'web') {
+      return (
+        <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+        </Box>
+      )
+    }
+
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+      </Box>
+    )
+  }
+
   return null
 }
 

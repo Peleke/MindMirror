@@ -6,14 +6,20 @@ from sqlalchemy import text
 from .config import Config
 from ..web.schema import get_schema
 from ..repository.database import get_session_factory, Base
+from sqlalchemy.ext.asyncio import AsyncSession
 from ..repository.movements_repo import MovementsRepoPg
 from ..service.exercisedb_client import ExerciseDBClient
 
 
 def get_context(request: Request):
     user_id = request.headers.get("x-internal-id") or None
-    session_factory = get_session_factory()
-    session = session_factory()
+    # Prefer a request-scoped session if available
+    session: AsyncSession
+    try:
+        session = request.state.db_session  # type: ignore[attr-defined]
+    except Exception:
+        session_factory = get_session_factory()
+        session = session_factory()
     repo = MovementsRepoPg(session)
     client = ExerciseDBClient(Config.EXERCISEDB_BASE_URL, Config.EXERCISEDB_API_KEY)
     return {"movements_repo": repo, "exercise_client": client, "user_id": user_id}
@@ -41,6 +47,23 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan, title="Movements Service")
+
+    # Request-scoped DB session middleware to avoid pool leaks
+    @app.middleware("http")
+    async def db_session_middleware(request, call_next):
+        session = None
+        try:
+            session_factory = get_session_factory()
+            session = session_factory()
+            request.state.db_session = session
+            response = await call_next(request)
+            return response
+        finally:
+            try:
+                if session is not None:
+                    await session.close()
+            except Exception:
+                pass
 
     schema = get_schema()
     graphql_app = GraphQLRouter(schema, graphiql=Config.DEBUG_GRAPHQL_SERVER, context_getter=get_context)

@@ -37,6 +37,7 @@ class ExerciseDBApiClient:
                 "externalId": it.get("exerciseId"),
                 "name": it.get("name") or "",
                 "imageUrl": it.get("imageUrl"),
+                "shortVideoUrl": it.get("videoUrl"),
                 "source": "exercise_db",
             })
         return out
