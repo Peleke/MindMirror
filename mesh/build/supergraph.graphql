@@ -750,6 +750,7 @@ type Movement @join__type(graph: MOVEMENTS, key: "id_")  @join__type(graph: PRAC
   movementPatterns: [String!]! @join__field(graph: MOVEMENTS) 
   planesOfMotion: [String!]! @join__field(graph: MOVEMENTS) 
   tags: [String!]! @join__field(graph: MOVEMENTS) 
+  description: String @join__field(graph: MOVEMENTS) 
   shortVideoUrl: String @join__field(graph: MOVEMENTS) 
   longVideoUrl: String @join__field(graph: MOVEMENTS) 
   isPublic: Boolean! @join__field(graph: MOVEMENTS) 
@@ -766,6 +767,7 @@ type MovementSearchResult @join__type(graph: MOVEMENTS)  {
   difficulty: String
   shortVideoUrl: String
   imageUrl: String
+  description: String
 }
 
 type Archetype @join__type(graph: PRACTICES, key: "id")  {
@@ -1333,6 +1335,7 @@ input MovementCreateInput @join__type(graph: MOVEMENTS)  {
   movementPatterns: [String!] = null
   planesOfMotion: [String!] = null
   tags: [String!] = null
+  description: String = null
   shortVideoUrl: String = null
   longVideoUrl: String = null
 }
@@ -1349,6 +1352,7 @@ input MovementUpdateInput @join__type(graph: MOVEMENTS)  {
   movementPatterns: [String!] = null
   planesOfMotion: [String!] = null
   tags: [String!] = null
+  description: String = null
   shortVideoUrl: String = null
   longVideoUrl: String = null
 }
