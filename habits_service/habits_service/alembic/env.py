@@ -3,7 +3,7 @@ from __future__ import with_statement
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 from alembic import context
@@ -49,6 +49,10 @@ def do_run_migrations(connection: Connection) -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+        # Safety: create missing columns if schema out-of-sync
+        schema = settings.database_schema
+        connection.execute(text(f"ALTER TABLE {schema}.lesson_templates ADD COLUMN IF NOT EXISTS segments_json JSON NULL"))
+        connection.execute(text(f"ALTER TABLE {schema}.lesson_templates ADD COLUMN IF NOT EXISTS default_segment VARCHAR NULL"))
 
 
 async def run_migrations_online() -> None:

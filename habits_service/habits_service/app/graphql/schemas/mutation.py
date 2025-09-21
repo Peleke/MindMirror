@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import strawberry
 from strawberry.types import Info
-from habits_service.app.graphql.context import get_current_user_from_context
+from habits_service.habits_service.app.graphql.context import get_current_user_from_context
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 from habits_service.habits_service.app.db.uow import UnitOfWork
 from habits_service.habits_service.app.db.repositories.write import (

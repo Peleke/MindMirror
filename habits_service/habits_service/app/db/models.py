@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import MetaData
-from habits_service.app.config import get_settings
+from habits_service.habits_service.app.config import get_settings
 
 
 class Base(DeclarativeBase):

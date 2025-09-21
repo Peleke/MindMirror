@@ -18,6 +18,7 @@ from habits_service.habits_service.app.db.tables import (
     # Newly required models for daily planning
     StepDailyPlan,
     LessonSegment,
+    LessonTask,
 )
 
 
