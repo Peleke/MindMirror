@@ -8,6 +8,7 @@ export const QUERY_SEARCH_MOVEMENTS = gql`
       bodyRegion
       equipment
       difficulty
+      description
       shortVideoUrl
       isExternal
       externalId

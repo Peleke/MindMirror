@@ -67,6 +67,10 @@ export default function WorkoutDetailsScreen() {
   const [deferPractice] = useDeferPractice()
   const upcoming = useMyUpcomingPractices()
   const [deferOpen, setDeferOpen] = useState(false)
+  const [videoOpenByKey, setVideoOpenByKey] = useState<Record<string, boolean>>({})
+  const [descOpenByKey, setDescOpenByKey] = useState<Record<string, boolean>>({})
+  const toggleVideoFor = (key: string) => setVideoOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
+  const toggleDescFor = (key: string) => setDescOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
 
   const serverWorkout = data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId) || fallbackQ.data?.practiceInstance
 
@@ -207,8 +211,12 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-500 text-sm">{(Array.isArray(m.sets) ? m.sets.length : 0)} sets</Text>
         </VStack>
         <Box className="h-2" />
-        {/* Thumbnail: prefer image (png/gif), else mp4 video, else YouTube, else placeholder */}
-        {(() => {
+        {/* Collapsible video */}
+        <Pressable onPress={() => toggleVideoFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+          <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
+          <Text className="text-typography-600">{videoOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
+        </Pressable>
+        {videoOpenByKey[`${pIdx}-${mIdx}`] ? (() => {
           const imgUrl = m.imageUrl || m.gifUrl
           const vidUrl = m.shortVideoUrl || m.longVideoUrl || m.videoUrl
           if (typeof imgUrl === 'string' && /\.(png|jpg|jpeg|gif)$/i.test(imgUrl)) {
@@ -238,7 +246,7 @@ export default function WorkoutDetailsScreen() {
               <Text className="text-typography-500">No preview</Text>
             </Box>
           )
-        })()}
+        })() : null}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
             <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
@@ -295,6 +303,21 @@ export default function WorkoutDetailsScreen() {
             </VStack>
           ))}
         </VStack>
+        {/* Collapsible description */}
+        {m.description ? (
+          <>
+            <Box className="h-2" />
+            <Pressable onPress={() => toggleDescFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+              <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+              <Text className="text-typography-600">{descOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
+            </Pressable>
+            {descOpenByKey[`${pIdx}-${mIdx}`] ? (
+              <Box className="p-2 rounded border border-border-200 bg-background-50 dark:bg-background-100">
+                <Markdown>{m.description}</Markdown>
+              </Box>
+            ) : null}
+          </>
+        ) : null}
         {m.description ? (
           <Box className="mt-3 p-3 rounded border border-border-200 bg-background-50">
             <Markdown>{m.description}</Markdown>

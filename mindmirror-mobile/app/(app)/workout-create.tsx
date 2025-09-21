@@ -172,11 +172,15 @@ export default function WorkoutCreateScreen() {
   const [advShortVideoUrl, setAdvShortVideoUrl] = useState('')
   const [advLongVideoUrl, setAdvLongVideoUrl] = useState('')
   const [advDescription, setAdvDescription] = useState('')
+  const [videoOpenByKey, setVideoOpenByKey] = useState<Record<string, boolean>>({})
+  const [descOpenByKey, setDescOpenByKey] = useState<Record<string, boolean>>({})
+  const toggleVideoFor = (key: string) => setVideoOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
+  const toggleDescFor = (key: string) => setDescOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
 
   // Optional draggable list (fallback to static list if not installed)
-  let DraggableFlatList: any = null
-  // Temporarily disable drag list to restore full input interactivity across platforms
-  // try { DraggableFlatList = require('react-native-draggable-flatlist').default } catch {}
+  // Prefer react-native-draglist for stable drag without input conflicts
+  let DragList: any = null
+  try { DragList = require('react-native-draglist').default } catch {}
 
   // Input refs for keyboard navigation
   const inputRefs = useRef<Record<string, TextInput | null>>({})
@@ -236,6 +240,7 @@ export default function WorkoutCreateScreen() {
         position: nextPos,
         metricUnit: 'iterative',
         metricValue: 1,
+        description: m.description ?? undefined,
         movementClass: 'other',
         prescribedSets: 3,
         restDuration: 60,
@@ -381,7 +386,7 @@ export default function WorkoutCreateScreen() {
             <Text className="text-typography-600 dark:text-gray-300">Set a title and date, then add movements to each block.</Text>
           </VStack>
 
-          <VStack space="sm">
+          <VStack space="sm" style={{ flexShrink: 0 }}>
             <Text className="text-typography-900 font-semibold dark:text-white">Title</Text>
             <Input className="bg-background-50 dark:bg-background-100">
               <InputField placeholder="e.g. Push Day" value={title} onChangeText={setTitle} />
@@ -399,8 +404,14 @@ export default function WorkoutCreateScreen() {
                   style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, minHeight: 48, textAlignVertical: 'top' }}
                 />
                 {templateDescription.trim().length > 0 ? (
-                  <Box className="mt-2 p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ maxHeight: 220 }}>
-                    <ScrollView nestedScrollEnabled>
+                  <Box className="mt-2 mb-3 p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ height: 140, zIndex: 10 }}>
+                    <ScrollView
+                      nestedScrollEnabled
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator
+                      style={{ flex: 1 }}
+                      contentContainerStyle={{ paddingBottom: 8 }}
+                    >
                       <Markdown>{templateDescription}</Markdown>
                     </ScrollView>
                   </Box>
@@ -417,9 +428,9 @@ export default function WorkoutCreateScreen() {
             )}
           </VStack>
 
-          {/* Stabilize layout with a divider and larger margin to prevent overlap */}
-          <Box className="h-px bg-border-200 dark:bg-border-700 my-4" />
-          <VStack space="md" className="mt-4">
+          {/* Divider with extra bottom margin to ensure description preview doesn't get overlapped */}
+          <Box className="h-px bg-border-200 dark:bg-border-700 mt-4 mb-6" />
+          <VStack space="md" className="mt-4" style={{ minHeight: 0, flexGrow: 1 }}>
             <Text className="text-lg font-semibold text-typography-900 dark:text-white">Blocks</Text>
             <FlatList
               data={prescriptions}
@@ -438,8 +449,128 @@ export default function WorkoutCreateScreen() {
                       <Text className="text-typography-600 dark:text-gray-300">No movements yet</Text>
                     ) : (
                       <VStack space="sm">
-                        {false ? (
-                          <></>
+                        {DragList ? (
+                          <DragList
+                            style={{ flexGrow: 1, minHeight: 0 }}
+                            data={item.movements}
+                            keyExtractor={(m: any, mi: number) => `${m.movementId || m.name || mi}`}
+                            onReordered={(arg1: any, arg2?: any) => {
+                              // accept either (from,to) or {from,to}
+                              let from = -1
+                              let to = -1
+                              if (typeof arg1 === 'number') { from = arg1 as number; to = (arg2 as number) ?? -1 }
+                              else if (arg1 && typeof arg1 === 'object') { from = (arg1.from ?? -1); to = (arg1.to ?? -1) }
+                              if (from < 0 || to < 0) return
+                              setPrescriptions(prev => {
+                                const cp = [...prev]
+                                const pb = cp[index]
+                                if (!pb) return prev
+                                const arr: MovementDraft[] = [...pb.movements]
+                                if (from < 0 || from >= arr.length) return prev
+                                const movedArr = arr.splice(from, 1)
+                                if (movedArr.length === 0) return prev
+                                const moved = movedArr[0] as MovementDraft
+                                if (to < 0 || to > arr.length) return prev
+                                arr.splice(to, 0, moved)
+                                pb.movements = arr.map((mm, i) => ({ ...mm, position: i + 1 }))
+                                cp[index] = { ...pb }
+                                return cp
+                              })
+                            }}
+                            renderItem={({ item: m, index: mi, drag }: any) => (
+                              <Box key={`${m.movementId || m.name || mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
+                                <VStack space="sm">
+                                  <Box className="flex-row items-center justify-between">
+                                    <Box className="flex-row items-center">
+                                      <Pressable onLongPress={() => { Keyboard.dismiss(); drag() }} delayLongPress={120} className="mr-2 px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50">
+                                        <Text className="text-typography-600">≡</Text>
+                                      </Pressable>
+                                      <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
+                                    </Box>
+                                    <Pressable onPress={() => {
+                                      setPrescriptions(prev => {
+                                        const cp = [...prev]
+                                        const pb = cp[index]
+                                        if (!pb) return prev
+                                        pb.movements = pb.movements.filter((_, i) => i !== mi).map((mm, i) => ({ ...mm, position: i + 1 }))
+                                        cp[index] = { ...pb }
+                                        return cp
+                                      })
+                                    }} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
+                                      <Text className="text-red-700 dark:text-red-300">Remove</Text>
+                                    </Pressable>
+                                  </Box>
+                                  <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                                  <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
+                                  <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
+                                    <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
+                                  </Pressable>
+
+                                  {m.sets.length > 0 && (
+                                    <VStack space="xs">
+                                      <Box className="flex-row items-center px-2 py-1">
+                                        <Box className="w-12"><Text className="text-typography-600 dark:text-gray-300">#</Text></Box>
+                                        <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">{m.metricUnit === 'temporal' ? 'Duration (s)' : 'Reps'}</Text></Box>
+                                        <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">Load</Text></Box>
+                                        <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Unit</Text></Box>
+                                        <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Rest (s)</Text></Box>
+                                        <Box className="w-14" />
+                                      </Box>
+                                      {m.sets.map((s: any, si: number) => (
+                                        <Box key={`${si}`} className="flex-row items-center px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
+                                          <Box className="w-12"><Text className="text-typography-700 dark:text-gray-200">{si + 1}</Text></Box>
+                                          <Box className="flex-1 mr-2">
+                                            <TextInput
+                                              ref={setInputRef(`${index}-${mi}-${si}-${m.metricUnit === 'temporal' ? 'duration' : 'reps'}`)}
+                                              keyboardType="numeric"
+                                              value={m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')}
+                                              onChangeText={(v) => updateSetField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)}
+                                              returnKeyType="next"
+                                              blurOnSubmit={false}
+                                              onSubmitEditing={() => focusNextField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', m.metricUnit)}
+                                              placeholder={m.metricUnit === 'temporal' ? '30' : '10'}
+                                              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                            />
+                                          </Box>
+                                          <Box className="flex-1 mr-2">
+                                            <TextInput
+                                              ref={setInputRef(`${index}-${mi}-${si}-loadValue`)}
+                                              keyboardType="numeric"
+                                              value={s.loadValue != null ? String(s.loadValue) : ''}
+                                              onChangeText={(v) => updateSetField(index, mi, si, 'loadValue', v)}
+                                              returnKeyType="next"
+                                              blurOnSubmit={false}
+                                              onSubmitEditing={() => focusNextField(index, mi, si, 'loadValue', m.metricUnit)}
+                                              placeholder="45"
+                                              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                            />
+                                          </Box>
+                                          <Box className="w-28 mr-2">
+                                            <Input>
+                                              <InputField placeholder="unit (lb/kg/bw)" value={s.loadUnit ?? ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadUnit', v)} />
+                                            </Input>
+                                          </Box>
+                                          <Box className="w-28 mr-2">
+                                            <TextInput
+                                              ref={setInputRef(`${index}-${mi}-${si}-restDuration`)}
+                                              keyboardType="numeric"
+                                              value={s.restDuration != null ? String(s.restDuration) : ''}
+                                              onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)}
+                                              returnKeyType="next"
+                                              blurOnSubmit={false}
+                                              placeholder="60"
+                                              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
+                                            />
+                                          </Box>
+                                          <Box className="w-14" />
+                                        </Box>
+                                      ))}
+                                    </VStack>
+                                  )}
+                                </VStack>
+                              </Box>
+                            )}
+                          />
                         ) : (
                           item.movements.map((m, mi) => (
                           <Box key={`${m.movementId || m.name || mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
@@ -459,7 +590,29 @@ export default function WorkoutCreateScreen() {
                                   <Text className="text-red-700 dark:text-red-300">Remove</Text>
                                 </Pressable>
                               </Box>
-                              <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                              {/* Collapsible video */}
+                              <Pressable onPress={() => toggleVideoFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
+                                <Text className="text-typography-600 dark:text-gray-300">{videoOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
+                              </Pressable>
+                              {videoOpenByKey[`${index}-${mi}`] ? (
+                                <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                              ) : null}
+                              {/* Collapsible description (if any) */}
+                              {m.description ? (
+                                <>
+                                  <Pressable onPress={() => toggleDescFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                    <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+                                    <Text className="text-typography-600 dark:text-gray-300">{descOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
+                                  </Pressable>
+                                  {descOpenByKey[`${index}-${mi}`] ? (
+                                    <Box className="p-2 rounded border border-border-200 bg-background-50 dark:bg-background-100">
+                                      <Markdown>{m.description}</Markdown>
+                                    </Box>
+                                  ) : null}
+                                </>
+                              ) : null}
+
                               <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                               <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
                                 <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
