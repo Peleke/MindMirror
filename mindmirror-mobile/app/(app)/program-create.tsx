@@ -10,8 +10,9 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { usePracticeTemplates, useCreateProgram, useLazySearchPracticeTemplates } from '@/services/api/practices'
 import { QUERY_PROGRAM_TEMPLATES } from '@/services/api/practices'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList, Pressable as RNPressable } from 'react-native'
+import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList, Pressable as RNPressable, ScrollView as RNSV } from 'react-native'
 import { useApolloClient } from '@apollo/client'
+import Markdown from 'react-native-markdown-display'
 
 export default function ProgramCreateScreen() {
   const router = useRouter()
@@ -103,7 +104,30 @@ export default function ProgramCreateScreen() {
             <VStack space="sm">
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">Program Details</Text>
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Name" value={name} onChangeText={setName} /></Input>
-              <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional)" value={description} onChangeText={setDescription} /></Input>
+              {/* Markdown-enabled description input with live preview */}
+              <Text className="text-typography-900 font-semibold dark:text-white">Description</Text>
+              <TextInput
+                placeholder="Optional description (markdown supported)"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                className="bg-background-50 dark:bg-background-100 text-typography-600 dark:text-gray-300"
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, minHeight: 48, textAlignVertical: 'top' }}
+              />
+              {description.trim().length > 0 ? (
+                <Box className="mt-2 mb-3 p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ height: 140, zIndex: 10 }}>
+                  <RNSV
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                  >
+                    <Markdown>{description}</Markdown>
+                  </RNSV>
+                </Box>
+              ) : null}
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Level (optional)" value={level} onChangeText={setLevel} /></Input>
             </VStack>
 
