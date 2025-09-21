@@ -52,6 +52,7 @@ class ProgramType:
     level: Optional[str] = None  # E.g., "BEGINNER", "INTERMEDIATE", "ADVANCED"
     created_at: datetime
     modified_at: datetime
+    habits_program_template_id: Optional[strawberry.ID] = None
     tags: List[ProgramTagType]
     practice_links: List[ProgramPracticeLinkType]
     enrollments: List[ProgramEnrollmentTypeGQL]
@@ -68,6 +69,7 @@ class ProgramType:
             level=domain_program.level,
             created_at=domain_program.created_at,
             modified_at=domain_program.modified_at,
+            habits_program_template_id=domain_program.habits_program_template_id,
             tags=[
                 ProgramTagType(
                     id_=tag.id_,
@@ -132,6 +134,7 @@ class ProgramCreateInput:
     name: str
     description: Optional[str] = None
     level: Optional[str] = None
+    habits_program_template_id: Optional[strawberry.ID] = None
     tags: Optional[List[ProgramTagInput]] = strawberry.field(default_factory=list)
     practice_links: Optional[List[ProgramPracticeLinkInput]] = strawberry.field(default_factory=list)
 
@@ -146,6 +149,9 @@ class ProgramCreateInput:
 
         if self.level is not None:
             result["level"] = self.level
+
+        if self.habits_program_template_id is not None:
+            result["habits_program_template_id"] = UUID(self.habits_program_template_id)
 
         if self.tags:
             result["tags"] = [{"name": tag.name} for tag in self.tags]
@@ -170,6 +176,7 @@ class ProgramUpdateInput:
     name: Optional[str] = None
     description: Optional[str] = None
     level: Optional[str] = None
+    habits_program_template_id: Optional[strawberry.ID] = None
     tags: Optional[List[ProgramTagInput]] = None
     practice_links: Optional[List[ProgramPracticeLinkInput]] = None
 
@@ -185,6 +192,9 @@ class ProgramUpdateInput:
 
         if self.level is not None:
             result["level"] = self.level
+
+        if self.habits_program_template_id is not None:
+            result["habits_program_template_id"] = UUID(self.habits_program_template_id)
 
         if self.tags is not None:
             result["tags"] = [{"name": tag.name} for tag in self.tags]

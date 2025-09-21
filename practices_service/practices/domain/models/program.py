@@ -52,6 +52,7 @@ class DomainProgram(BaseModel):
     created_at: datetime
     modified_at: datetime
     user_id: UUID
+    habits_program_template_id: Optional[UUID] = None
 
     tags: List[DomainProgramTag] = Field(default_factory=list)
     practice_links: List[DomainProgramPracticeLink] = Field(default_factory=list)

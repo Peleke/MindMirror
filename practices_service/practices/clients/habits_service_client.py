@@ -136,3 +136,54 @@ class HabitsServiceClient:
         variables = {"slug": slug}
         result = await self._execute_graphql(query, variables, auth_token)
         return result.get("lessonTemplateBySlug")
+
+    async def enroll_user_in_program(
+        self,
+        program_template_id: str,
+        start_date: date,
+        auth_token: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Enroll a user in a habits program template."""
+
+        query = """
+            mutation AssignProgramToUser($programId: String!, $startDate: Date!) {
+                assignProgramToUser(programId: $programId, startDate: $startDate) {
+                    id
+                    userId
+                    programTemplateId
+                    status
+                }
+            }
+        """
+
+        variables = {
+            "programId": program_template_id,
+            "startDate": start_date.isoformat()
+        }
+
+        try:
+            result = await self._execute_graphql(query, variables, auth_token)
+            return result.get("assignProgramToUser")
+        except Exception as e:
+            logger.error(f"Failed to enroll user in habits program {program_template_id}: {e}")
+            # Don't raise - we don't want to fail the practices enrollment if habits enrollment fails
+            return None
+
+    async def get_program_templates(self, auth_token: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get all program templates from habits_service."""
+
+        query = """
+            query {
+                programTemplates {
+                    id
+                    slug
+                    title
+                    description
+                    subtitle
+                    heroImageUrl
+                }
+            }
+        """
+
+        result = await self._execute_graphql(query, None, auth_token)
+        return result.get("programTemplates", [])

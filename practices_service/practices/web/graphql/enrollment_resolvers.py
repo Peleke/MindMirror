@@ -57,6 +57,16 @@ class PracticesLessonSegmentType:
     label: str
     selector: str
 
+# Habits Program Template types for GraphQL (namespaced to avoid federation collisions)
+@strawberry.type
+class HabitsProgramTemplateType:
+    id: str
+    slug: str
+    title: str
+    description: Optional[str] = None
+    subtitle: Optional[str] = None
+    hero_image_url: Optional[str] = None
+
 
 # Concrete permission classes for this resolver
 class CanSelfEnroll(RequireRolePermission):
@@ -464,6 +474,36 @@ class EnrollmentMutation:
                         # Log error but don't fail the entire enrollment
                         print(f"Failed to attach lesson {lesson_input.lesson_template_slug}: {e}")
 
+            # Auto-enroll in paired habits program if specified
+            if program and program.habits_program_template_id:
+                try:
+                    habits_client = HabitsServiceClient()
+                    
+                    # Get user token for authentication
+                    req = info.context.get('request')
+                    token = None
+                    if req:
+                        authz = req.headers.get('authorization')
+                        if authz and authz.lower().startswith('bearer '):
+                            token = authz.split(' ', 1)[1]
+                    
+                    # Enroll user in the paired habits program
+                    from datetime import date as _date
+                    habits_enrollment = await habits_client.enroll_user_in_program(
+                        program_template_id=str(program.habits_program_template_id),
+                        start_date=_date.today(),
+                        auth_token=token
+                    )
+                    
+                    if habits_enrollment:
+                        print(f"Successfully enrolled user {current_user.id} in habits program {program.habits_program_template_id}")
+                    else:
+                        print(f"Failed to enroll user {current_user.id} in habits program {program.habits_program_template_id}")
+                        
+                except Exception as e:
+                    # Log error but don't fail the practices enrollment
+                    print(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}")
+
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
 
@@ -829,3 +869,29 @@ class EnrollmentMutation:
             segments=mapped_segments or None,
             default_segment=lesson_template.get("defaultSegment"),
         )
+
+    @strawberry.field
+    async def habits_program_templates(self, info: Info) -> List[HabitsProgramTemplateType]:
+        """Get all program templates from habits_service."""
+        habits_client = HabitsServiceClient()
+
+        # Get user token for authentication
+        req = info.context.get('request')
+        token = None
+        if req:
+            authz = req.headers.get('authorization')
+            if authz and authz.lower().startswith('bearer '):
+                token = authz.split(' ', 1)[1]
+
+        templates = await habits_client.get_program_templates(auth_token=token)
+        
+        return [
+            HabitsProgramTemplateType(
+                id=tpl["id"],
+                slug=tpl["slug"],
+                title=tpl["title"],
+                description=tpl.get("description"),
+                subtitle=tpl.get("subtitle"),
+                hero_image_url=tpl.get("heroImageUrl")
+            ) for tpl in templates
+        ]

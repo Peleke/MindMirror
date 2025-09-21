@@ -57,6 +57,7 @@ class ProgramModel(Base):
     description = Column(Text, nullable=True)
     level = Column(String(50), nullable=True)  # e.g., "BEGINNER", "INTERMEDIATE", "ADVANCED"
     user_id: Mapped[uuid.UUID] = mapped_column("user_id", PGUUID(as_uuid=True))
+    habits_program_template_id = Column(PGUUID(as_uuid=True), nullable=True)  # Link to habits service program template
     # owner_id = Column(PGUUID(as_uuid=True), ForeignKey('practices.users.id'), nullable=True) # Future: when users exist in 'practices' schema
 
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -83,6 +84,7 @@ class ProgramModel(Base):
             "description": self.description,
             "level": self.level,
             "user_id": str(self.user_id),
+            "habits_program_template_id": str(self.habits_program_template_id) if self.habits_program_template_id else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "modified_at": self.modified_at.isoformat() if self.modified_at else None,
             "tags": [tag.to_dict() for tag in self.tags] if self.tags else [],
