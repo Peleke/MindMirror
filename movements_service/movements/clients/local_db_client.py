@@ -17,6 +17,7 @@ class ExerciseDBLocalClient:
             out.append({
                 "id_": r.get("id_"),
                 "name": r.get("name", ""),
+                "description": r.get("description"),
                 "shortVideoUrl": r.get("shortVideoUrl"),
                 "imageUrl": r.get("gifUrl") or r.get("shortVideoUrl"),
                 "source": "local",

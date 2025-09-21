@@ -50,6 +50,7 @@ class MovementSearchResult:
     difficulty: Optional[str] = None
     shortVideoUrl: Optional[str] = None
     imageUrl: Optional[str] = None
+    description: Optional[str] = None
 
 
 @strawberry.input
@@ -159,6 +160,7 @@ def map_row_to_search_result(row: dict, is_external: bool = False) -> MovementSe
         difficulty=row.get("difficulty"),
         shortVideoUrl=row.get("shortVideoUrl"),
         imageUrl=(row.get("imageUrl") or row.get("gifUrl")),
+        description=row.get("description"),
     )
 
 
