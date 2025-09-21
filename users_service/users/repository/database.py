@@ -19,7 +19,14 @@ SCHEMA_NAME = "users"
 DATABASE_URL = Config.DATABASE_URL
 DB_ECHO = Config.DB_ECHO
 
-engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=DB_ECHO)
+engine: AsyncEngine = create_async_engine(
+    DATABASE_URL, 
+    echo=DB_ECHO,
+    pool_size=5,
+    max_overflow=0,
+    pool_pre_ping=True,
+    pool_recycle=3600
+)
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
