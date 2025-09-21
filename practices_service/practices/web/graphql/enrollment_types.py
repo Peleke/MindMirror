@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 import strawberry
@@ -33,6 +33,17 @@ class EnrollInProgramInput:
 
     program_id: strawberry.ID
     repeat_count: int = 1
+    lessons: Optional[List[AttachLessonsToProgramEnrollmentInput]] = None
+
+
+@strawberry.input
+class EnrollUserInProgramInput:
+    """Input for coach enrolling a user in a program."""
+
+    program_id: strawberry.ID
+    user_id: strawberry.ID
+    repeat_count: int = 1
+    lessons: Optional[List[AttachLessonsToProgramEnrollmentInput]] = None
 
 
 @strawberry.type

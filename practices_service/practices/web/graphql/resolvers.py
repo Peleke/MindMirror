@@ -330,6 +330,7 @@ class PrescriptionTemplateUpdateInput:
 
 # Existing input types
 
+
 @strawberry.input
 class NestedPrescriptionTemplateCreateInput:
     name: str
@@ -469,6 +470,26 @@ class Query(EnrollmentQuery):
         service = PracticeTemplateService(repo)
         templates = await service.list_templates()
         return [convert_practice_template_to_gql(t) for t in templates]
+
+    @strawberry.field(name="searchPracticeTemplates")
+    async def search_practice_templates(self, info: Info, searchTerm: str, limit: Optional[int] = None) -> List[PracticeTemplateType]:
+        """Search practice templates by title or description (case-insensitive)."""
+        uow: UnitOfWork = info.context["uow"]
+        repo = PracticeTemplateRepository(uow.session)
+        service = PracticeTemplateService(repo)
+        term = (searchTerm or "").strip().lower()
+        if not term:
+            return []
+        templates = await service.list_templates()
+        filtered = []
+        for t in templates:
+            title = (getattr(t, "title", "") or "").lower()
+            desc = (getattr(t, "description", "") or "").lower()
+            if term in title or term in desc:
+                filtered.append(t)
+        if limit is not None:
+            filtered = filtered[: int(limit)]
+        return [convert_practice_template_to_gql(t) for t in filtered]
 
     @strawberry.field
     async def practice_template(self, info: Info, id: strawberry.ID) -> Optional[PracticeTemplateType]:
@@ -2006,11 +2027,3 @@ class Mutation(EnrollmentMutation):
             return await program_service.delete_program(UUID(str(id)))
 
 
-@strawberry.input
-class NestedPrescriptionTemplateCreateInput:
-    name: str
-    position: int
-    block: str
-    description: Optional[str] = None
-    prescribed_rounds: int = 1
-    movements: List[NestedMovementTemplateCreateInput] = strawberry.field(default_factory=list)

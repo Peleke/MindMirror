@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import date, timedelta
-from typing import List, Optional, cast
+from typing import List, Optional, cast, Dict
 
 import strawberry
 from graphql import GraphQLError
@@ -9,7 +9,6 @@ from shared.auth import CurrentUser, RequireRolePermission
 from shared.clients.user_service_client import users_service_client
 from strawberry.types import Info
 import os
-import httpx
 
 from practices.domain.models import DomainProgramEnrollment
 from practices.repository.models.progress import ScheduledPracticeModel
@@ -32,11 +31,31 @@ from practices.repository.models.practice_instance import PracticeInstanceModel
 from .enrollment_types import (
     AttachLessonsToProgramEnrollmentInput,
     EnrollInProgramInput,
+    EnrollUserInProgramInput,
     EnrollmentStatusGQL,
     ProgramEnrollmentTypeGQL
 )
+from practices.clients.habits_service_client import HabitsServiceClient
+
+
 from .practice_instance_types import PracticeInstanceType
 from .progress_types import ScheduledPracticeTypeGQL
+
+# Lesson Template types for GraphQL (namespaced to avoid federation collisions)
+@strawberry.type
+class PracticesLessonTemplateType:
+    id: str
+    slug: str
+    title: str
+    summary: Optional[str]
+    segments: Optional[List["PracticesLessonSegmentType"]]
+    default_segment: Optional[str]
+
+@strawberry.type
+class PracticesLessonSegmentType:
+    id: str
+    label: str
+    selector: str
 
 
 # Concrete permission classes for this resolver
@@ -344,20 +363,27 @@ class EnrollmentMutation:
         if not web_enrolled:
             return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=False, reason=web_reason)
 
-        # Create enrollment for current user
+        # Create enrollment for current user with default repeat count (1 week)
         context = cast(CustomContext, info.context)
         current_user = cast(CurrentUser, context.current_user)
         uow = context.uow
+
+        # Use the same enrollment logic as self-enrollment with defaults
+        enrollment_input = EnrollInProgramInput(
+            program_id=program_id,
+            repeat_count=1,  # Default to 1 week
+            lessons=None  # No lessons by default for auto-enrollment
+        )
+
         async with uow:
-            repo = EnrollmentRepository(uow.session)
-            service = EnrollmentService(repo)
-            domain_enrollment = await service.enroll_user(program_id=uuid.UUID(str(program_id)), user_to_enroll_id=current_user.id, enrolling_user_id=current_user.id)
+            domain_enrollment = await self.enroll_in_program(info, enrollment_input)
+
         return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=True)
 
     @strawberry.mutation(permission_classes=[CanSelfEnroll])
     async def enroll_in_program(self, info: Info, input: EnrollInProgramInput) -> ProgramEnrollmentTypeGQL:
         """
-        Allows a user to self-enroll in a program with optional repeat count.
+        Allows a user to self-enroll in a program with optional repeat count and lessons.
         The user must have the 'client' role in the 'practices' domain.
         """
         uow: UnitOfWork = info.context["uow"]
@@ -429,20 +455,29 @@ class EnrollmentMutation:
 
                                 link_index = (link_index + 1) % len(ordered_links)  # Cycle through links
 
+            # Attach lessons if provided
+            if input.lessons:
+                for lesson_input in input.lessons:
+                    try:
+                        await self.attachLessonsToProgramEnrollment(info, lesson_input)
+                    except Exception as e:
+                        # Log error but don't fail the entire enrollment
+                        print(f"Failed to attach lesson {lesson_input.lesson_template_slug}: {e}")
+
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
 
     @strawberry.mutation(permission_classes=[CanEnrollOthers])
     async def enroll_user_in_program(
-        self, info: Info, program_id: strawberry.ID, user_id: strawberry.ID
+        self, info: Info, input: EnrollUserInProgramInput
     ) -> ProgramEnrollmentTypeGQL:
         """
-        Allows a coach to enroll another user in a program.
+        Allows a coach to enroll another user in a program with optional repeat count and lessons.
         The acting user must have the 'coach' role in the 'practices' domain.
         """
         uow: UnitOfWork = info.context["uow"]
         current_user: CurrentUser = info.context["current_user"]
-        user_to_enroll_id = uuid.UUID(str(user_id))
+        user_to_enroll_id = uuid.UUID(str(input.user_id))
 
         # --- Enhanced Authorization Check ---
         # A coach can only enroll a user if they have an accepted coaching relationship.
@@ -457,10 +492,20 @@ class EnrollmentMutation:
             repo = EnrollmentRepository(uow.session)
             service = EnrollmentService(repo)
             domain_enrollment = await service.enroll_user(
-                program_id=uuid.UUID(str(program_id)),
+                program_id=uuid.UUID(str(input.program_id)),
                 user_to_enroll_id=user_to_enroll_id,
                 enrolling_user_id=current_user.id,  # The coach is the enroller
             )
+
+            # Attach lessons if provided
+            if input.lessons:
+                for lesson_input in input.lessons:
+                    try:
+                        await self.attachLessonsToProgramEnrollment(info, lesson_input)
+                    except Exception as e:
+                        # Log error but don't fail the entire enrollment
+                        print(f"Failed to attach lesson {lesson_input.lesson_template_slug}: {e}")
+
             return to_gql_enrollment(domain_enrollment)
 
     @strawberry.mutation
@@ -688,10 +733,8 @@ class EnrollmentMutation:
                     if future_practices:
                         target_date = min(p.scheduled_date for p in future_practices)
 
-            # Call habits_service to record lesson opened for this date
-            habits_base = os.getenv("HABITS_SERVICE_BASE_URL", "").strip()
-            if not habits_base:
-                raise Exception("HABITS_SERVICE_BASE_URL not configured")
+            # Create lesson task using the dedicated client
+            habits_client = HabitsServiceClient()
 
             # Get user token for authentication
             req = info.context.get('request')
@@ -701,37 +744,88 @@ class EnrollmentMutation:
                 if authz and authz.lower().startswith('bearer '):
                     token = authz.split(' ', 1)[1]
 
-            headers = {'content-type': 'application/json'}
-            if token:
-                headers['authorization'] = f"Bearer {token}"
-
-            # Create lesson task for the computed date
-            async with httpx.AsyncClient(timeout=15) as client:
-                mutation_data = {
-                    "query": """
-                        mutation CreateLessonTask($userId: ID!, $date: Date!, $lessonTemplateId: ID!, $segmentIds: [String!]) {
-                            createLessonTask(userId: $userId, date: $date, lessonTemplateId: $lessonTemplateId, segmentIds: $segmentIds)
-                        }
-                    """,
-                    "variables": {
-                        "userId": str(enrollment.user_id),
-                        "date": target_date.isoformat(),
-                        "lessonTemplateId": str(lesson_template.id),
-                        "segmentIds": input.segment_ids
-                    }
-                }
-
-                resp = await client.post(
-                    f"{habits_base.rstrip('/')}/graphql",
-                    headers=headers,
-                    json=mutation_data
-                )
-
-                if resp.status_code != 200:
-                    raise Exception(f"Failed to create lesson task in habits_service: {resp.status_code} - {resp.text}")
-
-                result = resp.json()
-                if result.get("errors"):
-                    raise Exception(f"GraphQL errors from habits_service: {result['errors']}")
+            await habits_client.create_lesson_task(
+                user_id=str(enrollment.user_id),
+                lesson_template_id=str(lesson_template.id),
+                task_date=target_date,
+                segment_ids=input.segment_ids,
+                auth_token=token
+            )
 
             return True
+
+    @strawberry.field
+    async def habits_lesson_templates(self, info: Info) -> List[PracticesLessonTemplateType]:
+        """Get all lesson templates from habits_service."""
+        habits_client = HabitsServiceClient()
+
+        # Get user token for authentication
+        req = info.context.get('request')
+        token = None
+        if req:
+            authz = req.headers.get('authorization')
+            if authz and authz.lower().startswith('bearer '):
+                token = authz.split(' ', 1)[1]
+
+        lesson_templates = await habits_client.get_lesson_templates(auth_token=token)
+
+        out: List[PracticesLessonTemplateType] = []
+        for template in lesson_templates:
+            segs = template.get("segments") or []
+            mapped_segments = [
+                PracticesLessonSegmentType(
+                    id=str(s.get("id")),
+                    label=str(s.get("label")),
+                    selector=str(s.get("selector")),
+                )
+                for s in segs
+                if s is not None
+            ]
+            out.append(
+                PracticesLessonTemplateType(
+                    id=str(template["id"]),
+                    slug=str(template["slug"]),
+                    title=str(template["title"]),
+                    summary=template.get("summary"),
+                    segments=mapped_segments or None,
+                    default_segment=template.get("defaultSegment"),
+                )
+            )
+        return out
+
+    @strawberry.field
+    async def habits_lesson_template_by_slug(self, info: Info, slug: str) -> Optional[PracticesLessonTemplateType]:
+        """Get a lesson template by slug from habits_service."""
+        habits_client = HabitsServiceClient()
+
+        # Get user token for authentication
+        req = info.context.get('request')
+        token = None
+        if req:
+            authz = req.headers.get('authorization')
+            if authz and authz.lower().startswith('bearer '):
+                token = authz.split(' ', 1)[1]
+
+        lesson_template = await habits_client.get_lesson_template_by_slug(slug, auth_token=token)
+
+        if not lesson_template:
+            return None
+
+        segs = lesson_template.get("segments") or []
+        mapped_segments = [
+            PracticesLessonSegmentType(
+                id=str(s.get("id")),
+                label=str(s.get("label")),
+                selector=str(s.get("selector")),
+            )
+            for s in segs
+            if s is not None
+        ]
+        return PracticesLessonTemplateType(
+            id=str(lesson_template["id"]),
+            slug=str(lesson_template["slug"]),
+            title=str(lesson_template["title"]),
+            summary=lesson_template.get("summary"),
+            segments=mapped_segments or None,
+            default_segment=lesson_template.get("defaultSegment"),
+        )
