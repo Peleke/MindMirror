@@ -21,7 +21,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
           movement {
             id_
             name
-            shortVideoUrl
+            video_url: videoUrl
             longVideoUrl
             difficulty
             bodyRegion
@@ -245,8 +245,54 @@ export const MUTATION_SCHEDULE_WORKOUT = gql`
 `
 
 export const MUTATION_ENROLL_IN_PROGRAM = gql`
-  mutation EnrollInProgram($programId: ID!) {
-    enrollInProgram(programId: $programId) { id_ programId userId status }
+  mutation EnrollInProgram($input: EnrollInProgramInput!) {
+    enrollInProgram(input: $input) { id_ programId userId status }
+  }
+`
+
+export const MUTATION_ENROLL_USER_IN_PROGRAM = gql`
+  mutation EnrollUserInProgram($input: EnrollUserInProgramInput!) {
+    enrollUserInProgram(input: $input) { id_ programId userId status }
+  }
+`
+
+export const MUTATION_ATTACH_LESSONS_TO_PROGRAM_ENROLLMENT = gql`
+  mutation AttachLessonsToProgramEnrollment($input: AttachLessonsToProgramEnrollmentInput!) {
+    attachLessonsToProgramEnrollment(input: $input)
+  }
+`
+
+export const QUERY_LESSON_TEMPLATES = gql`
+  query LessonTemplates {
+    lessonTemplates {
+      id
+      slug
+      title
+      summary
+      segments {
+        id
+        label
+        selector
+      }
+      defaultSegment
+    }
+  }
+`
+
+export const QUERY_LESSON_TEMPLATE_BY_SLUG = gql`
+  query LessonTemplateBySlug($slug: String!) {
+    lessonTemplateBySlug(slug: $slug) {
+      id
+      slug
+      title
+      summary
+      segments {
+        id
+        label
+        selector
+      }
+      defaultSegment
+    }
   }
 `
 
@@ -332,6 +378,43 @@ export const QUERY_WORKOUTS_FOR_USER = gql`
     }
   }
 `
+
+// TypeScript interfaces for the new GraphQL types
+export interface EnrollInProgramInput {
+  programId: string
+  repeatCount?: number
+  lessons?: AttachLessonsToProgramEnrollmentInput[]
+}
+
+export interface EnrollUserInProgramInput {
+  programId: string
+  userId: string
+  repeatCount?: number
+  lessons?: AttachLessonsToProgramEnrollmentInput[]
+}
+
+export interface AttachLessonsToProgramEnrollmentInput {
+  enrollmentId: string
+  lessonTemplateSlug: string
+  dayOffset: number
+  onWorkoutDay?: boolean
+  segmentIds?: string[]
+}
+
+export interface LessonTemplate {
+  id: string
+  slug: string
+  title: string
+  summary?: string
+  segments?: LessonSegment[]
+  defaultSegment?: string
+}
+
+export interface LessonSegment {
+  id: string
+  label: string
+  selector: string
+}
 
 export const MUTATION_DEFER_PRACTICE = gql`
   mutation DeferPractice($enrollmentId: ID!, $mode: String!) {

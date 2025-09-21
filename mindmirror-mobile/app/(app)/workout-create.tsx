@@ -712,7 +712,6 @@ export default function WorkoutCreateScreen() {
             if (asTemplate) {
               // Build PracticeTemplateCreateInput
               const gqlPrescriptions = prescriptions.map((p) => ({
-                practiceTemplateId: 'placeholder',
                 name: p.name,
                 position: p.position,
                 block: p.block,
