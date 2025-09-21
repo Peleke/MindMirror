@@ -765,6 +765,7 @@ type MovementSearchResult @join__type(graph: MOVEMENTS)  {
   equipment: [String!]!
   difficulty: String
   shortVideoUrl: String
+  imageUrl: String
 }
 
 type Archetype @join__type(graph: PRACTICES, key: "id")  {
