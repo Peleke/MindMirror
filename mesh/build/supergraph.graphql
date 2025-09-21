@@ -235,6 +235,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
     status: String = null
   ): [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
   practiceTemplates: [PracticeTemplateType!]! @join__field(graph: PRACTICES) 
+  searchPracticeTemplates(searchTerm: String!, limit: Int = null) : [PracticeTemplateType!]! @join__field(graph: PRACTICES) 
   practiceTemplate(id: ID!) : PracticeTemplateType @join__field(graph: PRACTICES) 
   practiceInstances(userId: ID!) : [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
   practice_instance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
@@ -331,6 +332,12 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   upsertStepDailyPlan(programStepId: String!, items: [StepDayPlanInput!]!) : Boolean! @join__field(graph: HABITS) 
   upsertLessonSegments(segments: [LessonSegmentInput!]!) : Boolean! @join__field(graph: HABITS) 
   autoEnroll(campaign: String!) : AutoEnrollResult! @join__field(graph: HABITS) 
+  createLessonTask(
+    userId: String!
+    date: Date!
+    lessonTemplateId: String!
+    segmentIds: [String!] = null
+  ): Boolean! @join__field(graph: HABITS) 
   createGratitudeJournalEntry(input: GratitudeEntryInput!) : GratitudeJournalEntry! @join__field(graph: JOURNAL) 
   createReflectionJournalEntry(input: ReflectionEntryInput!) : ReflectionJournalEntry! @join__field(graph: JOURNAL) 
   createFreeformJournalEntry(input: FreeformEntryInput!) : FreeformJournalEntry! @join__field(graph: JOURNAL) 
@@ -357,19 +364,22 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   deleteMovement(id: ID!) : Boolean! @join__field(graph: MOVEMENTS) 
   importExternalMovement(externalId: String!) : Movement! @join__field(graph: MOVEMENTS) 
   autoEnrollPractices(campaign: String!) : PracticesAutoEnrollResult! @join__field(graph: PRACTICES) 
-  enrollInProgram(programId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
-  enrollUserInProgram(programId: ID!, userId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  enrollInProgram(input: EnrollInProgramInput!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
+  enrollUserInProgram(input: EnrollUserInProgramInput!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
   updateEnrollmentStatus(enrollmentId: ID!, status: EnrollmentStatusGQL!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
   completeAndAdvanceProgress(enrollmentId: ID!) : ProgramEnrollmentTypeGQL! @join__field(graph: PRACTICES) 
   deferPractice(enrollmentId: ID!, mode: String!) : Boolean! @join__field(graph: PRACTICES) 
   assignProgramToClient(programId: ID!, clientId: ID!, campaign: String = null) : Boolean! @join__field(graph: PRACTICES) 
+  attachLessonsToProgramEnrollment(input: AttachLessonsToProgramEnrollmentInput!) : Boolean! @join__field(graph: PRACTICES) 
+  habitsLessonTemplates: [PracticesLessonTemplateType!]! @join__field(graph: PRACTICES) 
+  habitsLessonTemplateBySlug(slug: String!) : PracticesLessonTemplateType @join__field(graph: PRACTICES) 
   createAdHocWorkout(input: PracticeInstanceCreateStandaloneInput!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   scheduleWorkout(templateId: ID!, date: Date!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   completeWorkout(id: ID!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   logSet(input: SetInstanceCreateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
   createPracticeTemplate(input: PracticeTemplateCreateInput!) : PracticeTemplateType! @join__field(graph: PRACTICES) 
   deletePracticeTemplate(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
-  createPracticeInstanceFromTemplate(templateId: ID!, date: Date!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  createPracticeInstanceFromTemplate(templateId: ID!, date: Date!, repeatCount: Int! = 1) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   updatePracticeInstance(id: ID!, input: PracticeInstanceUpdateInput!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   deletePracticeInstance(id: ID!) : Boolean! @join__field(graph: PRACTICES) 
   createSetInstance(input: SetInstanceCreateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
@@ -856,6 +866,21 @@ type PracticesAutoEnrollResult @join__type(graph: PRACTICES)  {
   ok: Boolean!
   enrolled: Boolean!
   reason: String
+}
+
+type PracticesLessonSegmentType @join__type(graph: PRACTICES)  {
+  id: String!
+  label: String!
+  selector: String!
+}
+
+type PracticesLessonTemplateType @join__type(graph: PRACTICES)  {
+  id: String!
+  slug: String!
+  title: String!
+  summary: String
+  segments: [PracticesLessonSegmentType!]
+  defaultSegment: String
 }
 
 type PrescriptionInstanceType @join__type(graph: PRACTICES)  {
@@ -1355,6 +1380,27 @@ input MovementUpdateInput @join__type(graph: MOVEMENTS)  {
   description: String = null
   shortVideoUrl: String = null
   longVideoUrl: String = null
+}
+
+input AttachLessonsToProgramEnrollmentInput @join__type(graph: PRACTICES)  {
+  enrollmentId: ID!
+  lessonTemplateSlug: String!
+  dayOffset: Int!
+  onWorkoutDay: Boolean! = false
+  segmentIds: [ID!] = null
+}
+
+input EnrollInProgramInput @join__type(graph: PRACTICES)  {
+  programId: ID!
+  repeatCount: Int! = 1
+  lessons: [AttachLessonsToProgramEnrollmentInput!] = null
+}
+
+input EnrollUserInProgramInput @join__type(graph: PRACTICES)  {
+  programId: ID!
+  userId: ID!
+  repeatCount: Int! = 1
+  lessons: [AttachLessonsToProgramEnrollmentInput!] = null
 }
 
 input MovementInstanceCreateInput @join__type(graph: PRACTICES)  {
