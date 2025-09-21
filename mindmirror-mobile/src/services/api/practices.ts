@@ -21,7 +21,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
           movement {
             id_
             name
-            video_url: videoUrl
+            shortVideoUrl
             longVideoUrl
             difficulty
             bodyRegion
@@ -74,6 +74,12 @@ export const QUERY_PROGRAM_TEMPLATES = gql`
 export const QUERY_PRACTICE_TEMPLATES = gql`
   query PracticeTemplates {
     practiceTemplates { id_ title description }
+  }
+`
+
+export const QUERY_SEARCH_PRACTICE_TEMPLATES = gql`
+  query SearchPracticeTemplates($term: String!, $limit: Int) {
+    searchPracticeTemplates(searchTerm: $term, limit: $limit) { id_ title description }
   }
 `
 
@@ -428,6 +434,9 @@ export const useSearchMovements = (term: string, limit = 1) => useQuery(QUERY_SE
 export const useWorkouts = (vars: { dateFrom?: string, dateTo?: string, dates?: string[], programId?: string, status?: string }) => useQuery(QUERY_WORKOUTS, { variables: vars, fetchPolicy: 'cache-and-network' })
 export const usePrograms = () => useQuery(QUERY_PROGRAM_TEMPLATES, { fetchPolicy: 'cache-and-network' })
 export const usePracticeTemplates = () => useQuery(QUERY_PRACTICE_TEMPLATES, { fetchPolicy: 'cache-and-network' })
+// Proper lazy query hook for practice template search
+import { useLazyQuery } from '@apollo/client'
+export const useLazySearchPracticeTemplates = () => useLazyQuery(QUERY_SEARCH_PRACTICE_TEMPLATES, { fetchPolicy: 'cache-and-network' })
 export const useProgram = (id: string) => useQuery(QUERY_PROGRAM, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const usePracticeTemplate = (id: string) => useQuery(QUERY_PRACTICE_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })
 export const useMovementTemplate = (id: string) => useQuery(QUERY_MOVEMENT_TEMPLATE, { variables: { id }, fetchPolicy: 'cache-and-network', skip: !id })

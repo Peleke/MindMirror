@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text'
 import { Input, InputField } from '@/components/ui/input'
 import { Pressable } from '@/components/ui/pressable'
 import { ScrollView } from '@/components/ui/scroll-view'
-import { usePracticeTemplates, useCreateProgram } from '@/services/api/practices'
+import { usePracticeTemplates, useCreateProgram, useLazySearchPracticeTemplates } from '@/services/api/practices'
 import { QUERY_PROGRAM_TEMPLATES } from '@/services/api/practices'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native'
@@ -28,11 +28,27 @@ export default function ProgramCreateScreen() {
   // Template search modal state
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [runSearch, { data: searchData, loading: searching }] = useLazySearchPracticeTemplates()
+  const serverResults = (searchData?.searchPracticeTemplates || []) as Array<{ id_: string, title: string, description?: string }>
+
+  // Debounced server search when term length >= 2
+  React.useEffect(() => {
+    if (!searchOpen) return
+    const term = (search || '').trim()
+    const h = setTimeout(() => {
+      if (term.length >= 2) {
+        runSearch({ variables: { term, limit: 25 } })
+      }
+    }, 250)
+    return () => clearTimeout(h)
+  }, [searchOpen, search])
+
   const filteredTemplates = useMemo(() => {
     const q = (search || '').trim().toLowerCase()
     if (!q) return templates
+    if (serverResults && serverResults.length >= 0) return serverResults
     return templates.filter(t => t.title.toLowerCase().includes(q))
-  }, [search, templates])
+  }, [search, serverResults, templates])
 
   React.useEffect(() => {
     const tplId = params?.addTemplateId
@@ -124,7 +140,7 @@ export default function ProgramCreateScreen() {
               </VStack>
             </VStack>
 
-            <Pressable disabled={saving || !name || links.length === 0} onPress={onSave} className={`mt-2 items-center justify-center rounded-xl px-4 py-3 ${saving || !name || links.length === 0 ? 'bg-indigo-300' : 'bg-indigo-600'}`}>
+            <Pressable disabled={saving || !name || links.length === 0} onPress={onSave} className={`${saving || !name || links.length === 0 ? 'bg-indigo-300' : 'bg-indigo-600'} mt-2 items-center justify-center rounded-xl px-4 py-3`}>
               <Text className="text-white font-bold">{saving ? 'Saving…' : 'Save Program'}</Text>
             </Pressable>
           </VStack>
@@ -155,7 +171,7 @@ export default function ProgramCreateScreen() {
                   )}
                   ListEmptyComponent={(
                     <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                      <Text className="text-typography-600">{(search||'').trim().length === 0 ? 'Type to search templates' : 'No matches found'}</Text>
+                      <Text className="text-typography-600">{search.trim().length === 0 ? 'Type to search templates' : (searching ? 'Searching…' : 'No matches found')}</Text>
                     </View>
                   )}
                   style={{ flex: 1 }}
