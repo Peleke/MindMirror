@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional, cast
 
 import strawberry
@@ -29,7 +29,12 @@ from practices.repository.repositories.program_repository import ProgramReposito
 from practices.repository.repositories.practice_instance_repository import PracticeInstanceRepository
 from practices.repository.models.practice_instance import PracticeInstanceModel
 
-from .enrollment_types import EnrollmentStatusGQL, ProgramEnrollmentTypeGQL
+from .enrollment_types import (
+    AttachLessonsToProgramEnrollmentInput,
+    EnrollInProgramInput,
+    EnrollmentStatusGQL,
+    ProgramEnrollmentTypeGQL
+)
 from .practice_instance_types import PracticeInstanceType
 from .progress_types import ScheduledPracticeTypeGQL
 
@@ -350,9 +355,9 @@ class EnrollmentMutation:
         return EnrollmentMutation.PracticesAutoEnrollResult(ok=True, enrolled=True)
 
     @strawberry.mutation(permission_classes=[CanSelfEnroll])
-    async def enroll_in_program(self, info: Info, program_id: strawberry.ID) -> ProgramEnrollmentTypeGQL:
+    async def enroll_in_program(self, info: Info, input: EnrollInProgramInput) -> ProgramEnrollmentTypeGQL:
         """
-        Allows a user to self-enroll in a program.
+        Allows a user to self-enroll in a program with optional repeat count.
         The user must have the 'client' role in the 'practices' domain.
         """
         uow: UnitOfWork = info.context["uow"]
@@ -362,14 +367,14 @@ class EnrollmentMutation:
             repo = EnrollmentRepository(uow.session)
             service = EnrollmentService(repo)
             domain_enrollment = await service.enroll_user(
-                program_id=uuid.UUID(str(program_id)),
+                program_id=uuid.UUID(str(input.program_id)),
                 user_to_enroll_id=current_user.id,
                 enrolling_user_id=current_user.id,  # For self-enrollment
             )
 
-            # Seed initial progress: set current practice to first link and schedule today's workout
+            # Seed initial progress: set current practice to first link and schedule workouts for repeat cycle
             program_repo = ProgramRepository(uow.session)
-            program_uuid = uuid.UUID(str(program_id))
+            program_uuid = uuid.UUID(str(input.program_id))
             program = await program_repo.get_program_by_id(program_uuid)
             if program and program.practice_links:
                 first_link = sorted(program.practice_links, key=lambda pl: pl.sequence_order)[0]
@@ -377,34 +382,52 @@ class EnrollmentMutation:
                 enrollment_model = await repo.get_enrollment_by_id(uuid.UUID(str(domain_enrollment.id_)))
                 if enrollment_model:
                     enrollment_model.current_practice_link_id = first_link.id_
-                    # Schedule today's practice for the first link
+
+                    # Schedule practices for the repeat cycle
                     sp_repo = ScheduledPracticeRepository(uow.session)
-                    scheduled = ScheduledPracticeModel(
-                        enrollment_id=enrollment_model.id_,
-                        practice_template_id=first_link.practice_template_id,
-                        scheduled_date=date.today(),
-                    )
-                    await sp_repo.add(scheduled)
-                    # Materialize today's instance if one does not already exist
-                    # Avoid duplicates: check by user, date, template
-                    from sqlalchemy import select
-                    exists_stmt = (
-                        select(PracticeInstanceModel)
-                        .where(PracticeInstanceModel.user_id == current_user.id)
-                        .where(PracticeInstanceModel.date == date.today())
-                        .where(PracticeInstanceModel.template_id == first_link.practice_template_id)
-                    )
-                    result = await uow.session.execute(exists_stmt)
-                    existing = result.scalar_one_or_none()
-                    if not existing:
-                        pir = PracticeInstanceRepository(uow.session)
-                        new_instance = await pir.create_instance_from_template(
-                            template_id=first_link.practice_template_id,
-                            user_id=current_user.id,
-                            date=date.today(),
-                        )
-                        # Link the instance to the scheduled practice
-                        scheduled.practice_instance_id = new_instance.id_
+                    today = date.today()
+
+                    # Get all practice links ordered by sequence
+                    ordered_links = sorted(program.practice_links, key=lambda pl: pl.sequence_order)
+                    link_index = 0
+
+                    # Schedule for repeat_count weeks
+                    for week in range(input.repeat_count):
+                        for day_offset in range(7):  # Schedule for each day of the week
+                            scheduled_date = today + timedelta(days=(week * 7) + day_offset)
+
+                            # Find the practice link for this day of the week
+                            # This is a simple implementation - in practice you might want more sophisticated scheduling
+                            if link_index < len(ordered_links):
+                                current_link = ordered_links[link_index]
+                                scheduled = ScheduledPracticeModel(
+                                    enrollment_id=enrollment_model.id_,
+                                    practice_template_id=current_link.practice_template_id,
+                                    scheduled_date=scheduled_date,
+                                )
+                                await sp_repo.add(scheduled)
+
+                                # Materialize instance if one does not already exist
+                                from sqlalchemy import select
+                                exists_stmt = (
+                                    select(PracticeInstanceModel)
+                                    .where(PracticeInstanceModel.user_id == current_user.id)
+                                    .where(PracticeInstanceModel.date == scheduled_date)
+                                    .where(PracticeInstanceModel.template_id == current_link.practice_template_id)
+                                )
+                                result = await uow.session.execute(exists_stmt)
+                                existing = result.scalar_one_or_none()
+                                if not existing:
+                                    pir = PracticeInstanceRepository(uow.session)
+                                    new_instance = await pir.create_instance_from_template(
+                                        template_id=current_link.practice_template_id,
+                                        user_id=current_user.id,
+                                        date=scheduled_date,
+                                    )
+                                    # Link the instance to the scheduled practice
+                                    scheduled.practice_instance_id = new_instance.id_
+
+                                link_index = (link_index + 1) % len(ordered_links)  # Cycle through links
 
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
@@ -595,3 +618,120 @@ class EnrollmentMutation:
         # Call vouchers web API to mint/assign voucher
         # This would be implemented once we have the client email lookup working
         return True
+
+    @strawberry.mutation(permission_classes=[CanEnrollOthers])
+    async def attachLessonsToProgramEnrollment(
+        self, info: Info, input: AttachLessonsToProgramEnrollmentInput
+    ) -> bool:
+        """
+        Attaches lessons to a program enrollment by computing the target date and calling habits_service.
+
+        Authorization Rules:
+        - A user with the 'coach' role in the 'practices' domain can attach lessons.
+        """
+        context = cast(CustomContext, info.context)
+        current_user = cast(CurrentUser, context.current_user)
+        uow = context.uow
+
+        if not current_user:
+            raise Exception("Authentication required.")
+
+        # Verify coach role
+        if not current_user.has_role(role="coach", domain="practices"):
+            raise Exception("You do not have a COACH role in the practices domain.")
+
+        enrollment_uuid = uuid.UUID(str(input.enrollment_id))
+
+        async with uow:
+            # Get enrollment to verify authorization and get start date
+            enrollment_repo = EnrollmentRepository(uow.session)
+            enrollment = await enrollment_repo.get_enrollment_by_id(enrollment_uuid)
+
+            if not enrollment:
+                raise Exception("Enrollment not found.")
+
+            # Verify coach can access this enrollment
+            is_authorized_coach = await users_service_client.verify_coach_client_relationship(
+                coach_id=current_user.id, client_id=enrollment.user_id, domain="practices"
+            )
+            if not is_authorized_coach:
+                raise Exception("You are not authorized to modify this enrollment.")
+
+            # Get lesson template by slug
+            from habits_service.habits_service.app.db.repositories.write import LessonTemplateRepository
+            lesson_repo = LessonTemplateRepository(uow.session)
+            lesson_template = await lesson_repo.get_by_slug(input.lesson_template_slug)
+
+            if not lesson_template:
+                raise Exception(f"Lesson template with slug '{input.lesson_template_slug}' not found.")
+
+            # Compute target date
+            target_date = enrollment.created_at.date()
+            if input.day_offset > 0:
+                target_date = target_date + timedelta(days=input.day_offset)
+
+            # If on_workout_day is true, align to next workout day
+            if input.on_workout_day:
+                # Get scheduled practices for this enrollment
+                scheduled_repo = ScheduledPracticeRepository(uow.session)
+                scheduled_practices = await scheduled_repo.list(
+                    enrollment_ids=[enrollment.id_], from_date=target_date
+                )
+                if scheduled_practices:
+                    target_date = scheduled_practices[0].scheduled_date
+                else:
+                    # Find next scheduled workout day
+                    all_practices = await scheduled_repo.list(
+                        enrollment_ids=[enrollment.id_], from_date=target_date
+                    )
+                    future_practices = [p for p in all_practices if p.scheduled_date >= target_date]
+                    if future_practices:
+                        target_date = min(p.scheduled_date for p in future_practices)
+
+            # Call habits_service to record lesson opened for this date
+            habits_base = os.getenv("HABITS_SERVICE_BASE_URL", "").strip()
+            if not habits_base:
+                raise Exception("HABITS_SERVICE_BASE_URL not configured")
+
+            # Get user token for authentication
+            req = info.context.get('request')
+            token = None
+            if req:
+                authz = req.headers.get('authorization')
+                if authz and authz.lower().startswith('bearer '):
+                    token = authz.split(' ', 1)[1]
+
+            headers = {'content-type': 'application/json'}
+            if token:
+                headers['authorization'] = f"Bearer {token}"
+
+            # Create lesson task for the computed date
+            async with httpx.AsyncClient(timeout=15) as client:
+                mutation_data = {
+                    "query": """
+                        mutation CreateLessonTask($userId: ID!, $date: Date!, $lessonTemplateId: ID!, $segmentIds: [String!]) {
+                            createLessonTask(userId: $userId, date: $date, lessonTemplateId: $lessonTemplateId, segmentIds: $segmentIds)
+                        }
+                    """,
+                    "variables": {
+                        "userId": str(enrollment.user_id),
+                        "date": target_date.isoformat(),
+                        "lessonTemplateId": str(lesson_template.id),
+                        "segmentIds": input.segment_ids
+                    }
+                }
+
+                resp = await client.post(
+                    f"{habits_base.rstrip('/')}/graphql",
+                    headers=headers,
+                    json=mutation_data
+                )
+
+                if resp.status_code != 200:
+                    raise Exception(f"Failed to create lesson task in habits_service: {resp.status_code} - {resp.text}")
+
+                result = resp.json()
+                if result.get("errors"):
+                    raise Exception(f"GraphQL errors from habits_service: {result['errors']}")
+
+            return True

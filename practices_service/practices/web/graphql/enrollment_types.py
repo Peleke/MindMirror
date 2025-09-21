@@ -16,6 +16,25 @@ class EnrollmentStatusGQL(enum.Enum):
     COMPLETED = "completed"
 
 
+@strawberry.input
+class AttachLessonsToProgramEnrollmentInput:
+    """Input for attaching lessons to a program enrollment."""
+
+    enrollment_id: strawberry.ID
+    lesson_template_slug: str
+    day_offset: int
+    on_workout_day: bool = False
+    segment_ids: Optional[List[strawberry.ID]] = None
+
+
+@strawberry.input
+class EnrollInProgramInput:
+    """Input for enrolling in a program with optional repeat count."""
+
+    program_id: strawberry.ID
+    repeat_count: int = 1
+
+
 @strawberry.type
 class ProgramEnrollmentTypeGQL:
     """GraphQL type representing a user's enrollment in a program."""

@@ -1042,7 +1042,7 @@ class Mutation(EnrollmentMutation):
 
     @strawberry.mutation
     async def create_practice_instance_from_template(
-        self, info: Info, template_id: strawberry.ID, date: date
+        self, info: Info, template_id: strawberry.ID, date: date, repeatCount: int = 1
     ) -> PracticeInstanceType:
         uow: UnitOfWork = info.context["uow"]
         current_user = get_current_user_from_info(info)
@@ -1053,11 +1053,24 @@ class Mutation(EnrollmentMutation):
         service = PracticeInstanceService(repo)
 
         async with uow:
-            new_instance = await service.create_instance_from_template(
+            # Create the first instance on the provided date
+            first = await service.create_instance_from_template(
                 template_id=UUID(template_id), user_id=current_user.id, date=date
             )
-            # The service returns a domain model, we need to refresh to get the GQL model with relationships
-            refreshed_instance = await service.get_instance_by_id(new_instance.id_)
+            # Optionally create additional weekly repeats
+            try:
+                if repeatCount and repeatCount > 1:
+                    from datetime import timedelta as _td
+                    for w in range(1, int(repeatCount)):
+                        d = date + _td(days=7 * w)
+                        await service.create_instance_from_template(
+                            template_id=UUID(template_id), user_id=current_user.id, date=d
+                        )
+            except Exception:
+                # Fail-open: ensure at least the primary instance is returned even if repeats fail
+                pass
+            # Refresh and return the first instance
+            refreshed_instance = await service.get_instance_by_id(first.id_)
             return convert_practice_instance_to_gql(refreshed_instance)
 
     @strawberry.mutation
