@@ -4,7 +4,7 @@ import uvicorn
 
 # Use a different default port for the meals service to avoid conflicts
 # when running multiple services locally.
-DEFAULT_HTTP_PORT = 8089
+DEFAULT_HTTP_PORT = 8004
 
 # Cloud Run sets PORT. Prefer it when present. Otherwise use MEALS_HTTP_PORT, then default.
 HTTP_PORT = int(
