@@ -10,7 +10,7 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { usePracticeTemplates, useCreateProgram, useLazySearchPracticeTemplates } from '@/services/api/practices'
 import { QUERY_PROGRAM_TEMPLATES } from '@/services/api/practices'
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList } from 'react-native'
+import { TextInput, View, Modal, KeyboardAvoidingView, Platform, FlatList, Pressable as RNPressable } from 'react-native'
 import { useApolloClient } from '@apollo/client'
 
 export default function ProgramCreateScreen() {
@@ -46,9 +46,12 @@ export default function ProgramCreateScreen() {
   const filteredTemplates = useMemo(() => {
     const q = (search || '').trim().toLowerCase()
     if (!q) return templates
-    if (serverResults && serverResults.length >= 0) return serverResults
+    if (q.length >= 2) {
+      if ((serverResults?.length || 0) > 0 || searching) return serverResults
+      return templates.filter(t => t.title.toLowerCase().includes(q))
+    }
     return templates.filter(t => t.title.toLowerCase().includes(q))
-  }, [search, serverResults, templates])
+  }, [search, serverResults, templates, searching])
 
   React.useEffect(() => {
     const tplId = params?.addTemplateId
@@ -149,41 +152,49 @@ export default function ProgramCreateScreen() {
         {/* Template search modal */}
         <Modal visible={searchOpen} transparent animationType="fade" onRequestClose={() => { setSearchOpen(false); setSearch('') }}>
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Pressable onPress={() => { setSearchOpen(false); setSearch('') }} className="absolute top-0 bottom-0 left-0 right-0" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} />
+            <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setSearchOpen(false); setSearch('') }} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-              <View style={{ width: '96%', height: '70%', maxHeight: '70%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
-                <Text className="text-typography-900" style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Add Workout Template</Text>
+              <View style={{ width: '96%', maxWidth: 560, maxHeight: 520, borderRadius: 16, backgroundColor: '#fff', padding: 16, flexDirection: 'column', alignSelf: 'center', borderWidth: 1, borderColor: '#e5e7eb' }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Add Workout Template</Text>
                 <View style={{ marginBottom: 12 }}>
                   <TextInput placeholder="Search templates…" value={search} onChangeText={setSearch} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
                 </View>
-                <FlatList
-                  keyboardDismissMode="on-drag"
-                  keyboardShouldPersistTaps="handled"
-                  data={filteredTemplates}
-                  keyExtractor={(item: any, i) => item.id_ ?? `${i}`}
-                  renderItem={({ item }) => (
-                    <Pressable onPress={() => { addLink(item.id_); setSearchOpen(false); setSearch('') }} className="py-2" style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                      <View>
-                        <Text className="font-semibold text-typography-900">{item.title}</Text>
-                        {item.description ? <Text className="text-typography-600">{item.description}</Text> : null}
+                <View style={{ flex: 1, minHeight: 240, overflow: 'hidden' }}>
+                  <FlatList
+                    nestedScrollEnabled
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                    data={filteredTemplates}
+                    keyExtractor={(item: any, i) => item.id_ ?? `${i}`}
+                    renderItem={({ item }) => (
+                      <RNPressable onPress={() => { addLink(item.id_); setSearchOpen(false); setSearch('') }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ fontWeight: '600' }}>{item.title}</Text>
+                            {item.description ? <Text style={{ color: '#6b7280' }}>{item.description}</Text> : null}
+                          </View>
+                          <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' }}>
+                            <Text style={{ color: '#16a34a', fontWeight: '700' }}>Template</Text>
+                          </View>
+                        </View>
+                      </RNPressable>
+                    )}
+                    ListEmptyComponent={(
+                      <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                        <Text style={{ color: '#6b7280' }}>{(search||'').trim().length === 0 ? 'Type to search templates' : (searching ? 'Searching…' : 'No matches found')}</Text>
                       </View>
-                    </Pressable>
-                  )}
-                  ListEmptyComponent={(
-                    <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                      <Text className="text-typography-600">{search.trim().length === 0 ? 'Type to search templates' : (searching ? 'Searching…' : 'No matches found')}</Text>
-                    </View>
-                  )}
-                  style={{ flex: 1 }}
-                  contentContainerStyle={{ paddingBottom: 12 }}
-                />
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                  <Pressable onPress={async () => { setSearchOpen(false); setSearch(''); await router.push('/workout-template-create') }} className="px-3 py-1.5 rounded-md border border-indigo-300 bg-indigo-50">
-                    <Text className="text-indigo-700 font-semibold">＋ Create Workout Template</Text>
-                  </Pressable>
-                  <Pressable onPress={() => { setSearchOpen(false); setSearch('') }} className="px-3 py-1.5 rounded-md border border-border-200">
-                    <Text className="text-typography-900 font-semibold">Close</Text>
-                  </Pressable>
+                    )}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                  <RNPressable onPress={async () => { setSearchOpen(false); setSearch(''); await router.push('/workout-template-create') }} style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                    <Text style={{ color: '#111827', fontWeight: '700' }}>＋ Create Workout Template</Text>
+                  </RNPressable>
+                  <RNPressable onPress={() => { setSearchOpen(false); setSearch('') }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                    <Text style={{ color: '#374151', fontWeight: '600' }}>Close</Text>
+                  </RNPressable>
                 </View>
               </View>
             </KeyboardAvoidingView>
