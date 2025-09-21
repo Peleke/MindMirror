@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useMovementTemplate, useSearchMovements } from '@/services/api/practices'
+import Markdown from 'react-native-markdown-display'
 import { WebView } from 'react-native-webview'
 
 function YouTubeEmbed({ url }: { url: string }) {
@@ -172,6 +173,13 @@ export default function ExerciseDetailsScreen() {
                       ))}
                     </VStack>
                   </VStack>
+                ) : null}
+
+                {/* Movement description (markdown) */}
+                {mt?.description ? (
+                  <Box className="p-3 rounded border border-border-200 bg-background-0">
+                    <Markdown>{mt.description}</Markdown>
+                  </Box>
                 ) : null}
 
                 {/* Details section under everything else */}

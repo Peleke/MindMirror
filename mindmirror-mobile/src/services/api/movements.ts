@@ -27,7 +27,7 @@ export const useImportExternalMovement = () => useMutation(MUTATION_IMPORT_EXTER
 
 export const MUTATION_CREATE_MOVEMENT = gql`
   mutation CreateMovement($input: MovementCreateInput!) {
-    createMovement(input: $input) { id_ name bodyRegion equipment shortVideoUrl }
+    createMovement(input: $input) { id_ name bodyRegion equipment description shortVideoUrl }
   }
 `
 

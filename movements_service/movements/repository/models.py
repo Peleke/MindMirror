@@ -41,6 +41,9 @@ class MovementModel(Base):
     force_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     archetype: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    # Freeform description/notes for the movement
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     short_video_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     long_video_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     gif_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)

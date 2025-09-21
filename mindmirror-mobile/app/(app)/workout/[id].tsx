@@ -7,6 +7,7 @@ import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { Pressable } from '@/components/ui/pressable'
 import { ActivityIndicator, ScrollView, Alert, Modal, View, Image, Platform } from 'react-native'
+import Markdown from 'react-native-markdown-display'
 import { Input, InputField } from '@/components/ui/input'
 import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
@@ -294,6 +295,11 @@ export default function WorkoutDetailsScreen() {
             </VStack>
           ))}
         </VStack>
+        {m.description ? (
+          <Box className="mt-3 p-3 rounded border border-border-200 bg-background-50">
+            <Markdown>{m.description}</Markdown>
+          </Box>
+        ) : null}
         <Box className="h-2" />
         <Pressable className="self-start px-3 py-1 rounded border border-border-200 bg-background-50" onPress={() => addSetToMovement(pIdx, mIdx)}>
           <Text className="text-typography-700 text-xs">+ Add Set</Text>

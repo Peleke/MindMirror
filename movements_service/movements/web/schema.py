@@ -25,6 +25,7 @@ class Movement:
     movementPatterns: List[str]
     planesOfMotion: List[str]
     tags: List[str]
+    description: Optional[str]
     shortVideoUrl: Optional[str]
     longVideoUrl: Optional[str]
     isPublic: bool
@@ -64,6 +65,7 @@ class MovementCreateInput:
     movementPatterns: Optional[List[str]] = None
     planesOfMotion: Optional[List[str]] = None
     tags: Optional[List[str]] = None
+    description: Optional[str] = None
     shortVideoUrl: Optional[str] = None
     longVideoUrl: Optional[str] = None
 
@@ -81,6 +83,7 @@ class MovementUpdateInput:
     movementPatterns: Optional[List[str]] = None
     planesOfMotion: Optional[List[str]] = None
     tags: Optional[List[str]] = None
+    description: Optional[str] = None
     shortVideoUrl: Optional[str] = None
     longVideoUrl: Optional[str] = None
 
@@ -125,6 +128,7 @@ def map_row_to_movement(row: dict) -> Movement:
         movementPatterns=row.get("movementPatterns") or [],
         planesOfMotion=row.get("planesOfMotion") or [],
         tags=row.get("tags") or [],
+        description=row.get("description"),
         shortVideoUrl=row.get("shortVideoUrl"),
         longVideoUrl=row.get("longVideoUrl"),
         isPublic=bool(row.get("isPublic", True)),

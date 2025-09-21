@@ -25,6 +25,7 @@ create table if not exists movements.movements (
   primary_classification text,
   force_type text,
   archetype text,
+  description text,
   short_video_url text,
   long_video_url text,
   gif_url text,

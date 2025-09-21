@@ -237,7 +237,7 @@ export default function WorkoutTemplateCreateScreen() {
             <VStack space="sm">
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">Template Details</Text>
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Title" value={title} onChangeText={setTitle} /></Input>
-              <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional)" value={description} onChangeText={setDescription} /></Input>
+              <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional, markdown)" value={description} onChangeText={setDescription} /></Input>
             </VStack>
 
             <VStack space="md" className="mt-5">
@@ -274,6 +274,8 @@ export default function WorkoutTemplateCreateScreen() {
                                   <Text className="text-red-700 font-semibold">🗑️</Text>
                                 </Pressable>
                               </Box>
+                              {/* Movement description in template creation (plain preview) */}
+                              {m.description ? <Text className="text-typography-600 dark:text-gray-300">{m.description}</Text> : null}
                               <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                               <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
                                 <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions, Image } from 'react-native'
+import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions, Image, ScrollView, Keyboard } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
@@ -22,6 +22,7 @@ import { useThemeVariant } from '@/theme/ThemeContext'
 import { useFocusEffect } from '@react-navigation/native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { WebView } from 'react-native-webview'
+import Markdown from 'react-native-markdown-display'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -109,7 +110,7 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; v
     // On web, prefer a native iframe; on native, use WebView
     if (Platform.OS === 'web') {
       return (
-        <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
           {/* eslint-disable-next-line react/no-unknown-property */}
           <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
         </Box>
@@ -136,6 +137,7 @@ export default function WorkoutCreateScreen() {
   const [createWorkout, { loading }] = useCreateAdHocWorkout()
   const [createTemplate, { loading: savingTemplate }] = useCreatePracticeTemplate()
   const [asTemplate, setAsTemplate] = useState(false)
+  const [templateDescription, setTemplateDescription] = useState('')
   const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' } | null>(null)
   const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
     setToast({ msg, type })
@@ -169,6 +171,12 @@ export default function WorkoutCreateScreen() {
   const [advTagsCsv, setAdvTagsCsv] = useState('')
   const [advShortVideoUrl, setAdvShortVideoUrl] = useState('')
   const [advLongVideoUrl, setAdvLongVideoUrl] = useState('')
+  const [advDescription, setAdvDescription] = useState('')
+
+  // Optional draggable list (fallback to static list if not installed)
+  let DraggableFlatList: any = null
+  // Temporarily disable drag list to restore full input interactivity across platforms
+  // try { DraggableFlatList = require('react-native-draggable-flatlist').default } catch {}
 
   // Input refs for keyboard navigation
   const inputRefs = useRef<Record<string, TextInput | null>>({})
@@ -233,7 +241,7 @@ export default function WorkoutCreateScreen() {
         restDuration: 60,
         videoUrl: m.shortVideoUrl ?? undefined,
         sets: [
-          { position: 1, reps: 10, restDuration: 60, loadUnit: 'bodyweight' },
+          { position: 1, reps: 10, restDuration: 60, loadUnit: 'bodyweight' } as SetDraft,
         ],
       }
       if (m.id_) newMovement.movementId = m.id_
@@ -374,10 +382,31 @@ export default function WorkoutCreateScreen() {
           </VStack>
 
           <VStack space="sm">
-            <Text className="text-typography-600 dark:text-gray-300">Title</Text>
+            <Text className="text-typography-900 font-semibold dark:text-white">Title</Text>
             <Input className="bg-background-50 dark:bg-background-100">
               <InputField placeholder="e.g. Push Day" value={title} onChangeText={setTitle} />
             </Input>
+            {asTemplate ? (
+              <>
+                <Text className="text-typography-900 font-semibold dark:text-white">Template Description</Text>
+                <TextInput
+                  placeholder="Optional description for this template"
+                  value={templateDescription}
+                  onChangeText={setTemplateDescription}
+                  multiline
+                  numberOfLines={3}
+                  className="bg-background-50 dark:bg-background-100 text-typography-600 dark:text-gray-300"
+                  style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, minHeight: 48, textAlignVertical: 'top' }}
+                />
+                {templateDescription.trim().length > 0 ? (
+                  <Box className="mt-2 p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ maxHeight: 220 }}>
+                    <ScrollView nestedScrollEnabled>
+                      <Markdown>{templateDescription}</Markdown>
+                    </ScrollView>
+                  </Box>
+                ) : null}
+              </>
+            ) : null}
             {!asTemplate && (
               <>
                 <Text className="text-typography-600 dark:text-gray-300">Date (YYYY-MM-DD)</Text>
@@ -409,11 +438,14 @@ export default function WorkoutCreateScreen() {
                       <Text className="text-typography-600 dark:text-gray-300">No movements yet</Text>
                     ) : (
                       <VStack space="sm">
-                        {item.movements.map((m, mi) => (
-                          <Box key={`${mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
+                        {false ? (
+                          <></>
+                        ) : (
+                          item.movements.map((m, mi) => (
+                          <Box key={`${m.movementId || m.name || mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
                             <VStack space="sm">
                               <Box className="flex-row items-center justify-between">
-                                <Text className="font-semibold text-typography-900 dark:text-white">{mi + 1}. {m.name}</Text>
+                                  <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
                                 <Pressable onPress={() => {
                                   setPrescriptions(prev => {
                                     const cp = [...prev]
@@ -501,42 +533,19 @@ export default function WorkoutCreateScreen() {
                                           onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)}
                                           returnKeyType="next"
                                           blurOnSubmit={false}
-                                          onSubmitEditing={() => focusNextField(index, mi, si, 'restDuration', m.metricUnit)}
                                           placeholder="60"
                                           style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
                                         />
                                       </Box>
-                                      {/* R/D toggle */}
-                                      <Box className="w-14 items-center mr-2">
-                                        <Pressable onPress={() => {
-                                          setPrescriptions(prev => {
-                                            const cp: PrescriptionDraft[] = [...prev]
-                                            const p0 = cp[index]
-                                            if (!p0) return prev
-                                            const mov0 = p0.movements[mi]
-                                            if (!mov0) return prev
-                                            const nextUnit = mov0.metricUnit === 'temporal' ? 'iterative' : 'temporal'
-                                            const updated: MovementDraft = { ...mov0, metricUnit: nextUnit }
-                                            p0.movements = p0.movements.map((mm, i) => (i === mi ? updated : mm))
-                                            cp[index] = { ...p0 }
-                                            return cp
-                                          })
-                                        }} className="px-2 py-1 rounded-md border border-border-200 bg-white dark:bg-background-0">
-                                          <Text className="text-typography-700 dark:text-gray-200 font-semibold">R/D</Text>
-                                        </Pressable>
-                                      </Box>
-                                      <Box className="w-14 items-end">
-                                        <Pressable onPress={() => removeSet(index, mi, si)} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
-                                          <Text className="text-red-700 dark:text-red-300">🗑</Text>
-                                        </Pressable>
-                                      </Box>
+                                        <Box className="w-14" />
                                     </Box>
                                   ))}
                                 </VStack>
                               )}
                             </VStack>
                           </Box>
-                        ))}
+                          ))
+                        )}
                       </VStack>
                     )}
                   </VStack>
@@ -571,7 +580,7 @@ export default function WorkoutCreateScreen() {
                 })),
               }))
               try {
-                await createTemplate({ variables: { input: { title, description: '', prescriptions: gqlPrescriptions } } })
+                await createTemplate({ variables: { input: { title, description: templateDescription || '', prescriptions: gqlPrescriptions } } })
                 apollo.refetchQueries({ include: [QUERY_PRACTICE_TEMPLATES] })
                 showToast('Template created', 'success')
                 await new Promise((r) => setTimeout(r, 400))
@@ -683,7 +692,7 @@ export default function WorkoutCreateScreen() {
                   {showAdvanced && (
                     <View style={{ flex: 1 }}>
                       <FlatList
-                        data={[{ k: 'd' }, { k: 'br' }, { k: 'eq' }, { k: 'pm' }, { k: 'sm' }, { k: 'mp' }, { k: 'pl' }, { k: 'tg' }, { k: 'sv' }, { k: 'lv' }]}
+                        data={[{ k: 'd' }, { k: 'br' }, { k: 'eq' }, { k: 'pm' }, { k: 'sm' }, { k: 'mp' }, { k: 'pl' }, { k: 'tg' }, { k: 'desc' }, { k: 'sv' }, { k: 'lv' }]}
                         keyExtractor={(it) => it.k}
                         renderItem={({ item }) => {
                           if (item.k === 'd') return <TextInput placeholder="Difficulty (e.g., Beginner)" value={advDifficulty} onChangeText={setAdvDifficulty} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
@@ -694,6 +703,16 @@ export default function WorkoutCreateScreen() {
                           if (item.k === 'mp') return <TextInput placeholder="Movement Patterns (comma-separated)" value={advPatternsCsv} onChangeText={setAdvPatternsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
                           if (item.k === 'pl') return <TextInput placeholder="Planes of Motion (comma-separated)" value={advPlanesCsv} onChangeText={setAdvPlanesCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
                           if (item.k === 'tg') return <TextInput placeholder="Tags (comma-separated)" value={advTagsCsv} onChangeText={setAdvTagsCsv} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
+                          if (item.k === 'desc') return (
+                            <>
+                              <TextInput placeholder="Description (markdown supported)" value={advDescription} onChangeText={setAdvDescription} multiline numberOfLines={3} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8, minHeight: 84, textAlignVertical: 'top' }} />
+                              {advDescription.trim().length > 0 ? (
+                                <Box className="mb-2 p-2 rounded border border-border-200 bg-background-50">
+                                  <Markdown>{advDescription}</Markdown>
+                                </Box>
+                              ) : null}
+                            </>
+                          )
                           if (item.k === 'sv') return <TextInput placeholder="Short Video URL" value={advShortVideoUrl} onChangeText={setAdvShortVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
                           if (item.k === 'lv') return <TextInput placeholder="Long Video URL" value={advLongVideoUrl} onChangeText={setAdvLongVideoUrl} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 8 }} />
                           return null
@@ -728,6 +747,7 @@ export default function WorkoutCreateScreen() {
                       if (pl.length) input.planesOfMotion = pl
                       const tg = parseCsv(advTagsCsv)
                       if (tg.length) input.tags = tg
+                      if (advDescription.trim()) input.description = advDescription.trim()
                       if (advShortVideoUrl.trim()) input.shortVideoUrl = advShortVideoUrl.trim()
                       if (advLongVideoUrl.trim()) input.longVideoUrl = advLongVideoUrl.trim()
 
@@ -749,6 +769,7 @@ export default function WorkoutCreateScreen() {
                       setAdvTagsCsv('')
                       setAdvShortVideoUrl('')
                       setAdvLongVideoUrl('')
+                      setAdvDescription('')
                     } catch {}
                   }} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#111827' }}>
                     <RNText style={{ color: '#fff', fontWeight: '700' }}>Save</RNText>

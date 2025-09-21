@@ -12,6 +12,7 @@ import { View } from 'react-native'
 import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
+import Markdown from 'react-native-markdown-display'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -220,6 +221,13 @@ export default function TemplateDetailsScreen() {
                                     <Text className="text-sm text-typography-900">{buildSignature(m)}</Text>
                                   </Box>
                                 </HStack>
+
+                                {/* Movement description (markdown) */}
+                                {m.description ? (
+                                  <Box className="p-3 rounded border border-border-200 bg-background-0">
+                                    <Markdown>{m.description}</Markdown>
+                                  </Box>
+                                ) : null}
 
                                 {/* Collapsible Video */}
                                 <Pressable onPress={() => toggleVideo(key)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
