@@ -449,6 +449,7 @@ export const useMyEnrollments = (userId?: string) => useQuery(QUERY_MY_ENROLLMEN
 export const useCreateAdHocWorkout = () => useMutation(MUTATION_CREATE_ADHOC_WORKOUT)
 export const useScheduleWorkout = () => useMutation(MUTATION_SCHEDULE_WORKOUT)
 export const useEnrollInProgram = () => useMutation(MUTATION_ENROLL_IN_PROGRAM)
+export const useEnrollUserInProgram = () => useMutation(MUTATION_ENROLL_USER_IN_PROGRAM)
 export const useUpdateEnrollmentStatus = () => useMutation(MUTATION_UPDATE_ENROLLMENT_STATUS)
 export const useDeletePracticeInstance = () => useMutation(MUTATION_DELETE_PRACTICE_INSTANCE)
 export const useCompleteWorkout = () => useMutation(MUTATION_COMPLETE_WORKOUT)

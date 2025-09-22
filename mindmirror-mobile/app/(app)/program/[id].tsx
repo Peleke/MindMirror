@@ -15,6 +15,8 @@ import { HStack } from '@/components/ui/hstack'
 import { View } from 'react-native'
 import { useToast } from '@/components/ui/toast'
 import { Toast, ToastTitle, ToastDescription } from '@/components/ui/toast'
+import { Input, InputField } from '@/components/ui/input'
+import Markdown from 'react-native-markdown-display'
 
 export default function ProgramDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -26,6 +28,7 @@ export default function ProgramDetailsScreen() {
   const { session } = useAuth()
   const enrollmentsQ = useMyEnrollments(session?.user?.id)
   const [showConfirmUnenroll, setShowConfirmUnenroll] = React.useState(false)
+  const [repeatCount, setRepeatCount] = React.useState('1')
   const { show, close } = useToast()
   const p = data?.program
 
@@ -55,12 +58,16 @@ export default function ProgramDetailsScreen() {
 
   const onEnroll = async () => {
     try {
-      await enrollProgram({ variables: { programId: p?.id_ }, refetchQueries: ['Programs', 'Enrollments', 'MyUpcomingPractices', 'TodaysWorkouts', 'TodaysSchedulables'], awaitRefetchQueries: true })
+      const input = {
+        programId: p?.id_,
+        repeatCount: parseInt(repeatCount) || 1
+      }
+      await enrollProgram({ variables: { input }, refetchQueries: ['Programs', 'Enrollments', 'MyUpcomingPractices', 'TodaysWorkouts', 'TodaysSchedulables'], awaitRefetchQueries: true })
       show({ placement: 'top', render: ({ id }) => (
         <Toast nativeID={`toast-${id}`} action="success" variant="solid">
           <VStack>
             <ToastTitle>Enrolled</ToastTitle>
-            <ToastDescription>Scheduled today’s workout. Updating your home…</ToastDescription>
+            <ToastDescription>Scheduled workouts for {repeatCount} cycle(s). Updating your home…</ToastDescription>
           </VStack>
         </Toast>
       )})
@@ -95,7 +102,11 @@ export default function ProgramDetailsScreen() {
               <>
                 <VStack space="xs">
                   <Text className="text-2xl font-bold text-typography-900 dark:text-white">{p.name}</Text>
-                  {p.description ? <Text className="text-typography-600 dark:text-gray-300">{p.description}</Text> : null}
+                  {p.description ? (
+                    <Box className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100">
+                      <Markdown>{p.description}</Markdown>
+                    </Box>
+                  ) : null}
                 </VStack>
 
                 <VStack space="sm">
@@ -118,6 +129,20 @@ export default function ProgramDetailsScreen() {
 
                 {/* Bottom actions */}
                 <VStack space="sm">
+                  {!isEnrolled && (
+                    <VStack space="xs">
+                      <Text className="text-typography-900 dark:text-white font-semibold">Repeat Count</Text>
+                      <Text className="text-typography-600 dark:text-gray-300 text-sm">How many times should this program cycle repeat?</Text>
+                      <Input className="bg-background-50 dark:bg-background-100">
+                        <InputField 
+                          placeholder="1" 
+                          value={repeatCount} 
+                          onChangeText={setRepeatCount}
+                          keyboardType="numeric"
+                        />
+                      </Input>
+                    </VStack>
+                  )}
                   {isEnrolled ? (
                     <Button className="w-full bg-transparent border border-red-300" onPress={() => setShowConfirmUnenroll(true)}>
                       <ButtonText className="text-red-700">Unenroll</ButtonText>

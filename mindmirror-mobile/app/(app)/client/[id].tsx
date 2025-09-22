@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useUserById, useTerminateCoachingForClient } from '@/services/api/users'
-import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useAssignProgramToClient, useUpdateEnrollmentStatus } from '@/services/api/practices'
+import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useEnrollUserInProgram, useUpdateEnrollmentStatus } from '@/services/api/practices'
 import GlobalFab from '@/components/common/GlobalFab'
 import { Alert, AlertIcon, AlertText } from '@/components/ui/alert'
 import { AlertCircleIcon } from 'lucide-react-native'
@@ -17,6 +17,7 @@ import { Badge, BadgeText } from '@/components/ui/badge'
 import { Button, ButtonText } from '@/components/ui/button'
 import { Pressable } from '@/components/ui/pressable'
 import { gql, useQuery } from '@apollo/client'
+import { Input, InputField } from '@/components/ui/input'
 
 export default function ClientProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -25,6 +26,7 @@ export default function ClientProfileScreen() {
   const [removing, setRemoving] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [assigningProgramId, setAssigningProgramId] = useState<string | null>(null)
   const [unassigningEnrollmentId, setUnassigningEnrollmentId] = useState<string | null>(null)
+  const [repeatCounts, setRepeatCounts] = useState<{[programId: string]: string}>({})
 
   const { data: clientData, loading: clientLoading, error: clientError, refetch: refetchClient } = useUserById(id || '')
   const { data: workoutsData, loading: workoutsLoading, error: workoutsError } = useWorkoutsForUser(
@@ -37,7 +39,7 @@ export default function ClientProfileScreen() {
   // Workouts programs and client enrollments
   const programsQ = useWorkoutPrograms()
   const enrollmentsQ = useMyEnrollments(id || '')
-  const [assignProgramToClient] = useAssignProgramToClient()
+  const [enrollUserInProgram] = useEnrollUserInProgram()
   const [updateEnrollmentStatus] = useUpdateEnrollmentStatus()
 
   const client = clientData?.userById
@@ -57,7 +59,12 @@ export default function ClientProfileScreen() {
     if (!id) return
     try {
       setAssigningProgramId(programId)
-      await assignProgramToClient({ variables: { programId, clientId: id, campaign: null } })
+      const input = {
+        programId,
+        userId: id,
+        repeatCount: parseInt(repeatCounts[programId] || '1') || 1
+      }
+      await enrollUserInProgram({ variables: { input } })
       await enrollmentsQ.refetch()
     } finally {
       setAssigningProgramId(null)
@@ -308,24 +315,39 @@ export default function ClientProfileScreen() {
                   ) : (
                     <VStack space="sm">
                       {programs.map((p: any) => (
-                        <HStack key={p.id_} className="items-center justify-between p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
-                          <VStack>
-                            <Text className="text-typography-900 dark:text-white font-medium">{p.name}</Text>
-                            {p.description ? (
-                              <Text className="text-typography-600 dark:text-gray-300 text-sm">{p.description}</Text>
-                            ) : null}
-                          </VStack>
-                          <Button
-                            size="sm"
-                            variant={activeProgramIds.has(p.id_) ? 'outline' : 'solid'}
-                            disabled={assigningProgramId === p.id_ || activeProgramIds.has(p.id_)}
-                            onPress={() => handleAssignProgram(p.id_)}
-                          >
-                            <ButtonText>
-                              {activeProgramIds.has(p.id_) ? 'Assigned' : (assigningProgramId === p.id_ ? 'Assigning…' : 'Assign')}
-                            </ButtonText>
-                          </Button>
-                        </HStack>
+                        <VStack key={p.id_} space="sm" className="p-3 rounded-lg border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
+                          <HStack className="items-center justify-between">
+                            <VStack className="flex-1">
+                              <Text className="text-typography-900 dark:text-white font-medium">{p.name}</Text>
+                              {p.description ? (
+                                <Text className="text-typography-600 dark:text-gray-300 text-sm">{p.description}</Text>
+                              ) : null}
+                            </VStack>
+                            <Button
+                              size="sm"
+                              variant={activeProgramIds.has(p.id_) ? 'outline' : 'solid'}
+                              disabled={assigningProgramId === p.id_ || activeProgramIds.has(p.id_)}
+                              onPress={() => handleAssignProgram(p.id_)}
+                            >
+                              <ButtonText>
+                                {activeProgramIds.has(p.id_) ? 'Assigned' : (assigningProgramId === p.id_ ? 'Assigning…' : 'Assign')}
+                              </ButtonText>
+                            </Button>
+                          </HStack>
+                          {!activeProgramIds.has(p.id_) && (
+                            <VStack space="xs">
+                              <Text className="text-typography-700 dark:text-white text-sm font-medium">Repeat Count</Text>
+                              <Input className="bg-background-0 dark:bg-background-50" size="sm">
+                                <InputField 
+                                  placeholder="1" 
+                                  value={repeatCounts[p.id_] || '1'} 
+                                  onChangeText={(value) => setRepeatCounts(prev => ({...prev, [p.id_]: value}))}
+                                  keyboardType="numeric"
+                                />
+                              </Input>
+                            </VStack>
+                          )}
+                        </VStack>
                       ))}
                     </VStack>
                   )}
