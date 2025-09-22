@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from users.web.config import Config
 
@@ -22,10 +23,14 @@ DB_ECHO = Config.DB_ECHO
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL, 
     echo=DB_ECHO,
-    pool_size=5,
-    max_overflow=0,
+    poolclass=NullPool,
     pool_pre_ping=True,
-    pool_recycle=3600
+    connect_args={
+        "timeout": 10,
+        "server_settings": {
+            "jit": "off",
+        }
+    }
 )
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
