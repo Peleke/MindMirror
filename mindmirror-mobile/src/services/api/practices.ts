@@ -17,10 +17,10 @@ export const QUERY_TODAYS_WORKOUTS = gql`
           id_
           name
           restDuration
-          videoUrl
           movement {
             id_
             name
+            description
             shortVideoUrl
             longVideoUrl
             difficulty
@@ -49,6 +49,7 @@ export const QUERY_SEARCH_MOVEMENTS = gql`
       bodyRegion
       equipment
       shortVideoUrl
+      description
     }
   }
 `
@@ -109,7 +110,7 @@ export const QUERY_PRACTICE_TEMPLATE = gql`
           movement {
             id_
             name
-            shortVideoUrl
+            description
             longVideoUrl
             difficulty
             bodyRegion

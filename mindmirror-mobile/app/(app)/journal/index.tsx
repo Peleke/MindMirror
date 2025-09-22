@@ -33,6 +33,7 @@ import { View } from 'react-native';
 import { useMutation } from '@apollo/client';
 import React from 'react';
 import { useTodaysSchedulables } from '@/services/api/users'
+import Markdown from 'react-native-markdown-display'
 import dayjs from 'dayjs'
 import { useTodaysWorkouts } from '@/services/api/practices'
 import { useDeletePracticeInstance } from '@/services/api/practices'
@@ -510,16 +511,21 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
                       <VStack space="sm">
                         <HStack space="sm" className="items-center">
                           <Icon as={Dumbbell} size="md" className="text-indigo-700 dark:text-indigo-300" />
-                          <Text className="text-lg font-semibold text-typography-900 dark:text-white">{it.name || 'Workout'}</Text>
+                          <Text className="text-lg font-semibold text-typography-900 dark:text-white">{(it.name || (todaysMap[it.entity_id || it.id_]?.title) || 'Workout')}</Text>
                           {!!it.level && (
                             <Box className="px-2 py-0.5 rounded-full bg-indigo-100 border border-indigo-200">
                               <Text className="text-xs text-indigo-700 font-semibold">{it.level}</Text>
                             </Box>
                           )}
                         </HStack>
-                        {!!it.description && (
-                          <Text className="text-typography-600 dark:text-gray-300">{it.description}</Text>
-                        )}
+                        {(() => {
+                          const desc = it.description || todaysMap[it.entity_id || it.id_]?.description || ''
+                          return desc ? (
+                            <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+                              <Markdown>{desc}</Markdown>
+                            </Box>
+                          ) : null
+                        })()}
                       </VStack>
                     </Box>
                   </Pressable>

@@ -10,6 +10,7 @@ import { AppBar } from '@/components/common/AppBar'
 import { useQuery } from '@apollo/client'
 import { LIST_PROGRAM_TEMPLATES, PROGRAM_ASSIGNMENTS } from '@/services/api/habits'
 import { useRouter } from 'expo-router'
+import Markdown from 'react-native-markdown-display'
 import { usePrograms as useWorkoutPrograms } from '@/services/api/practices'
 import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select'
 import GlobalFab from '@/components/common/GlobalFab'
@@ -90,7 +91,9 @@ export default function MarketplaceScreen() {
                           <VStack space="xs">
                             <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.name}</Text>
                             {p.description ? (
-                              <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                              <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+                                <Markdown>{p.description}</Markdown>
+                              </Box>
                             ) : null}
                           </VStack>
                           <VStack className="mt-3" space="xs">
@@ -120,7 +123,9 @@ export default function MarketplaceScreen() {
                           {p.subtitle ? (
                             <Text className="text-indigo-800/80 dark:text-indigo-300">{p.subtitle}</Text>
                           ) : p.description ? (
-                            <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                            <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+                              <Markdown>{p.description}</Markdown>
+                            </Box>
                           ) : null}
                         </VStack>
                         <VStack className="mt-3" space="xs">

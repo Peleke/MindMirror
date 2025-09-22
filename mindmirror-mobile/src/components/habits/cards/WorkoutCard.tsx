@@ -1,5 +1,6 @@
 import React from 'react'
 import { Pressable } from '@/components/ui/pressable'
+import Markdown from 'react-native-markdown-display'
 import { Box } from '@/components/ui/box'
 import { VStack } from '@/components/ui/vstack'
 import { HStack } from '@/components/ui/hstack'
@@ -43,7 +44,9 @@ export default function WorkoutCard({
             )}
           </HStack>
           {!!task.description && (
-            <Text className="text-typography-600 dark:text-gray-300">{task.description}</Text>
+            <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+              <Markdown>{task.description}</Markdown>
+            </Box>
           )}
           {task.enrollment_id && onDefer && (
             <HStack className="justify-end">

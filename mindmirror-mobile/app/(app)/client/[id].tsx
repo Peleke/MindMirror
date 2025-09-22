@@ -6,6 +6,7 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { AppBar } from '@/components/common/AppBar'
+import Markdown from 'react-native-markdown-display'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useUserById, useTerminateCoachingForClient } from '@/services/api/users'
 import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useEnrollUserInProgram, useUpdateEnrollmentStatus } from '@/services/api/practices'
@@ -277,9 +278,9 @@ export default function ClientProfileScreen() {
                               </Text>
                             </HStack>
                             {workout.description && (
-                              <Text className="text-typography-600 dark:text-gray-300 text-sm">
-                                {workout.description}
-                              </Text>
+                              <Box className="rounded border border-border-200 bg-white/60 dark:bg-background-50 p-2">
+                                <Markdown>{workout.description}</Markdown>
+                              </Box>
                             )}
                             <HStack className="items-center justify-between">
                               <Badge variant="solid" className="bg-green-100 border-green-200">

@@ -15,6 +15,7 @@ import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
 import { Video, ResizeMode } from 'expo-av'
+import { MovementThumb, resolveMovementMedia, MovementDescription } from '@/components/workouts/MovementMedia'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -69,6 +70,8 @@ export default function WorkoutDetailsScreen() {
   const [deferOpen, setDeferOpen] = useState(false)
   const [videoOpenByKey, setVideoOpenByKey] = useState<Record<string, boolean>>({})
   const [descOpenByKey, setDescOpenByKey] = useState<Record<string, boolean>>({})
+  const [notesOpen, setNotesOpen] = useState<boolean>(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false)
   const toggleVideoFor = (key: string) => setVideoOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
   const toggleDescFor = (key: string) => setDescOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
 
@@ -217,35 +220,8 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-600">{videoOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
         </Pressable>
         {videoOpenByKey[`${pIdx}-${mIdx}`] ? (() => {
-          const imgUrl = m.imageUrl || m.gifUrl
-          const vidUrl = m.shortVideoUrl || m.longVideoUrl || m.videoUrl
-          if (typeof imgUrl === 'string' && /\.(png|jpg|jpeg|gif)$/i.test(imgUrl)) {
-            return (
-              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
-                <Image source={{ uri: imgUrl }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
-              </Box>
-            )
-          }
-          if (typeof vidUrl === 'string' && /\.mp4$/i.test(vidUrl)) {
-            return (
-              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
-                <Video
-                  style={{ width: '100%', height: '100%' }}
-                  source={{ uri: vidUrl }}
-                  useNativeControls
-                  resizeMode={ResizeMode.COVER}
-                />
-              </Box>
-            )
-          }
-          if (typeof vidUrl === 'string' && (vidUrl.includes('youtube.com') || vidUrl.includes('youtu.be'))) {
-            return <YouTubeEmbed url={vidUrl} />
-          }
-          return (
-            <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
-              <Text className="text-typography-500">No preview</Text>
-            </Box>
-          )
+          const { imageUrl, videoUrl } = resolveMovementMedia(m)
+          return <MovementThumb imageUrl={imageUrl} videoUrl={videoUrl} />
         })() : null}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
@@ -304,7 +280,7 @@ export default function WorkoutDetailsScreen() {
           ))}
         </VStack>
         {/* Collapsible description */}
-        {m.description ? (
+        {(m.description || m?.movement?.description || m?.movement?.movement?.description) ? (
           <>
             <Box className="h-2" />
             <Pressable onPress={() => toggleDescFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
@@ -312,17 +288,11 @@ export default function WorkoutDetailsScreen() {
               <Text className="text-typography-600">{descOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
             </Pressable>
             {descOpenByKey[`${pIdx}-${mIdx}`] ? (
-              <Box className="p-2 rounded border border-border-200 bg-background-50 dark:bg-background-100">
-                <Markdown>{m.description}</Markdown>
-              </Box>
+              <MovementDescription description={(m.description || m?.movement?.description || m?.movement?.movement?.description) as string} />
             ) : null}
           </>
         ) : null}
-        {m.description ? (
-          <Box className="mt-3 p-3 rounded border border-border-200 bg-background-50">
-            <Markdown>{m.description}</Markdown>
-          </Box>
-        ) : null}
+        {/* Removed duplicate always-on description block to keep only collapsible */}
         <Box className="h-2" />
         <Pressable className="self-start px-3 py-1 rounded border border-border-200 bg-background-50" onPress={() => addSetToMovement(pIdx, mIdx)}>
           <Text className="text-typography-700 text-xs">+ Add Set</Text>
@@ -350,9 +320,7 @@ export default function WorkoutDetailsScreen() {
     <SafeAreaView>
       <VStack className="h-full w-full bg-background-0">
         <AppBar title="Workout" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
-        <Pressable className="absolute top-0 right-0 p-2" onPress={handleDelete}>
-          <Text className="text-red-600">Delete</Text>
-        </Pressable>
+        {/* Delete moved to bottom with confirm modal */}
 
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto">
@@ -394,7 +362,22 @@ export default function WorkoutDetailsScreen() {
                   </VStack>
                   <Box className="h-3" />
                   <Text className="text-xs text-typography-500">Notes</Text>
-                  <Text className="text-sm text-typography-900">{workout?.description || '—'}</Text>
+                  {workout?.description ? (
+                    <>
+                      <Box className="h-1" />
+                      <Pressable onPress={() => setNotesOpen((o) => !o)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                        <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+                        <Text className="text-typography-600">{notesOpen ? '−' : '+'}</Text>
+                      </Pressable>
+                      {notesOpen ? (
+                        <Box className="mt-2 p-3 rounded border border-border-200 bg-background-50">
+                          <Markdown>{workout.description}</Markdown>
+                        </Box>
+                      ) : null}
+                    </>
+                  ) : (
+                    <Text className="text-sm text-typography-900">—</Text>
+                  )}
                 </VStack>
               </Box>
             </VStack>
@@ -420,11 +403,19 @@ export default function WorkoutDetailsScreen() {
               ))}
             </VStack>
 
-            {/* Complete Workout */}
+            {/* Complete / Delete */}
             <VStack className="px-6 pb-20">
               <Pressable className="px-4 py-3 rounded-xl border border-border-200 bg-indigo-50" onPress={onCompleteWorkout}>
                 <Text className="text-indigo-700 text-center font-semibold">Complete Workout</Text>
               </Pressable>
+              {!enrollmentId ? (
+                <>
+                  <Box className="h-3" />
+                  <Pressable className="px-4 py-3 rounded-xl border border-red-200 bg-red-50" onPress={() => setDeleteConfirmOpen(true)}>
+                    <Text className="text-red-700 text-center font-semibold">Delete Workout</Text>
+                  </Pressable>
+                </>
+              ) : null}
             </VStack>
           </VStack>
         </ScrollView>
@@ -463,6 +454,24 @@ export default function WorkoutDetailsScreen() {
             <Pressable onPress={() => setDeferOpen(false)} style={{ paddingVertical: 12 }}>
               <Text style={{ color: '#ef4444', fontWeight: '600' }}>Cancel</Text>
             </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm Delete modal */}
+      <Modal visible={!!deleteConfirmOpen} transparent animationType="fade" onRequestClose={() => setDeleteConfirmOpen(false)}>
+        <Pressable onPress={() => setDeleteConfirmOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+            <Text className="text-typography-900" style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Delete Workout</Text>
+            <Text className="text-typography-700" style={{ marginBottom: 12 }}>Are you sure you want to delete this workout?</Text>
+            <VStack className="flex-row items-center justify-end" style={{ gap: 12 }}>
+              <Pressable onPress={() => setDeleteConfirmOpen(false)} className="px-4 py-2 rounded-lg border border-border-200 bg-background-50">
+                <Text className="text-typography-900">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={async () => { try { await deletePracticeInstance({ variables: { id: workoutId } }); setDeleteConfirmOpen(false); apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES] }); router.replace('/journal') } catch {} }} className="px-4 py-2 rounded-lg border border-red-200 bg-red-50">
+                <Text className="text-red-700 font-semibold">Delete</Text>
+              </Pressable>
+            </VStack>
           </View>
         </Pressable>
       </Modal>

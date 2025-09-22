@@ -3,6 +3,7 @@ import { Pressable } from '@/components/ui/pressable'
 import { Box } from '@/components/ui/box'
 import { VStack } from '@/components/ui/vstack'
 import { HStack } from '@/components/ui/hstack'
+import Markdown from 'react-native-markdown-display'
 import { Icon } from '@/components/ui/icon'
 import { Text } from '@/components/ui/text'
 import { Button, ButtonText } from '@/components/ui/button'
@@ -25,7 +26,9 @@ export default function HabitCard({ task, onRespond, onPress }: { task: HabitTas
               <Icon as={Heart} size="md" className={isClassic ? 'text-teal-700 dark:text-teal-300' : 'text-primary-700 dark:text-primary-300'} />
               <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
             </HStack>
-            <Text className="text-typography-600 dark:text-gray-300">{(task as any).subtitle || task.description || ''}</Text>
+            <Box className="rounded border border-border-200 bg-white/60 dark:bg-background-50 p-2">
+              <Markdown>{String((task as any).subtitle || task.description || '')}</Markdown>
+            </Box>
             <HStack className="justify-between" space="sm">
               {isClassic ? (
                 <>

@@ -13,6 +13,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { PROGRAM_ASSIGNMENTS, LIST_PROGRAM_TEMPLATES, RECENT_LESSON_COMPLETIONS } from '@/services/api/habits'
 import { Pressable } from '@/components/ui/pressable'
 import { useRouter } from 'expo-router'
+import Markdown from 'react-native-markdown-display'
 import GlobalFab from '@/components/common/GlobalFab'
 import { usePrograms as useWorkoutPrograms, useMyEnrollments, useAssignProgramToClient } from '@/services/api/practices'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -222,7 +223,9 @@ export default function ProgramsAndResourcesScreen() {
                         {p.subtitle ? (
                           <Text className="text-indigo-800/80 dark:text-indigo-300">{p.subtitle}</Text>
                         ) : p.description ? (
-                          <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                          <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+                            <Markdown>{p.description}</Markdown>
+                          </Box>
                         ) : null}
                         <Text className="self-start px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-green-200 text-green-700 shadow-sm dark:bg-green-900 dark:border-green-700 dark:text-green-100">Enrolled</Text>
                       </VStack>
