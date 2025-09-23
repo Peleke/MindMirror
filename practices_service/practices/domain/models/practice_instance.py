@@ -88,4 +88,5 @@ class DomainPracticeInstance(BaseModel):
     completed_at: Optional[date] = None
     user_id: Optional[UUID] = None
     template_id: Optional[UUID] = None
+    enrollment_id: Optional[UUID] = None
     prescriptions: List[DomainPrescriptionInstance] = []

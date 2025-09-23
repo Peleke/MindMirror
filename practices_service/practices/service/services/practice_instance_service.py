@@ -11,9 +11,9 @@ class PracticeInstanceService:
         self.repository = repository
 
     async def create_instance_from_template(
-        self, template_id: UUID, user_id: UUID, date: date
+        self, template_id: UUID, user_id: UUID, date: date, enrollment_id: Optional[UUID] = None
     ) -> DomainPracticeInstance:
-        return await self.repository.create_instance_from_template(template_id, user_id, date)
+        return await self.repository.create_instance_from_template(template_id, user_id, date, enrollment_id)
 
     async def create_standalone_instance(self, instance_data: Dict[str, Any]) -> DomainPracticeInstance:
         return await self.repository.create_standalone_instance(instance_data)

@@ -81,10 +81,14 @@ export default function ProgramDetailsScreen() {
       const en = rows.find((e: any) => e.program_id === p?.id_ && (e.status || '').toLowerCase() === 'active')
       if (en?.id_) {
         await updateEnrollmentStatus({ variables: { enrollmentId: en.id_, status: 'CANCELLED' },
-          refetchQueries: ['Enrollments', 'Programs', 'Program', 'MyUpcomingPractices', 'Workouts', 'TodaysWorkouts'], awaitRefetchQueries: true })
+          refetchQueries: ['Enrollments', 'Programs', 'Program', 'MyUpcomingPractices', 'Workouts', 'TodaysWorkouts', 'TodaysSchedulables'], awaitRefetchQueries: true })
       }
       setShowConfirmUnenroll(false)
-      router.replace('/programs?reload=1')
+      // Force home and programs to refresh immediately
+      setTimeout(() => {
+        router.replace('/journal?reload=1')
+        setTimeout(() => router.replace('/programs?reload=1'), 150)
+      }, 50)
     } catch {}
   }
 

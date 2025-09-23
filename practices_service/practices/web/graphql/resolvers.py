@@ -507,13 +507,7 @@ class Query(EnrollmentQuery):
         instances = await service.list_instances_for_user(UUID(user_id))
         return [convert_practice_instance_to_gql(i) for i in instances]
 
-    @strawberry.field
-    async def practice_instance(self, info: Info, id: strawberry.ID) -> Optional[PracticeInstanceType]:
-        uow: UnitOfWork = info.context["uow"]
-        repo = PracticeInstanceRepository(uow.session)
-        service = PracticeInstanceService(repo)
-        instance = await service.get_instance_by_id(UUID(id))
-        return convert_practice_instance_to_gql(instance) if instance else None
+    # removed duplicate practice_instance resolver (auth-less version); keep the auth-checked one below
 
     @strawberry.field
     async def programs(self, info: Info) -> List[ProgramType]:
@@ -954,7 +948,7 @@ class Mutation(EnrollmentMutation):
 
     @strawberry.mutation(name="scheduleWorkout")
     async def schedule_workout(
-        self, info: Info, template_id: strawberry.ID, date: date
+        self, info: Info, template_id: strawberry.ID, date: date, enrollmentId: Optional[strawberry.ID] = None
     ) -> PracticeInstanceType:
         uow: UnitOfWork = info.context["uow"]
         current_user = get_current_user_from_info(info)
@@ -963,7 +957,8 @@ class Mutation(EnrollmentMutation):
         repo = PracticeInstanceRepository(uow.session)
         service = PracticeInstanceService(repo)
         async with uow:
-            instance = await service.create_instance_from_template(UUID(template_id), current_user.id, date)
+            enrollment_uuid = UUID(str(enrollmentId)) if enrollmentId else None
+            instance = await service.create_instance_from_template(UUID(template_id), current_user.id, date, enrollment_uuid)
             refreshed = await service.get_instance_by_id(instance.id_)
         return convert_practice_instance_to_gql(refreshed)
 

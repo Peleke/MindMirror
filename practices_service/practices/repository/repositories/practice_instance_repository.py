@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,11 +18,32 @@ from practices.repository.models import (
     SetTemplateModel,
 )
 from practices.repository.models.program import ProgramPracticeLinkModel
+from practices.repository.models.enrollment import ProgramEnrollmentModel, EnrollmentStatus
 
 
 class PracticeInstanceRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def _apply_enrollment_visibility_filter(self, stmt):
+        """Apply visibility rules for practice instances based on enrollment status.
+
+        - Always include ad-hoc instances (enrollment_id IS NULL)
+        - Always include past-dated instances (historical record)
+        - For today/future, include only instances linked to ACTIVE enrollments
+        """
+        active_enrollments_subq = (
+            select(ProgramEnrollmentModel.id_)
+            .where(ProgramEnrollmentModel.status == EnrollmentStatus.ACTIVE)
+        )
+        today = date.today()
+        return stmt.where(
+            or_(
+                PracticeInstanceModel.enrollment_id.is_(None),
+                PracticeInstanceModel.date < today,
+                PracticeInstanceModel.enrollment_id.in_(active_enrollments_subq),
+            )
+        )
 
     def _model_to_dict(self, model: PracticeInstanceModel) -> Dict[str, Any]:
         result = {
@@ -37,6 +58,7 @@ class PracticeInstanceRepository:
             "notes": model.notes,
             "user_id": model.user_id,
             "template_id": model.template_id,
+            "enrollment_id": model.enrollment_id,
             "prescriptions": [],
         }
 
@@ -109,6 +131,7 @@ class PracticeInstanceRepository:
             notes=instance_data.get("notes"),
             user_id=instance_data.get("user_id"),
             template_id=instance_data.get("template_id"),
+            enrollment_id=instance_data.get("enrollment_id"),
         )
         self.session.add(new_instance)
         await self.session.flush()
@@ -179,7 +202,7 @@ class PracticeInstanceRepository:
         return DomainPracticeInstance.model_validate(instance_dict)
 
     async def create_instance_from_template(
-        self, template_id: uuid.UUID, user_id: uuid.UUID, date: date
+        self, template_id: uuid.UUID, user_id: uuid.UUID, date: date, enrollment_id: Optional[uuid.UUID] = None
     ) -> DomainPracticeInstance:
         # 1. Fetch the full template
         stmt = (
@@ -204,6 +227,7 @@ class PracticeInstanceRepository:
             "duration": template.duration,
             "user_id": user_id,
             "template_id": template.id_,
+            "enrollment_id": enrollment_id,
             "date": date,
             "prescriptions": [],
         }
@@ -279,6 +303,7 @@ class PracticeInstanceRepository:
                 .selectinload(MovementInstanceModel.sets)
             )
         )
+        stmt = self._apply_enrollment_visibility_filter(stmt)
         result = await self.session.execute(stmt)
         records = result.scalars().all()
         return [DomainPracticeInstance.model_validate(self._model_to_dict(rec)) for rec in records]
@@ -321,6 +346,7 @@ class PracticeInstanceRepository:
             elif s == "missed":
                 stmt = stmt.where(PracticeInstanceModel.completed_at.is_(None)).where(PracticeInstanceModel.date < today)
 
+        stmt = self._apply_enrollment_visibility_filter(stmt)
         result = await self.session.execute(stmt)
         records = result.scalars().all()
         return [DomainPracticeInstance.model_validate(self._model_to_dict(rec)) for rec in records]
@@ -361,6 +387,7 @@ class PracticeInstanceRepository:
             elif s == "missed":
                 stmt = stmt.where(PracticeInstanceModel.completed_at.is_(None)).where(PracticeInstanceModel.date < today)
 
+        stmt = self._apply_enrollment_visibility_filter(stmt)
         result = await self.session.execute(stmt)
         records = result.scalars().all()
         return [DomainPracticeInstance.model_validate(self._model_to_dict(rec)) for rec in records]

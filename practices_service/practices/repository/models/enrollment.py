@@ -57,6 +57,12 @@ class ProgramEnrollmentModel(Base):
         cascade="all, delete-orphan",
         order_by="ScheduledPracticeModel.scheduled_date",
     )
+    
+    practice_instances: Mapped[List["PracticeInstanceModel"]] = relationship(
+        "PracticeInstanceModel",
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<ProgramEnrollmentModel(program_id='{self.program_id}', user_id='{self.user_id}', status='{self.status.value}')>"

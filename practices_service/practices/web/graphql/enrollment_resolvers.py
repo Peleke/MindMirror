@@ -190,13 +190,14 @@ class EnrollmentQuery:
         async with uow:
             enrollment_repo = EnrollmentRepository(uow.session)
             enrollments = await enrollment_repo.get_enrollments_for_user(current_user.id)
-            enrollment_ids = [e.id_ for e in enrollments]
+            # Only include ACTIVE enrollments for upcoming practices
+            active_enrollment_ids = [e.id_ for e in enrollments if e.status.name == "ACTIVE"]
 
-            if not enrollment_ids:
+            if not active_enrollment_ids:
                 return []
 
             progress_repo = ScheduledPracticeRepository(uow.session)
-            upcoming_practices = await progress_repo.list(enrollment_ids=enrollment_ids, from_date=date.today())
+            upcoming_practices = await progress_repo.list(enrollment_ids=active_enrollment_ids, from_date=date.today())
             return [to_gql_scheduled_practice(p) for p in upcoming_practices]
 
     @strawberry.field
@@ -402,6 +403,12 @@ class EnrollmentMutation:
         async with uow:
             repo = EnrollmentRepository(uow.session)
             service = EnrollmentService(repo)
+            # Avoid duplicate active enrollments for the same program: short-circuit
+            existing = await repo.get_enrollments_for_user(current_user.id)
+            if any(e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE" for e in existing):
+                # Reuse existing enrollment; skip scheduling to prevent duplication
+                domain_enrollment = next(e for e in existing if e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE")
+                return to_gql_enrollment(domain_enrollment)
             domain_enrollment = await service.enroll_user(
                 program_id=uuid.UUID(str(input.program_id)),
                 user_to_enroll_id=current_user.id,
@@ -464,8 +471,16 @@ class EnrollmentMutation:
                                 template_id=current_link.practice_template_id,
                                 user_id=current_user.id,
                                 date=current_date,
+                                enrollment_id=enrollment_model.id_,
                             )
                             scheduled.practice_instance_id = new_instance.id_
+                        else:
+                            # Link the existing instance to this scheduled practice
+                            # Also ensure the instance is associated to this enrollment for proper cascade behavior
+                            if existing.enrollment_id is None or existing.enrollment_id != enrollment_model.id_:
+                                existing.enrollment_id = enrollment_model.id_
+                                await uow.session.flush()
+                            scheduled.practice_instance_id = existing.id_
 
                         # Advance link and date by this link's interval
                         link_index = (link_index + 1) % len(ordered_links)
@@ -608,22 +623,57 @@ class EnrollmentMutation:
             # Cascade cleanup when cancelling enrollment
             if status.value == "CANCELLED":
                 scheduled_practice_repo = ScheduledPracticeRepository(uow.session)
-                await scheduled_practice_repo.delete_for_enrollments_from_date([enrollment_uuid], from_date=date.today())
-
-                # Delete future uncompleted practice instances for templates in this program
-                from sqlalchemy import delete
+                from sqlalchemy import delete, update
                 from practices.repository.models.practice_instance import PracticeInstanceModel
-                program_repo = ProgramRepository(uow.session)
-                prog = await program_repo.get_program_by_id(updated_enrollment.program_id)
-                template_ids = [pl.practice_id for pl in (prog.practice_links or [])]
-                if template_ids:
+                from practices.repository.models.enrollment import ProgramEnrollmentModel
+                from practices.domain.models.enrollment import EnrollmentStatus
+                
+                # Step 1: Find ALL active enrollments for this user+program 
+                all_user_enrollments = await enrollment_repo.get_enrollments_for_user(updated_enrollment.user_id)
+                all_program_enrollment_ids = [
+                    e.id_ for e in all_user_enrollments 
+                    if e.program_id == updated_enrollment.program_id and e.status.name == "ACTIVE"
+                ]
+                
+                # Step 2: Cancel ALL other active enrollments for this program (without triggering cascade)
+                if len(all_program_enrollment_ids) > 1:
+                    other_enrollment_ids = [eid for eid in all_program_enrollment_ids if eid != enrollment_uuid]
+                    if other_enrollment_ids:
+                        await uow.session.execute(
+                            update(ProgramEnrollmentModel)
+                            .where(ProgramEnrollmentModel.id_.in_(other_enrollment_ids))
+                            .values(status=EnrollmentStatus.CANCELLED)
+                        )
+                
+                # Step 3a: Backfill enrollment_id on legacy instances linked via scheduled_practices
+                if all_program_enrollment_ids:
+                    from practices.repository.models.progress import ScheduledPracticeModel
+                    from sqlalchemy import update as sql_update
+
+                    # Link instances to enrollments where scheduled_practices already reference them
+                    await uow.session.execute(
+                        sql_update(PracticeInstanceModel)
+                        .where(PracticeInstanceModel.enrollment_id.is_(None))
+                        .where(PracticeInstanceModel.id_.in_(
+                            select(ScheduledPracticeModel.practice_instance_id)
+                            .where(ScheduledPracticeModel.enrollment_id.in_(all_program_enrollment_ids))
+                            .where(ScheduledPracticeModel.practice_instance_id.is_not(None))
+                        ))
+                        .values(enrollment_id=select(ScheduledPracticeModel.enrollment_id)
+                                .where(ScheduledPracticeModel.practice_instance_id == PracticeInstanceModel.id_)
+                                .limit(1))
+                    )
+
+                    # Step 3b: Delete practice instances by enrollment_id (future, incomplete)
                     await uow.session.execute(
                         delete(PracticeInstanceModel)
-                        .where(PracticeInstanceModel.user_id == updated_enrollment.user_id)
-                        .where(PracticeInstanceModel.template_id.in_(template_ids))
+                        .where(PracticeInstanceModel.enrollment_id.in_(all_program_enrollment_ids))
                         .where(PracticeInstanceModel.date >= date.today())
                         .where(PracticeInstanceModel.completed_at.is_(None))
                     )
+                
+                # Step 4: Delete the scheduled practices themselves
+                await scheduled_practice_repo.delete_for_enrollments_from_date(all_program_enrollment_ids, from_date=date.today())
 
             return to_gql_enrollment(updated_enrollment)
 

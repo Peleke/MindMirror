@@ -93,6 +93,7 @@ class PracticeInstanceType:
     date: date
     user_id: strawberry.ID
     template_id: Optional[strawberry.ID] = None
+    enrollment_id: Optional[strawberry.ID] = None
     description: Optional[str] = None
     duration: Optional[float] = None
     notes: Optional[str] = None

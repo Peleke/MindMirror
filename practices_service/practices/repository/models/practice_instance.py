@@ -41,9 +41,17 @@ class PracticeInstanceModel(Base):
         ForeignKey("practices.practice_templates.id", ondelete="SET NULL"),
         nullable=True,
     )
+    enrollment_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID,
+        ForeignKey("practices.program_enrollments.id", ondelete="CASCADE"),
+        nullable=True,
+    )
 
     template: Mapped[Optional["PracticeTemplateModel"]] = relationship(
         "PracticeTemplateModel", back_populates="instances"
+    )
+    enrollment: Mapped[Optional["ProgramEnrollmentModel"]] = relationship(
+        "ProgramEnrollmentModel", back_populates="practice_instances"
     )
     prescriptions: Mapped[List["PrescriptionInstanceModel"]] = relationship(
         "PrescriptionInstanceModel",
