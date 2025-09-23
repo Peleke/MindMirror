@@ -8,34 +8,59 @@ import { ScrollView } from '@/components/ui/scroll-view'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { usePracticeTemplate, useMovementTemplate, useSearchMovements } from '@/services/api/practices'
 import { Pressable } from '@/components/ui/pressable'
-import { View } from 'react-native'
+import { View, Platform } from 'react-native'
+import { useVideoPlayer, VideoView } from 'expo-video'
 import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
 import Markdown from 'react-native-markdown-display'
+import { MovementDescription } from '@/components/workouts/MovementMedia'
 
-function YouTubeEmbed({ url }: { url: string }) {
-  const vid = React.useMemo(() => {
+function VideoPreview({ url }: { url: string }) {
+  const videoUrl = (url || '').trim()
+  if (!videoUrl) return (
+    <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
+      <Text className="text-typography-500">No preview</Text>
+    </Box>
+  )
+  const isMp4 = /\.mp4$/i.test(videoUrl)
+  if (isMp4) {
+    const player = useVideoPlayer(videoUrl, (p) => { p.loop = false })
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+      </Box>
+    )
+  }
+  // YouTube/Vimeo embeds
+  const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(videoUrl)
+  const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(videoUrl)
+  let embedUrl = videoUrl
+  if (isYouTube) {
     try {
-      const u = new URL(url)
-      if (u.hostname.includes('youtube.com')) {
-        const v = u.searchParams.get('v')
-        if (v) return v
-        const parts = u.pathname.split('/')
-        const idx = parts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'watch')
-        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1]
-      }
-      if (u.hostname.includes('youtu.be')) {
-        return u.pathname.replace('/', '')
+      const u = new URL(videoUrl)
+      const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+      if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+    } catch {}
+  } else if (isVimeo) {
+    try {
+      if (!/player\.vimeo\.com\/video\//i.test(videoUrl)) {
+        const m = videoUrl.match(/vimeo\.com\/(\d+)/i)
+        if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
       }
     } catch {}
-    return null
-  }, [url])
-  if (!vid) return null
-  const src = `https://www.youtube.com/embed/${vid}?playsinline=1`
+  }
+  if (Platform.OS === 'web') {
+    return (
+      <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        {/* eslint-disable-next-line react/no-unknown-property */}
+        <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+      </Box>
+    )
+  }
   return (
-    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
-      <WebView source={{ uri: src }} allowsInlineMediaPlayback javaScriptEnabled />
+    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+      <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
     </Box>
   )
 }
@@ -46,7 +71,7 @@ function FallbackYouTube({ name, primaryUrl }: { name: string; primaryUrl?: stri
     return primaryUrl || search.data?.searchMovements?.[0]?.shortVideoUrl || null
   }, [primaryUrl, search.data?.searchMovements])
   if (!url) return null
-  return <YouTubeEmbed url={url} />
+  return <VideoPreview url={url} />
 }
 
 function formatUnit(unit?: string | null) {
@@ -115,14 +140,14 @@ function DetailsTable({ movement }: { movement?: any }) {
 }
 
 function buildSignature(m: any): string {
-  const setsCount = m.prescribed_sets || (m.sets?.length || 0)
-  const repsList = Array.isArray(m.sets) ? m.sets.map((s: any) => (typeof s.reps === 'number' ? s.reps : undefined)).filter((n: any) => typeof n === 'number') : []
-  const reps = repsList.length ? Math.min(...repsList) : undefined
-  const first = Array.isArray(m.sets) && m.sets.length ? m.sets[0] : undefined
+  const setsList: any[] = Array.isArray(m.sets) ? m.sets : []
+  const setsCount = setsList.length
+  const first = setsList[0]
+  const firstReps = typeof first?.reps === 'number' ? first.reps : undefined
   const load = first ? formatLoad(first.load_value, first.load_unit) : undefined
-  const rest = typeof (first?.rest_duration) === 'number' ? `${first.rest_duration}s` : (typeof m.rest_duration === 'number' ? `${m.rest_duration}s` : undefined)
+  const rest = typeof first?.rest_duration === 'number' ? `${first.rest_duration}s` : undefined
   const parts: string[] = []
-  if (setsCount && reps) parts.push(`${setsCount} x ${reps}`)
+  if (setsCount && typeof firstReps === 'number') parts.push(`${setsCount} x ${firstReps}`)
   else if (setsCount) parts.push(`${setsCount} sets`)
   if (load && load !== '—') parts.push(load)
   if (rest) parts.push(rest)
@@ -130,16 +155,9 @@ function buildSignature(m: any): string {
 }
 
 function buildDisplayRows(m: any): any[] {
+  // Show only actual set templates defined for this movement
   const base: any[] = Array.isArray(m?.sets) ? m.sets : []
-  const prescribed: number = typeof m?.prescribed_sets === 'number' ? m.prescribed_sets : base.length
-  if (!prescribed) return base
-  if (base.length >= prescribed) return base
-  const rows = [...base]
-  const seed = base[base.length - 1] || { reps: undefined, duration: undefined, rest_duration: m?.rest_duration, load_value: undefined, load_unit: undefined }
-  while (rows.length < prescribed) {
-    rows.push({ ...seed, __synthetic: true })
-  }
-  return rows.map((r, i) => ({ ...r, __idx: i }))
+  return base
 }
 
 export default function TemplateDetailsScreen() {
@@ -153,12 +171,15 @@ export default function TemplateDetailsScreen() {
   // Fallback lookup if federation fails to supply movement
   const fallbackSearch = useSearchMovements(mt?.name || '', 1)
   const fallbackMovement = React.useMemo(() => mt?.movement || fallbackSearch.data?.searchMovements?.[0], [mt?.movement, fallbackSearch.data?.searchMovements])
-  const bestVideoUrl = mt?.movement?.shortVideoUrl || mt?.video_url || fallbackMovement?.shortVideoUrl || null
+  const bestVideoUrl = mt?.movement?.shortVideoUrl || mt?.movement?.longVideoUrl || (mt as any)?.video_url || (mt as any)?.videoUrl || fallbackMovement?.shortVideoUrl || fallbackMovement?.longVideoUrl || null
 
   const [videoOpenById, setVideoOpenById] = React.useState<Record<string, boolean>>({})
   const [setsOpenById, setSetsOpenById] = React.useState<Record<string, boolean>>({})
+  const [descOpenById, setDescOpenById] = React.useState<Record<string, boolean>>({})
+  const [notesOpen, setNotesOpen] = React.useState<boolean>(false)
   const toggleVideo = (key: string) => setVideoOpenById((prev) => ({ ...prev, [key]: !prev[key] }))
   const toggleSets = (key: string) => setSetsOpenById((prev) => ({ ...prev, [key]: !prev[key] }))
+  const toggleDesc = (key: string) => setDescOpenById((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -180,7 +201,48 @@ export default function TemplateDetailsScreen() {
               <>
                 <VStack space="xs">
                   <Text className="text-2xl font-bold text-typography-900 dark:text-white">{t.title}</Text>
-                  {t.description ? <Text className="text-typography-600 dark:text-gray-300">{t.description}</Text> : null}
+                </VStack>
+
+                {/* Summary + Notes panel to mirror workout detail */}
+                <VStack className="rounded-2xl border border-border-200 bg-white dark:bg-background-100">
+                  <VStack className="p-4">
+                    <VStack className="flex-row">
+                      <Box className="flex-1">
+                        <Text className="text-xs text-typography-500">Blocks</Text>
+                        <Text className="text-sm font-semibold text-typography-900">{(() => { const ps = Array.isArray(t?.prescriptions) ? t!.prescriptions : []; return ps.length })()}</Text>
+                      </Box>
+                      <Box className="flex-1">
+                        <Text className="text-xs text-typography-500">Movements</Text>
+                        <Text className="text-sm font-semibold text-typography-900">{(() => { const ps: any[] = Array.isArray(t?.prescriptions) ? t!.prescriptions : []; let mv = 0; ps.forEach((p: any) => { mv += (Array.isArray(p?.movements) ? p.movements.length : 0) }); return mv })()}</Text>
+                      </Box>
+                      <Box className="flex-1">
+                        <Text className="text-xs text-typography-500">Sets</Text>
+                        <Text className="text-sm font-semibold text-typography-900">{(() => { const ps: any[] = Array.isArray(t?.prescriptions) ? t!.prescriptions : []; let st = 0; ps.forEach((p: any) => { (Array.isArray(p?.movements) ? p.movements : []).forEach((m: any) => { st += (Array.isArray(m?.sets) ? m.sets.length : (typeof m?.prescribed_sets === 'number' ? m.prescribed_sets : 0)) }) }); return st })()}</Text>
+                      </Box>
+                      <Box className="flex-1">
+                        <Text className="text-xs text-typography-500">Duration</Text>
+                        <Text className="text-sm font-semibold text-typography-900">{typeof t.duration === 'number' ? `${t.duration} min` : '—'}</Text>
+                      </Box>
+                    </VStack>
+                    <Box className="h-3" />
+                    <Text className="text-xs text-typography-500">Notes</Text>
+                    {t.description ? (
+                      <>
+                        <Box className="h-1" />
+                        <Pressable onPress={() => setNotesOpen((o) => !o)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                          <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+                          <Text className="text-typography-600">{notesOpen ? '−' : '+'}</Text>
+                        </Pressable>
+                        {notesOpen ? (
+                          <Box className="mt-2 p-3 rounded border border-border-200 bg-background-50">
+                            <Markdown>{t.description}</Markdown>
+                          </Box>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Text className="text-sm text-typography-900">—</Text>
+                    )}
+                  </VStack>
                 </VStack>
 
                 <VStack space="md">
@@ -201,7 +263,7 @@ export default function TemplateDetailsScreen() {
                         </Text>
                       ) : (
                         (p.movements || []).map((m: any, mi: number) => {
-                          const preferredUrl = m.movement?.shortVideoUrl || m.video_url || null
+                          const preferredUrl = m.movement?.shortVideoUrl || m.movement?.longVideoUrl || (m as any)?.video_url || (m as any)?.videoUrl || null
                           const key = String(m.id_ || `${idx}_${mi}`)
                           const videoOpen = !!videoOpenById[key]
                           const setsOpen = !!setsOpenById[key]
@@ -222,26 +284,28 @@ export default function TemplateDetailsScreen() {
                                   </Box>
                                 </HStack>
 
-                                {/* Movement description (markdown) */}
-                                {m.description ? (
-                                  <Box className="p-3 rounded border border-border-200 bg-background-0">
-                                    <Markdown>{m.description}</Markdown>
-                                  </Box>
-                                ) : null}
-
                                 {/* Collapsible Video */}
                                 <Pressable onPress={() => toggleVideo(key)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
                                   <Text className="font-semibold text-typography-900">Video</Text>
                                   <Text className="text-typography-600">{videoOpen ? '−' : '+'}</Text>
                                 </Pressable>
                                 {videoOpen ? (
-                                  preferredUrl ? (
-                                    <YouTubeEmbed url={preferredUrl} />
-                                  ) : (
-                                    <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
-                                      <Text className="text-typography-600">🎥 Video placeholder</Text>
-                                    </Box>
-                                  )
+                                  <VideoPreview url={preferredUrl || ''} />
+                                ) : null}
+
+                                {/* Collapsible Description directly under Video */}
+                                {(m.description || m?.movement?.description) ? (
+                                  <>
+                                    <Pressable onPress={() => toggleDesc(key)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                      <Text className="font-semibold text-typography-900">Description</Text>
+                                      <Text className="text-typography-600">{descOpenById[key] ? '−' : '+'}</Text>
+                                    </Pressable>
+                                    {descOpenById[key] ? (
+                                      <Box className="mt-2 p-3 rounded border border-border-200 bg-background-50">
+                                        <MovementDescription description={(m.description || m?.movement?.description) as string} />
+                                      </Box>
+                                    ) : null}
+                                  </>
                                 ) : null}
 
                                 {/* Collapsible Sets */}
@@ -304,7 +368,7 @@ export default function TemplateDetailsScreen() {
                 <Text className="text-lg font-semibold text-typography-900 dark:text-white">Details</Text>
                 {/* Collapsible Video */}
                 <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-                  {bestVideoUrl ? <YouTubeEmbed url={bestVideoUrl} /> : <Text className="text-typography-600">🎥 Video placeholder</Text>}
+                  {bestVideoUrl ? <VideoPreview url={bestVideoUrl} /> : <Text className="text-typography-600">🎥 Video placeholder</Text>}
                 </Box>
                 {/* Details table */}
                 <DetailsTable movement={fallbackMovement} />
