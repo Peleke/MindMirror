@@ -427,43 +427,43 @@ class EnrollmentMutation:
                     ordered_links = sorted(program.practice_links, key=lambda pl: pl.sequence_order)
                     link_index = 0
 
-                    # Schedule for repeat_count weeks
-                    for week in range(input.repeat_count):
-                        for day_offset in range(7):  # Schedule for each day of the week
-                            scheduled_date = today + timedelta(days=(week * 7) + day_offset)
+                    # Honor interval_days_after per link: lay links sequentially with per-link spacing
+                    current_date = today
+                    total_weeks = max(1, int(input.repeat_count))
+                    cycles = total_weeks * len(ordered_links)
+                    for i in range(cycles):
+                        current_link = ordered_links[link_index]
+                        scheduled = ScheduledPracticeModel(
+                            enrollment_id=enrollment_model.id_,
+                            practice_template_id=current_link.practice_template_id,
+                            scheduled_date=current_date,
+                        )
+                        await sp_repo.add(scheduled)
 
-                            # Find the practice link for this day of the week
-                            # This is a simple implementation - in practice you might want more sophisticated scheduling
-                            if link_index < len(ordered_links):
-                                current_link = ordered_links[link_index]
-                                scheduled = ScheduledPracticeModel(
-                                    enrollment_id=enrollment_model.id_,
-                                    practice_template_id=current_link.practice_template_id,
-                                    scheduled_date=scheduled_date,
-                                )
-                                await sp_repo.add(scheduled)
+                        # Materialize instance if one does not already exist for this date/template
+                        from sqlalchemy import select
+                        exists_stmt = (
+                            select(PracticeInstanceModel)
+                            .where(PracticeInstanceModel.user_id == current_user.id)
+                            .where(PracticeInstanceModel.date == current_date)
+                            .where(PracticeInstanceModel.template_id == current_link.practice_template_id)
+                        )
+                        result = await uow.session.execute(exists_stmt)
+                        existing = result.scalar_one_or_none()
+                        if not existing:
+                            pir = PracticeInstanceRepository(uow.session)
+                            new_instance = await pir.create_instance_from_template(
+                                template_id=current_link.practice_template_id,
+                                user_id=current_user.id,
+                                date=current_date,
+                            )
+                            scheduled.practice_instance_id = new_instance.id_
 
-                                # Materialize instance if one does not already exist
-                                from sqlalchemy import select
-                                exists_stmt = (
-                                    select(PracticeInstanceModel)
-                                    .where(PracticeInstanceModel.user_id == current_user.id)
-                                    .where(PracticeInstanceModel.date == scheduled_date)
-                                    .where(PracticeInstanceModel.template_id == current_link.practice_template_id)
-                                )
-                                result = await uow.session.execute(exists_stmt)
-                                existing = result.scalar_one_or_none()
-                                if not existing:
-                                    pir = PracticeInstanceRepository(uow.session)
-                                    new_instance = await pir.create_instance_from_template(
-                                        template_id=current_link.practice_template_id,
-                                        user_id=current_user.id,
-                                        date=scheduled_date,
-                                    )
-                                    # Link the instance to the scheduled practice
-                                    scheduled.practice_instance_id = new_instance.id_
-
-                                link_index = (link_index + 1) % len(ordered_links)  # Cycle through links
+                        # Advance link and date by this link's interval
+                        link_index = (link_index + 1) % len(ordered_links)
+                        # interval_days_after applies after this item; minimum 1 day between if 0
+                        step = max(1, int(current_link.interval_days_after or 1))
+                        current_date = current_date + timedelta(days=step)
 
             # Attach lessons if provided
             if input.lessons:

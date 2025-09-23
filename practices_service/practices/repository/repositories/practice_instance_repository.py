@@ -68,9 +68,11 @@ class PracticeInstanceRepository:
                             "metric_value": mov.metric_value,
                             "prescribed_sets": mov.prescribed_sets,
                             "rest_duration": mov.rest_duration,
+                            "video_url": mov.video_url,
                             "position": mov.position,
                             "notes": mov.notes,
                             "exercise_id": mov.exercise_id,
+                            "movement_id": mov.movement_id,
                             "template_id": mov.template_id,
                             "sets": [],
                         }
@@ -134,9 +136,11 @@ class PracticeInstanceRepository:
                     metric_value=mov_data.get("metric_value", mov_data.get("metricValue", 1.0)) or 1.0,
                     prescribed_sets=mov_data.get("prescribed_sets", mov_data.get("prescribedSets", 0)) or 0,
                     rest_duration=mov_data.get("rest_duration", mov_data.get("restDuration", 0)) or 0,
+                    video_url=mov_data.get("video_url", mov_data.get("videoUrl")),
                     position=mov_data.get("position", 0) or 0,
                     notes=mov_data.get("notes"),
                     exercise_id=mov_data.get("exercise_id", mov_data.get("exerciseId")),
+                    template_id=mov_data.get("template_id", mov_data.get("templateId")),
                     prescription_instance_id=new_prescription.id_,
                 )
                 self.session.add(new_movement)
@@ -222,6 +226,8 @@ class PracticeInstanceRepository:
                     "movement_class": mov_template.movement_class,
                     "prescribed_sets": mov_template.prescribed_sets,
                     "rest_duration": mov_template.rest_duration,
+                    "video_url": mov_template.video_url,
+                    "movement_id": mov_template.movement_id,
                     "position": mov_template.position,
                     "exercise_id": mov_template.exercise_id,
                     "template_id": mov_template.id_,
