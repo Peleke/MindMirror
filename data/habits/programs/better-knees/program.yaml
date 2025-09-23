@@ -1,0 +1,12 @@
+slug: better-knees-welcome
+title: "Welcome to Better Knees"
+subtitle: "Getting started with your knee strengthening program"
+version: 1
+contentType: program
+sequence:
+  - stepSlug: welcome
+    title: Welcome to Better Knees
+    durationDays: 1
+    habitTemplateSlug: null  # No habit, just lesson
+    lessonSlugs:
+      - welcome-better-knees
