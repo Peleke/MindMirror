@@ -2020,5 +2020,3 @@ class Mutation(EnrollmentMutation):
             program_repo = ProgramRepository(uow.session)
             program_service = ProgramService(program_repo)
             return await program_service.delete_program(UUID(str(id)))
-
-

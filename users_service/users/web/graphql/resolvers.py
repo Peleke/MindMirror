@@ -404,11 +404,11 @@ class Query:
     ) -> bool:
         uow = await get_uow_from_info(info)
         repo = UserRepository(session=uow.session)
-        is_verified = await repo.check_existing_association(
-            coach_id=coach_id,
-            client_id=client_id,
-            domain=DomainModel(domain.value),
-            status=AssociationStatusModel.accepted,
+        
+        # Use the new CoachClientRelationshipModel instead of the old CoachClientAssociationModel
+        is_verified = await repo.is_coach_for_client(
+            coach_user_id=coach_id,
+            client_user_id=client_id
         )
         return is_verified
 
@@ -795,16 +795,29 @@ class Mutation:
         current_user = await get_current_user_from_info(info)
         uow = await get_uow_from_info(info)
         repo = UserRepository(session=uow.session)
-        # Find the accepted association between current coach and the client
-        associations = await repo.list_associations_for_user(
-            user_id=current_user.id_, as_role="coach", status=AssociationStatusModel.accepted
+        
+        # Find and terminate the relationship in the new CoachClientRelationshipModel table
+        from sqlalchemy import select, update
+        from users.repository.models.user import CoachClientRelationshipModel, AssociationStatusModel
+        
+        # First check if the relationship exists and is accepted
+        stmt = select(CoachClientRelationshipModel).where(
+            CoachClientRelationshipModel.coach_user_id == current_user.id_,
+            CoachClientRelationshipModel.client_user_id == clientId,
+            CoachClientRelationshipModel.status == AssociationStatusModel.accepted
         )
-        target = next((a for a in associations if str(a.client_id) == str(clientId)), None)
-        if not target:
+        result = await repo.session.execute(stmt)
+        relationship = result.scalars().first()
+        
+        if not relationship:
             raise Exception("No accepted coaching relationship found for this client.")
-        await repo.update_association_status(
-            association_id=uuid.UUID(str(target.id_)), status=AssociationStatusModel.terminated
-        )
+        
+        # Update status to terminated
+        update_stmt = update(CoachClientRelationshipModel).where(
+            CoachClientRelationshipModel.id_ == relationship.id_
+        ).values(status=AssociationStatusModel.terminated)
+        
+        await repo.session.execute(update_stmt)
         await uow.commit()
         return True
 

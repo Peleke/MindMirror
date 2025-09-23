@@ -1,5 +1,6 @@
 import json
 import uuid
+import httpx
 from datetime import date, timedelta
 from typing import List, Optional, cast, Dict
 
@@ -415,6 +416,10 @@ class EnrollmentMutation:
                 enrolling_user_id=current_user.id,  # For self-enrollment
             )
 
+            # SYNC REQUIRED: This scheduling logic is duplicated in enroll_user_in_program()
+            # If you modify this block, ensure identical changes are made there too
+            # Key differences: current_user.id vs user_to_enroll_id for practice instances
+            
             # Seed initial progress: set current practice to first link and schedule workouts for repeat cycle
             program_repo = ProgramRepository(uow.session)
             program_uuid = uuid.UUID(str(input.program_id))
@@ -554,11 +559,96 @@ class EnrollmentMutation:
         async with uow:
             repo = EnrollmentRepository(uow.session)
             service = EnrollmentService(repo)
+            
+            # Avoid duplicate active enrollments for the same program: short-circuit
+            existing = await repo.get_enrollments_for_user(user_to_enroll_id)
+            if any(e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE" for e in existing):
+                # Reuse existing enrollment; skip scheduling to prevent duplication
+                domain_enrollment = next(e for e in existing if e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE")
+                return to_gql_enrollment(domain_enrollment)
+                
             domain_enrollment = await service.enroll_user(
                 program_id=uuid.UUID(str(input.program_id)),
                 user_to_enroll_id=user_to_enroll_id,
                 enrolling_user_id=current_user.id,  # The coach is the enroller
             )
+
+            # SYNC REQUIRED: This scheduling logic is duplicated in enroll_in_program()
+            # If you modify this block, ensure identical changes are made there too
+            # Key differences: user_to_enroll_id vs current_user.id for practice instances
+            
+            # Seed initial progress: set current practice to first link and schedule workouts for repeat cycle
+            program_repo = ProgramRepository(uow.session)
+            program_uuid = uuid.UUID(str(input.program_id))
+            program = await program_repo.get_program_by_id(program_uuid)
+            if program and program.practice_links:
+                first_link = sorted(program.practice_links, key=lambda pl: pl.sequence_order)[0]
+                # Fetch the enrollment model to update its current_practice_link_id
+                enrollment_model = await repo.get_enrollment_by_id(uuid.UUID(str(domain_enrollment.id_)))
+                if enrollment_model:
+                    enrollment_model.current_practice_link_id = first_link.id_
+
+                    # Schedule practices for the repeat cycle
+                    sp_repo = ScheduledPracticeRepository(uow.session)
+                    today = date.today()
+
+                    # Get all practice links ordered by sequence
+                    ordered_links = sorted(program.practice_links, key=lambda pl: pl.sequence_order)
+                    link_index = 0
+
+                    # Clear any existing scheduled practices for this enrollment from today forward to avoid duplication
+                    from sqlalchemy import delete
+                    await uow.session.execute(
+                        delete(ScheduledPracticeModel).where(
+                            ScheduledPracticeModel.enrollment_id == enrollment_model.id_
+                        ).where(ScheduledPracticeModel.scheduled_date >= today)
+                    )
+
+                    # Honor interval_days_after per link: lay links sequentially with per-link spacing
+                    current_date = today
+                    total_weeks = max(1, int(input.repeat_count))
+                    cycles = total_weeks * len(ordered_links)
+                    for i in range(cycles):
+                        current_link = ordered_links[link_index]
+                        scheduled = ScheduledPracticeModel(
+                            enrollment_id=enrollment_model.id_,
+                            practice_template_id=current_link.practice_template_id,
+                            scheduled_date=current_date,
+                        )
+                        await sp_repo.add(scheduled)
+
+                        # Materialize instance if one does not already exist for this date/template
+                        from sqlalchemy import select
+                        exists_stmt = (
+                            select(PracticeInstanceModel)
+                            .where(PracticeInstanceModel.user_id == user_to_enroll_id)
+                            .where(PracticeInstanceModel.date == current_date)
+                            .where(PracticeInstanceModel.template_id == current_link.practice_template_id)
+                        )
+                        result = await uow.session.execute(exists_stmt)
+                        existing = result.scalar_one_or_none()
+                        if not existing:
+                            pir = PracticeInstanceRepository(uow.session)
+                            new_instance = await pir.create_instance_from_template(
+                                template_id=current_link.practice_template_id,
+                                user_id=user_to_enroll_id,
+                                date=current_date,
+                                enrollment_id=enrollment_model.id_,
+                            )
+                            scheduled.practice_instance_id = new_instance.id_
+                        else:
+                            # Link the existing instance to this scheduled practice
+                            # Also ensure the instance is associated to this enrollment for proper cascade behavior
+                            if existing.enrollment_id is None or existing.enrollment_id != enrollment_model.id_:
+                                existing.enrollment_id = enrollment_model.id_
+                                await uow.session.flush()
+                            scheduled.practice_instance_id = existing.id_
+
+                        # Advance link and date by this link's interval
+                        link_index = (link_index + 1) % len(ordered_links)
+                        # interval_days_after = number of off days BETWEEN workouts; schedule gap = interval + 1 days
+                        step = (int(current_link.interval_days_after or 0) + 1)
+                        current_date = current_date + timedelta(days=step)
 
             # Attach lessons if provided
             if input.lessons:
@@ -569,6 +659,37 @@ class EnrollmentMutation:
                         # Log error but don't fail the entire enrollment
                         print(f"Failed to attach lesson {lesson_input.lesson_template_slug}: {e}")
 
+            # Auto-enroll in paired habits program if specified
+            if program and program.habits_program_template_id:
+                try:
+                    habits_client = HabitsServiceClient()
+                    
+                    # Get user token for authentication
+                    req = info.context.get('request')
+                    token = None
+                    if req:
+                        authz = req.headers.get('authorization')
+                        if authz and authz.lower().startswith('bearer '):
+                            token = authz.split(' ', 1)[1]
+                    
+                    # Enroll user in the paired habits program
+                    from datetime import date as _date
+                    habits_enrollment = await habits_client.enroll_user_in_program(
+                        program_template_id=str(program.habits_program_template_id),
+                        start_date=_date.today(),
+                        auth_token=token
+                    )
+                    
+                    if habits_enrollment:
+                        print(f"Successfully enrolled user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
+                    else:
+                        print(f"Failed to enroll user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
+                        
+                except Exception as e:
+                    # Log error but don't fail the practices enrollment
+                    print(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}")
+
+            # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
 
     @strawberry.mutation

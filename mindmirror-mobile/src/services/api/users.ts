@@ -135,7 +135,7 @@ export const ASSIGN_ROLE = gql`
 `
 
 export const TERMINATE_COACHING_FOR_CLIENT = gql`
-  mutation TerminateCoachingForClient($clientId: ID!) {
+  mutation TerminateCoachingForClient($clientId: UUID!) {
     terminateCoachingForClient(clientId: $clientId)
   }
 `
