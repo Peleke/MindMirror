@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable as RNPressable, TextInput, Animated, Easing } from 'react-native';
 import { UserGreeting } from '../../../src/components/journal/UserGreeting';
 import { AffirmationDisplay } from '../../../src/components/journal/AffirmationDisplay';
-import { useQuery, gql } from '@apollo/client'
+import { useQuery, gql, useApolloClient } from '@apollo/client'
 import { HABIT_STATS, GET_TODAYS_TASKS } from '@/services/api/habits'
 import Svg, { Circle as SvgCircle, G } from 'react-native-svg'
 import { useQuery as useQuery2 } from '@apollo/client'
@@ -32,12 +32,10 @@ import { getUserDisplayName } from '@/utils/user';
 import { View } from 'react-native';
 import { useMutation } from '@apollo/client';
 import React from 'react';
-import { useTodaysSchedulables } from '@/services/api/users'
+import { useTodaysSchedulables, QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
 import Markdown from 'react-native-markdown-display'
 import dayjs from 'dayjs'
-import { useTodaysWorkouts } from '@/services/api/practices'
-import { useDeletePracticeInstance } from '@/services/api/practices'
-import { useMyUpcomingPractices, useDeferPractice } from '@/services/api/practices'
+import { useTodaysWorkouts, useDeletePracticeInstance, useMyUpcomingPractices, useDeferPractice, QUERY_PRACTICE_INSTANCE, QUERY_MY_UPCOMING_PRACTICES, QUERY_TODAYS_WORKOUTS } from '@/services/api/practices'
 import { Swipeable } from 'react-native-gesture-handler'
 import CalendarPicker from 'react-native-calendar-picker'
 import { Text as RNText } from 'react-native'
@@ -423,11 +421,15 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
   const onDate = dayjs().format('YYYY-MM-DD')
   const userId = session?.user?.id || ''
   const { data, loading } = useTodaysSchedulables({ userId, date: onDate }, !hasSession || !userId)
-  const usersItems = (data?.schedulablesForUserOnDate || []).filter((s: any) => (s.service_id ?? 'practices') === 'practices')
+  // Do not use generic schedulables for practices; rely on practices queries to avoid stale ghost cards
+  const usersItems: any[] = []
   const { data: pData, loading: pLoading } = useTodaysWorkouts(onDate)
   const { data: upData } = useMyUpcomingPractices()
+  const apollo = useApolloClient()
   const [deferPractice] = useDeferPractice()
-  const todaysUpcoming = (upData?.my_upcoming_practices || []).filter((sp: any) => dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate)
+  const todaysUpcomingRaw = (upData?.my_upcoming_practices || []).filter((sp: any) => dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate)
+  // Only include upcoming for today if an instance exists OR we also have a matching workout from todaysWorkouts (to enrich with enrollmentId)
+  const todaysUpcoming = todaysUpcomingRaw.filter((sp: any) => !!sp.practice_instance_id || !!todaysMap[sp.practice_id])
   // Map of today’s workouts by id for name/description enrichment
   const todaysMap: Record<string, any> = {}
   for (const w of (pData?.todaysWorkouts || [])) { todaysMap[w.id_] = w }
@@ -456,8 +458,13 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
     level: w.level || null,
   }))
   const itemsMap: Record<string, any> = {}
-  for (const it of [...usersItems, ...practiceItems, ...upcomingItems]) {
-    const key = `${it.service_id}:${it.entity_id || it.id_}`
+  const computeKey = (it: any) => {
+    const sid = it.service_id || it.serviceId || 'practices'
+    const ent = it.entity_id || it.entityId || it.practice_instance_id || it.id_
+    return `${sid}:${ent}`
+  }
+  for (const it of [...practiceItems, ...upcomingItems]) {
+    const key = computeKey(it)
     itemsMap[key] = { ...(itemsMap[key] || {}), ...it }
   }
   const items = Object.values(itemsMap)
@@ -477,8 +484,8 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
         <Text className="text-typography-600">No workouts scheduled today</Text>
       ) : (
         <VStack space="xs">
-          {items.filter((it: any) => !localRemoved[`${it.service_id}:${it.entity_id}`]).map((it: any) => {
-            const key = `${it.service_id}:${it.entity_id}`
+          {items.filter((it: any) => !localRemoved[computeKey(it)]).map((it: any) => {
+            const key = computeKey(it)
             const handleDelete = async () => {
               setLocalRemoved((prev) => ({ ...prev, [key]: true }))
               if ((it.service_id ?? 'practices') === 'practices') {
@@ -486,24 +493,38 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
               }
             }
             const baseClasses = it.completed ? 'border-green-200 bg-green-50' : 'border-indigo-200 bg-indigo-50'
+            const swipeEnabled = !it.enrollment_id
             return (
               <Swipeable
                 key={key}
                 renderRightActions={() => (
-                  <HStack className="h-full items-center px-4 bg-red-600 rounded-lg">
-                    <Text className="text-white font-semibold">Delete</Text>
-                  </HStack>
+                  swipeEnabled ? (
+                    <HStack className="h-full items-center px-4 bg-red-600 rounded-lg">
+                      <Text className="text-white font-semibold">Delete</Text>
+                    </HStack>
+                  ) : (<HStack />)
                 )}
-                onSwipeableOpen={(dir) => { if (dir === 'right') handleDelete() }}
+                onSwipeableOpen={(dir) => { if (swipeEnabled && dir === 'right') handleDelete() }}
+                enabled={swipeEnabled}
               >
                 <HStack className={`items-center justify-between p-3 rounded-lg border ${baseClasses}`}>
                   <Pressable 
-                    onPress={() => {
-                      // For practice items: use practice instance ID directly
-                      // For upcoming items: use practice_instance_id if available, otherwise entity_id (template ID)
-                      const wid = it.practice_instance_id || it.id_
+                    onPress={async () => {
+                      const wid = it.practice_instance_id || it.entity_id || it.id_
                       const eid = it.enrollment_id
-                      router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
+                      try {
+                        const res = await apollo.query({ query: QUERY_PRACTICE_INSTANCE, variables: { id: wid }, fetchPolicy: 'network-only' })
+                        const exists = !!res?.data?.practiceInstance?.id_
+                        if (exists) {
+                          router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
+                        } else {
+                          setLocalRemoved((prev) => ({ ...prev, [key]: true }))
+                          await apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES, QUERY_MY_UPCOMING_PRACTICES, QUERY_TODAYS_WORKOUTS] })
+                        }
+                      } catch {
+                        setLocalRemoved((prev) => ({ ...prev, [key]: true }))
+                        try { await apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES, QUERY_MY_UPCOMING_PRACTICES, QUERY_TODAYS_WORKOUTS] }) } catch {}
+                      }
                     }}
                     className="flex-1"
                   >

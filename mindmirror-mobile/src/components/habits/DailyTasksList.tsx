@@ -15,7 +15,8 @@ import WorkoutCard from './cards/WorkoutCard'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { useTodaysWorkouts, useMyUpcomingPractices, useDeferPractice } from '@/services/api/practices'
+import { useTodaysWorkouts, useMyUpcomingPractices, useDeferPractice, QUERY_PRACTICE_INSTANCE, QUERY_MY_UPCOMING_PRACTICES, QUERY_TODAYS_WORKOUTS } from '@/services/api/practices'
+import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import LottieView from 'lottie-react-native'
 
@@ -117,19 +118,19 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
   // Get workout data for integration
   const { data: upcomingData } = useMyUpcomingPractices()
   const [deferPractice] = useDeferPractice()
+  const apollo = useApolloClient()
   
   // Create workout tasks from scheduled practices and actual instances
   const todaysUpcoming = (upcomingData?.my_upcoming_practices || []).filter((sp: any) => 
-    dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate
+    dayjs(sp.scheduled_date).format('YYYY-MM-DD') === onDate && !!sp.practice_instance_id
   )
   const todaysWorkoutsMap: Record<string, any> = {}
   for (const w of (workoutsData?.todaysWorkouts || [])) { 
     todaysWorkoutsMap[w.id_] = w 
   }
   
-  const workoutTasks = [
-    // Actual practice instances
-    ...(workoutsData?.todaysWorkouts || []).map((w: any) => ({
+  const workoutTasks = (
+    (workoutsData?.todaysWorkouts || []).map((w: any) => ({
       __typename: 'WorkoutTask',
       taskId: w.id_,
       id_: w.id_,
@@ -140,22 +141,8 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
       completed: !!w.completedAt,
       practice_instance_id: w.id_,
       status: w.completedAt ? 'completed' : 'pending'
-    })),
-    // Upcoming scheduled practices (only if no instance exists)
-    ...todaysUpcoming.filter((sp: any) => !sp.practice_instance_id).map((sp: any) => ({
-      __typename: 'WorkoutTask', 
-      taskId: sp.id_,
-      id_: sp.id_,
-      name: todaysWorkoutsMap[sp.practice_id]?.title || 'Workout',
-      description: todaysWorkoutsMap[sp.practice_id]?.description || '',
-      level: todaysWorkoutsMap[sp.practice_id]?.level,
-      date: onDate,
-      completed: false,
-      enrollment_id: sp.enrollment_id,
-      practice_instance_id: sp.practice_instance_id,
-      status: 'pending'
     }))
-  ]
+  )
 
   // Combine all tasks
   const allTasks = [...tasks, ...workoutTasks]
@@ -308,12 +295,21 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
             <WorkoutCard
               key={wt.taskId}
               task={{ ...wt, name: title, description, level, date, completed }}
-              onPress={() => {
+              onPress={async () => {
                 const wid = wt.practice_instance_id || wt.id_
-                const eid = wt.enrollment_id
-                router.push(eid ? `/(app)/workout/${wid}?enrollmentId=${eid}` : `/(app)/workout/${wid}`)
+                try {
+                  const res = await apollo.query({ query: QUERY_PRACTICE_INSTANCE, variables: { id: wid }, fetchPolicy: 'network-only' })
+                  const exists = !!res?.data?.practiceInstance?.id_
+                  if (exists) {
+                    router.push(`/(app)/workout/${wid}`)
+                  } else {
+                    await apollo.refetchQueries({ include: [QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] })
+                  }
+                } catch {
+                  try { await apollo.refetchQueries({ include: [QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] }) } catch {}
+                }
               }}
-              onDefer={wt.enrollment_id ? (async () => { try { await deferPractice({ variables: { enrollmentId: wt.enrollment_id, mode: 'push' } }) } catch {} }) : (() => {})}
+              onDefer={wt.enrollment_id ? (async () => { try { await deferPractice({ variables: { enrollmentId: wt.enrollment_id, mode: 'push' } }); await apollo.refetchQueries({ include: [QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] }) } catch {} }) : (() => {})}
             />
           )
         }
