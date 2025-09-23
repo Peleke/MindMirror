@@ -42,3 +42,12 @@ class ScheduledPracticeRepository:
         stmt = stmt.order_by(ScheduledPracticeModel.scheduled_date.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def delete_for_enrollments_from_date(self, enrollment_ids: List[uuid.UUID], from_date: Optional[date] = None) -> int:
+        """Deletes scheduled practices for the given enrollments on/after a date. Returns rows deleted."""
+        from sqlalchemy import delete
+        stmt = delete(ScheduledPracticeModel).where(ScheduledPracticeModel.enrollment_id.in_(enrollment_ids))
+        if from_date:
+            stmt = stmt.where(ScheduledPracticeModel.scheduled_date >= from_date)
+        result = await self.session.execute(stmt)
+        return result.rowcount or 0

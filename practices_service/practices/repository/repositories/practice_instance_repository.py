@@ -72,7 +72,8 @@ class PracticeInstanceRepository:
                             "position": mov.position,
                             "notes": mov.notes,
                             "exercise_id": mov.exercise_id,
-                            "movement_id": mov.movement_id,
+                            # movement_id column does not exist on MovementInstanceModel; use template_id as the movement reference exposed as movement { id_ }
+                            "movement_id": mov.template_id,
                             "template_id": mov.template_id,
                             "sets": [],
                         }

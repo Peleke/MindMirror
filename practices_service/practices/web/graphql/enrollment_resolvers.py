@@ -427,6 +427,14 @@ class EnrollmentMutation:
                     ordered_links = sorted(program.practice_links, key=lambda pl: pl.sequence_order)
                     link_index = 0
 
+                    # Clear any existing scheduled practices for this enrollment from today forward to avoid duplication
+                    from sqlalchemy import delete
+                    await uow.session.execute(
+                        delete(ScheduledPracticeModel).where(
+                            ScheduledPracticeModel.enrollment_id == enrollment_model.id_
+                        ).where(ScheduledPracticeModel.scheduled_date >= today)
+                    )
+
                     # Honor interval_days_after per link: lay links sequentially with per-link spacing
                     current_date = today
                     total_weeks = max(1, int(input.repeat_count))
@@ -461,8 +469,8 @@ class EnrollmentMutation:
 
                         # Advance link and date by this link's interval
                         link_index = (link_index + 1) % len(ordered_links)
-                        # interval_days_after applies after this item; minimum 1 day between if 0
-                        step = max(1, int(current_link.interval_days_after or 1))
+                        # interval_days_after = number of off days BETWEEN workouts; schedule gap = interval + 1 days
+                        step = (int(current_link.interval_days_after or 0) + 1)
                         current_date = current_date + timedelta(days=step)
 
             # Attach lessons if provided
@@ -596,6 +604,26 @@ class EnrollmentMutation:
             if not updated_enrollment:
                 # This case should ideally not be hit if the initial fetch succeeded
                 raise Exception("Failed to update enrollment.")
+
+            # Cascade cleanup when cancelling enrollment
+            if status.value == "CANCELLED":
+                scheduled_practice_repo = ScheduledPracticeRepository(uow.session)
+                await scheduled_practice_repo.delete_for_enrollments_from_date([enrollment_uuid], from_date=date.today())
+
+                # Delete future uncompleted practice instances for templates in this program
+                from sqlalchemy import delete
+                from practices.repository.models.practice_instance import PracticeInstanceModel
+                program_repo = ProgramRepository(uow.session)
+                prog = await program_repo.get_program_by_id(updated_enrollment.program_id)
+                template_ids = [pl.practice_id for pl in (prog.practice_links or [])]
+                if template_ids:
+                    await uow.session.execute(
+                        delete(PracticeInstanceModel)
+                        .where(PracticeInstanceModel.user_id == updated_enrollment.user_id)
+                        .where(PracticeInstanceModel.template_id.in_(template_ids))
+                        .where(PracticeInstanceModel.date >= date.today())
+                        .where(PracticeInstanceModel.completed_at.is_(None))
+                    )
 
             return to_gql_enrollment(updated_enrollment)
 
