@@ -16,7 +16,7 @@ import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { MovementThumb, MovementDescription } from '@/components/workouts/MovementMedia'
+import { MovementDescription } from '@/components/workouts/MovementMedia'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -75,8 +75,57 @@ export default function WorkoutDetailsScreen() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false)
   const toggleVideoFor = (key: string) => setVideoOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
   const toggleDescFor = (key: string) => setDescOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
+  const VideoPreview = ({ url }: { url: string }) => {
+    const videoUrl = (url || '').trim()
+    if (!videoUrl) return (
+      <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
+        <Text className="text-typography-500">No preview</Text>
+      </Box>
+    )
+    const isMp4 = /\.mp4$/i.test(videoUrl)
+    if (isMp4) {
+      const player = useVideoPlayer(videoUrl, (p) => { p.loop = false })
+      return (
+        <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+          <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+        </Box>
+      )
+    }
+    // YouTube/Vimeo embeds
+    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(videoUrl)
+    const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(videoUrl)
+    let embedUrl = videoUrl
+    if (isYouTube) {
+      try {
+        const u = new URL(videoUrl)
+        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+      } catch {}
+    } else if (isVimeo) {
+      try {
+        if (!/player\.vimeo\.com\/video\//i.test(videoUrl)) {
+          const m = videoUrl.match(/vimeo\.com\/(\d+)/i)
+          if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
+        }
+      } catch {}
+    }
+    if (Platform.OS === 'web') {
+      return (
+        <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+        </Box>
+      )
+    }
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+      </Box>
+    )
+  }
 
-  const serverWorkout = data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId) || fallbackQ.data?.practiceInstance
+
+  const serverWorkout = fallbackQ.data?.practiceInstance || data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
 
   const [workout, setWorkout] = useState<any | null>(null)
   useEffect(() => { if (serverWorkout) setWorkout(JSON.parse(JSON.stringify(serverWorkout))) }, [serverWorkout])
@@ -219,46 +268,23 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-600">{videoOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
         </Pressable>
         {videoOpenByKey[`${pIdx}-${mIdx}`] ? (() => {
-          // Prefer instance video, then movement short/long
-          const imageUrl = m?.imageUrl || m?.movement?.imageUrl || m?.movement?.movement?.imageUrl
-          const rawUrl = m?.videoUrl || m?.movement?.shortVideoUrl || m?.movement?.longVideoUrl || m?.movement?.movement?.shortVideoUrl || m?.movement?.movement?.longVideoUrl || ''
-          const isMp4 = /\.mp4$/i.test(rawUrl)
-          const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(rawUrl)
-          const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(rawUrl)
-
-          if (isMp4) {
-            const player = useVideoPlayer(rawUrl, (p) => { p.loop = false })
-            return (
-              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
-                <VideoView style={{ width: '100%', height: '100%' }} player={player} nativeControls />
-              </Box>
-            )
-          }
-          if (isYouTube) {
-            return <YouTubeEmbed url={rawUrl} />
-          }
-          if (isVimeo) {
-            let embedUrl = rawUrl
-            if (!/player\.vimeo\.com\/video\//i.test(rawUrl)) {
-              const match = rawUrl.match(/vimeo\.com\/(\d+)/i)
-              if (match && match[1]) embedUrl = `https://player.vimeo.com/video/${match[1]}`
-            }
-            embedUrl += embedUrl.includes('?') ? '&playsinline=1' : '?playsinline=1'
-            return (
-              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
-                <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled allowsFullscreenVideo mediaPlaybackRequiresUserAction={false} />
-              </Box>
-            )
-          }
-          if (typeof imageUrl === 'string') {
-            return <MovementThumb imageUrl={imageUrl} videoUrl={undefined} />
-          }
-          return (
-            <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
-              <Text className="text-typography-500">No preview</Text>
-            </Box>
-          )
+          // Prefer instance-level video first, else nested movement refs
+          const rawUrl = (m?.videoUrl || m?.movement?.shortVideoUrl || m?.movement?.longVideoUrl || '') as string
+          return <VideoPreview url={rawUrl} />
         })() : null}
+        {/* Collapsible description directly under video, like in workout-create */}
+        {(m.description || m?.movement?.description || m?.movement?.movement?.description) ? (
+          <>
+            <Box className="h-2" />
+            <Pressable onPress={() => toggleDescFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+              <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+              <Text className="text-typography-600">{descOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
+            </Pressable>
+            {descOpenByKey[`${pIdx}-${mIdx}`] ? (
+              <MovementDescription description={(m.description || m?.movement?.description || m?.movement?.movement?.description) as string} />
+            ) : null}
+          </>
+        ) : null}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
             <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
@@ -315,19 +341,6 @@ export default function WorkoutDetailsScreen() {
             </VStack>
           ))}
         </VStack>
-        {/* Collapsible description */}
-        {(m.description || m?.movement?.description || m?.movement?.movement?.description) ? (
-          <>
-            <Box className="h-2" />
-            <Pressable onPress={() => toggleDescFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
-              <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
-              <Text className="text-typography-600">{descOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
-            </Pressable>
-            {descOpenByKey[`${pIdx}-${mIdx}`] ? (
-              <MovementDescription description={(m.description || m?.movement?.description || m?.movement?.movement?.description) as string} />
-            ) : null}
-          </>
-        ) : null}
         {/* Removed duplicate always-on description block to keep only collapsible */}
         <Box className="h-2" />
         <Pressable className="self-start px-3 py-1 rounded border border-border-200 bg-background-50" onPress={() => addSetToMovement(pIdx, mIdx)}>

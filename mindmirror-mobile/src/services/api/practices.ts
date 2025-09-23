@@ -16,10 +16,13 @@ export const QUERY_TODAYS_WORKOUTS = gql`
         movements {
           id_
           name
+          description
           restDuration
+          videoUrl
           movement {
             id_
             name
+            description
             description
             shortVideoUrl
             longVideoUrl
