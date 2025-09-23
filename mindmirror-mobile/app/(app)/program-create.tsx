@@ -275,7 +275,7 @@ export default function ProgramCreateScreen() {
                   />
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                  <RNPressable onPress={async () => { setSearchOpen(false); setSearch(''); await router.push('/workout-template-create') }} style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                  <RNPressable onPress={async () => { setSearchOpen(false); setSearch(''); await router.push('/(app)/workout-create?asTemplate=1&from=' + encodeURIComponent('/(app)/program-create')) }} style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                     <Text style={{ color: '#111827', fontWeight: '700' }}>＋ Create Workout Template</Text>
                   </RNPressable>
                   <RNPressable onPress={() => { setSearchOpen(false); setSearch('') }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>

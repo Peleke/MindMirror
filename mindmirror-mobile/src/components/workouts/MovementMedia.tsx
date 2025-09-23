@@ -10,14 +10,17 @@ export type MovementLike = any
 
 export function resolveMovementMedia(m: MovementLike): { imageUrl?: string; videoUrl?: string; description?: string } {
   const imageUrl = m?.imageUrl || m?.gifUrl || m?.movement?.imageUrl || m?.movement?.gifUrl || m?.movement?.movement?.imageUrl || m?.movement?.movement?.gifUrl
-  // Prefer shortVideoUrl, then longVideoUrl. Avoid legacy generic videoUrl fields.
+  // Prefer shortVideoUrl, then longVideoUrl; fall back to videoUrl at any level (instance/template)
   const videoUrl =
     m?.shortVideoUrl ||
     m?.movement?.shortVideoUrl ||
     m?.movement?.movement?.shortVideoUrl ||
     m?.longVideoUrl ||
     m?.movement?.longVideoUrl ||
-    m?.movement?.movement?.longVideoUrl
+    m?.movement?.movement?.longVideoUrl ||
+    m?.videoUrl ||
+    m?.movement?.videoUrl ||
+    m?.movement?.movement?.videoUrl
   const description = m?.description || m?.movement?.description || m?.movement?.movement?.description
   return { imageUrl, videoUrl, description }
 }
@@ -38,7 +41,11 @@ export function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string | unde
     const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
     return (
       <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
-        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+        <VideoView
+          style={{ width: '100%', height: '100%' }}
+          player={player}
+          nativeControls
+        />
       </Box>
     )
   }
@@ -53,6 +60,8 @@ export function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string | unde
         const u = new URL(url)
         const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
         if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+        // ensure playsinline param
+        embedUrl += embedUrl.includes('?') ? '&playsinline=1' : '?playsinline=1'
       } catch {}
     } else if (isVimeo) {
       try {
@@ -60,6 +69,8 @@ export function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string | unde
           const m = url.match(/vimeo\.com\/(\d+)/i)
           if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
         }
+        // ensure playsinline param
+        embedUrl += embedUrl.includes('?') ? '&playsinline=1' : '?playsinline=1'
       } catch {}
     }
     if (Platform.OS === 'web') {
@@ -72,7 +83,7 @@ export function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string | unde
     }
     return (
       <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
-        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled allowsFullscreenVideo mediaPlaybackRequiresUserAction={false} />
       </Box>
     )
   }

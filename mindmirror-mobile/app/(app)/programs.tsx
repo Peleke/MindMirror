@@ -171,7 +171,9 @@ export default function ProgramsAndResourcesScreen() {
                           <VStack space="xs">
                             <Text className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{p.name}</Text>
                             {p.description ? (
-                              <Text className="text-indigo-800/80 dark:text-indigo-300">{p.description}</Text>
+                              <Box className="rounded border border-indigo-200/60 bg-white/60 p-2">
+                                <Markdown>{p.description}</Markdown>
+                              </Box>
                             ) : null}
                           </VStack>
                         </Pressable>

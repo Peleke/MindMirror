@@ -11,11 +11,12 @@ import Markdown from 'react-native-markdown-display'
 import { Input, InputField } from '@/components/ui/input'
 import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
+import { QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES } from '@/services/api/practices'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
-import { Video, ResizeMode } from 'expo-av'
-import { MovementThumb, resolveMovementMedia, MovementDescription } from '@/components/workouts/MovementMedia'
+import { useVideoPlayer, VideoView } from 'expo-video'
+import { MovementThumb, MovementDescription } from '@/components/workouts/MovementMedia'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -168,11 +169,9 @@ export default function WorkoutDetailsScreen() {
   const onCompleteWorkout = async () => {
     try {
       await completeWorkoutMutation({ variables: { id: workoutId } })
-      // Refetch home schedulables
-      const userId = '' // if you have auth context, pass real userId
-      const date = onDate
-      apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES] })
-      router.back()
+      // Refetch home tasks and workouts, then navigate home with reload flag
+      await apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES, QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] })
+      router.replace('/journal?reload=1')
     } catch {}
   }
 
@@ -220,8 +219,45 @@ export default function WorkoutDetailsScreen() {
           <Text className="text-typography-600">{videoOpenByKey[`${pIdx}-${mIdx}`] ? '−' : '+'}</Text>
         </Pressable>
         {videoOpenByKey[`${pIdx}-${mIdx}`] ? (() => {
-          const { imageUrl, videoUrl } = resolveMovementMedia(m)
-          return <MovementThumb imageUrl={imageUrl} videoUrl={videoUrl} />
+          // Prefer instance video, then movement short/long
+          const imageUrl = m?.imageUrl || m?.movement?.imageUrl || m?.movement?.movement?.imageUrl
+          const rawUrl = m?.videoUrl || m?.movement?.shortVideoUrl || m?.movement?.longVideoUrl || m?.movement?.movement?.shortVideoUrl || m?.movement?.movement?.longVideoUrl || ''
+          const isMp4 = /\.mp4$/i.test(rawUrl)
+          const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(rawUrl)
+          const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(rawUrl)
+
+          if (isMp4) {
+            const player = useVideoPlayer(rawUrl, (p) => { p.loop = false })
+            return (
+              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+                <VideoView style={{ width: '100%', height: '100%' }} player={player} nativeControls />
+              </Box>
+            )
+          }
+          if (isYouTube) {
+            return <YouTubeEmbed url={rawUrl} />
+          }
+          if (isVimeo) {
+            let embedUrl = rawUrl
+            if (!/player\.vimeo\.com\/video\//i.test(rawUrl)) {
+              const match = rawUrl.match(/vimeo\.com\/(\d+)/i)
+              if (match && match[1]) embedUrl = `https://player.vimeo.com/video/${match[1]}`
+            }
+            embedUrl += embedUrl.includes('?') ? '&playsinline=1' : '?playsinline=1'
+            return (
+              <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+                <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled allowsFullscreenVideo mediaPlaybackRequiresUserAction={false} />
+              </Box>
+            )
+          }
+          if (typeof imageUrl === 'string') {
+            return <MovementThumb imageUrl={imageUrl} videoUrl={undefined} />
+          }
+          return (
+            <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-100" style={{ height: 120, alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-typography-500">No preview</Text>
+            </Box>
+          )
         })() : null}
         <VStack>
           <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
@@ -468,7 +504,7 @@ export default function WorkoutDetailsScreen() {
               <Pressable onPress={() => setDeleteConfirmOpen(false)} className="px-4 py-2 rounded-lg border border-border-200 bg-background-50">
                 <Text className="text-typography-900">Cancel</Text>
               </Pressable>
-              <Pressable onPress={async () => { try { await deletePracticeInstance({ variables: { id: workoutId } }); setDeleteConfirmOpen(false); apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES] }); router.replace('/journal') } catch {} }} className="px-4 py-2 rounded-lg border border-red-200 bg-red-50">
+              <Pressable onPress={async () => { try { await deletePracticeInstance({ variables: { id: workoutId } }); setDeleteConfirmOpen(false); await apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES, QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] }); router.replace('/journal?reload=1') } catch {} }} className="px-4 py-2 rounded-lg border border-red-200 bg-red-50">
                 <Text className="text-red-700 font-semibold">Delete</Text>
               </Pressable>
             </VStack>

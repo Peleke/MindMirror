@@ -187,9 +187,10 @@ export const QUERY_PRACTICE_INSTANCE = gql`
         movements {
           id_
           name
+          description
           restDuration
           videoUrl
-          movement { id_ name shortVideoUrl }
+          movement { id_ name description shortVideoUrl }
           sets { id_ reps loadValue loadUnit restDuration complete movementInstanceId }
         }
       }

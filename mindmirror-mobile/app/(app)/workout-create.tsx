@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Dimensions, Image, ScrollView, Keyboard } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import dayjs from 'dayjs'
 import { useCreateAdHocWorkout } from '@/services/api/practices'
 import { useLazySearchMovements } from '@/services/api/movements'
@@ -20,8 +21,9 @@ import { useCreatePracticeTemplate, QUERY_PRACTICE_TEMPLATES } from '@/services/
 import GlobalFab from '@/components/common/GlobalFab'
 import { useThemeVariant } from '@/theme/ThemeContext'
 import { useFocusEffect } from '@react-navigation/native'
+import { useVideoPlayer, VideoView } from 'expo-video'
+import { WebView } from 'react-native-webview'
 import Markdown from 'react-native-markdown-display'
-import { MovementThumb } from '@/components/workouts/MovementMedia'
 
 // Minimal enums to map to server values
 const BLOCKS = ['warmup', 'workout', 'cooldown', 'other'] as const
@@ -62,9 +64,73 @@ type PrescriptionDraft = {
   movements: MovementDraft[]
 }
 
+function MovementThumb({ imageUrl, videoUrl }: { imageUrl: string | undefined; videoUrl: string | undefined }) {
+  const isImage = typeof imageUrl === 'string' && /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(imageUrl)
+  const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+
+  if (isImage) {
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: imageUrl as string }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+      </Box>
+    )
+  }
+
+  if (isMp4) {
+    const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+      </Box>
+    )
+  }
+
+  // Handle YouTube/Vimeo embeds via WebView when a non-mp4 video URL is provided
+  if (typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
+    const url = videoUrl.trim()
+    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url)
+    const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(url)
+
+    let embedUrl = url
+    if (isYouTube) {
+      try {
+        const u = new URL(url)
+        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+      } catch {}
+    } else if (isVimeo) {
+      try {
+        if (!/player\.vimeo\.com\/video\//i.test(url)) {
+          // Convert https://vimeo.com/{id} -> https://player.vimeo.com/video/{id}
+          const m = url.match(/vimeo\.com\/(\d+)/i)
+          if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
+        }
+      } catch {}
+    }
+
+    // On web, prefer a native iframe; on native, use WebView
+    if (Platform.OS === 'web') {
+      return (
+        <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+        </Box>
+      )
+    }
+
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 180 }}>
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+      </Box>
+    )
+  }
+
+  return null
+}
 
 export default function WorkoutCreateScreen() {
   const router = useRouter()
+  const params = useLocalSearchParams<{ from?: string }>()
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [dt, setDt] = useState<Date>(new Date())
@@ -532,7 +598,7 @@ export default function WorkoutCreateScreen() {
                                 <Text className="text-typography-600 dark:text-gray-300">{videoOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
                               </Pressable>
                               {videoOpenByKey[`${index}-${mi}`] ? (
-                                <MovementThumb imageUrl={m.imageUrl as string | undefined} videoUrl={(m.shortVideoUrl || m.longVideoUrl) as string | undefined} />
+                                <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
                               ) : null}
                               {/* Collapsible description (if any) */}
                               {m.description ? (
@@ -662,9 +728,9 @@ export default function WorkoutCreateScreen() {
                   movementClass: (m.movementClass || 'other').toUpperCase(),
                   prescribedSets: m.prescribedSets,
                   restDuration: m.restDuration,
-                  // Persist videoUrl from short/long URLs so instances can read it
-                  videoUrl: (m.shortVideoUrl || m.longVideoUrl || m.videoUrl || undefined) as string | undefined,
+                  videoUrl: m.videoUrl,
                   exerciseId: m.exerciseId,
+                  movementId: m.movementId,
                   sets: m.sets.map((s) => ({ position: s.position, reps: s.reps, duration: s.duration, restDuration: s.restDuration, loadValue: s.loadValue, loadUnit: s.loadUnit })),
                 })),
               }))
@@ -673,7 +739,9 @@ export default function WorkoutCreateScreen() {
                 apollo.refetchQueries({ include: [QUERY_PRACTICE_TEMPLATES] })
                 showToast('Template created', 'success')
                 await new Promise((r) => setTimeout(r, 400))
-                router.back()
+                const dest = (params?.from as string) || ''
+                if (dest) router.replace(dest)
+                else router.back()
               } catch (e: any) {
                 showToast(e?.message || 'Failed to create template', 'error')
               }
