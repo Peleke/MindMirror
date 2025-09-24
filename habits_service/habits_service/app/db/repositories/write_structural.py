@@ -23,10 +23,11 @@ class ProgramStepTemplateRepository:
         created: List[ProgramStepTemplate] = []
         pid = uuid.UUID(str(program_template_id))
         for s in steps:
+            habit_id = s.get("habit_template_id")
             obj = ProgramStepTemplate(
                 program_template_id=pid,
                 sequence_index=s["sequence_index"],
-                habit_template_id=uuid.UUID(str(s["habit_template_id"])),
+                habit_template_id=(uuid.UUID(str(habit_id)) if habit_id else None),
                 duration_days=s["duration_days"],
             )
             self.session.add(obj)

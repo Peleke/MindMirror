@@ -87,7 +87,7 @@ class ProgramStepTemplate(Base):
     )
     sequence_index = Column(Integer, nullable=False)
     habit_template_id = Column(
-        UUID(as_uuid=True), ForeignKey("habit_templates.id", ondelete="RESTRICT"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("habit_templates.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     duration_days = Column(Integer, nullable=False)
 
