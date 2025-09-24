@@ -17,8 +17,8 @@ class MealsWebConfig(BaseModel):
         "DATABASE_URL", f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
-    off_user_agent: str = "MindMirrorMeals/1.0 (+support@mindmirror.app)"
-    off_searchalicious_enabled: bool = False
+    off_user_agent: str = os.getenv("OFF_USER_AGENT", "MindMirrorMeals/1.0 (+support@mindmirror.app)")
+    off_searchalicious_enabled: bool = os.getenv("OFF_SEARCHALICIOUS_ENABLED", "false").lower() == "true"
     off_default_fields: list[str] = [
         "code",
         "product_name",
