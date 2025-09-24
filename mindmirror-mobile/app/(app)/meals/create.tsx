@@ -116,7 +116,6 @@ export default function CreateMealScreen() {
   const [search, setSearch] = useState('')
   const [selectedForQuantity, setSelectedForQuantity] = useState<any | null>(null)
   const [quantity, setQuantity] = useState<string>('1')
-  const [servingUnit, setServingUnit] = useState<string>('')
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [creatingNew, setCreatingNew] = useState(false)
   const [newFood, setNewFood] = useState({
@@ -297,11 +296,16 @@ export default function CreateMealScreen() {
     type: mealType,
     date: dt.toISOString(),
     notes: notes || null,
-    mealFoodsData: selectedFoods.map(sf => ({
-      foodItemId: sf.foodItem.id_,
-      quantity: sf.quantity,
-      servingUnit: sf.servingUnit || sf.foodItem.servingUnit,
-    })),
+    mealFoodsData: selectedFoods.map(sf => {
+      const fi = sf.foodItem
+      const baseSize = Number(fi.servingSize) || 0
+      const gramsQty = baseSize > 0 ? (sf.quantity * baseSize) : sf.quantity
+      return {
+        foodItemId: fi.id_,
+        quantity: gramsQty,
+        servingUnit: fi.servingUnit || 'g',
+      }
+    }),
   }), [userId, name, mealType, dt, notes, selectedFoods])
 
   const canSubmit = name.trim().length > 0 && !!userId
@@ -353,8 +357,7 @@ export default function CreateMealScreen() {
 
   const openQuantityFor = (item: any, index: number | null = null, presetQty?: number, presetUnit?: string) => {
     setSelectedForQuantity(item)
-    setQuantity(presetQty != null ? String(presetQty) : (item?.servingSize != null ? String(item.servingSize) : '1'))
-    setServingUnit(presetUnit || item.servingUnit || 'g')
+    setQuantity(presetQty != null ? String(presetQty) : '1')
     setEditIndex(index)
   }
 
@@ -362,7 +365,7 @@ export default function CreateMealScreen() {
     if (!selectedForQuantity) return
     const qty = parseFloat(quantity)
     if (!isFinite(qty) || qty <= 0) return
-    const unit = (servingUnit || selectedForQuantity.servingUnit || 'g').trim()
+    const unit = 'servings'
     setSelectedFoods((prev) => {
       if (editIndex != null) {
         const copy = [...prev]
@@ -440,9 +443,7 @@ export default function CreateMealScreen() {
 
   const formatMacros = (sf: SelectedFood) => {
     const fi = sf.foodItem
-    const baseSize = Number(fi.servingSize) || 0
-    const sameUnit = (sf.servingUnit || '').toLowerCase() === (fi.servingUnit || '').toLowerCase()
-    const factor = baseSize > 0 && sameUnit ? sf.quantity / baseSize : 1
+    const factor = sf.quantity || 1
     const p = Math.round((fi.protein || 0) * factor)
     const c = Math.round((fi.carbohydrates || 0) * factor)
     const f = Math.round((fi.fat || 0) * factor)
@@ -453,9 +454,7 @@ export default function CreateMealScreen() {
     const fi = selectedForQuantity
     if (!fi) return { p: 0, c: 0, f: 0, kcal: 0 }
     const qtyNum = parseFloat(quantity) || 0
-    const baseSize = Number(fi.servingSize) || 0
-    const sameUnit = (servingUnit || '').toLowerCase() === (fi.servingUnit || '').toLowerCase()
-    const factor = baseSize > 0 && sameUnit ? qtyNum / baseSize : (baseSize > 0 && !sameUnit ? 1 : qtyNum)
+    const factor = qtyNum
     const p = Math.round((fi.protein || 0) * (isFinite(factor) ? factor : 0))
     const c = Math.round((fi.carbohydrates || 0) * (isFinite(factor) ? factor : 0))
     const f = Math.round((fi.fat || 0) * (isFinite(factor) ? factor : 0))
@@ -494,17 +493,21 @@ export default function CreateMealScreen() {
                   carbohydrates: it.foodItem.carbohydrates,
                   fat: it.foodItem.fat,
                 } as any,
-                quantity: it.quantity,
-                servingUnit: it.servingUnit || it.foodItem.servingUnit || 'g'
+                quantity: it.quantity, // treat as servings
+                servingUnit: 'servings'
               })))
             }} onQuickAdd={async (tpl: any) => {
               // Submit immediately using current date/time
               if (!userId) return
-              const quickItems: { foodItemId: string; quantity: number; servingUnit: string }[] = tpl.items.map((it: any) => ({
-                foodItemId: it.foodItem.id_,
-                quantity: it.quantity,
-                servingUnit: it.servingUnit || it.foodItem.servingUnit || 'g'
-              }))
+              const quickItems: { foodItemId: string; quantity: number; servingUnit: string }[] = tpl.items.map((it: any) => {
+                const baseSize = Number(it.foodItem.servingSize) || 0
+                const gramsQty = baseSize > 0 ? (it.quantity * baseSize) : it.quantity
+                return {
+                  foodItemId: it.foodItem.id_,
+                  quantity: gramsQty,
+                  servingUnit: it.foodItem.servingUnit || 'g'
+                }
+              })
               const quickInput: any = {
                 userId,
                 name: tpl.name as string,
@@ -577,8 +580,8 @@ export default function CreateMealScreen() {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontWeight: '600' }}>{sf.foodItem.name}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                          <Text style={{ color: '#666' }}>{sf.quantity} {sf.servingUnit}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                          <Text style={{ color: '#666' }}>{sf.quantity} {sf.quantity === 1 ? 'serving' : 'servings'}</Text>
                           <Text style={{ marginHorizontal: 6, color: colors.dot }}>•</Text>
                           <Text style={{ color: colors.protein, fontWeight: '600' }}>{macros.p}P</Text>
                           <Text style={{ marginHorizontal: 6, color: colors.dot }}>•</Text>
@@ -622,7 +625,7 @@ export default function CreateMealScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'center' }}>
           <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setShowFoodModal(false); setSearch(''); setSelectedForQuantity(null); setEditIndex(null) }} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-            <View style={{ width: '96%', backgroundColor: '#fff', maxHeight: '80%', borderRadius: 12, padding: 16, position: 'relative' }}>
+            <View style={{ width: '96%', maxWidth: 560, maxHeight: 520, backgroundColor: '#fff', borderRadius: 16, padding: 16, position: 'relative', borderWidth: 1, borderColor: '#e5e7eb' }}>
               {toast && (
                 <View style={{ position: 'absolute', top: 48, left: 16, right: 16, zIndex: 10, alignItems: 'center' }}>
                   <View style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: toast.type === 'error' ? '#ef4444' : '#16a34a' }}>
@@ -633,18 +636,10 @@ export default function CreateMealScreen() {
               {!creatingNew ? (
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: '600', fontSize: 16, marginBottom: 10 }}>{editIndex != null ? 'Edit Quantity' : 'Add Food'}</Text>
-                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-                    <Pressable onPress={() => setCreatingNew(true)} style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#1d4ed8', alignItems: 'center', backgroundColor: '#ffffff' }}>
-                      <Text style={{ color: '#1d4ed8', fontWeight: '800' }}>＋ Create New Item</Text>
-                    </Pressable>
-                    <Pressable onPress={() => router.push(`/meals/scan?from=${encodeURIComponent('/meals/create?openFoodModal=1')}`)} style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: '#111827' }}>
-                      <Text style={{ color: '#fff', fontWeight: '800' }}>Scan Barcode</Text>
-                    </Pressable>
-                  </View>
                   <TextInput
                     value={search}
                     onChangeText={setSearch}
-                    placeholder="Search for food items..."
+                    placeholder="Search foods…"
                     placeholderTextColor="#9CA3AF"
                     autoFocus
                     style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 12 }}
@@ -654,8 +649,12 @@ export default function CreateMealScreen() {
                       keyboardDismissMode="on-drag"
                       keyboardShouldPersistTaps="handled"
                       showsVerticalScrollIndicator={true}
-                      data={biasedResults}
-                      keyExtractor={(item) => item.id_}
+                      data={useMemo(() => {
+                        const locals = (biasedResults || []).map((it: any) => ({ ...it, __type: 'local' }))
+                        const offs = (offResults || []).map((it: any) => ({ ...it, __type: 'off' }))
+                        return [...locals, ...offs]
+                      }, [biasedResults, offResults])}
+                      keyExtractor={(item: any, i: number) => item.__type === 'off' ? `off:${item.externalId || item.name || i}` : `local:${item.id_}`}
                       style={{ flex: 1 }}
                       contentContainerStyle={{ paddingTop: 4, paddingBottom: selectedForQuantity ? 220 : 16, flexGrow: 1 }}
                       ListEmptyComponent={!searching ? (
@@ -663,46 +662,52 @@ export default function CreateMealScreen() {
                           <Text style={{ color: '#6b7280' }}>{(search||'').trim().length === 0 ? 'Type to search your foods' : 'No matches found'}</Text>
                         </View>
                       ) : null}
-                      renderItem={({ item }) => (
-                        <Pressable onPress={() => openQuantityFor(item)} style={{ paddingVertical: 10 }}>
+                      renderItem={({ item }: { item: any }) => (
+                        <Pressable onPress={() => {
+                          if (item.__type === 'off') onImportOffPress(item.externalId)
+                          else openQuantityFor(item)
+                        }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flex: 1, paddingRight: 8 }}>
-                              <Text style={{ fontWeight: '600' }}>{item.name}</Text>
-                              <Text style={{ color: '#666' }}>{item.servingSize}{item.servingUnit} • {Math.round(item.calories)} kcal</Text>
+                              <Text style={{ fontWeight: '600' }}>
+                                {item.name}{item.brand ? ` • ${item.brand}` : ''}
+                              </Text>
+                              {item.__type === 'off' ? (
+                                <Text style={{ color: '#666' }}>1 serving{(item.servingSize != null && item.servingUnit) ? ` (${item.servingSize}${item.servingUnit})` : ''}</Text>
+                              ) : (
+                                <Text style={{ color: '#666' }}>1 serving{(item.servingSize != null && item.servingUnit) ? ` (${item.servingSize}${item.servingUnit})` : ''} • {Math.round(item.calories)} kcal</Text>
+                              )}
                             </View>
+                            {item.__type === 'off' ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                {!!item.nutritionGrades && (
+                                  <View style={{ minWidth: 28, height: 28, borderRadius: 6, backgroundColor: nutriColor(item.nutritionGrades), alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: '#fff', fontWeight: '800' }}>{String(item.nutritionGrades).toUpperCase()}</Text>
+                                  </View>
+                                )}
+                                <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#dbeafe' }}>
+                                  <Text style={{ color: '#1d4ed8', fontWeight: '700' }}>OFF</Text>
+                                </View>
+                              </View>
+                            ) : null}
                           </View>
                         </Pressable>
                       )}
-                      ListFooterComponent={offResults.length > 0 ? (
-                        <View style={{ marginTop: 16 }}>
-                          <View style={{ backgroundColor: '#f9fafb', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                            <Text style={{ fontWeight: '700', color: '#111827' }}>Open Food Facts</Text>
-                          </View>
-                          {offResults.map((r: any) => (
-                            <Pressable key={(r.externalId || r.name) + (r.brand || '')} onPress={() => onImportOffPress(r.externalId)} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View style={{ flex: 1, paddingRight: 10 }}>
-                                  <Text style={{ fontWeight: '600' }}>
-                                    {r.name}{r.brand ? ` • ${r.brand}` : ''}
-                                  </Text>
-                                </View>
-                                {!!r.nutritionGrades && (
-                                  <View style={{ minWidth: 28, height: 28, borderRadius: 6, backgroundColor: nutriColor(r.nutritionGrades), alignItems: 'center', justifyContent: 'center' }}>
-                                    <Text style={{ color: '#fff', fontWeight: '800' }}>{String(r.nutritionGrades).toUpperCase()}</Text>
-                                  </View>
-                                )}
-                              </View>
-                              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                                <Pressable disabled={importingOff} onPress={() => onImportOffPress(r.externalId)}
-                                  style={{ paddingVertical: 10, paddingHorizontal: 14, backgroundColor: '#f8fafc', borderRadius: 10, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3, borderWidth: 1, borderColor: '#e5e7eb', alignSelf: 'flex-start' }}>
-                                  <Text style={{ color: '#111827', fontWeight: '700' }}>{importingOff ? 'Importing…' : 'Import  >'}</Text>
-                                </Pressable>
-                              </View>
-                            </Pressable>
-                          ))}
-                        </View>
-                      ) : null}
                     />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                    <Pressable onPress={() => setCreatingNew(true)} style={{ alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                      <Text style={{ color: '#111827', fontWeight: '700' }}>＋ Create Food Item</Text>
+                    </Pressable>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable onPress={() => router.push(`/meals/scan?from=${encodeURIComponent('/meals/create?openFoodModal=1')}`)} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>Scan Barcode</Text>
+                      </Pressable>
+                      <Pressable onPress={() => { setShowFoodModal(false); setSearch(''); setSelectedForQuantity(null); setEditIndex(null) }} style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                        <Text style={{ color: '#374151', fontWeight: '600' }}>Close</Text>
+                      </Pressable>
+                    </View>
                   </View>
 
                   {selectedForQuantity && (
@@ -715,16 +720,9 @@ export default function CreateMealScreen() {
                           value={quantity}
                           onChangeText={setQuantity}
                           keyboardType="numeric"
-                          placeholder="Quantity"
+                          placeholder="Servings"
                           placeholderTextColor="#9CA3AF"
                           style={{ flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
-                        />
-                        <TextInput
-                          value={servingUnit}
-                          onChangeText={setServingUnit}
-                          placeholder="Unit"
-                          placeholderTextColor="#9CA3AF"
-                          style={{ width: 100, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10 }}
                         />
                       </View>
                       {/* Live macro preview */}
