@@ -525,6 +525,18 @@ class EnrollmentMutation:
                     
                     if habits_enrollment:
                         print(f"Successfully enrolled user {current_user.id} in habits program {program.habits_program_template_id}")
+                        
+                        # Create initial lesson tasks for day 0
+                        # Note: This is a workaround until habits service auto-creates lesson tasks on enrollment
+                        try:
+                            await habits_client.create_initial_program_tasks(
+                                program_template_id=str(program.habits_program_template_id),
+                                user_id=str(current_user.id),
+                                start_date=_date.today(),
+                                auth_token=token
+                            )
+                        except Exception as e:
+                            print(f"Warning: Failed to create initial lesson tasks: {e}")
                     else:
                         print(f"Failed to enroll user {current_user.id} in habits program {program.habits_program_template_id}")
                         
@@ -682,6 +694,18 @@ class EnrollmentMutation:
                     
                     if habits_enrollment:
                         print(f"Successfully enrolled user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
+                        
+                        # Create initial lesson tasks for day 0
+                        # Note: This is a workaround until habits service auto-creates lesson tasks on enrollment
+                        try:
+                            await habits_client.create_initial_program_tasks(
+                                program_template_id=str(program.habits_program_template_id),
+                                user_id=str(user_to_enroll_id),
+                                start_date=_date.today(),
+                                auth_token=token
+                            )
+                        except Exception as e:
+                            print(f"Warning: Failed to create initial lesson tasks: {e}")
                     else:
                         print(f"Failed to enroll user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
                         

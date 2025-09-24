@@ -187,3 +187,69 @@ class HabitsServiceClient:
 
         result = await self._execute_graphql(query, None, auth_token)
         return result.get("programTemplates", [])
+
+    async def create_initial_program_tasks(
+        self,
+        program_template_id: str,
+        user_id: str,
+        start_date: date,
+        auth_token: Optional[str] = None
+    ) -> bool:
+        """Create initial lesson tasks for day 0 of a program."""
+        
+        # First get the program template to see what lessons are on day 0
+        query = """
+            query GetProgramTemplate($id: String!) {
+                programTemplate(id: $id) {
+                    id
+                    slug
+                    sequence {
+                        stepSlug
+                        durationDays
+                        lessonSlugs
+                    }
+                }
+            }
+        """
+        
+        variables = {"id": program_template_id}
+        
+        try:
+            result = await self._execute_graphql(query, variables, auth_token)
+            program = result.get("programTemplate")
+            
+            if not program or not program.get("sequence"):
+                logger.warning(f"No program template found or no sequence for {program_template_id}")
+                return False
+            
+            # Find the first step (day 0)
+            first_step = program["sequence"][0] if program["sequence"] else None
+            if not first_step or not first_step.get("lessonSlugs"):
+                logger.info(f"No lessons found for day 0 of program {program_template_id}")
+                return True
+            
+            # Create lesson tasks for each lesson in the first step
+            success_count = 0
+            for lesson_slug in first_step["lessonSlugs"]:
+                try:
+                    # Get lesson template by slug to get the ID
+                    lesson_template = await self.get_lesson_template_by_slug(lesson_slug, auth_token)
+                    if lesson_template:
+                        await self.create_lesson_task(
+                            user_id=user_id,
+                            lesson_template_id=lesson_template["id"],
+                            task_date=start_date,
+                            auth_token=auth_token
+                        )
+                        success_count += 1
+                        logger.info(f"Created lesson task for {lesson_slug}")
+                    else:
+                        logger.warning(f"Lesson template not found for slug: {lesson_slug}")
+                except Exception as e:
+                    logger.error(f"Failed to create lesson task for {lesson_slug}: {e}")
+            
+            return success_count > 0
+            
+        except Exception as e:
+            logger.error(f"Failed to create initial program tasks: {e}")
+            return False
