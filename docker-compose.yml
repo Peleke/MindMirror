@@ -378,7 +378,8 @@ services:
     container_name: meals_service
     env_file: ${ENV_FILE:-.env}
     # environment:
-    #   # Preferred single URL (service supports DATABASE_URL first)
+      # Preferred single URL (service supports DATABASE_URL first)
+      # - OFF_SEARCHALICIOUS_ENABLED=${OFF_SEARCHALICIOUS_ENABLED:-true}
     #   - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     #   # Generic DB_* used by current implementation
     #   - DB_HOST=postgres

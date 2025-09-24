@@ -5,6 +5,9 @@ Uses content_parser to parse lessons and a program manifest to upsert templates.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import asyncio
 import hashlib
 import json
@@ -198,7 +201,10 @@ def run(
                 steps=[
                     {
                         "sequence_index": idx,
-                        "habit_template_id": habit_slug_to_id.get(step.get("habitTemplateSlug", "")) or uuid_from_slug(step.get("habitTemplateSlug", "")),
+                        "habit_template_id": (
+                            habit_slug_to_id.get(step.get("habitTemplateSlug"))
+                            if step.get("habitTemplateSlug") else None
+                        ),
                         "duration_days": int(step.get("durationDays", 7)),
                     }
                     for idx, step in enumerate(manifest.get("sequence", []))
@@ -385,5 +391,3 @@ def run(
         return "\n".join(out).strip()
 
     asyncio.run(_run())
-
-

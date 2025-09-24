@@ -238,7 +238,6 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   searchPracticeTemplates(searchTerm: String!, limit: Int = null) : [PracticeTemplateType!]! @join__field(graph: PRACTICES) 
   practiceTemplate(id: ID!) : PracticeTemplateType @join__field(graph: PRACTICES) 
   practiceInstances(userId: ID!) : [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
-  practice_instance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
   programs: [ProgramType!]! @join__field(graph: PRACTICES) 
   program(id: ID!) : ProgramType @join__field(graph: PRACTICES) 
   programsByLevel(level: String!) : [ProgramType!]! @join__field(graph: PRACTICES) 
@@ -251,6 +250,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
     programId: ID = null
     status: String = null
   ): [PracticeInstanceType!]! @join__field(graph: PRACTICES) 
+  practice_instance(id: ID!) : PracticeInstanceType @join__field(graph: PRACTICES) 
   setInstance(id: ID!) : SetInstanceType @join__field(graph: PRACTICES) 
   setInstancesByTemplate(templateId: ID!) : [SetInstanceType!]! @join__field(graph: PRACTICES) 
   movementInstance(id: ID!) : MovementInstanceType @join__field(graph: PRACTICES) 
@@ -375,7 +375,7 @@ type Mutation @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type
   habitsLessonTemplateBySlug(slug: String!) : PracticesLessonTemplateType @join__field(graph: PRACTICES) 
   habitsProgramTemplates: [HabitsProgramTemplateType!]! @join__field(graph: PRACTICES) 
   createAdHocWorkout(input: PracticeInstanceCreateStandaloneInput!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
-  scheduleWorkout(templateId: ID!, date: Date!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
+  scheduleWorkout(templateId: ID!, date: Date!, enrollmentId: ID = null) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   completeWorkout(id: ID!) : PracticeInstanceType! @join__field(graph: PRACTICES) 
   logSet(input: SetInstanceCreateInput!) : SetInstanceType! @join__field(graph: PRACTICES) 
   createPracticeTemplate(input: PracticeTemplateCreateInput!) : PracticeTemplateType! @join__field(graph: PRACTICES) 
@@ -854,6 +854,7 @@ type PracticeInstanceType @join__type(graph: PRACTICES)  {
   date: Date!
   userId: ID!
   templateId: ID
+  enrollmentId: ID
   description: String
   duration: Float
   notes: String
