@@ -290,6 +290,10 @@ class Query:
             # precompute prefix sums of duration
             cursor = 0
             for s in steps:
+                # Skip steps without a habit (e.g., welcome/lesson-only steps)
+                if not getattr(s, "habit_template_id", None):
+                    cursor += s.duration_days
+                    continue
                 habit = await repo.get_habit_template(str(s.habit_template_id))
                 if not habit:
                     continue

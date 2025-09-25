@@ -76,8 +76,10 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
         if active_step is None:
             continue
 
-        # Habit card
-        habit = await repo.get_habit_template(str(active_step.habit_template_id))
+        # Habit card (welcome-only steps may have no habit)
+        habit = None
+        if getattr(active_step, "habit_template_id", None):
+            habit = await repo.get_habit_template(str(active_step.habit_template_id))
         if habit:
             # derive subtitle: daily plan variant overrides, else habit.short_description, else lesson subtitle/summary
             subtitle_text: Optional[str] = None

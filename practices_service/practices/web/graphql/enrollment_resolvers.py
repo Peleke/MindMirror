@@ -3,6 +3,7 @@ import uuid
 import httpx
 from datetime import date, timedelta
 from typing import List, Optional, cast, Dict
+import logging
 
 import strawberry
 from graphql import GraphQLError
@@ -10,6 +11,8 @@ from shared.auth import CurrentUser, RequireRolePermission
 from shared.clients.user_service_client import users_service_client
 from strawberry.types import Info
 import os
+
+logger = logging.getLogger(__name__)
 
 from practices.domain.models import DomainProgramEnrollment
 from practices.repository.models.progress import ScheduledPracticeModel
@@ -407,8 +410,34 @@ class EnrollmentMutation:
             # Avoid duplicate active enrollments for the same program: short-circuit
             existing = await repo.get_enrollments_for_user(current_user.id)
             if any(e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE" for e in existing):
-                # Reuse existing enrollment; skip scheduling to prevent duplication
+                # Reuse existing enrollment; ensure paired habits auto-enroll still runs idempotently
                 domain_enrollment = next(e for e in existing if e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE")
+                try:
+                    # Load program to check paired habits mapping
+                    program_repo = ProgramRepository(uow.session)
+                    program_uuid = uuid.UUID(str(input.program_id))
+                    program = await program_repo.get_program_by_id(program_uuid)
+                    if program and program.habits_program_template_id:
+                        logger.info(f"(Existing enrollment) Auto-enrolling user {current_user.id} in paired habits program {program.habits_program_template_id}")
+                        habits_client = HabitsServiceClient()
+                        logger.info(f"Created HabitsServiceClient with base_url: {habits_client.base_url}")
+                        # Forward bearer if present
+                        req = info.context.get('request')
+                        token = None
+                        if req:
+                            authz = req.headers.get('authorization')
+                            if authz and authz.lower().startswith('bearer '):
+                                token = authz.split(' ', 1)[1]
+                        from datetime import date as _date
+                        logger.info(f"Attempting habits enrollment (existing practices enrollment): program_id={program.habits_program_template_id}, start_date={_date.today()}, has_token={bool(token)}")
+                        _ = await habits_client.enroll_user_in_program(
+                            program_template_id=str(program.habits_program_template_id),
+                            start_date=_date.today(),
+                            auth_token=token,
+                            internal_user_id=str(current_user.id)
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to auto-enroll paired habits program for existing practices enrollment: {e}", exc_info=True)
                 return to_gql_enrollment(domain_enrollment)
             domain_enrollment = await service.enroll_user(
                 program_id=uuid.UUID(str(input.program_id)),
@@ -504,8 +533,10 @@ class EnrollmentMutation:
 
             # Auto-enroll in paired habits program if specified
             if program and program.habits_program_template_id:
+                logger.info(f"Auto-enrolling user {current_user.id} in paired habits program {program.habits_program_template_id}")
                 try:
                     habits_client = HabitsServiceClient()
+                    logger.info(f"Created HabitsServiceClient with base_url: {habits_client.base_url}")
                     
                     # Get user token for authentication
                     req = info.context.get('request')
@@ -514,35 +545,44 @@ class EnrollmentMutation:
                         authz = req.headers.get('authorization')
                         if authz and authz.lower().startswith('bearer '):
                             token = authz.split(' ', 1)[1]
+                            logger.info(f"Found authorization token: {token[:20]}...{token[-4:] if len(token) > 24 else ''}")
+                        else:
+                            logger.warning(f"Authorization header present but not a bearer token: {authz[:50] if authz else 'None'}")
+                    else:
+                        logger.warning("No request context or authorization header found")
                     
                     # Enroll user in the paired habits program
                     from datetime import date as _date
+                    logger.info(f"Attempting habits enrollment: program_id={program.habits_program_template_id}, start_date={_date.today()}, has_token={bool(token)}")
                     habits_enrollment = await habits_client.enroll_user_in_program(
                         program_template_id=str(program.habits_program_template_id),
                         start_date=_date.today(),
-                        auth_token=token
+                        auth_token=token,
+                        internal_user_id=str(current_user.id)
                     )
                     
                     if habits_enrollment:
-                        print(f"Successfully enrolled user {current_user.id} in habits program {program.habits_program_template_id}")
+                        logger.info(f"Successfully enrolled user {current_user.id} in habits program {program.habits_program_template_id}: {habits_enrollment}")
                         
                         # Create initial lesson tasks for day 0
                         # Note: This is a workaround until habits service auto-creates lesson tasks on enrollment
                         try:
+                            logger.info(f"Creating initial program tasks for user {current_user.id}")
                             await habits_client.create_initial_program_tasks(
                                 program_template_id=str(program.habits_program_template_id),
                                 user_id=str(current_user.id),
                                 start_date=_date.today(),
                                 auth_token=token
                             )
+                            logger.info("Successfully created initial program tasks")
                         except Exception as e:
-                            print(f"Warning: Failed to create initial lesson tasks: {e}")
+                            logger.warning(f"Failed to create initial lesson tasks: {e}")
                     else:
-                        print(f"Failed to enroll user {current_user.id} in habits program {program.habits_program_template_id}")
+                        logger.error(f"Failed to enroll user {current_user.id} in habits program {program.habits_program_template_id} - enrollment returned None")
                         
                 except Exception as e:
                     # Log error but don't fail the practices enrollment
-                    print(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}")
+                    logger.error(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}", exc_info=True)
 
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)
@@ -575,8 +615,34 @@ class EnrollmentMutation:
             # Avoid duplicate active enrollments for the same program: short-circuit
             existing = await repo.get_enrollments_for_user(user_to_enroll_id)
             if any(e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE" for e in existing):
-                # Reuse existing enrollment; skip scheduling to prevent duplication
+                # Reuse existing enrollment; ensure paired habits auto-enroll still runs idempotently
                 domain_enrollment = next(e for e in existing if e.program_id == uuid.UUID(str(input.program_id)) and e.status.name == "ACTIVE")
+                try:
+                    # Load program to check paired habits mapping
+                    program_repo = ProgramRepository(uow.session)
+                    program_uuid = uuid.UUID(str(input.program_id))
+                    program = await program_repo.get_program_by_id(program_uuid)
+                    if program and program.habits_program_template_id:
+                        logger.info(f"(Existing enrollment) Auto-enrolling user {user_to_enroll_id} in paired habits program {program.habits_program_template_id}")
+                        habits_client = HabitsServiceClient()
+                        logger.info(f"Created HabitsServiceClient with base_url: {habits_client.base_url}")
+                        # Forward bearer if present
+                        req = info.context.get('request')
+                        token = None
+                        if req:
+                            authz = req.headers.get('authorization')
+                            if authz and authz.lower().startswith('bearer '):
+                                token = authz.split(' ', 1)[1]
+                        from datetime import date as _date
+                        logger.info(f"Attempting habits enrollment (existing practices enrollment): program_id={program.habits_program_template_id}, start_date={_date.today()}, has_token={bool(token)}")
+                        _ = await habits_client.enroll_user_in_program(
+                            program_template_id=str(program.habits_program_template_id),
+                            start_date=_date.today(),
+                            auth_token=token,
+                            internal_user_id=str(user_to_enroll_id)
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to auto-enroll paired habits program for existing practices enrollment: {e}", exc_info=True)
                 return to_gql_enrollment(domain_enrollment)
                 
             domain_enrollment = await service.enroll_user(
@@ -673,8 +739,10 @@ class EnrollmentMutation:
 
             # Auto-enroll in paired habits program if specified
             if program and program.habits_program_template_id:
+                logger.info(f"Auto-enrolling user {user_to_enroll_id} in paired habits program {program.habits_program_template_id}")
                 try:
                     habits_client = HabitsServiceClient()
+                    logger.info(f"Created HabitsServiceClient with base_url: {habits_client.base_url}")
                     
                     # Get user token for authentication
                     req = info.context.get('request')
@@ -683,35 +751,44 @@ class EnrollmentMutation:
                         authz = req.headers.get('authorization')
                         if authz and authz.lower().startswith('bearer '):
                             token = authz.split(' ', 1)[1]
+                            logger.info(f"Found authorization token: {token[:20]}...{token[-4:] if len(token) > 24 else ''}")
+                        else:
+                            logger.warning(f"Authorization header present but not a bearer token: {authz[:50] if authz else 'None'}")
+                    else:
+                        logger.warning("No request context or authorization header found")
                     
                     # Enroll user in the paired habits program
                     from datetime import date as _date
+                    logger.info(f"Attempting habits enrollment: program_id={program.habits_program_template_id}, start_date={_date.today()}, has_token={bool(token)}")
                     habits_enrollment = await habits_client.enroll_user_in_program(
                         program_template_id=str(program.habits_program_template_id),
                         start_date=_date.today(),
-                        auth_token=token
+                        auth_token=token,
+                        internal_user_id=str(user_to_enroll_id)
                     )
                     
                     if habits_enrollment:
-                        print(f"Successfully enrolled user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
+                        logger.info(f"Successfully enrolled user {user_to_enroll_id} in habits program {program.habits_program_template_id}: {habits_enrollment}")
                         
                         # Create initial lesson tasks for day 0
                         # Note: This is a workaround until habits service auto-creates lesson tasks on enrollment
                         try:
+                            logger.info(f"Creating initial program tasks for user {user_to_enroll_id}")
                             await habits_client.create_initial_program_tasks(
                                 program_template_id=str(program.habits_program_template_id),
                                 user_id=str(user_to_enroll_id),
                                 start_date=_date.today(),
                                 auth_token=token
                             )
+                            logger.info("Successfully created initial program tasks")
                         except Exception as e:
-                            print(f"Warning: Failed to create initial lesson tasks: {e}")
+                            logger.warning(f"Failed to create initial lesson tasks: {e}")
                     else:
-                        print(f"Failed to enroll user {user_to_enroll_id} in habits program {program.habits_program_template_id}")
+                        logger.error(f"Failed to enroll user {user_to_enroll_id} in habits program {program.habits_program_template_id} - enrollment returned None")
                         
                 except Exception as e:
                     # Log error but don't fail the practices enrollment
-                    print(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}")
+                    logger.error(f"Failed to auto-enroll in habits program {program.habits_program_template_id}: {e}", exc_info=True)
 
             # The Unit of Work context manager handles the commit.
             return to_gql_enrollment(domain_enrollment)

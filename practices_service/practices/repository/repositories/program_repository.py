@@ -1,4 +1,5 @@
 import uuid
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union, cast
 
@@ -30,9 +31,12 @@ class ProgramRepository:
             "created_at": model.created_at,
             "modified_at": model.modified_at,
             "user_id": str(model.user_id),
+            # CRITICAL: include paired habits program mapping so resolvers can auto-enroll
+            "habits_program_template_id": str(model.habits_program_template_id) if getattr(model, "habits_program_template_id", None) else None,
             "tags": [],
             "practice_links": [],
         }
+        logging.info(f"Program model to dict result: {result}")
 
         # Add tags if loaded
         if model.tags:

@@ -28,13 +28,17 @@ class HabitsServiceClient:
         self,
         query: str,
         variables: Optional[Dict[str, Any]] = None,
-        auth_token: Optional[str] = None
+        auth_token: Optional[str] = None,
+        internal_user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute a GraphQL query/mutation against habits_service."""
 
         headers = self.default_headers.copy()
         if auth_token:
             headers['authorization'] = f"Bearer {auth_token}"
+        # Mesh/habits service recognizes x-internal-id for current user context
+        if internal_user_id:
+            headers['x-internal-id'] = internal_user_id
 
         async with httpx.AsyncClient(timeout=30) as client:
             try:
@@ -141,7 +145,8 @@ class HabitsServiceClient:
         self,
         program_template_id: str,
         start_date: date,
-        auth_token: Optional[str] = None
+        auth_token: Optional[str] = None,
+        internal_user_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Enroll a user in a habits program template."""
 
@@ -162,10 +167,17 @@ class HabitsServiceClient:
         }
 
         try:
-            result = await self._execute_graphql(query, variables, auth_token)
-            return result.get("assignProgramToUser")
+            logger.info(f"Executing habits enrollment GraphQL for program {program_template_id} with variables: {variables} internal_user_id={bool(internal_user_id)}")
+            result = await self._execute_graphql(query, variables, auth_token, internal_user_id)
+            logger.info(f"Habits enrollment GraphQL response: {result}")
+            enrollment_result = result.get("assignProgramToUser")
+            if enrollment_result:
+                logger.info(f"Habits enrollment successful: {enrollment_result}")
+            else:
+                logger.warning(f"Habits enrollment returned null/empty result: {result}")
+            return enrollment_result
         except Exception as e:
-            logger.error(f"Failed to enroll user in habits program {program_template_id}: {e}")
+            logger.error(f"Failed to enroll user in habits program {program_template_id}: {e}", exc_info=True)
             # Don't raise - we don't want to fail the practices enrollment if habits enrollment fails
             return None
 
@@ -195,61 +207,12 @@ class HabitsServiceClient:
         start_date: date,
         auth_token: Optional[str] = None
     ) -> bool:
-        """Create initial lesson tasks for day 0 of a program."""
-        
-        # First get the program template to see what lessons are on day 0
-        query = """
-            query GetProgramTemplate($id: String!) {
-                programTemplate(id: $id) {
-                    id
-                    slug
-                    sequence {
-                        stepSlug
-                        durationDays
-                        lessonSlugs
-                    }
-                }
-            }
         """
+        Create initial lesson tasks for day 0 of a program.
         
-        variables = {"id": program_template_id}
-        
-        try:
-            result = await self._execute_graphql(query, variables, auth_token)
-            program = result.get("programTemplate")
-            
-            if not program or not program.get("sequence"):
-                logger.warning(f"No program template found or no sequence for {program_template_id}")
-                return False
-            
-            # Find the first step (day 0)
-            first_step = program["sequence"][0] if program["sequence"] else None
-            if not first_step or not first_step.get("lessonSlugs"):
-                logger.info(f"No lessons found for day 0 of program {program_template_id}")
-                return True
-            
-            # Create lesson tasks for each lesson in the first step
-            success_count = 0
-            for lesson_slug in first_step["lessonSlugs"]:
-                try:
-                    # Get lesson template by slug to get the ID
-                    lesson_template = await self.get_lesson_template_by_slug(lesson_slug, auth_token)
-                    if lesson_template:
-                        await self.create_lesson_task(
-                            user_id=user_id,
-                            lesson_template_id=lesson_template["id"],
-                            task_date=start_date,
-                            auth_token=auth_token
-                        )
-                        success_count += 1
-                        logger.info(f"Created lesson task for {lesson_slug}")
-                    else:
-                        logger.warning(f"Lesson template not found for slug: {lesson_slug}")
-                except Exception as e:
-                    logger.error(f"Failed to create lesson task for {lesson_slug}: {e}")
-            
-            return success_count > 0
-            
-        except Exception as e:
-            logger.error(f"Failed to create initial program tasks: {e}")
-            return False
+        Note: This method is deprecated. The habits service planner (todaysTasks) now
+        automatically shows lesson tasks based on program step template mappings.
+        This method is kept for backward compatibility but does nothing.
+        """
+        logger.info(f"create_initial_program_tasks called for program {program_template_id} - this is deprecated and no longer needed")
+        return True
