@@ -15,7 +15,7 @@ import { MARK_LESSON_COMPLETED, LESSON_TEMPLATE_BY_ID } from '@/services/api/hab
 import Markdown from 'react-native-markdown-display'
 
 export default function LessonDetailScreen() {
-  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string }>()
+  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string; from?: string }>()
   const router = useRouter()
   const [markLessonCompleted] = useMutation(MARK_LESSON_COMPLETED)
   const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
@@ -35,6 +35,12 @@ export default function LessonDetailScreen() {
           showBackButton
           onBackPress={() => {
             try {
+              // Respect origin screen when provided
+              const from = (params.from as string) || ''
+              if (from === 'programs') {
+                router.replace('/programs')
+                return
+              }
               router.back()
             } catch {
               router.replace('/journal')
