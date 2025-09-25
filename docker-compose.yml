@@ -474,8 +474,9 @@ services:
     container_name: practices_service
     env_file: ${ENV_FILE:-.env}
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${PRACTICES_DB_USER:-practices_user}:${PRACTICES_DB_PASSWORD:-practices_password}@practices_postgres:5432/${PRACTICES_DB_NAME:-swae_practices}
+      # - DATABASE_URL=postgresql+asyncpg://${PRACTICES_DB_USER:-practices_user}:${PRACTICES_DB_PASSWORD:-practices_password}@practices_postgres:5432/${PRACTICES_DB_NAME:-swae_practices}
       - USERS_SERVICE_URL=http://users_service:8000/graphql
+      - HABITS_SERVICE_BASE_URL=http://habits_service:8003
     networks:
       - mindmirror-network
     depends_on:
