@@ -613,14 +613,26 @@ const LoadingJournalCard = ({ type }: { type: 'Gratitude' | 'Reflection' }) => {
 };
 
 export default function JournalScreen() {
-  const params = useLocalSearchParams<{ reload?: string }>()
+  const params = useLocalSearchParams<{ reload?: string; date?: string }>()
   const router = useRouter();
   const { show } = useToast();
   const { user, session, loading: authLoading } = useAuth();
   const { affirmation, isLoading: isAffirmationLoading } = useAffirmation();
   const { hasCompletedGratitude, hasCompletedReflection, isLoading: isStatusLoading } = useJournalStatus();
   // Tasks calendar state
-  const [tasksAnchorDate, setTasksAnchorDate] = useState<Date>(new Date())
+  const initialAnchor = React.useMemo(() => {
+    const d = (params?.date as string) || ''
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const parts = d.split('-')
+      const yy = parseInt(parts[0] || '0', 10)
+      const mm = parseInt(parts[1] || '1', 10)
+      const dd = parseInt(parts[2] || '1', 10)
+      const dt = new Date(Date.UTC(yy, Math.max(0, (mm - 1)), dd))
+      return dt
+    }
+    return new Date()
+  }, [params?.date])
+  const [tasksAnchorDate, setTasksAnchorDate] = useState<Date>(initialAnchor)
   const [showTasksDatePicker, setShowTasksDatePicker] = useState(false)
   const toUtcDateStr = (d: Date) => {
     const yy = d.getUTCFullYear()
@@ -901,6 +913,29 @@ export default function JournalScreen() {
             </VStack>
           )}
           
+          {/* Date Picker Modal */}
+          {showTasksDatePicker && (
+            <Modal visible transparent animationType="fade" onRequestClose={() => setShowTasksDatePicker(false)}>
+              <RNPressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowTasksDatePicker(false)}>
+                <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+                  <Box className="rounded-xl bg-background-0 border border-border-200 p-3">
+                    <CalendarPicker
+                      selectedStartDate={tasksAnchorDate}
+                      onDateChange={(d: any) => {
+                        try {
+                          // CalendarPicker passes a Moment-like; coerce to Date
+                          const dt = new Date(d)
+                          if (!isNaN(dt.getTime())) setTasksAnchorDate(dt)
+                        } catch {}
+                        setShowTasksDatePicker(false)
+                      }}
+                    />
+                  </Box>
+                </View>
+              </RNPressable>
+            </Modal>
+          )}
+
           {/* REMOVED: Old structured journal section */}
           
           </VStack>

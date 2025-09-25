@@ -10,9 +10,53 @@ import { Text } from '@/components/ui/text'
 import { Box } from '@/components/ui/box'
 import { AppBar } from '@/components/common/AppBar'
 import { Button, ButtonText } from '@/components/ui/button'
-import { useMutation, useQuery } from '@apollo/client'
+import { useMutation, useQuery, gql } from '@apollo/client'
 import { MARK_LESSON_COMPLETED, LESSON_TEMPLATE_BY_ID } from '@/services/api/habits'
 import Markdown from 'react-native-markdown-display'
+
+function convertGfmTablesToLists(md: string): string {
+  const lines = (md || '').split('\n')
+  const out: string[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i] || ''
+    // Detect start of GFM table: header row starting/ending with | and separator row next
+    if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|\s*[:\-\s\|]+\|\s*$/.test((lines[i + 1] || ''))) {
+      // Parse headers
+      const headers = (line || '')
+        .trim()
+        .slice(1, -1)
+        .split('|')
+        .map((h) => h.trim())
+      i += 2 // skip header and separator
+      // Collect rows
+      const rows: string[][] = []
+      while (i < lines.length && /^\|.*\|\s*$/.test(lines[i] || '')) {
+        const cells = (lines[i] || '')
+          .trim()
+          .slice(1, -1)
+          .split('|')
+          .map((c) => c.trim())
+        rows.push(cells)
+        i += 1
+      }
+      // Emit as bullet list
+      for (const r of rows) {
+        const pairs: string[] = []
+        for (let k = 0; k < Math.min(headers.length, r.length); k++) {
+          const head = headers[k] || ''
+          const cell = r[k] || ''
+          if (head && cell) pairs.push(`${head}: ${cell}`)
+        }
+        if (pairs.length) out.push(`- ${pairs.join('  •  ')}`)
+      }
+      continue
+    }
+    out.push(line)
+    i += 1
+  }
+  return out.join('\n')
+}
 
 export default function LessonDetailScreen() {
   const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string; from?: string; onDate?: string }>()
@@ -24,10 +68,30 @@ export default function LessonDetailScreen() {
 
   const today = new Date().toISOString().slice(0, 10)
   const onDate = (params.onDate as string) || today
-  const { data: lessonDetail } = useQuery(LESSON_TEMPLATE_BY_ID, {
-    variables: { id: String(params.id), onDate },
+  const [useLegacy, setUseLegacy] = React.useState(false)
+  const { data: lessonDetailNew } = useQuery(LESSON_TEMPLATE_BY_ID, {
+    variables: { id: String((params.id as string) || ''), onDate: String((onDate as string) || today) },
     fetchPolicy: 'cache-and-network',
+    skip: useLegacy,
+    onError: (err) => {
+      const msg = (err?.graphQLErrors?.[0]?.message || '') as string
+      if (msg.includes('Unknown argument') && msg.includes('onDate')) setUseLegacy(true)
+    },
   })
+  const LEGACY_QUERY = gql`
+    query LessonTemplateByIdLegacy($id: String!) {
+      lessonTemplateById(id: $id) { id slug title summary markdownContent subtitle __typename }
+    }
+  `
+  const { data: lessonDetailLegacy } = useQuery(LEGACY_QUERY, {
+    variables: { id: String((params.id as string) || '') },
+    fetchPolicy: 'cache-and-network',
+    skip: !useLegacy,
+  })
+  const lessonDetail = useLegacy ? lessonDetailLegacy : lessonDetailNew
+
+  const content = (lessonDetail?.lessonTemplateById?.markdownContent as string) || ''
+  const processedContent = React.useMemo(() => convertGfmTablesToLists(content), [content])
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -43,6 +107,11 @@ export default function LessonDetailScreen() {
                 router.replace('/programs')
                 return
               }
+              if (from === 'tasks' || from === 'journal') {
+                const backDate = (params.onDate as string) || new Date().toISOString().slice(0, 10)
+                router.replace({ pathname: '/journal', params: { date: backDate } })
+                return
+              }
               router.back()
             } catch {
               router.replace('/journal')
@@ -55,16 +124,12 @@ export default function LessonDetailScreen() {
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">{params.title || 'Lesson'}</Text>
               {lessonDetail?.lessonTemplateById?.subtitle ? (
                 <Text className="text-typography-600 dark:text-gray-300">{lessonDetail?.lessonTemplateById?.subtitle}</Text>
-              ) : params.subtitle ? (
-                <Text className="text-typography-600 dark:text-gray-300">{params.subtitle}</Text>
-              ) : params.summary ? (
-                <Text className="text-typography-600 dark:text-gray-300">{params.summary}</Text>
               ) : null}
             </VStack>
 
             <Box className="p-4 rounded-lg border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
               <Markdown>
-                {lessonDetail?.lessonTemplateById?.markdownContent || (params.summary as string) || ''}
+                {processedContent}
               </Markdown>
             </Box>
 
