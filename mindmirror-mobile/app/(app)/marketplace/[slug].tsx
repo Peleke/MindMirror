@@ -17,6 +17,7 @@ import { View } from 'react-native'
 import { useToast } from '@/components/ui/toast'
 import { Toast, ToastDescription, ToastTitle } from '@/components/ui/toast'
 import { useQuery as useApolloQuery } from '@apollo/client'
+import Markdown from 'react-native-markdown-display'
 
 export default function ProgramDetailScreen() {
   const params = useLocalSearchParams<{ slug: string; from?: string }>()
@@ -49,7 +50,9 @@ export default function ProgramDetailScreen() {
         ) : null}
         <Box className="h-px bg-emerald-200/60 dark:bg-emerald-800 my-1" />
         {first.summary ? (
-          <Text className="text-emerald-900/80 dark:text-emerald-100/80">{first.summary}</Text>
+          <Box className="rounded border border-emerald-200/60 bg-white/70 dark:bg-emerald-950 p-2">
+            <Markdown>{first.summary}</Markdown>
+          </Box>
         ) : null}
       </>
     )
@@ -171,7 +174,9 @@ export default function ProgramDetailScreen() {
                     <Text className="text-typography-600 dark:text-gray-300">{program.subtitle}</Text>
                   ) : null}
                   {program.description ? (
-                    <Text className="text-typography-600 dark:text-gray-300">{program.description}</Text>
+                    <Box className="rounded border border-border-200 bg-white/70 dark:bg-background-800 p-2">
+                      <Markdown>{program.description}</Markdown>
+                    </Box>
                   ) : null}
                 </VStack>
 
