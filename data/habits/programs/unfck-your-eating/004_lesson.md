@@ -25,8 +25,6 @@ A palm-sized portion (about an inch thick) at every meal—think eggs, fish, pou
 > Soft reminder: You probably didn’t join this because you wanted to track grams. You joined because you want to stop fighting with food—and feel steady. Protein is how we get there.
 > 
 
----
-
 ### **Evidence**
 
 Protein isn’t just about muscles—it’s about *regulation*. In randomized trials, meals higher in protein significantly reduce ghrelin (the hunger hormone) and increase peptide YY and GLP-1, which boost satiety and help you naturally reduce calorie intake without thinking about it.¹
@@ -36,8 +34,6 @@ One review in the *American Journal of Clinical Nutrition* found that participan
 It’s also the macronutrient most tied to *behavioral stability*. A study from the University of Missouri showed that eating 30+ grams of protein at breakfast led to improved cognitive performance, reduced impulsive food decisions, and a 60% reduction in late-night snacking.³ Think about that: changing *one* meal can change your brain’s ability to make better choices *later in the day*—no journaling or hacks required.
 
 And here’s where things get even more powerful: protein + fiber = **appetite regulation magic**. When you pair a palm of protein with a fist of veggies or fiber-rich carbs (like beans or oats), the combined effect stabilizes your blood sugar for 3–4 hours. That means fewer crashes, fewer cravings, and way more mental energy to focus on *literally anything else* besides what’s in the pantry.
-
----
 
 ### Pushback
 
@@ -52,8 +48,6 @@ Cool—don’t use it. Protein powders are just one tool. They’re useful if yo
 _“I thought carbs were the problem, not protein.”_
 
 It’s not about demonizing carbs—it’s about balance. Carbs are fuel. Protein is stability. When you add protein to your carbs, blood sugar stays steady instead of spiking and crashing. That steadiness is the difference between “calm focus” and “cookie monster attack.”
-
----
 
 ### Sources of Protein
 
@@ -119,8 +113,6 @@ Snacks are an extra high-impact place to sneak in protein, because they control 
 | Cottage Cheese Cups | Buy single-serve for easy access |
 | Greek Yogurt Cups | Add berries or granola |
 
----
-
 ## **Protein Add-In Guide**
 
 Protein isn’t just for meatheaads. It’s a cornerstone nutrient for feeling full, maintaining muscle, and stable energy levels. You don’t need to overhaul your meals; you just need a few strategic add-ins and swaps to make your existing favorites more protein-packed.
@@ -165,8 +157,6 @@ Dinners modify similarly to lunches, but on a grander scale: Do more of what you
 | Pizza | Top with extra chicken, turkey pepperoni, or seitan |
 | Fish with potatoes | Add a bean salad or lentil side dish |
 
----
-
 ### **Action Items: Ways to Practice This Habit**
 
 You know the drill: Try a different tactic each day, or choose the ones that resonate most. 
@@ -179,8 +169,6 @@ You know the drill: Try a different tactic each day, or choose the ones that res
 | **Prep One Protein Base** | Each week, prep one protein "base" you can mix and match. Cook chicken, tofu, beans, or hard-boiled eggs in advance so you always have an anchor for your meals. |
 | **Snack Shift** | Instead of defaulting to carbs when you're hungry, keep quick protein snacks on hand—jerky, cottage cheese, edamame, roasted chickpeas, boiled eggs, protein shakes. Eat the carb-y snack *after* the protein source. |
 | **Add Protein to Your Favorites** | You don't need to cut out your go-tos. Just *add* protein to them. Pizza? Add grilled chicken. Pasta? Toss in shrimp or lentils. Bread and butter? Layer on hummus or turkey. You're not restricting—you're *restructuring*. |
-
----
 
 ### **Accountability: Reflect, Record, Repeat**
 
@@ -204,15 +192,11 @@ Share your reflections in one of three ways:
 
 Here’s a prompt for each day this week:
 
----
-
 ### Final Notes
 
 Protein doesn’t just change your plate. It changes your ability to *listen to yourself*. It stabilizes your biology so you don’t have to white-knuckle your way through cravings or shame-spiral your way into another “reset.”
 
 More protein. Less panic. Simple as that.
-
----
 
 ### **Citations**
 

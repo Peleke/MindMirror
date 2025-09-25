@@ -29,8 +29,6 @@ So let’s slow it down. Not because you’re “supposed to”—but because it
 > Let that answer guide how you show up for the meal.
 > 
 
----
-
 ### **Evidence**
 
 Decades of behavioral research confirm what your body already knows: **eating slowly leads to eating less and feeling fuller.** A 2020 meta-analysis in *Nutrients* found that slower eating rates were consistently associated with **lower energy intake** during meals—regardless of the type of food served.¹ Even in non-dieting contexts, participants who slowed down reported *greater satiety* and *less post-meal snacking*.
@@ -46,8 +44,6 @@ And the impact goes beyond calories. **Chewing slowly activates the parasympathe
 > 
 
 Eating slowly might sound basic—but it’s one of the **most underrated tools** for repairing your relationship with food. It reconnects you to the moment. To the taste. To your body’s boundaries. That kind of reconnection? That’s where peace lives.
-
----
 
 ### **Pushback**
 
@@ -65,8 +61,6 @@ If your life is chaotic, start inside the chaos:
 
 This isn’t about perfection—it’s about inserting micro-moments of awareness. Those micro-moments add up, and they change how you experience food without requiring you to quit your job or meditate at the table.
 
----
-
 ### **Action Items: Ways to Practice This Habit**
 
 Try one of the following each day this week—or repeat the one that works best for you. The goal is to *practice* eating slowly, not perfect it.
@@ -79,8 +73,6 @@ Try one of the following each day this week—or repeat the one that works best 
 | **Smaller bites, slower pace** | Cut your food like normal. Then, cut it again, and take half-size bites. This helps you chew more and naturally slows the rhythm of your eating. |
 | **Mid-meal check-in** | Halfway through your plate, pause. Ask:*How full am I right now, on a scale of 1–10?*Then ask again when you finish. Compare the two. |
 | **Long, silent meal experiment** | Eat one meal in silence—no screens, no talking, no music—and set a timer for twice as long as you usually take. Just you, your food, and your thoughts…You might learn something surprising. |
-
----
 
 ### **Accountability: Reflect, Record, Repeat**
 
@@ -101,15 +93,11 @@ Each day, reflect with one of the prompts below. Choose your favorite method:
 | **Saturday** | What did the silent meal bring up—boredom, peace, cravings, insight? Write it down. |
 | **Sunday** | What did I learn about myself this week? Did I eat more, less, or just differently? |
 
----
-
 ### **Final Note**
 
 The goal isn’t to eat like a monk forever. It’s to *reclaim your awareness*.
 
 Because when you eat slowly, you’re not just avoiding overeating—you’re practicing self-respect. You’re letting your body speak. And you’re finally giving it the time and space to be heard.
-
----
 
 **Citations**
 

@@ -17,8 +17,6 @@ This habit sneaks up on us, but it’s one of the biggest culprits behind discon
 
 Ask yourself: what are you *really* hungry for when you eat distracted?
 
----
-
 ### Evidence
 
 Studies show that eating with attention yields significantly better appetite regulation. In fact, using a smartphone during meals has been shown to increase caloric intake—not just a little, but meaningfully—because distraction dulls hunger and fullness signals (Ogden et al., 2013; Marsh et al., 2015). Watching TV, responding to emails, even just having a screen nearby can all lead you to eat more food (and more unhealthy food) than when you’re focused on your plate (Robinson et al., 2013).
@@ -43,8 +41,6 @@ Why does this matter? Because most of us spend our day in fight-or-flight mode. 
 
 And that’s when real healing happens: not just physically, but emotionally. Less anxiety. More calm. More presence. It’s all connected—and it starts here.
 
----
-
 ### **Pushback**
 
 “Yeah, but…” is the soundtrack to every habit you’ve ever tried to build.
@@ -58,8 +54,6 @@ That’s exactly the point.
 When you’ve been eating with one hand and scrolling with the other for years, you’re not *choosing* distraction—you’re *defaulting* to it. This week, we break the default.
 
 You’ll be amazed what changes when your brain gets to focus on one thing at a time—especially something as primal and sensory as food.
-
----
 
 ### **Action Items: Ways to Practice This Habit**
 
@@ -94,8 +88,6 @@ Here’s one way to practice for each day of the week. You can do them all, repe
 
 Remember: The seventh day is your **Reflection Meal**. No special tactics, no extra rules—just be present while you eat, and practice your habit. Afterwards, take one minute to jot down what you noticed.
 
----
-
 ### **Accountability: Reflect, Record, Repeat**
 
 Remember: **Public commitment can double your follow-through.** 
@@ -114,15 +106,11 @@ Here are some questions to consider. Don’t keep your answers a secret. Tell a 
 | **Saturday** | Was eating in silence uncomfortable, calming, or both? |
 | **Sunday** | What did I learn about myself this week? Did I eat more, less, or just differently? |
 
----
-
 ### **Final Notes**
 
 You might think of this as a small habit—just a few minutes without your phone—but in practice, it’s a **massive shift** in how you relate to food. When you strip away the noise, you give yourself a rare chance to be *with* the meal, not just *near* it. That’s how you start noticing the little details: a flavor you didn’t realize you loved, a portion that felt “just right,” or the fact that you were satisfied long before your plate was empty.
 
 The real win isn’t eating “better” overnight—it’s breaking the autopilot loop. Each undistracted meal is a rep in training your attention. Keep stacking those reps and soon, eating with presence will feel as natural as checking your phone used to. Except this time, you’ll actually walk away full—in every sense of the word.
-
----
 
 **Citations**
 

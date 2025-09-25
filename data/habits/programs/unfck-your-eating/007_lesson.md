@@ -23,15 +23,11 @@ Let’s take a moment to celebrate what you’ve mastered:
 | **6. No Sugary Drinks** | Replacing soda, juice, or other sugar-heavy drinks with water or other low/no-calorie options. |
 | **7. Favor Whole Foods** | Eating minimally processed foods and using herbs/spices to keep meals flavorful and nutrient-rich. |
 
----
-
 ### Why This Matters
 
 Each of these habits is simple on its own, but together, they create a powerful system. You’re not “dieting.” You’re changing the *default settings* of how you eat. You’re reprogramming old habits into new ones that actually serve you — habits that require less willpower over time because they run automatically in the background of your life.
 
 This is the opposite of restriction. Instead of focusing on what you *can’t* eat, you’ve learned to add in more of the foods and behaviors that make you feel good, energized, and in control. The best part? These habits are sustainable. They can travel with you — to restaurants, to work lunches, to family gatherings — without requiring a special plan or “being on a diet.”
-
----
 
 ### What’s Next
 
@@ -43,8 +39,6 @@ So—what’s your next move?
 
 Tell your friends, post it publicly, or even better—send it to us directly. The more you speak it into the world, the more real it becomes. This is how momentum starts.
 
----
-
 ### Your Turn to Inspire
 
 The only thing better than making progress is helping someone else start their journey. If this program helped you eat better, feel better, or think differently about food, share it. Send a friend the link, post your success story, or invite someone to try the app when it launches.
@@ -52,8 +46,6 @@ The only thing better than making progress is helping someone else start their j
 This is how habits spread — not through willpower alone, but through community.
 
 Here’s to your next chapter. You’ve built the foundation — now let’s keep building.
-
----
 
 ### P.S.: If this was helpful…
 

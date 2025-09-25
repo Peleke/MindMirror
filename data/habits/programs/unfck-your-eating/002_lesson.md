@@ -24,8 +24,6 @@ You don’t need to count bites. You don’t even need to hit a magical number l
 > Soft reminder: If you're here because you want food to feel less chaotic and your body to feel more like yours again...this is one of the habits that delivers. So take your time. Feel it out. Then try it out.
 > 
 
----
-
 ### **Evidence**
 
 The principle of stopping just short of fullness isn’t new. The Japanese concept of **hara hachi bu**, which translates to “eat until 80% full,” has been practiced for centuries—most famously by Okinawans, whose remarkable longevity and low rates of chronic disease have intrigued researchers for decades (Willcox et al., 2007).
@@ -42,8 +40,6 @@ The principle of stopping just short of fullness isn’t new. The Japanese conce
 > 
 
 In other words: **this one simple pause—this moment of “I think that’s enough”—can make a big difference.**
-
----
 
 ### **Pushback**
 
@@ -75,8 +71,6 @@ When you set up your plate this way, you sidestep the emotional baggage of “le
 
 And yes, if you’re truly still hungry later, you can eat again. That’s the point—we’re retraining your brain to *trust* your body.
 
----
-
 ### **Action Items: Ways to Practice This Habit**
 
 Use these techniques throughout the week—try a different one each day, or repeat the one that sticks. The goal isn’t perfection. It’s *conscious practice*.
@@ -92,8 +86,6 @@ Use these techniques throughout the week—try a different one each day, or repe
 
 > **Pro tip**: This habit works way better if you’ve already started eating more slowly and without a phone. That’s why this is habit 3, not habit 1. These stack. If you do the first two, this one kind of just… happens.
 > 
-
----
 
 ### **Accountability: Reflect, Record, Repeat**
 
@@ -115,15 +107,11 @@ Take a picture of your “two bites left” plate (…but only pick up that phon
 
 Doesn’t really matter. The point is: Consistency builds change. And accountability aids consistency.
 
----
-
 ### Final Notes
 
 Stopping short of fullness isn’t about restriction—it’s about learning to listen again. In a culture that normalizes overeating and distractions during meals, this skill becomes a quiet but powerful rebellion. Over time, it restores trust between your mind and body, letting appetite cues work as they were meant to.
 
 Remember: this is a skill, not a test. There will be meals where you miss the mark, and that’s okay. The value comes from repeated practice, self-awareness, and small adjustments over time—not from perfection. This habit, layered with the others in this guide, becomes one of the most reliable ways to naturally regulate intake without counting calories or obsessing over rules.
-
----
 
 ### Citations
 

@@ -20,8 +20,6 @@ This habit isn’t about elimination. It’s about displacement. Try this: befor
 > Soft reminder: If you signed up because you want food to feel easier, calmer, more under your control—start with fiber. It doesn’t ask more of you; it gives more back.
 > 
 
----
-
 ### **Evidence**
 
 **Fiber deficiency shows up in every way that keeps you from feeling like yourself**: dramatic blood sugar swings, constant hunger, digestive bloating, and a brain that’s fogged-out and craving dopamine from sugar crashes. A landmark study in *The American Journal of Clinical Nutrition* found that adults in modern industrialized diets consume **40–60% less fiber** than our Paleolithic ancestors—and suffer the consequences in terms of weight gain and metabolic instability¹.
@@ -31,8 +29,6 @@ Controlled intervention trials show consistent results: increasing fiber intake 
 High-fiber, plant-forward diets in populations like Okinawa, the Andes, and parts of Africa show dramatic reductions in obesity, diabetes, and GI disorders³. These regions prioritize beans, root vegetables, seeds, and whole grains—not paleo or keto—but fiber-first for longevity and resilience. When humans get enough fiber, their *cravings turn off, digestion resets, and energy stabilizes*—so they don’t reach for food as a pressure valve.
 
 For someone who’s tired of the spin cycle—overeating, guilt, energy crashes—fiber *is* your reset button. And this isn’t theoretical. Studies repeatedly show that eating fiber-rich meals first displaces less-nutritious choices later—without willpower, without deprivation. Just structural shift.
-
----
 
 ### Interlude: Dietary Displacement and the Palm Rules
 
@@ -49,8 +45,6 @@ A meta-analysis in *Appetite* found that eating low-calorie, high-volume foods (
 
 Whether it’s fiber, protein, or healthy fats, you’ll add nutrient-rich foods *first* so less-nutritious items naturally take a back seat. No bans. No rules about “never again.” No measuring cups. Just a structure that makes the better choice the easier one.
 
----
-
 ### **The Palm Rules: A Built-in Portion Guide**
 
 To make displacement easier, we’ll borrow the **Palm Rules** from [Precision Nutrition](https://www.precisionnutrition.com/hand-portion-faq) (full credit to their excellent system). It’s a quick, visual way to gauge balanced portions—no scales, no measuring cups—so you can make balanced plates anywhere.
@@ -63,8 +57,6 @@ To make displacement easier, we’ll borrow the **Palm Rules** from [Precision N
 | **Healthy Fats** (nuts, seeds, oils) | 1 thumb per meal (women), 2 thumbs (men) | Supports hormones, satiety, flavor. |
 
 This week, we’re fiber-first*.* So, ensure **vegetables and smart carbs** (fist + cupped hand) are on your plate *before* or *with* other foods. 
-
----
 
 ### **Pushback**
 
@@ -95,8 +87,6 @@ If the discomfort is severe, or does not improve with time, then revert to your 
 Only if you limit yourself to iceberg lettuce and plain boiled broccoli.
 
 Let’s get creative: sweet potatoes with cumin and lime, hummus with paprikas, lentil chili with cilantro, chia pudding with berries, edamame tossed with ginger and garlic. Cheap beans and grains are nutrient-dense powerhouses—flavor-rich and affordable.
-
----
 
 ### Sources of Fiber
 
@@ -153,8 +143,6 @@ Vegetables are easiest to introduce as **sides** or **snacks**, but consider try
 | Sweet Potatoes | Bake or microwave |
 | Popcorn (air-popped) | Season lightly for snack |
 
----
-
 ## **Fiber Add-In Guide**
 
 For this week’s habit, you don’t have to cut your favorite meals, just sneak fiber into what you already eat. Think of it like upgrading the “base model” version of your food so it’s more filling, better for digestion, and friendlier to your blood sugar. 
@@ -191,8 +179,6 @@ Below you’ll see easy ways to add fiber to common breakfasts, lunches, and din
 | Pizza | Top with extra vegetables like mushrooms, peppers, spinach |
 | Fish with potatoes | Keep skin on potatoes and serve with roasted Brussels sprouts |
 
----
-
 ### **Action Items: Ways to Practice This Habit**
 
 You know the drill: Try a different tactic each day, or choose the ones that resonate most. 
@@ -205,8 +191,6 @@ You know the drill: Try a different tactic each day, or choose the ones that res
 | **Hand-Plate Method** | Use your fist for vegetables, palm for protein, cupped hand for smart carbs. Ensure fiber dominates your plate. |
 | **Flavor Boost** | Add herbs, spices, and seeds (chia, flax, cumin, garlic) to fiber foods for flavor and satiety. |
 | **Displacement Challenge** | Before comfort food, eat one smart carb and one fiber-rich food first—even if it's just a handful of beans and a carrot. Notice appetite afterward. |
-
----
 
 ### **Accountability & Reflection Prompts**
 
@@ -229,8 +213,6 @@ Don’t keep your experience to yourself. Did eating more fiber make you feel be
 
 Tell your friends, coach, or followers how more fiber made you feel.   
 
----
-
 ### Final Notes
 
 Fiber is not a fad. It’s a shift.
@@ -240,8 +222,6 @@ More fiber equals more fullness, less emotional eating, better energy, and a gut
 Combine this habit with eating slowly and eating without screens, and you’ll start experiencing meals that feel *healing*, not overwhelming.
 
 You don’t have to give up what you love. You have to make space for what your body deserves.
-
----
 
 **Citations**
 

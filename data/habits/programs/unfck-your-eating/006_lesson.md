@@ -18,8 +18,6 @@ Let your new baseline be: *start with the practices you’ve already learned—p
 > Soft reminder: You joined this because craving control feels like self-control—it’s not. Whole foods, thoughtfully seasoned, create satisfaction that sticks. Stick around for the shift.
 > 
 
----
-
 ### **Evidence**
 
 Whole-food, plant-forward diets—think vegetables, legumes, nuts, whole grains, lean protein—are consistently linked to lower BMI, fewer metabolic issues, and higher energy in long-term studies (e.g., Mediterranean pattern research¹). In contrast, diets high in ultra-processed foods track closely with weight gain, fatigue, and appetite dysregulation².
@@ -27,8 +25,6 @@ Whole-food, plant-forward diets—think vegetables, legumes, nuts, whole grains,
 As for spices and taste variety: Ayurveda emphasizes including all six tastes (sweet, sour, salty, bitter, pungent, astringent) and aromatic spices to fully satisfy cravings, which appears to modulate the reward pathways in the brain and reduce hedonic snacking³. Behavioral studies support this: people who prepare their meals using spice-rich whole ingredients report lower craving levels, feel more satisfied, and regain trust in their eating over time⁴.
 
 In synergy with earlier habits—protein slows hunger, fiber steadies blood sugar, slow eating gives fullness time to land—whole, flavorful foods complete the loop. You’re not just displacing junk; you’re *replacing it* with something your body truly welcomes.
-
----
 
 ### **Pushback**
 
@@ -58,8 +54,6 @@ Fair. Don’t remove joy. Instead, apply displacement: start with your whole-foo
 
 You’ll often find that the treat loses its urgency. Sometimes, it even becomes an optional sweet, not safety net.
 
----
-
 ### **Action Items: Ways to Practice this Habit**
 
 Pick one for each day, or cycle your favorites:
@@ -72,8 +66,6 @@ Pick one for each day, or cycle your favorites:
 | **Cook Once, Eat Twice** | Prepare a whole-food base (stir-fry veggies + beans or cooked grains) and eat it twice: dinner and next-day lunch. |
 | **Taste-Centered Bite** | Before you eat a processed bite (like chip or packaged snack), taste a piece of whole produce first—a crisp apple or carrot stick. |
 | **Flavorful Swap Challenge** | Turn a classic takeout dish into a nutrient-forward, spice-richer version at home: veggie “nachos” with black beans, avocado, spices. |
-
----
 
 ### **Accountability & Journal Prompts**
 
@@ -91,13 +83,9 @@ Reflect daily—public first, then friend, then private:
 
 Snapping a plate pic, tagging a friend, or noting your feeling post-meal—these make the habit stick beyond intention.
 
----
-
 ### Final Note
 
 This step doesn’t stand alone—it builds on habits we’ve already practiced: slow eating, screen-less meals, protein, fiber, and smarter drinks. Now, you replace not just *how* you eat but *what* you eat. It’s the final displacement that *feels* like growth, not grief.
-
----
 
 ### **Citations**
 
