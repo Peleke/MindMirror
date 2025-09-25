@@ -6,6 +6,7 @@ import { HStack } from '@/components/ui/hstack'
 import { Icon } from '@/components/ui/icon'
 import { Text } from '@/components/ui/text'
 import { LessonTask } from '@/types/habits'
+import Markdown from 'react-native-markdown-display'
 import { BookOpen } from 'lucide-react-native'
 import { useThemeVariant } from '@/theme/ThemeContext'
 
@@ -28,7 +29,13 @@ export default function LessonCard({
               <Icon as={BookOpen} size="md" className={isClassic ? 'text-green-700 dark:text-green-300' : 'text-primary-700 dark:text-primary-300'} />
               <Text className="text-lg font-semibold text-typography-900 dark:text-white">{task.title}</Text>
             </HStack>
-            <Text className="text-typography-600 dark:text-gray-300">{task.summary || 'No summary provided.'}</Text>
+            {task.summary ? (
+              <Box className="rounded border border-border-200 bg-white/70 dark:bg-background-800 p-2">
+                <Markdown>{task.summary}</Markdown>
+              </Box>
+            ) : (
+              <Text className="text-typography-600 dark:text-gray-300">No summary provided.</Text>
+            )}
           </VStack>
         </Box>
       </Pressable>

@@ -21,8 +21,6 @@ segments:
 defaultSegment: intro
 ---
 
-# Welcome to Better Knees
-
 Welcome to your knee strengthening program! We're excited to help you build stronger, more resilient knees.
 
 ## Welcome

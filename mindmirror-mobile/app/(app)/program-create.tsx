@@ -257,7 +257,11 @@ export default function ProgramCreateScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <View style={{ flex: 1, paddingRight: 8 }}>
                             <Text style={{ fontWeight: '600' }}>{item.title}</Text>
-                            {item.description ? <Text style={{ color: '#6b7280' }}>{item.description}</Text> : null}
+                            {item.description ? (
+                              <Box className="mt-1 p-2 rounded border border-border-200 bg-white/70">
+                                <Markdown>{item.description}</Markdown>
+                              </Box>
+                            ) : null}
                           </View>
                           <View style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' }}>
                             <Text style={{ color: '#16a34a', fontWeight: '700' }}>Template</Text>
