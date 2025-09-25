@@ -158,7 +158,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   programTemplates: [ProgramTemplateType!]! @join__field(graph: HABITS) 
   programTemplateBySlug(slug: String!) : ProgramTemplateType @join__field(graph: HABITS) 
   programAssignments(status: String = null) : [ProgramAssignmentType!]! @join__field(graph: HABITS) 
-  lessonTemplateById(id: String!) : LessonTemplateType @join__field(graph: HABITS) 
+  lessonTemplateById(id: String!, onDate: Date = null) : LessonTemplateType @join__field(graph: HABITS) 
   programTemplateSteps(programId: String!) : [ProgramStepType!]! @join__field(graph: HABITS) 
   programStepLessons(programStepId: String!) : [StepLessonType!]! @join__field(graph: HABITS) 
   programStepDailyPlan(programStepId: String!) : [StepDayPlanType!]! @join__field(graph: HABITS) 

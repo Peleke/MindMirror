@@ -255,14 +255,7 @@ class Query:
                 base = row.summary or (row.markdown_content or "")
                 summary_text = (base[:240] + ("…" if len(base) > 240 else "")) or None
 
-            # As a final content fallback when no segment was applied, trim to intro before first level-3 heading
-            try:
-                if content_markdown == row.markdown_content and content_markdown:
-                    cut = content_markdown.find("\n### ")
-                    if cut > 0:
-                        content_markdown = content_markdown[:cut].strip()
-            except Exception:
-                pass
+            # Keep full lesson content when no segment was applied; do not trim
 
             return LessonTemplateType(
                 id=str(row.id),

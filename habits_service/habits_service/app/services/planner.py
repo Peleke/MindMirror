@@ -49,6 +49,32 @@ def _deterministic_task_id(namespace: str, user_id: str, on_date: date, ttype: s
     return f"{namespace}:{user_id}:{on_date.isoformat()}:{ttype}:{entity_id}"
 
 
+def _strip_leading_headings_and_blank(markdown_text: Optional[str]) -> str:
+    """Remove leading markdown heading lines (any level) and blank lines; return remaining content.
+
+    This is used to create cleaner summaries for daily extracted segments so cards don't start with a heading.
+    """
+    if not markdown_text:
+        return ""
+    lines = markdown_text.split('\n')
+    idx = 0
+    # Skip leading headings and blank lines
+    while idx < len(lines):
+        raw = lines[idx]
+        stripped = raw.lstrip()
+        if not stripped:
+            idx += 1
+            continue
+        if stripped.startswith('#'):
+            idx += 1
+            continue
+        break
+    # Also trim any subsequent blank lines after the heading block
+    while idx < len(lines) and not lines[idx].strip():
+        idx += 1
+    return '\n'.join(lines[idx:]).lstrip()
+
+
 async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadRepository) -> List[Task]:
     tasks: List[Task] = []
     assignments = await repo.get_active_assignments(user_id)
@@ -161,7 +187,8 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                             lesson_task.segment_ids_json,
                             lesson_template.default_segment
                         )
-                        summary = (rendered_content[:200] + ("…" if len(rendered_content) > 200 else "")) or None
+                        clean = _strip_leading_headings_and_blank(rendered_content)
+                        summary = (clean[:200] + ("…" if len(clean) > 200 else "")) or None
                     else:
                         summary = lesson_template.summary
                 else:
@@ -190,7 +217,11 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     parent_id = str(seg.lesson_template_id)
                     status = TaskStatus.pending
                     # Fallback for summary when segment lacks one: derive from excerpt content
-                    seg_summary = seg.summary or ((seg.markdown_content or "")[:200] + ("…" if seg.markdown_content and len(seg.markdown_content) > 200 else ""))
+                    if seg.summary:
+                        seg_summary = seg.summary
+                    else:
+                        clean_seg = _strip_leading_headings_and_blank(seg.markdown_content or "")
+                        seg_summary = (clean_seg[:200] + ("…" if len(clean_seg) > 200 else ""))
                     tasks.append(
                         LessonTask(
                             taskId=_deterministic_task_id("habits", user_id, on_date, "lesson", parent_id),
