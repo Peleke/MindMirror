@@ -26,6 +26,7 @@ interface Message {
 
 
 
+// NOTE: This route is currently disabled in the drawer. Keeping implementation for later re-enable.
 export default function ChatScreen() {
   const router = useRouter();
   const { initialMessage } = useLocalSearchParams<{ initialMessage?: string }>();

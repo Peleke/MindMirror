@@ -25,8 +25,12 @@ export default function AppLayout() {
           <Drawer.Screen name="meals" options={{ drawerLabel: 'Meals', title: 'Meals' }} />
           <Drawer.Screen name="journal-hub" options={{ drawerLabel: 'Journal Hub', title: 'Journal' }} />
           <Drawer.Screen name="archive" options={{ drawerLabel: 'Journal Archive', title: 'Archive' }} />
-          <Drawer.Screen name="chat" options={{ drawerLabel: 'Chat', title: 'Chat' }} />
+          {/* Chat disabled for now; keep commented for easy restore */}
+          {/** <Drawer.Screen name="chat" options={{ drawerLabel: 'Chat', title: 'Chat' }} /> **/}
+
           <Drawer.Screen name="marketplace" options={{ drawerLabel: 'Marketplace', title: 'Marketplace' }} />
+          {/* Insights disabled for now; keep commented for easy restore */}
+          {/**
           <Drawer.Screen
             name="insights"
             options={{
@@ -34,6 +38,7 @@ export default function AppLayout() {
               title: 'Insights',
             }}
           />
+          **/}
           <Drawer.Screen name="workouts" options={{ drawerLabel: 'Workouts', title: 'Workouts' }} />
           <Drawer.Screen name="clients" options={{ drawerLabel: 'Clients', title: 'Clients' }} />
           <Drawer.Screen name="inbox" options={{ drawerLabel: 'Inbox', title: 'Inbox' }} />

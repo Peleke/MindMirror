@@ -274,7 +274,7 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
                   await recordLessonOpened({ variables: { lessonTemplateId: lt.lessonTemplateId, onDate } })
                 }
                 const summary = lt.summary ?? ''
-                router.push(`/lesson/${lt.lessonTemplateId}?title=${encodeURIComponent(title)}&summary=${encodeURIComponent(summary)}&from=tasks`)
+                router.push(`/lesson/${lt.lessonTemplateId}?title=${encodeURIComponent(title)}&summary=${encodeURIComponent(summary)}&from=tasks&onDate=${encodeURIComponent(onDate)}`)
               }}
               onComplete={async () => {
                 await markLessonCompleted({ variables: { lessonTemplateId: lt.lessonTemplateId, onDate } })

@@ -183,14 +183,14 @@ export const RECENT_LESSON_COMPLETIONS = gql`
 
 // 7) Lesson detail by id (for markdown)
 export const LESSON_TEMPLATE_BY_ID = gql`
-  query LessonTemplateById($id: String!) {
-    lessonTemplateById(id: $id) {
+  query LessonTemplateById($id: String!, $onDate: Date) {
+    lessonTemplateById(id: $id, onDate: $onDate) {
       id
       slug
       title
       summary
-      subtitle
       markdownContent
+      subtitle
     }
   }
 `

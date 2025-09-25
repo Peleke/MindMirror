@@ -133,18 +133,18 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             navigation.navigate('journal-hub')
             navigation.closeDrawer()
           }} />
-          <DrawerItem label="Chat" onPress={() => {
+          {/* <DrawerItem label="Chat" onPress={() => {
             navigation.navigate('chat')
             navigation.closeDrawer()
-          }} />
+          }} /> */}
           <DrawerItem label="Marketplace" onPress={() => {
             navigation.navigate('marketplace')
             navigation.closeDrawer()
           }} />
-          <DrawerItem label="Insights" onPress={() => {
+          {/* <DrawerItem label="Insights" onPress={() => {
             navigation.navigate('insights')
             navigation.closeDrawer()
-          }} />
+          }} /> */}
         </View>
         
         <View style={{ paddingBottom: Math.max(20, insets.bottom) }}>

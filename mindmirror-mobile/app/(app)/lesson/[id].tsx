@@ -15,15 +15,17 @@ import { MARK_LESSON_COMPLETED, LESSON_TEMPLATE_BY_ID } from '@/services/api/hab
 import Markdown from 'react-native-markdown-display'
 
 export default function LessonDetailScreen() {
-  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string; from?: string }>()
+  const params = useLocalSearchParams<{ id: string; title?: string; summary?: string; subtitle?: string; from?: string; onDate?: string }>()
   const router = useRouter()
   const [markLessonCompleted] = useMutation(MARK_LESSON_COMPLETED)
   const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (require('expo-constants').expoConfig?.extra as any)?.mockTasks) || '')
     .toString()
     .toLowerCase() === 'true'
 
+  const today = new Date().toISOString().slice(0, 10)
+  const onDate = (params.onDate as string) || today
   const { data: lessonDetail } = useQuery(LESSON_TEMPLATE_BY_ID, {
-    variables: { id: String(params.id) },
+    variables: { id: String(params.id), onDate },
     fetchPolicy: 'cache-and-network',
   })
 
