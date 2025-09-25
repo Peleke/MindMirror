@@ -180,7 +180,7 @@ class Query:
             ]
 
     @strawberry.field
-    async def lessonTemplateById(self, id: str, info: Info) -> Optional[LessonTemplateType]:
+    async def lessonTemplateById(self, id: str, info: Info, onDate: Optional[date] = None) -> Optional[LessonTemplateType]:
         async with UnitOfWork() as uow:
             repo = HabitsReadRepository(uow.session)
             row = await repo.get_lesson_template_by_id(id)
@@ -197,7 +197,7 @@ class Query:
             try:
                 from datetime import date as _date
                 current_user = get_current_user_from_context(info)  # type: ignore[name-defined]
-                today = _date.today()
+                today = onDate or _date.today()
                 # Find an active step for any active assignment and check its daily plan
                 assignments = await repo.get_active_assignments(str(current_user.id))
                 found_segment = False
