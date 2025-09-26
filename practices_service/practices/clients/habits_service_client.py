@@ -15,9 +15,13 @@ class HabitsServiceClient:
     """Client for interacting with habits_service GraphQL API."""
 
     def __init__(self):
-        self.base_url = os.getenv("HABITS_SERVICE_BASE_URL", "").strip()
+        # Prefer uniform naming without BASE for consistency with other services
+        self.base_url = os.getenv("HABITS_SERVICE_URL", "").strip()
         if not self.base_url:
-            raise ValueError("HABITS_SERVICE_BASE_URL environment variable not set")
+            # Back-compat: accept legacy HABITS_SERVICE_BASE_URL if present
+            self.base_url = os.getenv("HABITS_SERVICE_BASE_URL", "").strip()
+        if not self.base_url:
+            raise ValueError("HABITS_SERVICE_URL environment variable not set")
 
         # TODO: Add HMAC authentication headers when implementing auth
         self.default_headers = {
