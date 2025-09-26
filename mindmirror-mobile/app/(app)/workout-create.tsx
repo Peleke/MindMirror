@@ -376,7 +376,14 @@ export default function WorkoutCreateScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar title="Create Workout" showBackButton onBackPress={() => router.back()} />
+        <AppBar title="Create Workout" showBackButton onBackPress={() => {
+          const ret = (params?.from as string) || ''
+          if (ret) {
+            try { router.replace(ret) } catch { router.back() }
+          } else {
+            router.back()
+          }
+        }} />
         <VStack className="flex-1 w-full max-w-screen-md mx-auto px-6 py-6" space="lg">
           <VStack space="sm">
             <VStack className="flex-row items-center justify-between">
