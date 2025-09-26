@@ -16,15 +16,14 @@ debug                           = "false"
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
 journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
-gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:9199557fe95470b72af32ceaf6c635e4646dea68"
-# gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
+gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
-habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:3b3e40593f8990da0e099688740afbf4d108cef6"
+habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
 meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:20a8f95fa473cfc2d0f65f25d4c92bde03a26786"
 
-users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:74774db17dfe8d38a759261d0b22b2009f11118b"
-movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:2688e7b04019f7f997f4a774f0f178e82b4b39d8"
-practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:2688e7b04019f7f997f4a774f0f178e82b4b39d8"
+users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
+movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:f2e65ede27e8d859b5f4117a3131fc71463f8027"
+practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
 
 # --- Mocking & Testing Fallbacks ---
 # These are used for mesh compatibility and should be replaced with real values or logic if needed.
