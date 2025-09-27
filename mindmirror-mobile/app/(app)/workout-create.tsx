@@ -178,6 +178,22 @@ export default function WorkoutCreateScreen() {
   const [descOpenByKey, setDescOpenByKey] = useState<Record<string, boolean>>({})
   const toggleVideoFor = (key: string) => setVideoOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
   const toggleDescFor = (key: string) => setDescOpenByKey(prev => ({ ...prev, [key]: !prev[key] }))
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastFiredTermRef = useRef<string>('')
+
+  const toggleMovementMetricUnit = (pIndex: number, mIndex: number) => {
+    setPrescriptions(prev => {
+      const copy: PrescriptionDraft[] = [...prev]
+      const p = copy[pIndex]
+      if (!p) return prev
+      const mov = p.movements[mIndex]
+      if (!mov) return prev
+      const nextUnit: MovementDraft["metricUnit"] = mov.metricUnit === 'temporal' ? 'iterative' : 'temporal'
+      p.movements = p.movements.map((mm, i) => (i === mIndex ? { ...mov, metricUnit: nextUnit } : mm))
+      copy[pIndex] = p
+      return copy
+    })
+  }
 
   // Optional draggable list (fallback to static list if not installed)
   // Prefer react-native-draglist for stable drag without input conflicts
@@ -214,15 +230,20 @@ export default function WorkoutCreateScreen() {
     setTimeout(() => focusKey(`${pIndex}-${mIndex}-${nextRow}-${firstField}`), 50)
   }
 
-  // Debounced search (DB-only results)
+  // Debounced search (avoid spamming requests as user types)
   useEffect(() => {
     if (!isPickerOpen) return
     const term = (searchTerm || '').trim()
-    const h = setTimeout(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
       if (term.length === 0) return
+      if (term === lastFiredTermRef.current) return
+      lastFiredTermRef.current = term
       runSearch({ variables: { searchTerm: term, limit: 15 } })
-    }, 250)
-    return () => clearTimeout(h)
+    }, 350)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
   }, [isPickerOpen, searchTerm, runSearch])
 
   const searchResults = useMemo(() => {
@@ -496,6 +517,10 @@ export default function WorkoutCreateScreen() {
                                       </Pressable>
                                       <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
                                     </Box>
+                                    <Box className="flex-row items-center" style={{ gap: 8 }}>
+                                      <Pressable onPress={() => toggleMovementMetricUnit(index, mi)} className="px-2 py-1 rounded-md border border-border-200 bg-white dark:bg-background-0">
+                                        <Text className="text-typography-700 dark:text-gray-200">{m.metricUnit === 'temporal' ? 'D' : 'R'}</Text>
+                                      </Pressable>
                                     <Pressable onPress={() => {
                                       setPrescriptions(prev => {
                                         const cp = [...prev]
@@ -508,8 +533,34 @@ export default function WorkoutCreateScreen() {
                                     }} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
                                       <Text className="text-red-700 dark:text-red-300">Remove</Text>
                                     </Pressable>
+                                    </Box>
                                   </Box>
-                                  <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                                  {/* Collapsible video (if any) */}
+                                  {(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) ? (
+                                    <>
+                                      <Pressable onPress={() => toggleVideoFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                        <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
+                                        <Text className="text-typography-600 dark:text-gray-300">{videoOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
+                                      </Pressable>
+                                      {videoOpenByKey[`${index}-${mi}`] ? (
+                                        <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                                      ) : null}
+                                    </>
+                                  ) : null}
+                                  {/* Collapsible description (if any) */}
+                                  {m.description ? (
+                                    <>
+                                      <Pressable onPress={() => toggleDescFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                        <Text className="font-semibold text-typography-900 dark:text-white">Description</Text>
+                                        <Text className="text-typography-600 dark:text-gray-300">{descOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
+                                      </Pressable>
+                                      {descOpenByKey[`${index}-${mi}`] ? (
+                                        <Box className="p-2 rounded border border-border-200 bg-background-50 dark:bg-background-100">
+                                          <Markdown>{m.description}</Markdown>
+                                        </Box>
+                                      ) : null}
+                                    </>
+                                  ) : null}
                                   <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
                                   <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
                                     <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
@@ -586,7 +637,11 @@ export default function WorkoutCreateScreen() {
                             <VStack space="sm">
                               <Box className="flex-row items-center justify-between">
                                   <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
-                                <Pressable onPress={() => {
+                                <Box className="flex-row items-center" style={{ gap: 8 }}>
+                                  <Pressable onPress={() => toggleMovementMetricUnit(index, mi)} className="px-2 py-1 rounded-md border border-border-200 bg-white dark:bg-background-0">
+                                    <Text className="text-typography-700 dark:text-gray-200">{m.metricUnit === 'temporal' ? 'D' : 'R'}</Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => {
                                   setPrescriptions(prev => {
                                     const cp = [...prev]
                                     const pb = cp[index]
@@ -598,14 +653,19 @@ export default function WorkoutCreateScreen() {
                                 }} className="px-2 py-1 rounded-md border border-red-300 bg-white dark:bg-background-0">
                                   <Text className="text-red-700 dark:text-red-300">Remove</Text>
                                 </Pressable>
+                                </Box>
                               </Box>
-                              {/* Collapsible video */}
-                              <Pressable onPress={() => toggleVideoFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
-                                <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
-                                <Text className="text-typography-600 dark:text-gray-300">{videoOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
-                              </Pressable>
-                              {videoOpenByKey[`${index}-${mi}`] ? (
-                                <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                              {/* Collapsible video (only render if a video URL exists) */}
+                              {(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) ? (
+                                <>
+                                  <Pressable onPress={() => toggleVideoFor(`${index}-${mi}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
+                                    <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
+                                    <Text className="text-typography-600 dark:text-gray-300">{videoOpenByKey[`${index}-${mi}`] ? '−' : '+'}</Text>
+                                  </Pressable>
+                                  {videoOpenByKey[`${index}-${mi}`] ? (
+                                    <MovementThumb imageUrl={m.imageUrl} videoUrl={(m.shortVideoUrl || m.longVideoUrl || m.videoUrl) as string | undefined} />
+                                  ) : null}
+                                </>
                               ) : null}
                               {/* Collapsible description (if any) */}
                               {m.description ? (
