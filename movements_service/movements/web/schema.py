@@ -165,10 +165,15 @@ def map_row_to_search_result(row: dict, is_external: bool = False) -> MovementSe
 
 
 def get_repos(info: Info) -> tuple[MovementsRepository, ExerciseDBClient, Optional[str]]:
-    repo: MovementsRepository = info.context.get("movements_repo")  # to be injected
-    client: ExerciseDBClient = info.context.get("exercise_client")  # to be injected
+    # Prefer a repository factory that yields a new AsyncSession per resolver to avoid concurrent Session access
+    repo_factory = info.context.get("movements_repo_factory")
+    if callable(repo_factory):
+        repo = repo_factory()
+    else:
+        repo = info.context.get("movements_repo") or MovementsRepository()
+    client: ExerciseDBClient = info.context.get("exercise_client") or ExerciseDBClient()
     user_id: Optional[str] = info.context.get("user_id")
-    return repo or MovementsRepository(), client or ExerciseDBClient(), user_id
+    return repo, client, user_id
 
 
 @strawberry.type

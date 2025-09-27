@@ -113,21 +113,23 @@ class MovementsRepoPg:
         # See data/alter_movements_external.sql for an index option.
 
     async def get(self, id_: str) -> Optional[dict]:
-        res = await self.session.execute(select(MovementModel).where(MovementModel.id_ == id_))
-        row = res.scalar_one_or_none()
-        if not row:
-            return None
-        data = _row_to_dict(row)
-        data.update(await _links_to_lists(self.session, row.id_))
-        return data
+        async with self.session.begin():
+            res = await self.session.execute(select(MovementModel).where(MovementModel.id_ == id_))
+            row = res.scalar_one_or_none()
+            if not row:
+                return None
+            data = _row_to_dict(row)
+            data.update(await _links_to_lists(self.session, row.id_))
+            return data
 
     async def get_by_external(self, source: str, external_id: str) -> Optional[dict]:
         if not source or not external_id:
             return None
-        res = await self.session.execute(
-            select(MovementModel).where(MovementModel.source == source, MovementModel.external_id == external_id)
-        )
-        row = res.scalar_one_or_none()
+        async with self.session.begin():
+            res = await self.session.execute(
+                select(MovementModel).where(MovementModel.source == source, MovementModel.external_id == external_id)
+            )
+            row = res.scalar_one_or_none()
         if not row:
             return None
         data = _row_to_dict(row)
@@ -156,8 +158,9 @@ class MovementsRepoPg:
             sub = select(MovementEquipmentLink.movement_id).where(MovementEquipmentLink.equipment_name == equipment)
             stmt = stmt.where(MovementModel.id_.in_(sub))
 
-        res = await self.session.execute(stmt)
-        rows = res.scalars().all()
+        async with self.session.begin():
+            res = await self.session.execute(stmt)
+            rows = res.scalars().all()
         out: List[dict] = []
         for r in rows:
             d = _row_to_dict(r)
