@@ -50,7 +50,7 @@ async def get_current_user_from_header(
 
 async def get_context(
     session = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user_from_header),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> GraphQLContext:
     """
     Create GraphQL context with dependencies.
