@@ -114,6 +114,7 @@ export const QUERY_PRACTICE_TEMPLATE = gql`
             id_
             name
             description
+            shortVideoUrl
             longVideoUrl
             difficulty
             bodyRegion

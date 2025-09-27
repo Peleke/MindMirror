@@ -143,11 +143,13 @@ function buildSignature(m: any): string {
   const setsList: any[] = Array.isArray(m.sets) ? m.sets : []
   const setsCount = setsList.length
   const first = setsList[0]
+  const firstDur = typeof first?.duration === 'number' && first.duration > 0 ? first.duration : undefined
   const firstReps = typeof first?.reps === 'number' ? first.reps : undefined
   const load = first ? formatLoad(first.load_value, first.load_unit) : undefined
   const rest = typeof first?.rest_duration === 'number' ? `${first.rest_duration}s` : undefined
   const parts: string[] = []
-  if (setsCount && typeof firstReps === 'number') parts.push(`${setsCount} x ${firstReps}`)
+  if (setsCount && typeof firstDur === 'number') parts.push(`${setsCount} x ${firstDur}s`)
+  else if (setsCount && typeof firstReps === 'number') parts.push(`${setsCount} x ${firstReps}`)
   else if (setsCount) parts.push(`${setsCount} sets`)
   if (load && load !== '—') parts.push(load)
   if (rest) parts.push(rest)
@@ -325,7 +327,7 @@ export default function TemplateDetailsScreen() {
                                       <VStack key={si}>
                                         <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
                                           <Box className="w-10"><Text className="text-typography-700">{si + 1}</Text></Box>
-                                          <Box className="flex-1"><Text className="text-typography-900">{s.reps ?? s.duration ?? '—'}</Text></Box>
+                                          <Box className="flex-1"><Text className="text-typography-900">{(typeof s.duration === 'number' && s.duration > 0) ? `${s.duration}s` : (typeof s.reps === 'number' ? `${s.reps}` : '—')}</Text></Box>
                                           <Box className="flex-1"><Text className="text-typography-900">{formatLoad(s.load_value, s.load_unit)}</Text></Box>
                                           <Box className="flex-1"><Text className="text-typography-900">{s.rest_duration ? `${s.rest_duration}s` : (typeof m?.rest_duration === 'number' ? `${m.rest_duration}s` : '—')}</Text></Box>
                                         </VStack>
