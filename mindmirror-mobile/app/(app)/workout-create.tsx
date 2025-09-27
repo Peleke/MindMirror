@@ -181,6 +181,28 @@ export default function WorkoutCreateScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastFiredTermRef = useRef<string>('')
 
+  // Local edits buffer to prevent per-keystroke state churn that can steal focus/scroll
+  const [setEdits, setSetEdits] = useState<Record<string, Partial<SetDraft>>>({})
+  const setKey = (pIndex: number, mIndex: number, sIndex: number) => `${pIndex}-${mIndex}-${sIndex}`
+  const setEditValue = (pIndex: number, mIndex: number, sIndex: number, field: keyof SetDraft, value: string) => {
+    const key = setKey(pIndex, mIndex, sIndex)
+    setSetEdits(prev => ({
+      ...prev,
+      [key]: { ...(prev[key] || {}), [field]: value },
+    }))
+  }
+  const getEditValue = (pIndex: number, mIndex: number, sIndex: number, field: keyof SetDraft, fallback: any) => {
+    const key = setKey(pIndex, mIndex, sIndex)
+    const v = setEdits[key]?.[field] as any
+    return (v !== undefined && v !== null) ? v : fallback
+  }
+  const commitEditValue = (pIndex: number, mIndex: number, sIndex: number, field: keyof SetDraft) => {
+    const key = setKey(pIndex, mIndex, sIndex)
+    const raw = setEdits[key]?.[field]
+    if (raw === undefined) return
+    updateSetField(pIndex, mIndex, sIndex, field, String(raw))
+  }
+
   const toggleMovementMetricUnit = (pIndex: number, mIndex: number) => {
     setPrescriptions(prev => {
       const copy: PrescriptionDraft[] = [...prev]
@@ -583,11 +605,12 @@ export default function WorkoutCreateScreen() {
                                             <TextInput
                                               ref={setInputRef(`${index}-${mi}-${si}-${m.metricUnit === 'temporal' ? 'duration' : 'reps'}`)}
                                               keyboardType="numeric"
-                                              value={m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')}
-                                              onChangeText={(v) => updateSetField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)}
+                                              value={String(getEditValue(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')))}
+                                              onChangeText={(v) => setEditValue(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)}
+                                              onBlur={() => commitEditValue(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps')}
                                               returnKeyType="next"
                                               blurOnSubmit={false}
-                                              onSubmitEditing={() => focusNextField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', m.metricUnit)}
+                                              onSubmitEditing={() => { commitEditValue(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps'); focusNextField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', m.metricUnit) }}
                                               placeholder={m.metricUnit === 'temporal' ? '30' : '10'}
                                               style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
                                             />
@@ -596,31 +619,56 @@ export default function WorkoutCreateScreen() {
                                             <TextInput
                                               ref={setInputRef(`${index}-${mi}-${si}-loadValue`)}
                                               keyboardType="numeric"
-                                              value={s.loadValue != null ? String(s.loadValue) : ''}
-                                              onChangeText={(v) => updateSetField(index, mi, si, 'loadValue', v)}
+                                              value={String(getEditValue(index, mi, si, 'loadValue', s.loadValue != null ? String(s.loadValue) : ''))}
+                                              onChangeText={(v) => setEditValue(index, mi, si, 'loadValue', v)}
+                                              onBlur={() => commitEditValue(index, mi, si, 'loadValue')}
                                               returnKeyType="next"
                                               blurOnSubmit={false}
-                                              onSubmitEditing={() => focusNextField(index, mi, si, 'loadValue', m.metricUnit)}
+                                              onSubmitEditing={() => { commitEditValue(index, mi, si, 'loadValue'); focusNextField(index, mi, si, 'loadValue', m.metricUnit) }}
                                               placeholder="45"
                                               style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
                                             />
                                           </Box>
                                           <Box className="w-28 mr-2">
-                                            <Input>
-                                              <InputField placeholder="unit (lb/kg/bw)" value={s.loadUnit ?? ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadUnit', v)} />
-                                            </Input>
+                                            <Select
+                                              isDisabled={false}
+                                              selectedValue={s.loadUnit ?? ''}
+                                              onValueChange={(v: any) => updateSetField(index, mi, si, 'loadUnit', v)}
+                                            >
+                                              <SelectTrigger variant="outline">
+                                                <SelectInput placeholder="unit" />
+                                              </SelectTrigger>
+                                              <SelectPortal>
+                                                <SelectBackdrop />
+                                                <SelectContent>
+                                                  <SelectDragIndicatorWrapper>
+                                                    <SelectDragIndicator />
+                                                  </SelectDragIndicatorWrapper>
+                                                  <SelectItem label="lb" value="pounds" />
+                                                  <SelectItem label="kg" value="kilograms" />
+                                                  <SelectItem label="bw" value="bodyweight" />
+                                                  <SelectItem label="other" value="other" />
+                                                </SelectContent>
+                                              </SelectPortal>
+                                            </Select>
                                           </Box>
                                           <Box className="w-28 mr-2">
                                             <TextInput
                                               ref={setInputRef(`${index}-${mi}-${si}-restDuration`)}
                                               keyboardType="numeric"
-                                              value={s.restDuration != null ? String(s.restDuration) : ''}
-                                              onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)}
+                                              value={String(getEditValue(index, mi, si, 'restDuration', s.restDuration != null ? String(s.restDuration) : ''))}
+                                              onChangeText={(v) => setEditValue(index, mi, si, 'restDuration', v)}
+                                              onBlur={() => commitEditValue(index, mi, si, 'restDuration')}
                                               returnKeyType="next"
                                               blurOnSubmit={false}
                                               placeholder="60"
                                               style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }}
                                             />
+                                          </Box>
+                                          <Box className="w-14 items-end">
+                                            <Pressable onPress={() => removeSet(index, mi, si)} className="px-2 py-1 rounded-md border border-red-300 bg-white">
+                                              <Text className="text-red-700">🗑</Text>
+                                            </Pressable>
                                           </Box>
                                           <Box className="w-14" />
                                         </Box>
@@ -729,7 +777,11 @@ export default function WorkoutCreateScreen() {
                                         />
                                       </Box>
                                       <Box className="w-28 mr-2">
-                                        <Select selectedValue={s.loadUnit ?? ''} onValueChange={(v: any) => updateSetField(index, mi, si, 'loadUnit', v)}>
+                                        <Select
+                                          isDisabled={false}
+                                          selectedValue={s.loadUnit ?? ''}
+                                          onValueChange={(v: any) => updateSetField(index, mi, si, 'loadUnit', v)}
+                                        >
                                           <SelectTrigger variant="outline">
                                             <SelectInput placeholder="unit" />
                                           </SelectTrigger>
@@ -773,6 +825,9 @@ export default function WorkoutCreateScreen() {
                   </VStack>
                 </Box>
               )}
+            
+              maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+              removeClippedSubviews={false}
             />
           </VStack>
 
