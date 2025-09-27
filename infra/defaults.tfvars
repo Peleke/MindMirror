@@ -16,7 +16,7 @@ debug                           = "false"
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
 journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
 agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
-gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
+gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:033479cc422bf71841f2876a00d02a6add9970f0"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
 habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
 meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:20a8f95fa473cfc2d0f65f25d4c92bde03a26786"
