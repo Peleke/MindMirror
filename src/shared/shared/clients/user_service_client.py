@@ -63,7 +63,7 @@ class UsersServiceClient:
             self.base_url = f"{self.base_url}/graphql"
         if not self.base_url:
             raise ValueError("USERS_SERVICE_URL must be set.")
-        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=5.0)
+        self.client = httpx.AsyncClient(timeout=5.0, follow_redirects=True)
         self.logger = logging.getLogger(__name__)
 
     async def get_user_roles(self, user_id: UUID) -> Optional[List[UserRole]]:
@@ -71,7 +71,7 @@ class UsersServiceClient:
         Fetches the roles for a given user ID from the `users` service.
         """
         query = """
-            query GetUserRoles($userId: ID!) {
+            query GetUserRoles($userId: UUID!) {
                 userRoles(userId: $userId) {
                     role
                     domain
@@ -81,12 +81,7 @@ class UsersServiceClient:
         variables = {"userId": str(user_id)}
 
         try:
-            response = await self.client.post(
-                url="/",  # Base URL now includes /graphql
-                json={"query": query, "variables": variables},
-                # In a secured setup, you would add auth headers here:
-                # headers={"Authorization": "Bearer service-token"}
-            )
+            response = await self.client.post(self.base_url, json={"query": query, "variables": variables})
             response.raise_for_status()
 
             response_data = response.json()
@@ -113,7 +108,7 @@ class UsersServiceClient:
         Verifies that an 'ACCEPTED' coach-client relationship exists in the users service.
         """
         query = """
-            query VerifyCoachClient($coachId: ID!, $clientId: ID!, $domain: DomainGQL!) {
+            query VerifyCoachClient($coachId: UUID!, $clientId: UUID!, $domain: DomainGQL!) {
                 verifyCoachClientRelationship(coachId: $coachId, clientId: $clientId, domain: $domain)
             }
         """
@@ -124,10 +119,7 @@ class UsersServiceClient:
         }
 
         try:
-            response = await self.client.post(
-                url="/",
-                json={"query": query, "variables": variables},
-            )
+            response = await self.client.post(self.base_url, json={"query": query, "variables": variables})
             response.raise_for_status()
             response_data = response.json()
             parsed_response = GraphQLVerifyResponse.model_validate(response_data)
