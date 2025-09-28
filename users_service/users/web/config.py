@@ -25,6 +25,13 @@ class Config:
         # Construct DATABASE_URL from individual parts for local/dev
         DATABASE_URL = f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+    # Connection pool settings
+    DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))
+    DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "30"))
+    DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "10"))
+    DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+    DB_POOL_PRE_PING = os.getenv("DB_POOL_PRE_PING", "True").lower() == "true"
+
     # Service URLs for cross-service communication
     PRACTICES_SERVICE_URL = os.getenv("PRACTICES_SERVICE_URL", "http://practices:8000/graphql")
     MEALS_SERVICE_URL = os.getenv("MEALS_SERVICE_URL", "http://meals:8000/graphql")

@@ -41,9 +41,11 @@ except Exception:
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=DB_ECHO,
-    # Use default pool for connection reuse; keep pre_ping and recycle
-    pool_pre_ping=True,
-    pool_recycle=1800,
+    pool_size=Config.DB_POOL_SIZE,
+    max_overflow=Config.DB_MAX_OVERFLOW,
+    pool_timeout=Config.DB_POOL_TIMEOUT,
+    pool_recycle=Config.DB_POOL_RECYCLE,
+    pool_pre_ping=Config.DB_POOL_PRE_PING,
     connect_args=connect_args,
 )
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
