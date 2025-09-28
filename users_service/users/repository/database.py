@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
+import ssl
 
 from users.web.config import Config
 
@@ -20,17 +21,30 @@ SCHEMA_NAME = "users"
 DATABASE_URL = Config.DATABASE_URL
 DB_ECHO = Config.DB_ECHO
 
+# Build connect args with higher timeout and SSL for cloud DBs
+connect_args = {
+    "timeout": 30,
+    "server_settings": {
+        "jit": "off",
+    },
+}
+try:
+    url_lc = (DATABASE_URL or "").lower()
+    if "localhost" not in url_lc and "127.0.0.1" not in url_lc:
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        connect_args["ssl"] = ssl_ctx  # type: ignore[assignment]
+except Exception:
+    pass
+
 engine: AsyncEngine = create_async_engine(
-    DATABASE_URL, 
+    DATABASE_URL,
     echo=DB_ECHO,
-    poolclass=NullPool,
+    # Use default pool for connection reuse; keep pre_ping and recycle
     pool_pre_ping=True,
-    connect_args={
-        "timeout": 10,
-        "server_settings": {
-            "jit": "off",
-        }
-    }
+    pool_recycle=1800,
+    connect_args=connect_args,
 )
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession

@@ -70,6 +70,9 @@ class UsersServiceClient:
         )
         # Normalize: strip trailing slashes to avoid posting to /graphql/
         self.base_url = raw_base.rstrip("/")
+        # Ensure we are targeting the GraphQL endpoint even if a root URL is provided
+        if not self.base_url.endswith("/graphql"):
+            self.base_url = f"{self.base_url}/graphql"
         if not self.base_url:
             raise ValueError("USERS_SERVICE_URL must be set.")
         self.client = httpx.AsyncClient(timeout=5.0, follow_redirects=True)

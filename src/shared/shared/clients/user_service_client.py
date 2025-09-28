@@ -57,6 +57,10 @@ class UsersServiceClient:
         self.base_url = base_url or os.getenv(
             "USERS_SERVICE_URL", "http://localhost:8000/graphql"
         )  # Default for local dev
+        # Normalize and ensure GraphQL path
+        self.base_url = self.base_url.rstrip("/")
+        if not self.base_url.endswith("/graphql"):
+            self.base_url = f"{self.base_url}/graphql"
         if not self.base_url:
             raise ValueError("USERS_SERVICE_URL must be set.")
         self.client = httpx.AsyncClient(base_url=self.base_url, timeout=5.0)
@@ -78,7 +82,7 @@ class UsersServiceClient:
 
         try:
             response = await self.client.post(
-                url="/",  # Assuming the GraphQL endpoint is at the root of the base_url
+                url="/",  # Base URL now includes /graphql
                 json={"query": query, "variables": variables},
                 # In a secured setup, you would add auth headers here:
                 # headers={"Authorization": "Bearer service-token"}
