@@ -32,11 +32,10 @@ class Movement:
     userId: Optional[str]
 
     @classmethod
-    def resolve_reference(cls, info: Info, id_: strawberry.ID) -> "Movement":
+    async def resolve_reference(cls, info: Info, id_: strawberry.ID) -> "Movement":
         repo, _, _ = get_repos(info)
         # Federation resolver expects an entity lookup by key
-        # Note: incoming arg name must match key field (id_)
-        return map_row_to_movement_async(repo, str(id_))
+        return await map_row_to_movement_async(repo, str(id_))
 
 
 @strawberry.type
@@ -138,9 +137,13 @@ def map_row_to_movement(row: dict) -> Movement:
 
 
 async def map_row_to_movement_async(repo: MovementsRepository, id_: str) -> Movement:
-    row = await repo.get(id_)
+    # Try batch path if available on repo
+    if hasattr(repo, "get_many"):
+        many = await repo.get_many([id_])  # type: ignore
+        row = many.get(id_)
+    else:
+        row = await repo.get(id_)
     if not row:
-        # Provide a minimal placeholder to avoid federation failures
         return Movement(
             id_=strawberry.ID(id_), name=f"Exercise {id_}", slug=id_, difficulty=None, bodyRegion=None, archetype=None,
             equipment=[], primaryMuscles=[], secondaryMuscles=[], movementPatterns=[], planesOfMotion=[], tags=[],

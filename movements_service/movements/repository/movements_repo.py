@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlalchemy import select, delete, or_, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,6 +135,96 @@ class MovementsRepoPg:
         data = _row_to_dict(row)
         data.update(await _links_to_lists(self.session, row.id_))
         return data
+
+    async def get_many(self, ids: List[str]) -> Dict[str, dict]:
+        if not ids:
+            return {}
+        unique_ids = list({str(i) for i in ids})
+        out: Dict[str, dict] = {}
+        async with self.session.begin():
+            res = await self.session.execute(select(MovementModel).where(MovementModel.id_.in_(unique_ids)))
+            rows = res.scalars().all()
+            for r in rows:
+                out[r.id_] = _row_to_dict(r)
+
+            # Bulk fetch links
+            # Muscles
+            res = await self.session.execute(select(MovementMuscleLink).where(MovementMuscleLink.movement_id.in_(unique_ids)))
+            for m in res.scalars().all():
+                d = out.get(m.movement_id)
+                if d is None:
+                    continue
+                # Initialize lists lazily
+                d.setdefault("_primaryMuscles", [])
+                d.setdefault("_secondaryMuscles", [])
+                if m.role == "primary":
+                    d["_primaryMuscles"].append(m.muscle_name)
+                else:
+                    d["_secondaryMuscles"].append(m.muscle_name)
+
+            # Equipment
+            res = await self.session.execute(select(MovementEquipmentLink).where(MovementEquipmentLink.movement_id.in_(unique_ids)))
+            for e in res.scalars().all():
+                d = out.get(e.movement_id)
+                if d is None:
+                    continue
+                d.setdefault("_equipment", [])
+                d["_equipment"].append(e.equipment_name)
+
+            # Patterns (preserve order by position)
+            res = await self.session.execute(
+                select(MovementPatternLink).where(MovementPatternLink.movement_id.in_(unique_ids)).order_by(MovementPatternLink.movement_id.asc(), MovementPatternLink.position.asc())
+            )
+            for p in res.scalars().all():
+                d = out.get(p.movement_id)
+                if d is None:
+                    continue
+                d.setdefault("_patterns", [])
+                d["_patterns"].append(p.pattern_name)
+
+            # Planes
+            res = await self.session.execute(
+                select(MovementPlaneLink).where(MovementPlaneLink.movement_id.in_(unique_ids)).order_by(MovementPlaneLink.movement_id.asc(), MovementPlaneLink.position.asc())
+            )
+            for pl in res.scalars().all():
+                d = out.get(pl.movement_id)
+                if d is None:
+                    continue
+                d.setdefault("_planes", [])
+                d["_planes"].append(pl.plane_name)
+
+            # Tags
+            res = await self.session.execute(select(MovementTagLink).where(MovementTagLink.movement_id.in_(unique_ids)))
+            for t in res.scalars().all():
+                d = out.get(t.movement_id)
+                if d is None:
+                    continue
+                d.setdefault("_tags", [])
+                d["_tags"].append(t.tag_name)
+
+            # Instructions
+            res = await self.session.execute(
+                select(MovementInstruction).where(MovementInstruction.movement_id.in_(unique_ids)).order_by(MovementInstruction.movement_id.asc(), MovementInstruction.position.asc())
+            )
+            for inst in res.scalars().all():
+                d = out.get(inst.movement_id)
+                if d is None:
+                    continue
+                d.setdefault("_instructions", [])
+                d["_instructions"].append(inst.text)
+
+        # Normalize lists into public keys expected by mappers
+        for k, v in out.items():
+            v["primaryMuscles"] = v.pop("_primaryMuscles", [])
+            # Surface all non-primary as secondary, consistent with single fetch path
+            v["secondaryMuscles"] = v.pop("_secondaryMuscles", [])
+            v["movementPatterns"] = v.pop("_patterns", [])
+            v["planesOfMotion"] = v.pop("_planes", [])
+            v["equipment"] = v.pop("_equipment", [])
+            v["tags"] = v.pop("_tags", [])
+            v["instructions"] = v.pop("_instructions", [])
+
+        return out
 
     async def search(
         self,
