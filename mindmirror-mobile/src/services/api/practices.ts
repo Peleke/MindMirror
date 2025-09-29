@@ -209,6 +209,7 @@ export const QUERY_PROGRAM = gql`
       name
       description
       level
+      habitsProgramTemplateId
       tags { name }
       practiceLinks { sequenceOrder intervalDaysAfter practiceTemplate { id_ title } }
     }

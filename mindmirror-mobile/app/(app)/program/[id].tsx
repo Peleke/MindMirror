@@ -71,7 +71,10 @@ export default function ProgramDetailsScreen() {
           </VStack>
         </Toast>
       )})
-      setTimeout(() => { router.replace('/programs?reload=1') }, 500)
+      // Navigate back to programs quickly; UI will flip to Unenroll once refetch completes
+      setTimeout(() => { 
+        try { router.back() } catch { router.replace('/programs?reload=1') }
+      }, 150)
     } catch {}
   }
 
@@ -130,6 +133,20 @@ export default function ProgramDetailsScreen() {
                     ))
                   )}
                 </VStack>
+
+                {/* Paired Habits Program section */}
+                {p.habitsProgramTemplateId ? (
+                  <VStack space="xs" className="mt-4">
+                    <Text className="text-lg font-semibold text-typography-900 dark:text-white">Paired Habits Program</Text>
+                    <Box className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100">
+                      <VStack>
+                        <Text className="text-typography-700 dark:text-gray-300">This workout program is paired with a habits program.</Text>
+                        <Text className="text-typography-800 dark:text-gray-200">Template ID: {p.habitsProgramTemplateId}</Text>
+                        <Text className="text-typography-600 dark:text-gray-400 text-sm">Enrollment will also create daily lesson tasks when the backend auto-enroll is enabled.</Text>
+                      </VStack>
+                    </Box>
+                  </VStack>
+                ) : null}
 
                 {/* Bottom actions */}
                 <VStack space="sm">
