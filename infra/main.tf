@@ -120,6 +120,7 @@ module "journal_service" {
   # Service URLs (from secrets)
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
   celery_worker_url     = data.google_secret_manager_secret_version.celery_worker_url.secret_data
+  users_service_url     = module.users_service.service_url
   
   # Security (from secrets)
   reindex_secret_key    = data.google_secret_manager_secret_version.reindex_secret_key.secret_data
@@ -273,7 +274,9 @@ module "practices_service" {
   region       = var.region
   service_name = "practices-service"
   image        = var.practices_image
-  env          = {}
+  env = {
+    USERS_SERVICE_URL = module.users_service.service_url
+  }
   database_url = data.google_secret_manager_secret_version.database_url.secret_data
   service_account_email = module.base.practices_service_sa_email
 }
@@ -289,12 +292,16 @@ module "users_service" {
   service_name = "users-service"
   image        = var.users_image
   env = {
-    AGENT_SERVICE_URL    = data.google_secret_manager_secret_version.agent_service_url.secret_data
-    JOURNAL_SERVICE_URL  = data.google_secret_manager_secret_version.journal_service_url.secret_data
-    HABITS_SERVICE_URL   = data.google_secret_manager_secret_version.habits_service_url.secret_data
-    MEALS_SERVICE_URL    = data.google_secret_manager_secret_version.meals_service_url.secret_data
+    AGENT_SERVICE_URL     = data.google_secret_manager_secret_version.agent_service_url.secret_data
+    JOURNAL_SERVICE_URL   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+    HABITS_SERVICE_URL    = data.google_secret_manager_secret_version.habits_service_url.secret_data
+    MEALS_SERVICE_URL     = data.google_secret_manager_secret_version.meals_service_url.secret_data
     MOVEMENTS_SERVICE_URL = module.movements_service.service_url
-    PRACTICES_SERVICE_URL = module.practices_service.service_url
+    DB_POOL_SIZE          = "10"
+    DB_MAX_OVERFLOW       = "20"
+    DB_POOL_TIMEOUT       = "10"
+    DB_POOL_RECYCLE       = "1800"
+    DB_POOL_PRE_PING      = "true"
   }
   database_url = data.google_secret_manager_secret_version.database_url.secret_data
   service_account_email = module.base.users_service_sa_email

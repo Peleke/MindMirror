@@ -90,3 +90,8 @@ variable "reindex_secret_key" {
   description = "Reindex secret key for celery worker authentication"
   type        = string
 }
+
+variable "users_service_url" {
+  description = "Users service base URL"
+  type        = string
+}

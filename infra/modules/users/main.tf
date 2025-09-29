@@ -14,6 +14,7 @@ resource "google_cloud_run_service" "users" {
 
   template {
     spec {
+      container_concurrency = 21
       containers {
         image = var.image
 

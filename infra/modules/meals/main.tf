@@ -14,6 +14,7 @@ resource "google_cloud_run_service" "meals" {
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.image
 
@@ -57,6 +58,14 @@ resource "google_cloud_run_service" "meals" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

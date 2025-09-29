@@ -5,6 +5,7 @@ resource "google_cloud_run_service" "gateway" {
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.gateway_container_image
 
@@ -68,6 +69,14 @@ resource "google_cloud_run_service" "gateway" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

@@ -5,6 +5,7 @@ resource "google_cloud_run_service" "habits_service" {
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.habits_service_container_image
 
@@ -21,6 +22,27 @@ resource "google_cloud_run_service" "habits_service" {
         env {
           name  = "DATABASE_URL"
           value = var.database_url
+        }
+        # DB pool tuning (uses app defaults if not overridden)
+        env {
+          name  = "DB_POOL_SIZE"
+          value = "10"
+        }
+        env {
+          name  = "DB_MAX_OVERFLOW"
+          value = "20"
+        }
+        env {
+          name  = "DB_POOL_TIMEOUT"
+          value = "10"
+        }
+        env {
+          name  = "DB_POOL_RECYCLE"
+          value = "1800"
+        }
+        env {
+          name  = "DB_POOL_PRE_PING"
+          value = "true"
         }
         env {
           name  = "VOUCHERS_WEB_BASE_URL"
@@ -48,6 +70,14 @@ resource "google_cloud_run_service" "habits_service" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

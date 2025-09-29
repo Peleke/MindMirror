@@ -14,6 +14,7 @@ resource "google_cloud_run_service" "movements" {
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.image
 
@@ -31,6 +32,24 @@ resource "google_cloud_run_service" "movements" {
         env {
           name  = "DATABASE_URL"
           value = var.database_url
+        }
+
+        # DB pool tuning
+        env {
+          name  = "DB_POOL_SIZE"
+          value = "10"
+        }
+        env {
+          name  = "DB_MAX_OVERFLOW"
+          value = "20"
+        }
+        env {
+          name  = "DB_POOL_TIMEOUT"
+          value = "10"
+        }
+        env {
+          name  = "DB_POOL_RECYCLE"
+          value = "1800"
         }
 
         # Plain env vars from map
@@ -57,6 +76,14 @@ resource "google_cloud_run_service" "movements" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

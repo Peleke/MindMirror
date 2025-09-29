@@ -5,6 +5,7 @@ resource "google_cloud_run_service" "journal_service" {
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.journal_service_container_image
 
@@ -117,6 +118,12 @@ resource "google_cloud_run_service" "journal_service" {
           name  = "REINDEX_SECRET_KEY"
           value = var.reindex_secret_key
         }
+
+        # Users Service URL for shared auth/clients
+        env {
+          name  = "USERS_SERVICE_URL"
+          value = var.users_service_url
+        }
       }
 
 
@@ -127,6 +134,14 @@ resource "google_cloud_run_service" "journal_service" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

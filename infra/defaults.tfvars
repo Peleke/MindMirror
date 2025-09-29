@@ -14,16 +14,16 @@ debug                           = "false"
 # --- Default Container Images ---
 # These should point to the specific image tags you want to deploy.
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
-journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:d54d20b5f9db81c16bf6376c35ca3d945745c5a6"
+journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:1403724fdd58e359e6256e765964a15b4990ad2b"
 agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
 gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:033479cc422bf71841f2876a00d02a6add9970f0"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
-habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
+habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:82e2b8dbb7887c81d00fe007a8d03c4edb569340"
 meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:20a8f95fa473cfc2d0f65f25d4c92bde03a26786"
 
-users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
-movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:f2e65ede27e8d859b5f4117a3131fc71463f8027"
-practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:79cef9f88b33891d04067500fb1f72e8c8b6b17f"
+users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:82e2b8dbb7887c81d00fe007a8d03c4edb569340"
+movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:c6c19c06ea43d505c31d7d9762db7f8f49544e4b"
+practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:243df244febdbbc2ccff45600a4538ec27deff06"
 
 # --- Mocking & Testing Fallbacks ---
 # These are used for mesh compatibility and should be replaced with real values or logic if needed.
