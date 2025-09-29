@@ -6,7 +6,8 @@ import { VStack } from '@/components/ui/vstack'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { Pressable } from '@/components/ui/pressable'
-import { ActivityIndicator, ScrollView, Alert, Modal, View, Image, Platform } from 'react-native'
+import { ActivityIndicator, Alert, Modal, View, Image, Platform } from 'react-native'
+import { ScrollView } from '@/components/ui/scroll-view'
 import Markdown from 'react-native-markdown-display'
 import { Input, InputField } from '@/components/ui/input'
 import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
@@ -226,7 +227,7 @@ export default function WorkoutDetailsScreen() {
 
   if ((loading || fallbackQ.loading) && !workout) {
     return (
-      <SafeAreaView>
+      <SafeAreaView className="h-full w-full">
         <VStack className="h-full w-full items-center justify-center bg-background-0">
           <ActivityIndicator />
           <Text className="mt-2 text-typography-500">Loading workout...</Text>
@@ -239,7 +240,7 @@ export default function WorkoutDetailsScreen() {
   // If both queries finished but no workout found
   if (!loading && !fallbackQ.loading && !workout) {
     return (
-      <SafeAreaView>
+      <SafeAreaView className="h-full w-full">
         <VStack className="h-full w-full items-center justify-center bg-background-0">
           <AppBar title="Workout Not Found" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
           <Text className="text-typography-500">Workout not found</Text>
@@ -366,7 +367,7 @@ export default function WorkoutDetailsScreen() {
   )
 
   return (
-    <SafeAreaView>
+    <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
         <AppBar title="Workout" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
         {/* Delete moved to bottom with confirm modal */}
