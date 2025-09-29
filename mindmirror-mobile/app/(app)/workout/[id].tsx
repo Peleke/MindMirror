@@ -287,28 +287,45 @@ export default function WorkoutDetailsScreen() {
           </>
         ) : null}
         <VStack>
-          <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
-            <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
-            <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Reps</Text></Box>
-            <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
-            <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
-            <Box className="w-12" />
-          </VStack>
+          {(() => {
+            const usesDuration = Array.isArray(m?.sets) && m.sets.some((s: any) => typeof s?.duration === 'number' && s.duration > 0)
+            return (
+              <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
+                <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">{usesDuration ? 'Duration' : 'Reps'}</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
+                <Box className="w-12" />
+              </VStack>
+            )
+          })()}
           {(Array.isArray(m.sets) ? m.sets : []).map((s: any, i: number) => (
             <VStack key={i}>
               <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
                 <Box className="w-10"><Text className="text-typography-700">{i + 1}</Text></Box>
-                <Box className="flex-1">
-                  <Input size="sm" isDisabled={!!s.complete}>
-                    <InputField
-                      keyboardType="numeric"
-                      defaultValue={typeof s.reps === 'number' ? String(s.reps) : ''}
-                      placeholder="—"
-                      onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'reps', v)}
-                      onFocus={startTimerIfIdle}
-                    />
-                  </Input>
-                </Box>
+                {(() => {
+                  const usesDuration = typeof s?.duration === 'number' && s.duration > 0
+                  if (usesDuration) {
+                    return (
+                      <Box className="flex-1">
+                        <Text className="text-typography-700">{`${s.duration}s`}</Text>
+                      </Box>
+                    )
+                  }
+                  return (
+                    <Box className="flex-1">
+                      <Input size="sm" isDisabled={!!s.complete}>
+                        <InputField
+                          keyboardType="numeric"
+                          defaultValue={typeof s.reps === 'number' ? String(s.reps) : ''}
+                          placeholder="—"
+                          onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'reps', v)}
+                          onFocus={startTimerIfIdle}
+                        />
+                      </Input>
+                    </Box>
+                  )
+                })()}
                 <Box className="flex-1">
                   <Input size="sm" isDisabled={!!s.complete}>
                     <InputField
