@@ -12,6 +12,12 @@ class Settings(BaseSettings):
         "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
     )
     database_schema: str = os.getenv("DATABASE_SCHEMA", "habits")
+    # Connection pool tuning
+    db_pool_size: int = int(os.getenv("DB_POOL_SIZE", "15"))
+    db_max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "30"))
+    db_pool_recycle: int = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+    db_pool_pre_ping: bool = os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"
+    db_pool_timeout: int = int(os.getenv("DB_POOL_TIMEOUT", "10"))
 
     # Auth
     jwt_secret: str = os.getenv("JWT_SECRET", "your-secret-key")
