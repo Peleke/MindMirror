@@ -27,6 +27,8 @@ connect_args = {
     "server_settings": {
         "jit": "off",
     },
+    # Disable prepared statement cache to work with pgbouncer transaction pooling
+    "statement_cache_size": 0,
 }
 try:
     url_lc = (DATABASE_URL or "").lower()

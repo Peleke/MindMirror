@@ -21,8 +21,15 @@ API_VERSION = Config.API_VERSION
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Initializing database for users service...")
-    await init_db()
+    print("Initializing database for users service (non-blocking)...")
+    try:
+        # Fire-and-forget init so Cloud Run can pass startup probe even if DB is slow
+        import asyncio
+
+        asyncio.create_task(init_db())
+    except Exception as exc:
+        # Log and continue; endpoints that need DB will fail at request time
+        print(f"DB init scheduling failed: {exc}")
     yield
     print("Closing database connection for users service...")
     await close_db()
