@@ -16,7 +16,7 @@ class Base(DeclarativeBase):
 
 
 # SSL/connect args for cloud DBs
-connect_args: dict = {"timeout": 30}
+connect_args: dict = {"timeout": 30, "statement_cache_size": 0, "prepared_statement_cache_size": 0, "prepare_threshold": 0}
 try:
     url_lc = (Config.DATABASE_URL or "").lower()
     if "localhost" not in url_lc and "127.0.0.1" not in url_lc:
