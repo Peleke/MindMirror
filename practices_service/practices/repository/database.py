@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import uuid
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 
@@ -9,7 +10,14 @@ from practices.web.config import Config  # Get DB URL from config
 
 DATABASE_URL = Config.DATABASE_URL
 
-engine = create_async_engine(DATABASE_URL)  # Removed echo=True
+engine = create_async_engine(
+    DATABASE_URL,
+    connect_args={
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+    },
+)  # Removed echo=True
 
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
