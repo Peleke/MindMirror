@@ -14,16 +14,16 @@ debug                           = "false"
 # --- Default Container Images ---
 # These should point to the specific image tags you want to deploy.
 # Using 'latest' is common for dev, but for production, specific commit SHAs are better.
-journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:1403724fdd58e359e6256e765964a15b4990ad2b"
-agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:33f01f8be4e78ddc53a1befe438abeff8429ed63"
+journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:7c6642b469d291bbe4d5f37f1848449f4b3d29d7"
+agent_service_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/agent_service:7c6642b469d291bbe4d5f37f1848449f4b3d29d7"
 gateway_container_image         = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:033479cc422bf71841f2876a00d02a6add9970f0"
 celery_worker_container_image   = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/celery-worker:d6e5545f3b951048eeef06c98a00b2a6bf70d01f"
-habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:82e2b8dbb7887c81d00fe007a8d03c4edb569340"
-meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:20a8f95fa473cfc2d0f65f25d4c92bde03a26786"
+habits_service_container_image  = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/habits_service:eed7bd9a9dfe13c2dc7350f32033b0d82d2677a5"
+meals_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/meals_service:b95938c05f0a27d2ad30e84fecff63d670c3d2b8"
 
-users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:82e2b8dbb7887c81d00fe007a8d03c4edb569340"
-movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:c6c19c06ea43d505c31d7d9762db7f8f49544e4b"
-practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:243df244febdbbc2ccff45600a4538ec27deff06"
+users_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/users_service:770a3eda0c455a057f050f06d49de44c2d191801"
+movements_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/movements_service:e1503975f4368f4e2ce8303b884107534c8c379c"
+practices_image        = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/practices_service:eed7bd9a9dfe13c2dc7350f32033b0d82d2677a5"
 
 # --- Mocking & Testing Fallbacks ---
 # These are used for mesh compatibility and should be replaced with real values or logic if needed.

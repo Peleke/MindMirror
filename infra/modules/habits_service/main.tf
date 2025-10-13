@@ -75,7 +75,6 @@ resource "google_cloud_run_service" "habits_service" {
 
   metadata {
     annotations = {
-      "run.googleapis.com/startup-cpu-boost" = "true"
       "autoscaling.knative.dev/minScale"     = "1"
     }
   }
