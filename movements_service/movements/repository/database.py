@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import AsyncGenerator
 import os
 import ssl
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -15,8 +16,15 @@ class Base(DeclarativeBase):
     metadata = MetaData(schema="movements")
 
 
-# SSL/connect args for cloud DBs
-connect_args: dict = {"timeout": 30, "statement_cache_size": 0, "prepared_statement_cache_size": 0, "prepare_threshold": 0}
+# SSL/connect args for cloud DBs (SQLAlchemy 2.x asyncpg pattern)
+connect_args: dict = {
+    "timeout": 30,
+    # Disable asyncpg statement caching for PgBouncer transaction/statement modes
+    "statement_cache_size": 0,
+    "prepared_statement_cache_size": 0,
+    # Use unique prepared statement names to avoid collisions behind PgBouncer
+    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
+}
 try:
     url_lc = (Config.DATABASE_URL or "").lower()
     if "localhost" not in url_lc and "127.0.0.1" not in url_lc:

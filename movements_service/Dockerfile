@@ -4,12 +4,15 @@
 FROM python:3.12-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=180 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /tmp
 
-# Install Poetry and export plugin
-RUN pip install --no-cache-dir poetry poetry-plugin-export
+# Install Poetry and export plugin (pin versions, increase timeouts/retries)
+RUN python -m pip install -U pip setuptools wheel && \
+    pip install --no-cache-dir --timeout 180 --retries 5 poetry==2.2.1 poetry-plugin-export==1.9.0
 
 # Copy only dependency metadata (no source code yet)
 COPY pyproject.toml /tmp/
@@ -23,7 +26,7 @@ RUN if [ ! -f poetry.lock ]; then poetry lock; fi && \
     if [ "$BUILD_WITH_DEV" = "true" ] && [ "$HAS_DEV" = "1" ]; then \
       poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
     else \
-      poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
+      poetry export -f requirements.txt --output requirements.txt --without-hashes; \
     fi
 
 # --- Runtime stage ---
@@ -47,7 +50,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements from builder and install
 COPY --from=builder /tmp/requirements.txt ./
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install --timeout 180 --retries 5 -r requirements.txt
 
 # Copy application source
 COPY . .
