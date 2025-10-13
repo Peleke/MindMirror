@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 import ssl
+import uuid
 
 from users.web.config import Config
 
@@ -27,10 +28,11 @@ connect_args = {
     "server_settings": {
         "jit": "off",
     },
-    # Disable prepared statements under PgBouncer transaction pooling
+    # Disable prepared statements under PgBouncer transaction/statement pooling
     "statement_cache_size": 0,
     "prepared_statement_cache_size": 0,
-    "prepare_threshold": 0,
+    # Unique prepared statement names to avoid collisions
+    "prepared_statement_name_func": lambda: f"__asyncpg_{uuid.uuid4()}__",
 }
 try:
     url_lc = (DATABASE_URL or "").lower()
