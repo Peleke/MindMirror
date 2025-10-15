@@ -12,7 +12,7 @@ import { useUserById, useTerminateCoachingForClient } from '@/services/api/users
 import { useWorkoutsForUser, usePrograms as useWorkoutPrograms, useMyEnrollments, useEnrollUserInProgram, useUpdateEnrollmentStatus } from '@/services/api/practices'
 import GlobalFab from '@/components/common/GlobalFab'
 import { Alert, AlertIcon, AlertText } from '@/components/ui/alert'
-import { AlertCircleIcon } from 'lucide-react-native'
+import { AlertCircleIcon, Trash2Icon } from 'lucide-react-native'
 import { Avatar, AvatarFallbackText, AvatarImage, AvatarBadge } from '@/components/ui/avatar'
 import { Badge, BadgeText } from '@/components/ui/badge'
 import { Button, ButtonText } from '@/components/ui/button'
@@ -100,6 +100,17 @@ export default function ClientProfileScreen() {
       await enrollmentsQ.refetch()
     } finally {
       setUnassigningEnrollmentId(null)
+    }
+  }
+
+  const handleClearSelectedProgram = () => {
+    if (selectedProgram) {
+      const programId = selectedProgram.id_
+      setSelectedProgram(null)
+      setRepeatCounts(prev => {
+        const { [programId]: _omit, ...rest } = prev
+        return rest
+      })
     }
   }
 
@@ -359,16 +370,29 @@ export default function ClientProfileScreen() {
                                 </Box>
                               ) : null}
                             </VStack>
-                            <Button
-                              size="sm"
-                              variant={activeProgramIds.has(selectedProgram.id_) ? 'outline' : 'solid'}
-                              disabled={assigningProgramId === selectedProgram.id_ || activeProgramIds.has(selectedProgram.id_)}
-                              onPress={() => handleAssignProgram(selectedProgram.id_)}
-                            >
-                              <ButtonText>
-                                {activeProgramIds.has(selectedProgram.id_) ? 'Assigned' : (assigningProgramId === selectedProgram.id_ ? 'Assigning…' : 'Assign')}
-                              </ButtonText>
-                            </Button>
+                            <HStack space="xs" className="items-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onPress={handleClearSelectedProgram}
+                                className="mr-2 border-red-300"
+                              >
+                                <HStack space="xs" className="items-center">
+                                  <Trash2Icon size={16} color="#b91c1c" />
+                                  <ButtonText className="text-red-700">Remove</ButtonText>
+                                </HStack>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={activeProgramIds.has(selectedProgram.id_) ? 'outline' : 'solid'}
+                                disabled={assigningProgramId === selectedProgram.id_ || activeProgramIds.has(selectedProgram.id_)}
+                                onPress={() => handleAssignProgram(selectedProgram.id_)}
+                              >
+                                <ButtonText>
+                                  {activeProgramIds.has(selectedProgram.id_) ? 'Assigned' : (assigningProgramId === selectedProgram.id_ ? 'Assigning…' : 'Assign')}
+                                </ButtonText>
+                              </Button>
+                            </HStack>
                           </HStack>
                           {!activeProgramIds.has(selectedProgram.id_) && (
                             <VStack space="xs">
