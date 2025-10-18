@@ -4,15 +4,21 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: web
     env_file: ${ENV_FILE:-.env}
     environment:
+      - NODE_ENV=development
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:4000/graphql
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - NEXT_PUBLIC_APP_MODE=${NEXT_PUBLIC_APP_MODE:-demo}
       - NEXT_PUBLIC_INSIGHT_TIMEOUT=${NEXT_PUBLIC_INSIGHT_TIMEOUT:-240000}
+    volumes:
+      # Mount entire web directory for hot reload, excluding build artifacts
+      - ./web:/app:delegated
+      - /app/node_modules
+      - /app/.next
     networks:
       - mindmirror-network
     depends_on:
