@@ -255,14 +255,36 @@ export default function WorkoutDetailsScreen() {
     )
   }
 
-  const MovementFrozen = ({ m, pIdx, mIdx }: { m: any; pIdx: number; mIdx: number }) => (
-    <Box className="rounded-xl border border-border-200 bg-white dark:bg-background-100">
-      <VStack className="p-4">
-        <VStack className="flex-row items-center justify-between">
-          <Text className="text-base font-semibold text-typography-900 dark:text-white">{m.name}</Text>
-          <Text className="text-typography-500 text-sm">{(Array.isArray(m.sets) ? m.sets.length : 0)} sets</Text>
-        </VStack>
-        <Box className="h-2" />
+  const MovementFrozen = ({ m, pIdx, mIdx }: { m: any; pIdx: number; mIdx: number }) => {
+    // Calculate target sets/reps for display
+    const setsCount = Array.isArray(m.sets) ? m.sets.length : 0
+    const firstSet = Array.isArray(m.sets) && m.sets.length > 0 ? m.sets[0] : null
+    const targetReps = firstSet?.reps || 10
+    const targetDisplay = `${setsCount} sets × ${targetReps} reps`
+    // Get the weight unit from the first set
+    const weightUnit = firstSet?.loadUnit || 'lbs'
+
+    return (
+      <Box
+        className="rounded-lg bg-white dark:bg-background-100"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+          elevation: 2,
+        }}
+      >
+        <VStack className="p-4">
+          {/* Exercise name and target sets/reps */}
+          <VStack className="mb-4">
+            <Text className="text-lg font-semibold text-typography-900 dark:text-white mb-1">
+              {m.name}
+            </Text>
+            <Text className="text-sm text-typography-500 dark:text-typography-400">
+              {targetDisplay}
+            </Text>
+          </VStack>
         {/* Collapsible video */}
         <Pressable onPress={() => toggleVideoFor(`${pIdx}-${mIdx}`)} className="flex-row items-center justify-between px-3 py-2 rounded-md border border-border-200 bg-background-0">
           <Text className="font-semibold text-typography-900 dark:text-white">Video</Text>
@@ -286,98 +308,152 @@ export default function WorkoutDetailsScreen() {
             ) : null}
           </>
         ) : null}
-        <VStack>
+        <VStack className="mt-2">
           {(() => {
             const usesDuration = Array.isArray(m?.sets) && m.sets.some((s: any) => typeof s?.duration === 'number' && s.duration > 0)
             return (
-              <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
-                <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
-                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">{usesDuration ? 'Duration' : 'Reps'}</Text></Box>
-                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
-                <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
-                <Box className="w-12" />
+              <VStack className="flex-row px-2 py-3 mb-2">
+                <Box className="w-10"><Text className="text-xs font-bold text-typography-500 uppercase">Set</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-bold text-typography-500 uppercase">{usesDuration ? 'Time' : 'Reps'}</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-bold text-typography-500 uppercase">Weight ({weightUnit})</Text></Box>
+                <Box className="flex-1"><Text className="text-xs font-bold text-typography-500 uppercase text-center">Rest (s)</Text></Box>
+                <Box className="w-10" />
               </VStack>
             )
           })()}
-          {(Array.isArray(m.sets) ? m.sets : []).map((s: any, i: number) => (
-            <VStack key={i}>
-              <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
-                <Box className="w-10"><Text className="text-typography-700">{i + 1}</Text></Box>
-                {(() => {
-                  const usesDuration = typeof s?.duration === 'number' && s.duration > 0
-                  if (usesDuration) {
+          {(Array.isArray(m.sets) ? m.sets : []).map((s: any, i: number) => {
+            const unit = s.loadUnit || 'lbs'
+            const weightDisplay = typeof s.loadValue === 'number' ? `${s.loadValue} ${unit}` : unit
+            return (
+              <VStack key={i} className="mb-2">
+                <VStack className="flex-row items-center px-2 py-2 bg-background-0 dark:bg-background-50 rounded-lg">
+                  <Box className="w-10 items-center">
+                    <Text className="text-sm font-bold text-typography-600 dark:text-typography-400">
+                      {i + 1}
+                    </Text>
+                  </Box>
+                  {(() => {
+                    const usesDuration = typeof s?.duration === 'number' && s.duration > 0
+                    if (usesDuration) {
+                      return (
+                        <Box className="flex-1 px-2">
+                          <Text className="text-base font-semibold text-typography-900 dark:text-white">{`${s.duration}s`}</Text>
+                        </Box>
+                      )
+                    }
                     return (
-                      <Box className="flex-1">
-                        <Text className="text-typography-700">{`${s.duration}s`}</Text>
+                      <Box className="flex-1 px-2">
+                        <Input
+                          size="md"
+                          isDisabled={!!s.complete}
+                          className="bg-white dark:bg-background-100 border-border-300"
+                        >
+                          <InputField
+                            keyboardType="numeric"
+                            defaultValue={typeof s.reps === 'number' ? String(s.reps) : ''}
+                            placeholder="0"
+                            onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'reps', v)}
+                            onFocus={startTimerIfIdle}
+                            className="text-center font-semibold"
+                          />
+                        </Input>
                       </Box>
                     )
-                  }
-                  return (
-                    <Box className="flex-1">
-                      <Input size="sm" isDisabled={!!s.complete}>
-                        <InputField
-                          keyboardType="numeric"
-                          defaultValue={typeof s.reps === 'number' ? String(s.reps) : ''}
-                          placeholder="—"
-                          onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'reps', v)}
-                          onFocus={startTimerIfIdle}
-                        />
-                      </Input>
-                    </Box>
-                  )
-                })()}
-                <Box className="flex-1">
-                  <Input size="sm" isDisabled={!!s.complete}>
-                    <InputField
-                      keyboardType="numeric"
-                      defaultValue={typeof s.loadValue === 'number' ? String(s.loadValue) : ''}
-                      placeholder="—"
-                      onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'loadValue', v)}
-                      onFocus={startTimerIfIdle}
-                    />
-                  </Input>
-                </Box>
-                <Box className="flex-1">
-                  <Text className="text-typography-500">
-                    {typeof s.restDuration === 'number' && s.restDuration > 0 ? `${s.restDuration}s` : (typeof m.restDuration === 'number' ? `${m.restDuration}s` : '—')}
-                  </Text>
-                </Box>
-                <Box className="w-12">
-                  <Pressable
-                    className={`px-2 py-1 rounded border ${s.complete ? 'border-border-200 bg-background-100' : 'border-border-200 bg-background-50'}`}
-                    onPress={async () => {
-                      const secs = (typeof s.restDuration === 'number' && s.restDuration > 0) ? s.restDuration : (typeof m.restDuration === 'number' ? m.restDuration : 60)
-                      openRestTimer(pIdx, mIdx, i, secs)
-                      startTimerIfIdle()
-                    }}
-                  >
-                    <Text className={`${s.complete ? 'text-typography-400' : 'text-typography-700'}`}>✓</Text>
-                  </Pressable>
-                </Box>
+                  })()}
+                  <Box className="flex-1 px-2">
+                    <Input
+                      size="md"
+                      isDisabled={!!s.complete}
+                      className="bg-white dark:bg-background-100 border-border-300"
+                    >
+                      <InputField
+                        keyboardType="numeric"
+                        defaultValue={typeof s.loadValue === 'number' ? String(s.loadValue) : ''}
+                        placeholder="0"
+                        onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'loadValue', v)}
+                        onFocus={startTimerIfIdle}
+                        className="text-center font-semibold"
+                      />
+                    </Input>
+                  </Box>
+                  <Box className="flex-1 px-2">
+                    <Input
+                      size="md"
+                      isDisabled={!!s.complete}
+                      className="bg-white dark:bg-background-100 border-border-300"
+                    >
+                      <InputField
+                        keyboardType="numeric"
+                        defaultValue={typeof s.restDuration === 'number' ? String(s.restDuration) : (typeof m.restDuration === 'number' ? String(m.restDuration) : '')}
+                        placeholder="60"
+                        onChangeText={(v) => {
+                          if (!workout) return
+                          startTimerIfIdle()
+                          // local update first
+                          setWorkout((prev: any) => {
+                            const copy = JSON.parse(JSON.stringify(prev))
+                            const set = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[i]
+                            if (set) {
+                              const num = parseFloat(v)
+                              set.restDuration = Number.isFinite(num) ? num : undefined
+                            }
+                            return copy
+                          })
+                          // persist
+                          const setId = workout?.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[i]?.id_
+                          if (setId) {
+                            const num = parseFloat(v)
+                            const input: any = { restDuration: Number.isFinite(num) ? num : null }
+                            try { updateSetInstance({ variables: { id: setId, input } }) } catch {}
+                          }
+                        }}
+                        onFocus={startTimerIfIdle}
+                        className="text-center font-semibold"
+                      />
+                    </Input>
+                  </Box>
+                  <Box className="w-10 items-center">
+                    <Pressable
+                      className={`w-10 h-10 rounded items-center justify-center ${
+                        s.complete
+                          ? 'bg-green-100 dark:bg-green-900/30'
+                          : 'bg-background-100 dark:bg-background-200'
+                      }`}
+                      onPress={async () => {
+                        const secs = (typeof s.restDuration === 'number' && s.restDuration > 0) ? s.restDuration : (typeof m.restDuration === 'number' ? m.restDuration : 60)
+                        openRestTimer(pIdx, mIdx, i, secs)
+                        startTimerIfIdle()
+                      }}
+                    >
+                      <Text className={`text-xl ${s.complete ? 'text-green-600 dark:text-green-400' : 'text-typography-400 dark:text-typography-500'}`}>
+                        ✓
+                      </Text>
+                    </Pressable>
+                  </Box>
+                </VStack>
               </VStack>
-              <Box className="h-px bg-border-200" />
-            </VStack>
-          ))}
+            )
+          })}
         </VStack>
         {/* Removed duplicate always-on description block to keep only collapsible */}
         <Box className="h-2" />
-        <Pressable className="self-start px-3 py-1 rounded border border-border-200 bg-background-50" onPress={() => addSetToMovement(pIdx, mIdx)}>
-          <Text className="text-typography-700 text-xs">+ Add Set</Text>
+        <Pressable className="self-start px-4 py-2 rounded-lg bg-green-600" onPress={() => addSetToMovement(pIdx, mIdx)}>
+          <Text className="text-white text-sm font-semibold">+ Add Set</Text>
         </Pressable>
       </VStack>
-    </Box>
-  )
+      </Box>
+    )
+  }
 
   const BlockFrozen = ({ p, idx }: { p: any; idx: number }) => (
     <VStack>
-      <Text className="text-sm font-semibold text-typography-900 dark:text-white">
+      <Text className="text-xl font-bold text-typography-900 dark:text-white uppercase mb-4">
         {p?.name || String(p?.block || '').toUpperCase() || `Block ${idx + 1}`}
       </Text>
-      <Box className="h-2" />
       {(Array.isArray(p.movements) ? p.movements : []).map((m: any, i: number) => (
         <VStack key={i}>
           <MovementFrozen m={m} pIdx={idx} mIdx={i} />
-          <Box className="h-3" />
+          <Box className="h-6" />
         </VStack>
       ))}
     </VStack>
