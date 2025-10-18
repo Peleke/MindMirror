@@ -10,6 +10,16 @@ function generateCode(length = 8) {
 
 async function validateProgramExists(programId: string, accessToken: string): Promise<boolean> {
   try {
+    const result = await validateProgramExistsWithDetails(programId, accessToken)
+    return !!result
+  } catch (error) {
+    console.error('Failed to validate program:', error)
+    return false
+  }
+}
+
+async function validateProgramExistsWithDetails(programId: string, accessToken: string): Promise<{ id_: string; name: string } | null> {
+  try {
     // Query GraphQL gateway with user's auth token
     // Use the Docker service name 'gateway' instead of localhost when running in containers
     const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://gateway:4000/graphql'
@@ -45,13 +55,124 @@ async function validateProgramExists(programId: string, accessToken: string): Pr
     // Check if program exists
     if (result.errors) {
       console.error('GraphQL errors:', result.errors)
-      return false
+      return null
     }
 
-    return !!result.data?.program
+    return result.data?.program || null
   } catch (error) {
     console.error('Failed to validate program:', error)
-    return false
+    return null
+  }
+}
+
+async function sendMagicLinkEmail(params: {
+  toEmail: string
+  magicLink: string
+  code: string
+  programName: string
+  personalMessage: string | null
+}): Promise<void> {
+  const { toEmail, magicLink, code, programName, personalMessage } = params
+
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) {
+    throw new Error('RESEND_API_KEY not configured')
+  }
+
+  const from = 'mindmirror@emails.peleke.me'
+  const subject = `Your MindMirror Invitation - ${programName}`
+
+  // Default message if no personal message provided
+  const defaultMessage = `You've been invited to join MindMirror and start your journey with ${programName}.`
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #7c3aed; margin: 0; font-size: 28px;">MindMirror</h1>
+        <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Your Personal Performance Platform</p>
+      </div>
+
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <h2 style="color: white; margin: 0 0 15px 0; font-size: 24px;">You're Invited! 🎉</h2>
+        <p style="color: #e0e7ff; margin: 0; font-size: 16px; line-height: 1.6;">
+          ${personalMessage || defaultMessage}
+        </p>
+      </div>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+        <h3 style="margin: 0 0 15px 0; color: #111827; font-size: 18px;">Your Program</h3>
+        <div style="background: white; border-left: 4px solid #7c3aed; padding: 15px; border-radius: 4px;">
+          <p style="margin: 0; color: #374151; font-size: 16px; font-weight: 600;">${programName}</p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 30px;">
+        <a href="${magicLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          Get Started with MindMirror
+        </a>
+      </div>
+
+      <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+        <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+          <strong>Your Access Code:</strong> <code style="background: white; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${code}</code><br/>
+          You'll only need this if the app asks for it during signup.
+        </p>
+      </div>
+
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+        <p style="color: #6b7280; font-size: 14px; margin: 0 0 10px 0;">
+          <strong>Can't click the button?</strong> Copy and paste this link into your browser:
+        </p>
+        <p style="margin: 0;">
+          <a href="${magicLink}" style="color: #7c3aed; font-size: 13px; word-break: break-all;">${magicLink}</a>
+        </p>
+      </div>
+
+      <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+          Part of the Swae OS ecosystem
+        </p>
+      </div>
+    </div>
+  `
+
+  const text = `
+You're Invited to MindMirror!
+
+${personalMessage || defaultMessage}
+
+Your Program: ${programName}
+
+Get started by clicking this link:
+${magicLink}
+
+Your Access Code: ${code}
+(You'll only need this if the app asks for it during signup)
+
+Can't click the link? Copy and paste it into your browser.
+
+---
+Part of the Swae OS ecosystem
+  `.trim()
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from,
+      to: toEmail,
+      subject,
+      html,
+      text
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`Resend API error: ${JSON.stringify(errorData)}`)
   }
 }
 
@@ -71,6 +192,8 @@ export async function POST(req: NextRequest) {
     const email = (body.email || '').toLowerCase().trim()
     const programId = (body.programId || '').trim()
     const expirationDate = body.expirationDate || null
+    const personalMessage = body.personalMessage || null
+    const sendEmail = body.sendEmail !== undefined ? body.sendEmail : true
 
     // Validation
     if (!email) {
@@ -145,10 +268,42 @@ export async function POST(req: NextRequest) {
     const appSignupUrl = process.env.NEXT_PUBLIC_APP_SIGNUP_URL || 'http://localhost:8081/signup'
     const magicLink = `${appSignupUrl}?voucher=${encodeURIComponent(code)}`
 
+    // Get program name for email
+    let programName = 'your workout program'
+    try {
+      const programResult = await validateProgramExistsWithDetails(programId, session.access_token)
+      if (programResult) {
+        programName = programResult.name
+      }
+    } catch (err) {
+      console.error('Failed to get program name:', err)
+    }
+
+    // Send email if requested
+    let emailSent = false
+    if (sendEmail) {
+      try {
+        await sendMagicLinkEmail({
+          toEmail: email,
+          magicLink,
+          code,
+          programName,
+          personalMessage
+        })
+        emailSent = true
+        console.log('✅ Magic link email sent to:', email)
+      } catch (emailError) {
+        console.error('Failed to send email:', emailError)
+        // Don't fail the whole request if email fails, just log it
+      }
+    }
+
     return NextResponse.json({
       magicLink,
       voucherId: voucher.id,
-      code: voucher.code
+      code: voucher.code,
+      emailSent,
+      programName
     })
 
   } catch (error) {

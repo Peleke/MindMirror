@@ -1,22 +1,74 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Copy, CheckCircle, AlertCircle } from 'lucide-react'
+
+interface Program {
+  id_: string
+  name: string
+  description?: string
+}
 
 interface MagicLinkResponse {
   magicLink: string
   voucherId: string
   code: string
+  emailSent?: boolean
+  programName?: string
 }
 
 export default function MagicLinkForm() {
   const [email, setEmail] = useState('')
   const [programId, setProgramId] = useState('')
   const [expirationDate, setExpirationDate] = useState('')
+  const [personalMessage, setPersonalMessage] = useState('')
+  const [sendEmail, setSendEmail] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [loadingPrograms, setLoadingPrograms] = useState(true)
+  const [programs, setPrograms] = useState<Program[]>([])
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<MagicLinkResponse | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Fetch programs on mount
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        // GraphQL query to fetch all programs
+        const query = `
+          query GetPrograms {
+            programs {
+              id_
+              name
+              description
+            }
+          }
+        `
+
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        })
+
+        const result = await response.json()
+
+        if (result.errors) {
+          console.error('Failed to fetch programs:', result.errors)
+          setError('Failed to load programs. Please refresh the page.')
+        } else if (result.data?.programs) {
+          setPrograms(result.data.programs)
+        }
+      } catch (err) {
+        console.error('Error fetching programs:', err)
+        setError('Failed to load programs. Please refresh the page.')
+      } finally {
+        setLoadingPrograms(false)
+      }
+    }
+
+    fetchPrograms()
+  }, [])
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -65,7 +117,9 @@ export default function MagicLinkForm() {
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
           programId: programId.trim(),
-          expirationDate: expirationDate || null
+          expirationDate: expirationDate || null,
+          personalMessage: personalMessage.trim() || null,
+          sendEmail
         })
       })
 
@@ -81,6 +135,7 @@ export default function MagicLinkForm() {
       setEmail('')
       setProgramId('')
       setExpirationDate('')
+      setPersonalMessage('')
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred')
     } finally {
@@ -109,21 +164,62 @@ export default function MagicLinkForm() {
           <p className="text-xs text-gray-500 mt-1">Alpha user's email address</p>
         </div>
 
-        {/* Program ID Input */}
+        {/* Program Select */}
         <div>
           <label htmlFor="programId" className="block text-sm font-medium text-gray-700 mb-1">
-            Program ID *
+            Workout Program *
           </label>
-          <input
-            id="programId"
-            type="text"
-            value={programId}
-            onChange={(e) => setProgramId(e.target.value)}
-            required
-            placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          {loadingPrograms ? (
+            <div className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500">
+              Loading programs...
+            </div>
+          ) : (
+            <select
+              id="programId"
+              value={programId}
+              onChange={(e) => setProgramId(e.target.value)}
+              required
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">Select a program...</option>
+              {programs.map((program) => (
+                <option key={program.id_} value={program.id_}>
+                  {program.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="text-xs text-gray-500 mt-1">Workout program to assign to the user</p>
+        </div>
+
+        {/* Personal Message */}
+        <div>
+          <label htmlFor="personalMessage" className="block text-sm font-medium text-gray-700 mb-1">
+            Personal Message (optional)
+          </label>
+          <textarea
+            id="personalMessage"
+            value={personalMessage}
+            onChange={(e) => setPersonalMessage(e.target.value)}
+            rows={3}
+            placeholder="Add a personal message to include in the email..."
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
-          <p className="text-xs text-gray-500 mt-1">UUID of the workout program to assign</p>
+          <p className="text-xs text-gray-500 mt-1">This message will be included in the email to the user</p>
+        </div>
+
+        {/* Send Email Checkbox */}
+        <div className="flex items-center space-x-2">
+          <input
+            id="sendEmail"
+            type="checkbox"
+            checked={sendEmail}
+            onChange={(e) => setSendEmail(e.target.checked)}
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          />
+          <label htmlFor="sendEmail" className="text-sm font-medium text-gray-700">
+            Send email to user with magic link
+          </label>
         </div>
 
         {/* Expiration Date Input */}
@@ -217,7 +313,9 @@ export default function MagicLinkForm() {
               </div>
 
               <p className="text-sm text-gray-600 mt-4">
-                Send this magic link to the alpha user to complete onboarding.
+                {result.emailSent
+                  ? `Email sent successfully to ${email}. The user will receive the magic link shortly.`
+                  : 'Send this magic link to the alpha user to complete onboarding.'}
               </p>
             </div>
           </div>
