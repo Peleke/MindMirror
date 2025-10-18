@@ -18,6 +18,7 @@ import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { MovementDescription } from '@/components/workouts/MovementMedia'
+import { RestTimerModal } from '@/components/workouts/RestTimerModal'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -129,7 +130,28 @@ export default function WorkoutDetailsScreen() {
   const serverWorkout = fallbackQ.data?.practiceInstance || data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
 
   const [workout, setWorkout] = useState<any | null>(null)
-  useEffect(() => { if (serverWorkout) setWorkout(JSON.parse(JSON.stringify(serverWorkout))) }, [serverWorkout])
+
+  // Sync local workout state with server data
+  useEffect(() => {
+    if (serverWorkout) {
+      console.log('Syncing workout from server:', serverWorkout.id_)
+      setWorkout(JSON.parse(JSON.stringify(serverWorkout)))
+    }
+  }, [serverWorkout])
+
+  // Refetch workout data when component mounts to ensure fresh data
+  useEffect(() => {
+    if (workoutId && fallbackQ.refetch) {
+      console.log('Refetching workout on mount:', workoutId)
+      // Use a small delay to ensure GraphQL mutations have propagated
+      const timer = setTimeout(() => {
+        fallbackQ.refetch().catch((err) => {
+          console.log('Refetch error (non-fatal):', err.message)
+        })
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [workoutId])
 
   const [elapsed, setElapsed] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
@@ -137,6 +159,30 @@ export default function WorkoutDetailsScreen() {
   const toggleTimer = () => setTimerActive((t) => !t)
   const startTimerIfIdle = () => { if (!timerActive) setTimerActive(true) }
   const fmtMinSec = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
+
+  // Pause timer on navigation away and save workout state
+  useEffect(() => {
+    return () => {
+      // Component unmounting, pause the timer and save state
+      setTimerActive(false)
+      // Note: workout state is already persisted via individual set mutations
+      // The elapsed time and timer state are ephemeral by design
+    }
+  }, [])
+
+  // Auto-save workout duration periodically (every 10 seconds while timer active)
+  useEffect(() => {
+    if (!timerActive || !workoutId) return
+
+    const saveInterval = setInterval(async () => {
+      // Update workout duration in the background
+      // Note: The practice instance stores duration, we could add a mutation to update it
+      // For now, the duration is calculated client-side and saved on completion
+      console.log('Auto-save: workout duration:', elapsed)
+    }, 10000)
+
+    return () => clearInterval(saveInterval)
+  }, [timerActive, elapsed, workoutId])
 
   // Debug logging
   console.log('DEBUG workout screen:', {
@@ -202,19 +248,44 @@ export default function WorkoutDetailsScreen() {
   const [restOpen, setRestOpen] = useState(false)
   const [restSeconds, setRestSeconds] = useState(0)
   const [restCtx, setRestCtx] = useState<{ pIdx: number, mIdx: number, sIdx: number } | null>(null)
-  const restTimerRef = useRef<NodeJS.Timeout | null>(null)
+
   const openRestTimer = (pIdx: number, mIdx: number, sIdx: number, initial: number) => {
-    setRestCtx({ pIdx, mIdx, sIdx }); setRestSeconds(Math.max(0, initial || 0)); setRestOpen(true); if (restTimerRef.current) clearInterval(restTimerRef.current); restTimerRef.current = setInterval(() => setRestSeconds((s) => Math.max(0, s - 1)), 1000)
+    console.log('openRestTimer called:', { pIdx, mIdx, sIdx, initial })
+    setRestCtx({ pIdx, mIdx, sIdx })
+    setRestSeconds(Math.max(0, initial || 60))
+    setRestOpen(true)
+    console.log('restOpen set to true')
   }
-  const closeRestTimer = async (complete: boolean) => {
-    setRestOpen(false); if (restTimerRef.current) { clearInterval(restTimerRef.current); restTimerRef.current = null }
-    if (complete && restCtx) {
-      const setId = workout?.prescriptions?.[restCtx.pIdx]?.movements?.[restCtx.mIdx]?.sets?.[restCtx.sIdx]?.id_
-      markSetComplete(restCtx.pIdx, restCtx.mIdx, restCtx.sIdx)
-      if (setId) { try { await completeSetInstance({ variables: { id: setId } }) } catch {} }
+
+  const closeRestTimer = async () => {
+    console.log('closeRestTimer called, restCtx:', restCtx)
+    setRestOpen(false)
+
+    if (!restCtx) {
+      console.log('No restCtx, skipping set completion')
+      return
     }
+
+    const setId = workout?.prescriptions?.[restCtx.pIdx]?.movements?.[restCtx.mIdx]?.sets?.[restCtx.sIdx]?.id_
+    console.log('Completing set:', setId)
+
+    // Mark complete locally first
+    markSetComplete(restCtx.pIdx, restCtx.mIdx, restCtx.sIdx)
+
+    if (setId) {
+      try {
+        await completeSetInstance({ variables: { id: setId } })
+        console.log('Set completed and saved:', setId)
+        // Don't refetch immediately - it causes cache issues
+        // The serverWorkout will sync on next render via useEffect
+      } catch (e) {
+        console.error('Failed to complete set:', e)
+      }
+    }
+
+    // Clear rest context
+    setRestCtx(null)
   }
-  const adjustRest = (delta: number) => setRestSeconds((s) => Math.max(0, s + delta))
 
   const onCompleteWorkout = async () => {
     try {
@@ -256,9 +327,19 @@ export default function WorkoutDetailsScreen() {
   }
 
   const MovementFrozen = ({ m, pIdx, mIdx }: { m: any; pIdx: number; mIdx: number }) => {
+    // Sort sets by position to maintain correct order
+    const sortedSets = useMemo(() => {
+      const sets = Array.isArray(m.sets) ? m.sets : []
+      return [...sets].sort((a, b) => {
+        const posA = typeof a?.position === 'number' ? a.position : 999
+        const posB = typeof b?.position === 'number' ? b.position : 999
+        return posA - posB
+      })
+    }, [m.sets])
+
     // Calculate target sets/reps for display
-    const setsCount = Array.isArray(m.sets) ? m.sets.length : 0
-    const firstSet = Array.isArray(m.sets) && m.sets.length > 0 ? m.sets[0] : null
+    const setsCount = sortedSets.length
+    const firstSet = sortedSets.length > 0 ? sortedSets[0] : null
     const targetReps = firstSet?.reps || 10
     const targetDisplay = `${setsCount} sets × ${targetReps} reps`
     // Get the weight unit from the first set
@@ -310,7 +391,7 @@ export default function WorkoutDetailsScreen() {
         ) : null}
         <VStack className="mt-2">
           {(() => {
-            const usesDuration = Array.isArray(m?.sets) && m.sets.some((s: any) => typeof s?.duration === 'number' && s.duration > 0)
+            const usesDuration = sortedSets.some((s: any) => typeof s?.duration === 'number' && s.duration > 0)
             return (
               <VStack className="flex-row px-2 py-3 mb-2">
                 <Box className="w-10"><Text className="text-xs font-bold text-typography-500 uppercase">Set</Text></Box>
@@ -321,7 +402,7 @@ export default function WorkoutDetailsScreen() {
               </VStack>
             )
           })()}
-          {(Array.isArray(m.sets) ? m.sets : []).map((s: any, i: number) => {
+          {sortedSets.map((s: any, i: number) => {
             const unit = s.loadUnit || 'lbs'
             const weightDisplay = typeof s.loadValue === 'number' ? `${s.loadValue} ${unit}` : unit
             return (
@@ -445,19 +526,31 @@ export default function WorkoutDetailsScreen() {
     )
   }
 
-  const BlockFrozen = ({ p, idx }: { p: any; idx: number }) => (
-    <VStack>
-      <Text className="text-xl font-bold text-typography-900 dark:text-white uppercase mb-4">
-        {p?.name || String(p?.block || '').toUpperCase() || `Block ${idx + 1}`}
-      </Text>
-      {(Array.isArray(p.movements) ? p.movements : []).map((m: any, i: number) => (
-        <VStack key={i}>
-          <MovementFrozen m={m} pIdx={idx} mIdx={i} />
-          <Box className="h-6" />
-        </VStack>
-      ))}
-    </VStack>
-  )
+  const BlockFrozen = ({ p, idx }: { p: any; idx: number }) => {
+    // Sort movements by position to maintain correct order
+    const sortedMovements = useMemo(() => {
+      const movements = Array.isArray(p.movements) ? p.movements : []
+      return [...movements].sort((a, b) => {
+        const posA = typeof a?.position === 'number' ? a.position : 999
+        const posB = typeof b?.position === 'number' ? b.position : 999
+        return posA - posB
+      })
+    }, [p.movements])
+
+    return (
+      <VStack>
+        <Text className="text-xl font-bold text-typography-900 dark:text-white uppercase mb-4">
+          {p?.name || String(p?.block || '').toUpperCase() || `Block ${idx + 1}`}
+        </Text>
+        {sortedMovements.map((m: any, i: number) => (
+          <VStack key={m.id_ || i}>
+            <MovementFrozen m={m} pIdx={idx} mIdx={i} />
+            <Box className="h-6" />
+          </VStack>
+        ))}
+      </VStack>
+    )
+  }
 
   return (
     <SafeAreaView className="h-full w-full">
@@ -538,12 +631,21 @@ export default function WorkoutDetailsScreen() {
 
             {/* Workout Blocks */}
             <VStack className="px-6 pb-6">
-              {(Array.isArray(workout?.prescriptions) ? workout.prescriptions : []).map((p: any, idx: number) => (
-                <VStack key={idx}>
-                  <BlockFrozen p={p} idx={idx} />
-                  <Box className="h-4" />
-                </VStack>
-              ))}
+              {(() => {
+                const prescriptions = Array.isArray(workout?.prescriptions) ? workout.prescriptions : []
+                // Sort prescriptions by position to maintain correct block order
+                const sortedPrescriptions = [...prescriptions].sort((a, b) => {
+                  const posA = typeof a?.position === 'number' ? a.position : 999
+                  const posB = typeof b?.position === 'number' ? b.position : 999
+                  return posA - posB
+                })
+                return sortedPrescriptions.map((p: any, idx: number) => (
+                  <VStack key={p.id_ || idx}>
+                    <BlockFrozen p={p} idx={idx} />
+                    <Box className="h-4" />
+                  </VStack>
+                ))
+              })()}
             </VStack>
 
             {/* Complete / Delete */}
@@ -563,22 +665,13 @@ export default function WorkoutDetailsScreen() {
           </VStack>
         </ScrollView>
 
-        {/* Rest Timer Bottom Sheet */}
-        <Modal visible={restOpen} transparent animationType="slide" onRequestClose={() => closeRestTimer(false)}>
-          <VStack className="flex-1 justify-end bg-black/40">
-            <Box className="rounded-t-2xl bg-white dark:bg-background-0 p-4">
-              <Text className="text-center text-xl font-bold text-typography-900">Rest</Text>
-              <Box className="h-2" />
-              <Text className="text-center text-3xl font-bold text-typography-900">{fmtMinSec(restSeconds)}</Text>
-              <Box className="h-4" />
-              <VStack className="flex-row items-center justify-between">
-                <Pressable className="px-4 py-2 rounded-lg border border-border-200" onPress={() => adjustRest(-15)}><Text className="text-typography-900">-15s</Text></Pressable>
-                <Pressable className="px-4 py-2 rounded-lg border border-border-200" onPress={() => closeRestTimer(true)}><Text className="text-typography-900">Skip</Text></Pressable>
-                <Pressable className="px-4 py-2 rounded-lg border border-border-200" onPress={() => adjustRest(15)}><Text className="text-typography-900">+15s</Text></Pressable>
-              </VStack>
-            </Box>
-          </VStack>
-        </Modal>
+        {/* Rest Timer Modal */}
+        <RestTimerModal
+          visible={restOpen}
+          initialSeconds={restSeconds}
+          onComplete={closeRestTimer}
+          onSkip={closeRestTimer}
+        />
       </VStack>
 
       {/* Defer modal */}

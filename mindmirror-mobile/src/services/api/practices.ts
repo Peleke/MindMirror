@@ -13,12 +13,14 @@ export const QUERY_TODAYS_WORKOUTS = gql`
         id_
         name
         block
+        position
         movements {
           id_
           name
           description
           restDuration
           videoUrl
+          position
           movement {
             id_
             name
@@ -36,7 +38,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
             planesOfMotion
             tags
           }
-          sets { id_ reps loadValue loadUnit restDuration complete movementInstanceId }
+          sets { id_ position reps loadValue loadUnit restDuration complete movementInstanceId }
         }
       }
     }
@@ -188,14 +190,16 @@ export const QUERY_PRACTICE_INSTANCE = gql`
         id_
         name
         block
+        position
         movements {
           id_
           name
           description
           restDuration
           videoUrl
+          position
           movement { id_ name description shortVideoUrl }
-          sets { id_ reps loadValue loadUnit restDuration complete movementInstanceId }
+          sets { id_ position reps loadValue loadUnit restDuration complete movementInstanceId }
         }
       }
     }
