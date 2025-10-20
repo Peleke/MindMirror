@@ -1,0 +1,82 @@
+# TODO: Replace SERVICE_NAME with your service name
+
+variable "project_id" {
+  description = "GCP project ID"
+  type        = string
+}
+
+variable "region" {
+  description = "GCP region"
+  type        = string
+}
+
+variable "image" {
+  description = "Container image"
+  type        = string
+}
+
+variable "service_account_email" {
+  description = "Service account email"
+  type        = string
+}
+
+variable "min_instances" {
+  description = "Minimum instances"
+  type        = number
+}
+
+variable "max_instances" {
+  description = "Maximum instances"
+  type        = number
+}
+
+# ========================================
+# SECRETS
+# ========================================
+# Add variables for each secret you mount
+# Format: secret_name + "_secret"
+
+variable "database_url_secret" {
+  description = "Secret name for DATABASE_URL in Secret Manager"
+  type        = string
+}
+
+# TODO: Add more secrets as needed
+# variable "openai_api_key_secret" {
+#   description = "Secret name for OPENAI_API_KEY"
+#   type        = string
+# }
+
+# ========================================
+# SERVICE URLS (for inter-service communication)
+# ========================================
+# TODO: Add variables for service URLs if needed
+
+# variable "some_service_url" {
+#   description = "URL of some other service"
+#   type        = string
+# }
+
+# ========================================
+# ENVIRONMENT
+# ========================================
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "log_level" {
+  description = "Log level"
+  type        = string
+}
+
+variable "debug" {
+  description = "Debug mode"
+  type        = bool
+}
+
+# ========================================
+# SERVICE-SPECIFIC CONFIG
+# ========================================
+# TODO: Add any service-specific variables
