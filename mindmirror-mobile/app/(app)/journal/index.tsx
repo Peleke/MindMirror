@@ -460,10 +460,13 @@ function TodaysWorkoutsRow({ showHeader = true }: { showHeader?: boolean }) {
   const itemsMap: Record<string, any> = {}
   const computeKey = (it: any) => {
     const sid = it.service_id || it.serviceId || 'practices'
-    const ent = it.entity_id || it.entityId || it.practice_instance_id || it.id_
+    // Prioritize practice_instance_id for deduplication to prevent showing both
+    // template-based and instance-based cards for the same workout
+    const ent = it.practice_instance_id || it.entity_id || it.entityId || it.id_
     return `${sid}:${ent}`
   }
-  for (const it of [...practiceItems, ...upcomingItems]) {
+  // Merge upcomingItems first, then practiceItems so completion status from practiceItems wins
+  for (const it of [...upcomingItems, ...practiceItems]) {
     const key = computeKey(it)
     itemsMap[key] = { ...(itemsMap[key] || {}), ...it }
   }

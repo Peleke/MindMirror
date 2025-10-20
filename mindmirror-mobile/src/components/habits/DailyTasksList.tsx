@@ -235,7 +235,7 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
         </Box>
       ) : null}
 
-      {(activeTab==='today' ? allRemainingTasks : allCompletedTasks).map((t) => {
+      {(activeTab==='today' ? allRemainingTasks : allCompletedTasks.filter((t: any) => t.__typename !== 'WorkoutTask')).map((t) => {
         // eslint-disable-next-line no-console
         console.log('[DailyTasksList] task item', t)
         if (t.__typename === 'HabitTask') {
@@ -319,7 +319,7 @@ export default function DailyTasksList({ forceNetwork = false, onDate: onDatePro
         return <JournalCard key={jt.taskId} task={{ ...jt, title, description }} />
       })}
 
-      {/* Completed Workouts card(s) under Completed tab */}
+      {/* Completed Workouts card(s) under Completed tab - green simple cards only */}
       {activeTab === 'completed' && completedWorkouts.length > 0 && (
         <VStack space="sm">
           {completedWorkouts.map((w: any) => (
