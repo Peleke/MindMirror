@@ -114,6 +114,8 @@ class PracticeInstanceRepository:
                                     "notes": s.notes,
                                     "position": s.position,
                                     "template_id": s.template_id,
+                                    "complete": s.complete,
+                                    "completed_at": s.completed_at,
                                 }
                                 mov_dict["sets"].append(set_dict)
                         pres_dict["movements"].append(mov_dict)

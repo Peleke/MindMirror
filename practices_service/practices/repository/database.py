@@ -31,12 +31,27 @@ Base.metadata.schema = "practices"  # Set the schema for all tables inheriting f
 
 async def init_db():
     """Initializes the database and creates tables if they don't exist."""
-    async with engine.begin() as conn:
-        # Ensure schema exists
-        await conn.execute(text('CREATE SCHEMA IF NOT EXISTS "practices"'))
-        # await conn.run_sync(Base.metadata.drop_all) # Optional: drop all tables for a clean slate
-        await conn.run_sync(Base.metadata.create_all)
-    print("Database tables created (if they didn't exist).")
+    import asyncio
+    max_retries = 5
+    retry_delay = 2
+
+    for attempt in range(max_retries):
+        try:
+            async with engine.begin() as conn:
+                # Ensure schema exists
+                await conn.execute(text('CREATE SCHEMA IF NOT EXISTS "practices"'))
+                # await conn.run_sync(Base.metadata.drop_all) # Optional: drop all tables for a clean slate
+                await conn.run_sync(Base.metadata.create_all)
+            print("Database tables created (if they didn't exist).")
+            return
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"Database connection failed (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print(f"Failed to connect to database after {max_retries} attempts")
+                raise
 
 
 async def close_db():
