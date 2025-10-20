@@ -8,6 +8,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
       date
       title
       description
+      duration
       completedAt
       prescriptions {
         id_
@@ -38,7 +39,7 @@ export const QUERY_TODAYS_WORKOUTS = gql`
             planesOfMotion
             tags
           }
-          sets { id_ position reps loadValue loadUnit restDuration complete movementInstanceId }
+          sets { id_ position reps loadValue loadUnit restDuration complete completedAt movementInstanceId }
         }
       }
     }
@@ -185,6 +186,7 @@ export const QUERY_PRACTICE_INSTANCE = gql`
       date
       title
       description
+      duration
       completedAt
       prescriptions {
         id_
@@ -199,7 +201,7 @@ export const QUERY_PRACTICE_INSTANCE = gql`
           videoUrl
           position
           movement { id_ name description shortVideoUrl }
-          sets { id_ position reps loadValue loadUnit restDuration complete movementInstanceId }
+          sets { id_ position reps loadValue loadUnit restDuration complete completedAt movementInstanceId }
         }
       }
     }
@@ -340,6 +342,12 @@ export const MUTATION_UPDATE_SET_INSTANCE = gql`
   }
 `
 
+export const MUTATION_UPDATE_PRACTICE_INSTANCE = gql`
+  mutation UpdatePracticeInstance($id: ID!, $input: PracticeInstanceUpdateInput!) {
+    updatePracticeInstance(id: $id, input: $input) { id_ duration }
+  }
+`
+
 export const MUTATION_COMPLETE_SET_INSTANCE = gql`
   mutation CompleteSetInstance($id: ID!) {
     completeSetInstance(id: $id) { id_ complete completedAt }
@@ -465,6 +473,7 @@ export const useUpdateEnrollmentStatus = () => useMutation(MUTATION_UPDATE_ENROL
 export const useDeletePracticeInstance = () => useMutation(MUTATION_DELETE_PRACTICE_INSTANCE)
 export const useCompleteWorkout = () => useMutation(MUTATION_COMPLETE_WORKOUT)
 export const useUpdateSetInstance = () => useMutation(MUTATION_UPDATE_SET_INSTANCE)
+export const useUpdatePracticeInstance = () => useMutation(MUTATION_UPDATE_PRACTICE_INSTANCE)
 export const useCompleteSetInstance = () => useMutation(MUTATION_COMPLETE_SET_INSTANCE)
 export const useCreateSetInstance = () => useMutation(MUTATION_CREATE_SET_INSTANCE)
 export const useCreateProgram = () => useMutation(MUTATION_CREATE_PROGRAM)

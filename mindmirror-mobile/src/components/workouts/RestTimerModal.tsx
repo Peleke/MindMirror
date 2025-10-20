@@ -25,6 +25,14 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
   const [seconds, setSeconds] = React.useState(initialSeconds)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const progressAnim = useRef(new Animated.Value(1)).current
+  const initialSecondsRef = useRef(initialSeconds)
+  const onCompleteRef = useRef(onComplete)
+
+  // Keep refs up to date
+  useEffect(() => {
+    initialSecondsRef.current = initialSeconds
+    onCompleteRef.current = onComplete
+  }, [initialSeconds, onComplete])
 
   // Reset seconds and progress when modal opens
   useEffect(() => {
@@ -45,7 +53,7 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
       return
     }
 
-    console.log('Starting countdown timer')
+    console.log('Starting countdown timer, initial seconds:', initialSecondsRef.current)
     // Start the timer when modal becomes visible
     timerRef.current = setInterval(() => {
       setSeconds((prevSeconds) => {
@@ -53,8 +61,8 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
         console.log('Timer tick:', prevSeconds, '->', newSeconds)
 
         // Update progress animation based on initial value
-        if (initialSeconds > 0) {
-          const progress = newSeconds / initialSeconds
+        if (initialSecondsRef.current > 0) {
+          const progress = newSeconds / initialSecondsRef.current
           Animated.timing(progressAnim, {
             toValue: progress,
             duration: 1000,
@@ -70,7 +78,7 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
             timerRef.current = null
           }
           setTimeout(() => {
-            onComplete()
+            onCompleteRef.current()
           }, 500)
         }
 
@@ -85,7 +93,7 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
         timerRef.current = null
       }
     }
-  }, [visible])
+  }, [visible, progressAnim])
 
   const handleAddTime = (amount: number) => {
     setSeconds((s) => s + amount)
@@ -110,7 +118,15 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
   })
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onSkip}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        console.log('🔵 Modal onRequestClose triggered')
+        onSkip()
+      }}
+    >
       <View
         style={{
           flex: 1,
@@ -193,7 +209,14 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
               </Button>
             </HStack>
 
-            <Button variant="solid" className="w-full bg-indigo-600" onPress={onSkip}>
+            <Button
+              variant="solid"
+              className="w-full bg-indigo-600"
+              onPress={() => {
+                console.log('🔴 Skip Rest button clicked')
+                onSkip()
+              }}
+            >
               <ButtonText className="text-white">Skip Rest</ButtonText>
             </Button>
           </VStack>

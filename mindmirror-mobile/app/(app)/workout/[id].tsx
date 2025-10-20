@@ -10,9 +10,9 @@ import { ActivityIndicator, Alert, Modal, View, Image, Platform } from 'react-na
 import { ScrollView } from '@/components/ui/scroll-view'
 import Markdown from 'react-native-markdown-display'
 import { Input, InputField } from '@/components/ui/input'
-import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
+import { useTodaysWorkouts, usePracticeInstance, useDeletePracticeInstance, useCompleteWorkout, useUpdateSetInstance, useUpdatePracticeInstance, useCompleteSetInstance, useCreateSetInstance, useDeferPractice, useMyUpcomingPractices } from '@/services/api/practices'
 import { QUERY_TODAYS_SCHEDULABLES } from '@/services/api/users'
-import { QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES } from '@/services/api/practices'
+import { QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES, QUERY_PRACTICE_INSTANCE } from '@/services/api/practices'
 import { useApolloClient } from '@apollo/client'
 import dayjs from 'dayjs'
 import { WebView } from 'react-native-webview'
@@ -66,6 +66,7 @@ export default function WorkoutDetailsScreen() {
   const [deletePracticeInstance] = useDeletePracticeInstance()
   const [completeWorkoutMutation] = useCompleteWorkout()
   const [updateSetInstance] = useUpdateSetInstance()
+  const [updatePracticeInstance] = useUpdatePracticeInstance()
   const [completeSetInstance] = useCompleteSetInstance()
   const [createSetInstance] = useCreateSetInstance()
   const [deferPractice] = useDeferPractice()
@@ -130,70 +131,62 @@ export default function WorkoutDetailsScreen() {
   const serverWorkout = fallbackQ.data?.practiceInstance || data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
 
   const [workout, setWorkout] = useState<any | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
+
+  // Reset initialization when workout ID changes
+  useEffect(() => {
+    setHasInitialized(false)
+    setWorkout(null)
+  }, [workoutId])
 
   // Sync local workout state with server data
   useEffect(() => {
-    if (serverWorkout) {
-      console.log('Syncing workout from server:', serverWorkout.id_)
+    if (serverWorkout && !hasInitialized) {
       setWorkout(JSON.parse(JSON.stringify(serverWorkout)))
-    }
-  }, [serverWorkout])
 
-  // Refetch workout data when component mounts to ensure fresh data
+      // Initialize elapsed time from server duration
+      const savedDuration = typeof serverWorkout.duration === 'number' ? Math.floor(serverWorkout.duration) : 0
+      if (savedDuration > 0) {
+        setElapsed(savedDuration)
+      }
+
+      setHasInitialized(true)
+    }
+  }, [serverWorkout, hasInitialized])
+
+  // Refetch workout data on mount to ensure fresh data, then force re-sync
   useEffect(() => {
     if (workoutId && fallbackQ.refetch) {
-      console.log('Refetching workout on mount:', workoutId)
-      // Use a small delay to ensure GraphQL mutations have propagated
-      const timer = setTimeout(() => {
-        fallbackQ.refetch().catch((err) => {
-          console.log('Refetch error (non-fatal):', err.message)
-        })
+      const timer = setTimeout(async () => {
+        try {
+          await fallbackQ.refetch()
+          // Force re-initialization after refetch to pick up fresh server data
+          setHasInitialized(false)
+        } catch (err: any) {
+          console.error('Refetch failed:', err.message)
+        }
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [workoutId])
+  }, [workoutId, fallbackQ.refetch])
 
   const [elapsed, setElapsed] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
+
   useEffect(() => { if (!timerActive) return; const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t) }, [timerActive])
-  const toggleTimer = () => setTimerActive((t) => !t)
+
+  const toggleTimer = async () => {
+    const wasActive = timerActive
+    setTimerActive((t) => !t)
+
+    // Save duration when pausing
+    if (wasActive && elapsed > 0) {
+      await saveDuration(elapsed)
+    }
+  }
+
   const startTimerIfIdle = () => { if (!timerActive) setTimerActive(true) }
   const fmtMinSec = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
-
-  // Pause timer on navigation away and save workout state
-  useEffect(() => {
-    return () => {
-      // Component unmounting, pause the timer and save state
-      setTimerActive(false)
-      // Note: workout state is already persisted via individual set mutations
-      // The elapsed time and timer state are ephemeral by design
-    }
-  }, [])
-
-  // Auto-save workout duration periodically (every 10 seconds while timer active)
-  useEffect(() => {
-    if (!timerActive || !workoutId) return
-
-    const saveInterval = setInterval(async () => {
-      // Update workout duration in the background
-      // Note: The practice instance stores duration, we could add a mutation to update it
-      // For now, the duration is calculated client-side and saved on completion
-      console.log('Auto-save: workout duration:', elapsed)
-    }, 10000)
-
-    return () => clearInterval(saveInterval)
-  }, [timerActive, elapsed, workoutId])
-
-  // Debug logging
-  console.log('DEBUG workout screen:', {
-    workoutId,
-    loading,
-    fallbackLoading: fallbackQ.loading,
-    fallbackError: fallbackQ.error,
-    fallbackData: fallbackQ.data,
-    serverWorkout,
-    workout
-  })
 
   const totals = useMemo(() => {
     const prescriptions: any[] = Array.isArray(workout?.prescriptions) ? workout!.prescriptions : []
@@ -206,16 +199,55 @@ export default function WorkoutDetailsScreen() {
     Alert.alert('Delete Workout?', 'This cannot be undone.', [ { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: async () => { try { await deletePracticeInstance({ variables: { id: workoutId } }); router.back() } catch {} } } ])
   }
 
-  const onChangeSetField = async (pIdx: number, mIdx: number, sIdx: number, field: 'reps'|'loadValue', value: string) => {
-    if (!workout) return; startTimerIfIdle()
-    // local update first
-    setWorkout((prev: any) => { const copy = JSON.parse(JSON.stringify(prev)); const set = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[sIdx]; if (set) { const num = parseFloat(value); set[field] = Number.isFinite(num) ? num : undefined } return copy })
-    // persist
-    const setId = workout?.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[sIdx]?.id_
-    if (setId) {
-      const num = parseFloat(value)
-      const input: any = { [field]: Number.isFinite(num) ? num : null }
-      try { await updateSetInstance({ variables: { id: setId, input } }) } catch {}
+  // Helper to save workout duration to server
+  const saveDuration = async (durationSeconds: number) => {
+    if (!workoutId || durationSeconds <= 0) return
+
+    try {
+      await updatePracticeInstance({
+        variables: {
+          id: workoutId,
+          input: { duration: durationSeconds }
+        }
+      })
+    } catch (e: any) {
+      console.error('Failed to save duration:', e.message)
+    }
+  }
+
+  const onChangeSetField = async (setId: string, field: 'reps'|'loadValue', value: string) => {
+    if (!workout) return
+    startTimerIfIdle()
+
+    const num = parseFloat(value)
+    const numValue = Number.isFinite(num) ? num : undefined
+
+    // local update first for immediate UI feedback (find by ID)
+    setWorkout((prev: any) => {
+      const copy = JSON.parse(JSON.stringify(prev))
+      for (const prescription of copy.prescriptions || []) {
+        for (const movement of prescription.movements || []) {
+          for (const set of movement.sets || []) {
+            if (set.id_ === setId) {
+              set[field] = numValue
+              return copy
+            }
+          }
+        }
+      }
+      return copy
+    })
+
+    // persist to server
+    const input: any = { [field]: Number.isFinite(num) ? num : null }
+    try {
+      await updateSetInstance({
+        variables: { id: setId, input },
+        // No refetch - let cache update handle it
+      })
+    } catch (e: any) {
+      console.error('Failed to update set:', { error: e.message, setId, field, value })
+      // Keep local change even if server update fails - will sync on next mount
     }
   }
 
@@ -240,55 +272,142 @@ export default function WorkoutDetailsScreen() {
     }
   }
 
-  const markSetComplete = (pIdx: number, mIdx: number, sIdx: number) => {
-    setWorkout((prev: any) => { const copy = JSON.parse(JSON.stringify(prev)); const set = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[sIdx]; if (set) set.complete = true; return copy })
+  const markSetComplete = (setId: string) => {
+    setWorkout((prev: any) => {
+      const copy = JSON.parse(JSON.stringify(prev))
+      for (const prescription of copy.prescriptions || []) {
+        for (const movement of prescription.movements || []) {
+          for (const set of movement.sets || []) {
+            if (set.id_ === setId) {
+              set.complete = true
+              return copy
+            }
+          }
+        }
+      }
+      return copy
+    })
   }
 
   // Rest timer
   const [restOpen, setRestOpen] = useState(false)
   const [restSeconds, setRestSeconds] = useState(0)
-  const [restCtx, setRestCtx] = useState<{ pIdx: number, mIdx: number, sIdx: number } | null>(null)
+  const [restCtx, setRestCtx] = useState<{ setId: string } | null>(null)
 
-  const openRestTimer = (pIdx: number, mIdx: number, sIdx: number, initial: number) => {
-    console.log('openRestTimer called:', { pIdx, mIdx, sIdx, initial })
-    setRestCtx({ pIdx, mIdx, sIdx })
+  const openRestTimer = (setId: string, initial: number) => {
+    setRestCtx({ setId })
     setRestSeconds(Math.max(0, initial || 60))
     setRestOpen(true)
-    console.log('restOpen set to true')
   }
 
   const closeRestTimer = async () => {
-    console.log('closeRestTimer called, restCtx:', restCtx)
+    console.log('=== closeRestTimer called ===')
+    console.log('restCtx:', restCtx)
+
     setRestOpen(false)
 
-    if (!restCtx) {
-      console.log('No restCtx, skipping set completion')
+    if (!restCtx?.setId) {
+      console.log('❌ No restCtx.setId, exiting early')
       return
     }
 
-    const setId = workout?.prescriptions?.[restCtx.pIdx]?.movements?.[restCtx.mIdx]?.sets?.[restCtx.sIdx]?.id_
-    console.log('Completing set:', setId)
+    const { setId } = restCtx
+    console.log('✅ Set ID to complete:', setId)
 
-    // Mark complete locally first
-    markSetComplete(restCtx.pIdx, restCtx.mIdx, restCtx.sIdx)
+    // Mark complete locally first for immediate UI feedback
+    markSetComplete(setId)
+    console.log('✅ Local state marked complete')
 
-    if (setId) {
-      try {
-        await completeSetInstance({ variables: { id: setId } })
-        console.log('Set completed and saved:', setId)
-        // Don't refetch immediately - it causes cache issues
-        // The serverWorkout will sync on next render via useEffect
-      } catch (e) {
-        console.error('Failed to complete set:', e)
-      }
+    try {
+      console.log('🚀 Calling completeSetInstance mutation...')
+      const result = await completeSetInstance({
+        variables: { id: setId },
+        optimisticResponse: {
+          completeSetInstance: {
+            __typename: 'SetInstance',
+            id_: setId,
+            complete: true,
+            completedAt: new Date().toISOString(),
+          },
+        },
+        update: (cache, { data }) => {
+          console.log('📦 Cache update called, data:', data)
+          if (!data?.completeSetInstance) {
+            console.log('❌ No completeSetInstance in data')
+            return
+          }
+
+          try {
+            const existingData = cache.readQuery({
+              query: QUERY_PRACTICE_INSTANCE,
+              variables: { id: workoutId },
+            }) as any
+
+            if (existingData?.practiceInstance) {
+              const updatedPractice = JSON.parse(JSON.stringify(existingData.practiceInstance))
+
+              for (const prescription of updatedPractice.prescriptions || []) {
+                for (const movement of prescription.movements || []) {
+                  for (const set of movement.sets || []) {
+                    if (set.id_ === setId) {
+                      set.complete = true
+                      set.completedAt = data.completeSetInstance.completedAt
+                      cache.writeQuery({
+                        query: QUERY_PRACTICE_INSTANCE,
+                        variables: { id: workoutId },
+                        data: { practiceInstance: updatedPractice },
+                      })
+                      console.log('✅ Cache updated for set:', setId)
+                      return
+                    }
+                  }
+                }
+              }
+              console.log('⚠️ Set not found in cache:', setId)
+            }
+          } catch (cacheError: any) {
+            console.error('❌ Cache update error:', cacheError.message)
+          }
+        },
+      })
+
+      console.log('✅ Mutation completed:', result.data)
+
+      // Save workout duration after completing a set
+      console.log('💾 Saving duration:', elapsed)
+      await saveDuration(elapsed)
+      console.log('✅ Duration saved')
+    } catch (e: any) {
+      console.error('❌ SET COMPLETION FAILED:', e.message)
+      console.error('GraphQL errors:', e.graphQLErrors)
+      console.error('Network error:', e.networkError)
+      Alert.alert('Error', `Failed to save set completion: ${e.message || 'Unknown error'}`)
+
+      // Revert local state on error
+      setWorkout((prev: any) => {
+        const copy = JSON.parse(JSON.stringify(prev))
+        for (const prescription of copy.prescriptions || []) {
+          for (const movement of prescription.movements || []) {
+            for (const set of movement.sets || []) {
+              if (set.id_ === setId) {
+                set.complete = false
+                return copy
+              }
+            }
+          }
+        }
+        return copy
+      })
     }
 
-    // Clear rest context
     setRestCtx(null)
+    console.log('=== closeRestTimer complete ===')
   }
 
   const onCompleteWorkout = async () => {
     try {
+      // Save final duration before completing
+      await saveDuration(elapsed)
       await completeWorkoutMutation({ variables: { id: workoutId } })
       // Refetch home tasks and workouts, then navigate home with reload flag
       await apollo.refetchQueries({ include: [QUERY_TODAYS_SCHEDULABLES, QUERY_TODAYS_WORKOUTS, QUERY_MY_UPCOMING_PRACTICES] })
@@ -433,7 +552,7 @@ export default function WorkoutDetailsScreen() {
                             keyboardType="numeric"
                             defaultValue={typeof s.reps === 'number' ? String(s.reps) : ''}
                             placeholder="0"
-                            onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'reps', v)}
+                            onChangeText={(v) => onChangeSetField(s.id_, 'reps', v)}
                             onFocus={startTimerIfIdle}
                             className="text-center font-semibold"
                           />
@@ -451,7 +570,7 @@ export default function WorkoutDetailsScreen() {
                         keyboardType="numeric"
                         defaultValue={typeof s.loadValue === 'number' ? String(s.loadValue) : ''}
                         placeholder="0"
-                        onChangeText={(v) => onChangeSetField(pIdx, mIdx, i, 'loadValue', v)}
+                        onChangeText={(v) => onChangeSetField(s.id_, 'loadValue', v)}
                         onFocus={startTimerIfIdle}
                         className="text-center font-semibold"
                       />
@@ -470,23 +589,28 @@ export default function WorkoutDetailsScreen() {
                         onChangeText={(v) => {
                           if (!workout) return
                           startTimerIfIdle()
-                          // local update first
+                          const num = parseFloat(v)
+                          const numValue = Number.isFinite(num) ? num : undefined
+
+                          // local update first (find by ID)
                           setWorkout((prev: any) => {
                             const copy = JSON.parse(JSON.stringify(prev))
-                            const set = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[i]
-                            if (set) {
-                              const num = parseFloat(v)
-                              set.restDuration = Number.isFinite(num) ? num : undefined
+                            for (const prescription of copy.prescriptions || []) {
+                              for (const movement of prescription.movements || []) {
+                                for (const set of movement.sets || []) {
+                                  if (set.id_ === s.id_) {
+                                    set.restDuration = numValue
+                                    return copy
+                                  }
+                                }
+                              }
                             }
                             return copy
                           })
+
                           // persist
-                          const setId = workout?.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets?.[i]?.id_
-                          if (setId) {
-                            const num = parseFloat(v)
-                            const input: any = { restDuration: Number.isFinite(num) ? num : null }
-                            try { updateSetInstance({ variables: { id: setId, input } }) } catch {}
-                          }
+                          const input: any = { restDuration: Number.isFinite(num) ? num : null }
+                          try { updateSetInstance({ variables: { id: s.id_, input } }) } catch {}
                         }}
                         onFocus={startTimerIfIdle}
                         className="text-center font-semibold"
@@ -502,7 +626,7 @@ export default function WorkoutDetailsScreen() {
                       }`}
                       onPress={async () => {
                         const secs = (typeof s.restDuration === 'number' && s.restDuration > 0) ? s.restDuration : (typeof m.restDuration === 'number' ? m.restDuration : 60)
-                        openRestTimer(pIdx, mIdx, i, secs)
+                        openRestTimer(s.id_, secs)
                         startTimerIfIdle()
                       }}
                     >
