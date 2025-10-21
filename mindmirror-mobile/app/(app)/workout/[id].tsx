@@ -128,50 +128,31 @@ export default function WorkoutDetailsScreen() {
   }
 
 
-  const serverWorkout = fallbackQ.data?.practiceInstance || data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
+  const workout = fallbackQ.data?.practiceInstance || data?.todaysWorkouts?.find((w: any) => w.id_ === workoutId)
 
-  const [workout, setWorkout] = useState<any | null>(null)
-  const [hasInitialized, setHasInitialized] = useState(false)
-
-  // Reset initialization when workout ID changes
-  useEffect(() => {
-    setHasInitialized(false)
-    setWorkout(null)
-  }, [workoutId])
-
-  // Sync local workout state with server data
-  useEffect(() => {
-    if (serverWorkout && !hasInitialized) {
-      setWorkout(JSON.parse(JSON.stringify(serverWorkout)))
-
-      // Initialize elapsed time from server duration
-      const savedDuration = typeof serverWorkout.duration === 'number' ? Math.floor(serverWorkout.duration) : 0
-      if (savedDuration > 0) {
-        setElapsed(savedDuration)
-      }
-
-      setHasInitialized(true)
-    }
-  }, [serverWorkout, hasInitialized])
-
-  // Refetch workout data on mount to ensure fresh data, then force re-sync
+  // Refetch workout data on mount to ensure fresh data
   useEffect(() => {
     if (workoutId && fallbackQ.refetch) {
-      const timer = setTimeout(async () => {
-        try {
-          await fallbackQ.refetch()
-          // Force re-initialization after refetch to pick up fresh server data
-          setHasInitialized(false)
-        } catch (err: any) {
-          console.error('Refetch failed:', err.message)
-        }
-      }, 100)
-      return () => clearTimeout(timer)
+      fallbackQ.refetch().catch((err: any) => {
+        console.error('Refetch failed:', err.message)
+      })
     }
-  }, [workoutId, fallbackQ.refetch])
+  }, [workoutId])
 
-  const [elapsed, setElapsed] = useState(0)
+  // Initialize elapsed time from server duration if available
+  const [elapsed, setElapsed] = useState(() => {
+    const savedDuration = typeof workout?.duration === 'number' ? Math.floor(workout.duration) : 0
+    return savedDuration > 0 ? savedDuration : 0
+  })
   const [timerActive, setTimerActive] = useState(false)
+
+  // Update elapsed when workout data changes (e.g., from refetch)
+  useEffect(() => {
+    const savedDuration = typeof workout?.duration === 'number' ? Math.floor(workout.duration) : 0
+    if (savedDuration > 0 && elapsed === 0) {
+      setElapsed(savedDuration)
+    }
+  }, [workout?.duration])
 
   useEffect(() => { if (!timerActive) return; const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t) }, [timerActive])
 
@@ -220,34 +201,21 @@ export default function WorkoutDetailsScreen() {
     startTimerIfIdle()
 
     const num = parseFloat(value)
-    const numValue = Number.isFinite(num) ? num : undefined
-
-    // local update first for immediate UI feedback (find by ID)
-    setWorkout((prev: any) => {
-      const copy = JSON.parse(JSON.stringify(prev))
-      for (const prescription of copy.prescriptions || []) {
-        for (const movement of prescription.movements || []) {
-          for (const set of movement.sets || []) {
-            if (set.id_ === setId) {
-              set[field] = numValue
-              return copy
-            }
-          }
-        }
-      }
-      return copy
-    })
-
-    // persist to server
     const input: any = { [field]: Number.isFinite(num) ? num : null }
+
     try {
       await updateSetInstance({
         variables: { id: setId, input },
-        // No refetch - let cache update handle it
+        optimisticResponse: {
+          updateSetInstance: {
+            __typename: 'SetInstance',
+            id_: setId,
+            [field]: Number.isFinite(num) ? num : null,
+          }
+        }
       })
     } catch (e: any) {
       console.error('Failed to update set:', { error: e.message, setId, field, value })
-      // Keep local change even if server update fails - will sync on next mount
     }
   }
 
@@ -256,38 +224,32 @@ export default function WorkoutDetailsScreen() {
     const movement = workout?.prescriptions?.[pIdx]?.movements?.[mIdx]
     const movementInstanceId = movement?.id_
     const last = (movement?.sets || [])[movement?.sets?.length - 1] || {}
-    // optimistic local
-    setWorkout((prev: any) => { const copy = JSON.parse(JSON.stringify(prev)); const sets: any[] = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets || []; sets.push({ id_: `tmp_${Date.now()}`, reps: last.reps ?? 10, loadValue: last.loadValue ?? 0, loadUnit: last.loadUnit ?? 'kg', restDuration: last.restDuration ?? movement?.restDuration ?? 60, complete: false, movementInstanceId }); copy.prescriptions[pIdx].movements[mIdx].sets = sets; return copy })
-    // persist create
+
     if (movementInstanceId) {
-      const input = { movementInstanceId, position: (movement?.sets?.length || 0) + 1, reps: last.reps ?? 10, loadValue: last.loadValue ?? 0, loadUnit: (last.loadUnit || 'kg').toLowerCase(), restDuration: last.restDuration ?? movement?.restDuration ?? 60, complete: false }
+      const input = {
+        movementInstanceId,
+        position: (movement?.sets?.length || 0) + 1,
+        reps: last.reps ?? 10,
+        loadValue: last.loadValue ?? 0,
+        loadUnit: (last.loadUnit || 'kg').toLowerCase(),
+        restDuration: last.restDuration ?? movement?.restDuration ?? 60,
+        complete: false
+      }
+
       try {
-        const res = await createSetInstance({ variables: { input } })
-        const created = res.data?.createSetInstance
-        if (created?.id_) {
-          // replace tmp id with real
-          setWorkout((prev: any) => { const copy = JSON.parse(JSON.stringify(prev)); const sets: any[] = copy.prescriptions?.[pIdx]?.movements?.[mIdx]?.sets || []; const idx = sets.findIndex((s: any) => String(s.id_).startsWith('tmp_')); if (idx >= 0) sets[idx] = { ...sets[idx], id_: created.id_ }; copy.prescriptions[pIdx].movements[mIdx].sets = sets; return copy })
-        }
-      } catch {}
+        await createSetInstance({
+          variables: { input },
+          refetchQueries: [{
+            query: QUERY_PRACTICE_INSTANCE,
+            variables: { id: workoutId }
+          }]
+        })
+      } catch (e: any) {
+        console.error('Failed to add set:', e.message)
+      }
     }
   }
 
-  const markSetComplete = (setId: string) => {
-    setWorkout((prev: any) => {
-      const copy = JSON.parse(JSON.stringify(prev))
-      for (const prescription of copy.prescriptions || []) {
-        for (const movement of prescription.movements || []) {
-          for (const set of movement.sets || []) {
-            if (set.id_ === setId) {
-              set.complete = true
-              return copy
-            }
-          }
-        }
-      }
-      return copy
-    })
-  }
 
   // Rest timer
   const [restOpen, setRestOpen] = useState(false)
@@ -314,14 +276,16 @@ export default function WorkoutDetailsScreen() {
     const { setId } = restCtx
     console.log('✅ Set ID to complete:', setId)
 
-    // Mark complete locally first for immediate UI feedback
-    markSetComplete(setId)
-    console.log('✅ Local state marked complete')
-
     try {
       console.log('🚀 Calling completeSetInstance mutation...')
       const result = await completeSetInstance({
         variables: { id: setId },
+        refetchQueries: [
+          {
+            query: QUERY_PRACTICE_INSTANCE,
+            variables: { id: workoutId }
+          }
+        ],
         optimisticResponse: {
           completeSetInstance: {
             __typename: 'SetInstance',
@@ -382,22 +346,7 @@ export default function WorkoutDetailsScreen() {
       console.error('GraphQL errors:', e.graphQLErrors)
       console.error('Network error:', e.networkError)
       Alert.alert('Error', `Failed to save set completion: ${e.message || 'Unknown error'}`)
-
-      // Revert local state on error
-      setWorkout((prev: any) => {
-        const copy = JSON.parse(JSON.stringify(prev))
-        for (const prescription of copy.prescriptions || []) {
-          for (const movement of prescription.movements || []) {
-            for (const set of movement.sets || []) {
-              if (set.id_ === setId) {
-                set.complete = false
-                return copy
-              }
-            }
-          }
-        }
-        return copy
-      })
+      // Apollo cache will revert via refetch or optimistic response rollback
     }
 
     setRestCtx(null)
@@ -586,31 +535,27 @@ export default function WorkoutDetailsScreen() {
                         keyboardType="numeric"
                         defaultValue={typeof s.restDuration === 'number' ? String(s.restDuration) : (typeof m.restDuration === 'number' ? String(m.restDuration) : '')}
                         placeholder="60"
-                        onChangeText={(v) => {
+                        onChangeText={async (v) => {
                           if (!workout) return
                           startTimerIfIdle()
                           const num = parseFloat(v)
-                          const numValue = Number.isFinite(num) ? num : undefined
-
-                          // local update first (find by ID)
-                          setWorkout((prev: any) => {
-                            const copy = JSON.parse(JSON.stringify(prev))
-                            for (const prescription of copy.prescriptions || []) {
-                              for (const movement of prescription.movements || []) {
-                                for (const set of movement.sets || []) {
-                                  if (set.id_ === s.id_) {
-                                    set.restDuration = numValue
-                                    return copy
-                                  }
-                                }
-                              }
-                            }
-                            return copy
-                          })
 
                           // persist
                           const input: any = { restDuration: Number.isFinite(num) ? num : null }
-                          try { updateSetInstance({ variables: { id: s.id_, input } }) } catch {}
+                          try {
+                            await updateSetInstance({
+                              variables: { id: s.id_, input },
+                              optimisticResponse: {
+                                updateSetInstance: {
+                                  __typename: 'SetInstance',
+                                  id_: s.id_,
+                                  restDuration: Number.isFinite(num) ? num : null,
+                                }
+                              }
+                            })
+                          } catch (e: any) {
+                            console.error('Failed to update rest duration:', e.message)
+                          }
                         }}
                         onFocus={startTimerIfIdle}
                         className="text-center font-semibold"
