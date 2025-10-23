@@ -28,20 +28,8 @@ def upgrade() -> None:
     # Ensure schema
     op.execute(sa.text(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}"'))
 
-    # Enum type for meal_type
-    op.execute(sa.text(
-        """
-        DO $$
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-            WHERE t.typname = 'meal_type' AND n.nspname = 'meals'
-          ) THEN
-            CREATE TYPE meals.meal_type AS ENUM ('breakfast','lunch','dinner','snack');
-          END IF;
-        END$$;
-        """
-    ))
+    # Note: meal_type enum is created automatically by SQLAlchemy
+    # when the meals table is created (line 106)
 
     # food_items (includes Open Food Facts fields from migration 0002)
     op.create_table(

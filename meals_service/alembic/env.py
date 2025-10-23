@@ -1,11 +1,8 @@
 from __future__ import with_statement
 
-import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy import engine_from_config, pool, text
 from alembic import context
 
 from meals.repository.models import Base
@@ -19,11 +16,6 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Add your model's MetaData object here for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-# target_metadata = None
-
 # Include our models
 target_metadata = Base.metadata
 
@@ -32,7 +24,9 @@ DATABASE_SCHEMA = "meals"
 
 
 def run_migrations_offline() -> None:
-    url = DATABASE_URL
+    """Run migrations in 'offline' mode."""
+    # Convert asyncpg URL to psycopg2 URL for synchronous operation
+    url = str(DATABASE_URL).replace("postgresql+asyncpg://", "postgresql://")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -47,32 +41,42 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        include_schemas=True,
-        version_table_schema=DATABASE_SCHEMA,
-        compare_type=True,
-    )
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    # Convert asyncpg URL to psycopg2 URL for synchronous operation
+    database_url = str(DATABASE_URL).replace("postgresql+asyncpg://", "postgresql://")
 
-    with context.begin_transaction():
-        context.run_migrations()
+    configuration = config.get_section(config.config_ini_section)
+    configuration["sqlalchemy.url"] = database_url
 
-
-async def run_migrations_online() -> None:
-    connectable = create_async_engine(
-        DATABASE_URL,
+    # Connection args for pgbouncer compatibility
+    connectable = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "options": "-c statement_timeout=30000"  # 30 second timeout
+        }
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    with connectable.connect() as connection:
+        # Create schema if it doesn't exist
+        connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {DATABASE_SCHEMA}"))
+        connection.commit()
 
-    await connectable.dispose()
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            version_table_schema=DATABASE_SCHEMA,
+            compare_type=True,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online()) 
+    run_migrations_online()
