@@ -109,6 +109,8 @@ services:
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
+      # Users service URL for role fetching
+      - USERS_SERVICE_URL=http://users_service:8000
       # Note: DATABASE_URL and ENVIRONMENT now come from env_file to support ENV_FILE switching
     volumes:
       - ./journal_service/journal:/app/journal
@@ -123,6 +125,7 @@ services:
       - postgres
       - redis
       - gcs-emulator
+      - users_service
     ports:
       - "8001:8001" # Expose for direct access during dev
     healthcheck:
