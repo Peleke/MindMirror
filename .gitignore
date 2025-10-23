@@ -5,3 +5,5 @@ __pycache__
 env.staging
 env.production
 plans/
+**/*/.swp
+**/*/.swo
