@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+. .00.env
 
 # MindMirror Production: GCP Project Creation
 # This script creates and configures a new GCP project for production deployment
@@ -9,9 +10,9 @@ echo "=============================================="
 
 # Configuration
 PROJECT_ID="${PROJECT_ID:-mindmirror-prod-$(date +%s)}"
-PROJECT_NAME="MindMirror Production"
+PROJECT_NAME="Swae Production"
 BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-}"
-REGION="${REGION:-us-central1}"
+REGION="${REGION:-us-east4}"
 
 # Colors for output
 RED='\033[0;31m'

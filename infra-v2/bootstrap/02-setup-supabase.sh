@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+# NOTE: unneessary script; delete later, do not use
 # MindMirror Production: Supabase Setup
 # This script creates a Supabase production project and configures it
 
