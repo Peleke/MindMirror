@@ -16,22 +16,22 @@ RUN pip install poetry
 # Copy journal_service's poetry project
 COPY journal_service/pyproject.toml journal_service/poetry.lock ./
 
-# Now, bring in the shared package
-COPY src/shared /shared
+# Now, bring in the shared package at the path poetry expects
+COPY src/shared /src/shared
 
 # Install journal_service deps
 RUN poetry config virtualenvs.create false \
     && poetry install --no-root --only=main
 
 # Build the shared wheel automatically
-WORKDIR /shared
+WORKDIR /src/shared
 RUN poetry build
 
 # Go back to service directory
 WORKDIR /app
 
 # Install the freshly built wheel
-RUN pip install /shared/dist/*.whl
+RUN pip install /src/shared/dist/*.whl
 
 # --- Final Stage ---
 FROM python:3.11-slim
