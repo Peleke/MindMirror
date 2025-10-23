@@ -3,8 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from journal_service.journal_service.app.db.repositories.base import BaseRepository
-from journal_service.journal_service.app.db.models.journal import JournalEntry
+from journal.app.db.repositories.base import BaseRepository
+from journal.app.db.models.journal import JournalEntry
 
 
 class JournalRepository(BaseRepository[JournalEntry]):

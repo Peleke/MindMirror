@@ -5,8 +5,8 @@ description = "Journal service for MindMirror - handles journal entries and refl
 authors = ["MindMirror Team"]
 readme = "README.md"
 packages = [
-    {include = "journal_service", from = "."},
-    {include = "shared", from = "../"}
+    {include = "journal", from = "."},
+    {include = "shared", from = "../src"}
 ]
 
 [tool.poetry.dependencies]
@@ -24,7 +24,8 @@ celery = "^5.3.0"
 httpx = "^0.28.1"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-shared = {path = "../shared"}
+shared = {path = "../src/shared"}
+psycopg2-binary = "^2.9.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

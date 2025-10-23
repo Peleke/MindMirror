@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
-from journal_service.journal_service.app.db.database import Base
+from journal.app.db.base import Base
 
 
 class TimestampedModel(Base):

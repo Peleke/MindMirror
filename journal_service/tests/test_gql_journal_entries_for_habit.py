@@ -1,7 +1,7 @@
 import uuid
 import pytest
 from httpx import AsyncClient, ASGITransport
-from journal_service.journal_service.main import app
+from journal.main import app
 
 
 @pytest.mark.asyncio

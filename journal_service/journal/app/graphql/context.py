@@ -11,10 +11,10 @@ from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 from strawberry.types import Info
 
-from journal_service.journal_service.app.config import get_settings
-from journal_service.journal_service.app.db.database import get_session
-from journal_service.journal_service.app.db.repositories.journal import JournalRepository
-from journal_service.journal_service.app.services.journal_service import JournalService
+from journal.app.config import get_settings
+from journal.app.db.database import get_session
+from journal.app.db.repositories.journal import JournalRepository
+from journal.app.services.journal_service import JournalService
 
 # Type alias for GraphQL context
 GraphQLContext = Dict[str, Any]

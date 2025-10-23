@@ -4,10 +4,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
 
-from journal_service.journal_service.app.config import get_settings
-from journal_service.journal_service.app.db.database import init_db, close_db
-from journal_service.journal_service.app.graphql.schemas.journal_schema import schema
-from journal_service.journal_service.app.graphql.context import get_context
+from journal.app.config import get_settings
+from journal.app.db.database import init_db, close_db
+from journal.app.graphql.schemas.journal_schema import schema
+from journal.app.graphql.context import get_context
 
 # Import GraphQL schema (will be created next)
 # from journal_service.app.graphql.schemas import create_schema

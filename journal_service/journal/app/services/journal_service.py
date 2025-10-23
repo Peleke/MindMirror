@@ -1,12 +1,12 @@
 import logging
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from journal_service.journal_service.app.db.repositories.journal import JournalRepository
-from journal_service.journal_service.app.models.domain import (
+from journal.app.db.repositories.journal import JournalRepository
+from journal.app.models.domain import (
     GratitudePayload, ReflectionPayload, JournalEntryResponse
 )
-from journal_service.journal_service.app.models.requests import CurrentUser
-from journal_service.journal_service.app.clients.task_client import TaskClient
+from journal.app.models.requests import CurrentUser
+from journal.app.clients.task_client import TaskClient
 from datetime import datetime
 
 logger = logging.getLogger(__name__)

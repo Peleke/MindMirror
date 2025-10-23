@@ -1,7 +1,7 @@
 import httpx
 from typing import Optional
 from datetime import datetime
-from journal_service.journal_service.app.config import get_settings
+from journal.app.config import get_settings
 
 class TaskClient:
     def __init__(self, base_url: Optional[str] = None):
@@ -24,7 +24,7 @@ class TaskClient:
             created_at = datetime.utcnow()
         
         # Get the reindex secret from config
-        from journal_service.journal_service.app.config import get_settings
+        from journal.app.config import get_settings
         settings = get_settings()
         secret = settings.reindex_secret_key
             

@@ -14,7 +14,7 @@ WORKDIR /app
 RUN pip install poetry
 
 # Copy journal_service's poetry project
-COPY src/journal_service/pyproject.toml src/journal_service/poetry.lock ./
+COPY journal_service/pyproject.toml journal_service/poetry.lock ./
 
 # Now, bring in the shared package
 COPY src/shared /shared
@@ -47,17 +47,17 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
 # Copy the application source code
-COPY src/journal_service /app/journal_service
+COPY journal_service/journal /app/journal
 
 # Download the CA during build
 ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/supabase-rds-ca.pem
 ENV SUPABASE_CA_CERT_PATH=/etc/ssl/certs/supabase-rds-ca.pem
 
-# Set Python path to include src directory
-ENV PYTHONPATH=/app/src
+# Set Python path
+ENV PYTHONPATH=/app
 
 # Expose the port the app runs on (Cloud Run will set PORT env var)
 EXPOSE 8000
 
 # Set the entrypoint - respects PORT environment variable set by Cloud Run
-CMD ["python", "-m", "journal_service.journal_service.main"] 
+CMD ["python", "-m", "journal.main"] 

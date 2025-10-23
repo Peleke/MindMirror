@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, Type, Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from journal_service.journal_service.app.db.database import Base
+from journal.app.db.database import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 

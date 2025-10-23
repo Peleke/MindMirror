@@ -3,9 +3,9 @@ import os
 import ssl
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
-from journal_service.journal_service.app.config import get_settings
+from journal.app.config import get_settings
+from journal.app.db.base import Base
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,12 +48,6 @@ async_session_maker = async_sessionmaker(
     expire_on_commit=False,
 )
 
-# Base class for models
-Base = declarative_base()
-
-# Set the schema for all tables
-Base.metadata.schema = "journal"
-
 
 async def init_db():
     """Initialize database tables."""
@@ -63,7 +57,7 @@ async def init_db():
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS journal"))
             
             # Import models here to ensure they're registered
-            from journal_service.journal_service.app.db.models.journal import JournalEntry
+            from journal.app.db.models.journal import JournalEntry
             
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)

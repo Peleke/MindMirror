@@ -102,7 +102,7 @@ services:
   journal_service:
     build:
       context: .
-      dockerfile: src/journal_service/Dockerfile
+      dockerfile: journal_service/Dockerfile
     container_name: journal_service
     env_file: ${ENV_FILE:-.env}
     environment:
@@ -111,12 +111,12 @@ services:
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
       # Note: DATABASE_URL and ENVIRONMENT now come from env_file to support ENV_FILE switching
     volumes:
-      - ./src/journal_service:/app/journal_service
+      - ./journal_service/journal:/app/journal
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: uvicorn journal_service.journal_service.main:app --host 0.0.0.0 --port 8001 --reload
+    command: uvicorn journal.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
     depends_on:

@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
 
 from journal_service.models.sql.base import Base
 from journal_service.models.sql.journal import JournalEntryModel
-from journal_service.journal_service.uow import UnitOfWork, get_uow
-from journal_service.journal_service.main import app
+from journal.uow import UnitOfWork, get_uow
+from journal.main import app
 from shared.auth import CurrentUser, get_current_user
 from shared.data_models import UserRole
 

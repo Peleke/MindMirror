@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import Column, String, Text, JSON, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from journal_service.journal_service.app.db.models.base import TimestampedModel
+from journal.app.db.models.base import TimestampedModel
 
 
 class JournalEntry(TimestampedModel):
