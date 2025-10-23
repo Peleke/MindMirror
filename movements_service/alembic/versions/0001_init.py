@@ -49,10 +49,10 @@ def upgrade() -> None:
         sa.Column('user_id', sa.String()),
         schema=SCHEMA,
     )
-    op.create_index('ix_movements_name', f'{SCHEMA}.movements', ['name'])
-    op.create_index('ix_movements_body_region', f'{SCHEMA}.movements', ['body_region'])
-    op.create_index('ix_movements_user_id', f'{SCHEMA}.movements', ['user_id'])
-    op.create_index('ix_movements_external_id', f'{SCHEMA}.movements', ['external_id'])
+    op.create_index('ix_movements_name', 'movements', ['name'], schema=SCHEMA)
+    op.create_index('ix_movements_body_region', 'movements', ['body_region'], schema=SCHEMA)
+    op.create_index('ix_movements_user_id', 'movements', ['user_id'], schema=SCHEMA)
+    op.create_index('ix_movements_external_id', 'movements', ['external_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_aliases',
@@ -62,7 +62,7 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('clock_timestamp()')),
         schema=SCHEMA,
     )
-    op.create_index('ix_alias_movement_id', f'{SCHEMA}.movement_aliases', ['movement_id'])
+    op.create_index('ix_alias_movement_id', 'movement_aliases', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_muscle_links',
@@ -71,7 +71,7 @@ def upgrade() -> None:
         sa.Column('role', sa.String(), primary_key=True),
         schema=SCHEMA,
     )
-    op.create_index('ix_muscle_movement_id', f'{SCHEMA}.movement_muscle_links', ['movement_id'])
+    op.create_index('ix_muscle_movement_id', 'movement_muscle_links', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_equipment_links',
@@ -81,7 +81,7 @@ def upgrade() -> None:
         sa.Column('item_count', sa.Integer()),
         schema=SCHEMA,
     )
-    op.create_index('ix_equipment_movement_id', f'{SCHEMA}.movement_equipment_links', ['movement_id'])
+    op.create_index('ix_equipment_movement_id', 'movement_equipment_links', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_pattern_links',
@@ -90,7 +90,7 @@ def upgrade() -> None:
         sa.Column('position', sa.Integer(), nullable=False, server_default='1'),
         schema=SCHEMA,
     )
-    op.create_index('ix_pattern_movement_id', f'{SCHEMA}.movement_pattern_links', ['movement_id'])
+    op.create_index('ix_pattern_movement_id', 'movement_pattern_links', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_plane_links',
@@ -99,7 +99,7 @@ def upgrade() -> None:
         sa.Column('position', sa.Integer(), nullable=False, server_default='1'),
         schema=SCHEMA,
     )
-    op.create_index('ix_plane_movement_id', f'{SCHEMA}.movement_plane_links', ['movement_id'])
+    op.create_index('ix_plane_movement_id', 'movement_plane_links', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_tag_links',
@@ -107,7 +107,7 @@ def upgrade() -> None:
         sa.Column('tag_name', sa.String(), primary_key=True),
         schema=SCHEMA,
     )
-    op.create_index('ix_tag_movement_id', f'{SCHEMA}.movement_tag_links', ['movement_id'])
+    op.create_index('ix_tag_movement_id', 'movement_tag_links', ['movement_id'], schema=SCHEMA)
 
     op.create_table(
         'movement_instructions',
@@ -116,7 +116,7 @@ def upgrade() -> None:
         sa.Column('text', sa.String(), nullable=False),
         schema=SCHEMA,
     )
-    op.create_index('ix_instr_movement_id', f'{SCHEMA}.movement_instructions', ['movement_id'])
+    op.create_index('ix_instr_movement_id', 'movement_instructions', ['movement_id'], schema=SCHEMA)
 
 
 def downgrade() -> None:

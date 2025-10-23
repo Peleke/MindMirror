@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 from alembic import context
 
 from movements.repository.database import Base
@@ -10,7 +10,10 @@ from movements.web.config import Config
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", Config.DATABASE_URL)
+
+# Convert asyncpg URL to psycopg2 URL for synchronous operation
+database_url = str(Config.DATABASE_URL).replace("postgresql+asyncpg://", "postgresql://")
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -33,6 +36,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         include_schemas=True,
         version_table_schema="movements",
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -40,18 +44,27 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    # Connection args for pgbouncer compatibility
     connectable = engine_from_config(
         config.get_section(config.config_ini_section) or {},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "options": "-c statement_timeout=30000"  # 30 second timeout
+        }
     )
 
     with connectable.connect() as connection:
+        # Create schema if it doesn't exist
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS movements"))
+        connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             include_schemas=True,
             version_table_schema="movements",
+            compare_type=True,
         )
 
         with context.begin_transaction():

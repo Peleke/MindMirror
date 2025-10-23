@@ -3,6 +3,9 @@ name = "movements"
 version = "0.1.0"
 description = "Service for managing movements/exercises, search, and GraphQL API."
 authors = ["Peleke <kraken@peleke.33mail.com>"]
+packages = [
+    { include = "movements" }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0.0"
@@ -14,6 +17,7 @@ asyncpg = "^0.30.0"
 alembic = "^1.15.1"
 httpx = "^0.28.1"
 strawberry-graphql = {version = "^0.268.1"}
+psycopg2-binary = "^2.9.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
