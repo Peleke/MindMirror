@@ -2,29 +2,29 @@ from __future__ import annotations
 
 import strawberry
 from strawberry.types import Info
-from habits_service.habits_service.app.graphql.context import get_current_user_from_context
+from habits.app.graphql.context import get_current_user_from_context
 from datetime import date
 from typing import Optional, List
 
-from habits_service.habits_service.app.db.uow import UnitOfWork
-from habits_service.habits_service.app.db.repositories.write import (
+from habits.app.db.uow import UnitOfWork
+from habits.app.db.repositories.write import (
     HabitTemplateRepository,
     LessonTemplateRepository,
     ProgramTemplateRepository,
 )
-from habits_service.habits_service.app.db.repositories.write_structural import (
+from habits.app.db.repositories.write_structural import (
     ProgramStepTemplateRepository,
     StepLessonTemplateRepository,
     UserProgramAssignmentRepository,
     LessonSegmentRepository,
     StepDailyPlanRepository,
 )
-from habits_service.habits_service.app.db.repositories.write_events import (
+from habits.app.db.repositories.write_events import (
     HabitEventRepository,
     LessonEventRepository,
 )
-from habits_service.habits_service.app.db.repositories import HabitsReadRepository
-from habits_service.habits_service.app.config import get_settings
+from habits.app.db.repositories import HabitsReadRepository
+from habits.app.config import get_settings
 
 
 @strawberry.input
@@ -372,8 +372,8 @@ class Mutation:
         This mutation creates a persistent LessonTask record that the planner will pick up.
         It's primarily intended for practices_service integration to attach lessons to workouts.
         """
-        from habits_service.habits_service.app.db.repositories.write import LessonTaskRepository
-        from habits_service.habits_service.app.db.tables import LessonTask
+        from habits.app.db.repositories.write import LessonTaskRepository
+        from habits.app.db.tables import LessonTask
 
         async with UnitOfWork() as uow:
             repo = LessonTaskRepository(uow.session)

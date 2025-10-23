@@ -1,14 +1,14 @@
 from fastapi import FastAPI, Header, HTTPException
-from habits_service.habits_service.app.api.models import AutoEnrollRequest, RedeemRequest
+from habits.app.api.models import AutoEnrollRequest, RedeemRequest
 from strawberry.fastapi import GraphQLRouter
 import strawberry
-from habits_service.habits_service.app.db.session import engine
-from habits_service.habits_service.app.db.models import Base
-from habits_service.habits_service.app.graphql.schemas.query import Query as RootQuery
-from habits_service.habits_service.app.graphql.schemas.mutation import Mutation as RootMutation
-from habits_service.habits_service.app.config import get_settings
+from habits.app.db.session import engine
+from habits.app.db.models import Base
+from habits.app.graphql.schemas.query import Query as RootQuery
+from habits.app.graphql.schemas.mutation import Mutation as RootMutation
+from habits.app.config import get_settings
 from sqlalchemy import text
-from habits_service.habits_service.app.graphql.context import get_context
+from habits.app.graphql.context import get_context
 
 
 schema = strawberry.Schema(query=RootQuery, mutation=RootMutation)
@@ -34,8 +34,8 @@ async def auto_enroll(entitlements: AutoEnrollRequest, x_internal_id: str = Head
         items = entitlements.entitlements or []
 
         from datetime import date
-        from habits_service.habits_service.app.db.uow import UnitOfWork
-        from habits_service.habits_service.app.db.repositories.write import ProgramAssignmentWriteRepository
+        from habits.app.db.uow import UnitOfWork
+        from habits.app.db.repositories.write import ProgramAssignmentWriteRepository
 
         today = date.today()
         assigned: list[str] = []
@@ -64,8 +64,8 @@ async def redeem(body: RedeemRequest, x_internal_id: str = Header(None)):
             raise HTTPException(status_code=400, detail="invalid-code")
 
         from datetime import date
-        from habits_service.habits_service.app.db.uow import UnitOfWork
-        from habits_service.habits_service.app.db.repositories.write import ProgramAssignmentWriteRepository
+        from habits.app.db.uow import UnitOfWork
+        from habits.app.db.repositories.write import ProgramAssignmentWriteRepository
 
         today = date.today()
         async with UnitOfWork() as uow:
@@ -84,14 +84,14 @@ async def unenroll(program_template_id: str, x_internal_id: str = Header(None)):
     if not x_internal_id:
         raise HTTPException(status_code=401, detail="unauthorized")
     try:
-        from habits_service.habits_service.app.db.uow import UnitOfWork
-        from habits_service.habits_service.app.db.repositories.write_structural import UserProgramAssignmentRepository
+        from habits.app.db.uow import UnitOfWork
+        from habits.app.db.repositories.write_structural import UserProgramAssignmentRepository
         async with UnitOfWork() as uow:
             repo = UserProgramAssignmentRepository(uow.session)
             # Find active assignment and set status to cancelled
             # Simplify: update any active assignment for this user/program
             from sqlalchemy import select
-            from habits_service.habits_service.app.db.tables import UserProgramAssignment
+            from habits.app.db.tables import UserProgramAssignment
             import uuid
             pid = uuid.UUID(str(program_template_id))
             res = await uow.session.execute(

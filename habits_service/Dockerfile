@@ -43,13 +43,13 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
-# Copy source
-COPY habits_service /app/habits_service
+# Copy application source (migrations run separately, not in container)
+COPY habits_service/habits /app/habits
 
 ENV PYTHONPATH=/app:/app/src
 
 EXPOSE 8003
 
-CMD ["uvicorn", "habits_service.habits_service.app.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "habits.app.main:app", "--host", "0.0.0.0", "--port", "8003"]
 
 

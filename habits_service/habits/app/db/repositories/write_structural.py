@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from habits_service.habits_service.app.db.tables import (
+from habits.app.db.tables import (
     ProgramStepTemplate,
     LessonSegment,
     StepDailyPlan,

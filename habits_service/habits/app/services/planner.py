@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, Optional
 
-from habits_service.habits_service.app.db.repositories import HabitsReadRepository
-from habits_service.habits_service.app.db.tables import ProgramStepTemplate
+from habits.app.db.repositories import HabitsReadRepository
+from habits.app.db.tables import ProgramStepTemplate
 
 
-from habits_service.habits_service.app.graphql.schemas.task_types import TaskType, TaskStatus
+from habits.app.graphql.schemas.task_types import TaskType, TaskStatus
 
 
 @dataclass
@@ -122,7 +122,7 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                     steps_program = None
                 # Fetch program by id (we don't have slug; use active_step.program_template_id via another repo method)
                 try:
-                    from habits_service.habits_service.app.db.tables import ProgramTemplate
+                    from habits.app.db.tables import ProgramTemplate
                     # simple lookup by id via existing session
                     program_id = str(active_step.program_template_id)
                     # reusing session in repo
@@ -176,8 +176,8 @@ async def plan_daily_tasks(user_id: str, on_date: date, repo: HabitsReadReposito
                 if lesson_task.segment_ids_json:
                     # Render specific segments
                     segments = await repo.list_lesson_segments_by_lesson(str(lesson_template.id))
-                    from habits_service.habits_service.app.services.lesson_render_service import LessonRenderService
-                    from habits_service.habits_service.app.services.lesson_loader import LessonLoader
+                    from habits.app.services.lesson_render_service import LessonRenderService
+                    from habits.app.services.lesson_loader import LessonLoader
 
                     segment_objects = LessonLoader.segments_from_json(LessonLoader.segments_to_json(segments))
                     if segment_objects:

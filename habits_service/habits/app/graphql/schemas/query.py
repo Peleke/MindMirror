@@ -4,9 +4,9 @@ from datetime import date
 from typing import List, Optional, Set
 from datetime import timedelta
 
-from habits_service.habits_service.app.db.uow import UnitOfWork
-from habits_service.habits_service.app.db.repositories import HabitsReadRepository
-from habits_service.habits_service.app.services.planner import (
+from habits.app.db.uow import UnitOfWork
+from habits.app.db.repositories import HabitsReadRepository
+from habits.app.services.planner import (
     plan_daily_tasks,
     HabitTask as PHabitTask,
     LessonTask as PLessonTask,
@@ -20,7 +20,7 @@ from .task_types import (
     TaskType as GTaskType,
     TaskStatus as GTaskStatus,
 )
-from habits_service.habits_service.app.graphql.context import get_current_user_from_context
+from habits.app.graphql.context import get_current_user_from_context
 
 
 # Top-level GraphQL types to avoid unresolved nested type issues

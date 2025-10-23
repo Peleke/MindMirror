@@ -6,7 +6,7 @@ import uuid
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from habits_service.habits_service.app.db.tables import (
+from habits.app.db.tables import (
     HabitTemplate,
     LessonTemplate,
     ProgramTemplate,

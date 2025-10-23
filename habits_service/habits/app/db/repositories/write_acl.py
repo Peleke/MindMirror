@@ -7,7 +7,7 @@ from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from habits_service.habits_service.app.db.tables import TemplateAccess, TemplateProvenance
+from habits.app.db.tables import TemplateAccess, TemplateProvenance
 
 
 class TemplateAccessRepository:

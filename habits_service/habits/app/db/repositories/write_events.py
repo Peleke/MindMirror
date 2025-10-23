@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from habits_service.habits_service.app.db.tables import HabitEvent, LessonEvent
+from habits.app.db.tables import HabitEvent, LessonEvent
 
 
 class HabitEventRepository:

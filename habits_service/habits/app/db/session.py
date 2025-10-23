@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from habits_service.habits_service.app.config import get_settings
+from habits.app.config import get_settings
 import uuid
 
 

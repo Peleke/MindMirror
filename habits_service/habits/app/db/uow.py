@@ -1,7 +1,7 @@
 from typing import AsyncGenerator, Optional
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
-from habits_service.habits_service.app.db.session import async_session_maker
+from habits.app.db.session import async_session_maker
 
 
 logger = logging.getLogger(__name__)

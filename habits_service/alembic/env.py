@@ -1,16 +1,13 @@
 from __future__ import with_statement
 
-import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool, text
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy import engine_from_config, pool, text
 from alembic import context
 
-from habits_service.habits_service.app.config import get_settings
-from habits_service.habits_service.app.db.models import Base
-from habits_service.habits_service.app.db import tables  # noqa: F401 ensure models are imported
+from habits.app.config import get_settings
+from habits.app.db.models import Base
+from habits.app.db import tables  # noqa: F401 ensure models are imported
 
 
 settings = get_settings()
@@ -23,7 +20,8 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.database_url
+    """Run migrations in 'offline' mode."""
+    url = str(settings.database_url).replace("postgresql+asyncpg://", "postgresql://")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -37,30 +35,41 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        include_schemas=True,
-        version_table_schema=settings.database_schema,
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+    # Convert asyncpg URL to psycopg2 URL for synchronous operation
+    database_url = str(settings.database_url).replace("postgresql+asyncpg://", "postgresql://")
+
+    configuration = config.get_section(config.config_ini_section)
+    configuration["sqlalchemy.url"] = database_url
+
+    # Connection args for pgbouncer compatibility
+    connectable = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        connect_args={
+            "options": "-c statement_timeout=30000"  # 30 second timeout
+        }
     )
 
-    with context.begin_transaction():
-        context.run_migrations()
+    with connectable.connect() as connection:
+        # Create schema if it doesn't exist
+        connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {settings.database_schema}"))
+        connection.commit()
 
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            version_table_schema=settings.database_schema,
+        )
 
-async def run_migrations_online() -> None:
-    connectable: AsyncEngine = create_async_engine(settings.database_url, poolclass=pool.NullPool)
-    async with connectable.connect() as connection:
-        # Ensure schema exists before version table is created
-        await connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {settings.database_schema}"))
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
-
-
+    run_migrations_online()

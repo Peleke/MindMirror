@@ -3,7 +3,7 @@ from fastapi import Header, Request
 from shared.auth import CurrentUser
 from shared.data_models import UserRole
 from strawberry.types import Info
-from habits_service.habits_service.app.config import get_settings
+from habits.app.config import get_settings
 
 
 GraphQLContext = Dict[str, Any]

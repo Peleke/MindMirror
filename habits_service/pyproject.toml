@@ -5,7 +5,7 @@ description = "Habits service for MindMirror - scaffolding"
 authors = ["MindMirror Team"]
 readme = "README.md"
 packages = [
-    { include = "habits_service", from = "." },
+    { include = "habits", from = "." },
     { include = "shared", from = "../src" }
 ]
 
@@ -21,6 +21,7 @@ pydantic-settings = "^2.0.0"
 httpx = "^0.28.1"
 shared = { path = "../src/shared" }
 alembic = "^1.13.2"
+psycopg2-binary = "^2.9.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
@@ -59,7 +60,7 @@ ignore = ["E501", "B008"]
 
 
 [tool.pytest.ini_options]
-testpaths = ["habits_service/tests"]
+testpaths = ["habits/tests"]
 asyncio_mode = "strict"
 addopts = "-q"
 
