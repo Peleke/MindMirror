@@ -32,30 +32,8 @@ def upgrade() -> None:
     # Create users schema
     op.execute(f'CREATE SCHEMA IF NOT EXISTS {SCHEMA}')
 
-    # Create enums
-    op.execute("""
-        CREATE TYPE users.service_type AS ENUM (
-            'meals', 'practice', 'sleep', 'shadow_boxing', 'fitness_db', 'programs'
-        )
-    """)
-
-    op.execute("""
-        CREATE TYPE users.role_enum AS ENUM (
-            'coach', 'client', 'admin'
-        )
-    """)
-
-    op.execute("""
-        CREATE TYPE users.domain_enum AS ENUM (
-            'practices', 'meals', 'sleep', 'system'
-        )
-    """)
-
-    op.execute("""
-        CREATE TYPE users.association_status_enum AS ENUM (
-            'pending', 'accepted', 'rejected', 'terminated'
-        )
-    """)
+    # Note: Enums (service_type, role_enum, domain_enum, association_status_enum)
+    # are created automatically by SQLAlchemy when their respective tables are created
 
     # ============================================================
     # BASE TABLES
