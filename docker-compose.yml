@@ -32,6 +32,32 @@ services:
       timeout: 10s
       retries: 3
 
+  mobile:
+    build:
+      context: ./mindmirror-mobile
+      dockerfile: Dockerfile
+    container_name: mindmirror-mobile
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    volumes:
+      # Mount source for hot reload, excluding build artifacts
+      - ./mindmirror-mobile:/app:delegated
+      - /app/node_modules
+      - /app/.expo
+    networks:
+      - mindmirror-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "8081:8081"    # Metro bundler
+      - "19000:19000"  # Expo DevTools
+      - "19001:19001"  # Expo DevTools (secure)
+      - "19002:19002"  # Expo DevTools (secure)
+    stdin_open: true
+    tty: true
+
   # --- Backend Services ---
   agent_service:
     build:
@@ -117,8 +143,8 @@ services:
     # environment:
       # Note: DATABASE_URL and ENVIRONMENT come from env_file (ENV_FILE switching)
     volumes:
-      - ./habits_service:/app/habits_service
-    command: uvicorn habits_service.habits_service.app.main:app --host 0.0.0.0 --port 8003 --reload
+      - ./habits_service/habits:/app/habits
+    command: uvicorn habits.app.main:app --host 0.0.0.0 --port 8003 --reload
     networks:
       - mindmirror-network
     depends_on:
