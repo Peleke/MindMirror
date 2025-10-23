@@ -48,13 +48,20 @@ info "Using database: ${DATABASE_URL%%@*}@***"  # Mask password
 # Export for Alembic
 export DATABASE_URL
 
-# Migration directories
+# Get to project root (script is in infra-v2/bootstrap/)
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
+info "Project root: $PROJECT_ROOT"
+
+# Migration directories - each service has its own Alembic setup
 MIGRATIONS=(
-  "src/alembic-config"          # Agent, Journal, Habits (shared DB)
-  "habits_service/alembic"      # Habits service
-  "movements_service/alembic"   # Movements service
-  "practices_service/alembic"   # Practices service
-  "users_service/alembic"       # Users service
+  "habits_service"              # Habits service
+  "journal_service"             # Journal service
+  "meals_service"               # Meals service
+  "movements_service"           # Movements service
+  "practices_service"           # Practices service
+  "users_service"               # Users service
 )
 
 echo ""
@@ -65,30 +72,34 @@ read -p "Continue? (y/n): " confirm
 [[ "$confirm" != "y" ]] && error "Aborted by user"
 
 # Run migrations for each service
-for migration_dir in "${MIGRATIONS[@]}"; do
-  if [ ! -d "$migration_dir" ]; then
-    warn "Migration directory not found: $migration_dir (skipping)"
+for service_dir in "${MIGRATIONS[@]}"; do
+  if [ ! -d "$service_dir" ]; then
+    warn "Service directory not found: $service_dir (skipping)"
     continue
   fi
 
-  step "Running migrations: $migration_dir"
-
-  cd "$migration_dir"
-
-  # Check if poetry.lock exists (indicates Poetry project)
-  if [ -f "pyproject.toml" ]; then
-    info "Installing dependencies with Poetry..."
-    poetry install --no-interaction || warn "Failed to install dependencies"
-
-    info "Running Alembic upgrade..."
-    poetry run alembic upgrade head || error "Migration failed for $migration_dir"
-  else
-    # Try direct alembic command
-    info "Running Alembic upgrade (no Poetry)..."
-    alembic upgrade head || error "Migration failed for $migration_dir"
+  # Check if alembic directory exists
+  if [ ! -d "$service_dir/alembic" ]; then
+    warn "No alembic directory found in: $service_dir (skipping)"
+    continue
   fi
 
-  info "✅ Migrations complete: $migration_dir"
+  step "Running migrations: $service_dir"
+
+  cd "$service_dir"
+
+  # Install dependencies with Poetry (all services use Poetry)
+  if [ -f "pyproject.toml" ]; then
+    info "Installing dependencies with Poetry..."
+    poetry install --no-interaction --only main || warn "Failed to install dependencies"
+  else
+    warn "No pyproject.toml found in $service_dir"
+  fi
+
+  info "Running Alembic upgrade..."
+  poetry run alembic upgrade head || error "Migration failed for $service_dir"
+
+  info "✅ Migrations complete: $service_dir"
 
   # Return to root
   cd - >/dev/null
