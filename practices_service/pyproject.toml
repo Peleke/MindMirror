@@ -5,8 +5,7 @@ description = "Manage workouts, prescribed movements, and associated set data."
 authors = ["Peleke <kraken@peleke.33mail.com>"]
 readme = "README.md"
 packages = [
-    { include = "practices" },
-    { include = "shared", from = ".." }
+    { include = "practices" }
 ]
 
 [tool.poetry.dependencies]
@@ -33,6 +32,7 @@ loguru = "^0.7.3"
 opentelemetry-exporter-otlp-proto-grpc = "^1.33.0"
 pyjwt = "^2.8.0"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
+psycopg2-binary = "^2.9.11"
 
 [tool.poetry.scripts]
 start = "practices.web.server:start"

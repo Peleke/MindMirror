@@ -29,12 +29,8 @@ def upgrade() -> None:
     # Create practices schema
     op.execute(f'CREATE SCHEMA IF NOT EXISTS {SCHEMA}')
 
-    # Create enum for enrollment status
-    op.execute("""
-        CREATE TYPE practices.enrollment_status_enum AS ENUM (
-            'active', 'inactive', 'cancelled', 'completed', 'pending'
-        )
-    """)
+    # Note: enrollment_status_enum is created automatically by SQLAlchemy
+    # when the program_enrollments table is created (line 174)
 
     # ============================================================
     # BASE TEMPLATE TABLES
