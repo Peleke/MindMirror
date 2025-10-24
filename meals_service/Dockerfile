@@ -1,66 +1,62 @@
-# First stage: Build stage with Poetry
-FROM python:3.12-slim AS builder
+# syntax=docker/dockerfile:1
 
-# Allow statements and log messages to immediately appear in the logs
-ENV PYTHONUNBUFFERED=True
+FROM python:3.12-slim as builder
 
-# Set work directory
-WORKDIR /tmp
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Install Poetry
-# Consider pinning the Poetry version for more reproducible builds
-RUN pip install poetry poetry-plugin-export
+WORKDIR /app
 
-# Copy only the necessary files for dependency installation
-# This ensures that changing application code doesn't bust the dependency cache layer
-COPY ./pyproject.toml ./poetry.lock* /tmp/
+# Install poetry
+RUN pip install poetry
 
-# Allow setting a build argument for PROD/DEV builds
-ARG PROD=0
+# Copy meals_service's pyproject (lock is optional at this stage)
+COPY meals_service/pyproject.toml ./
 
-# Install dependencies based on the PROD flag
-# For PROD, export without dev dependencies. For DEV, include them.
-RUN if [ "$PROD" = "1" ]; then \
-      poetry export -f requirements.txt --output requirements.txt --without-hashes; \
-    else \
-      poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
-    fi
+# Bring in shared package at path expected by pyproject (../src/shared)
+COPY ./src/shared /src/shared
 
-# Second stage: Production/Runtime stage
+# Install deps (create lock inside the image if missing)
+# Use BUILD_WITH_DEV=true at build-time to include dev dependencies
+ARG BUILD_WITH_DEV=false
+RUN poetry config virtualenvs.create false \
+    && poetry lock --no-interaction --no-ansi \
+    && if [ "$BUILD_WITH_DEV" = "true" ]; then poetry install --no-root --with dev --no-ansi; else poetry install --no-root --only main --no-ansi; fi
+
+# Build shared wheel
+WORKDIR /src/shared
+RUN poetry build
+
+WORKDIR /app
+
+# Install shared wheel
+RUN pip install /src/shared/dist/*.whl
+
+# --- Final Stage ---
 FROM python:3.12-slim
 
-# Set the working directory to /app
-ENV APP_HOME=/app
-WORKDIR $APP_HOME
-ENV PYTHONPATH=/app
+WORKDIR /app
 
-# Create a non-root user and group for security
+# Create non-root user
 RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
 
-# Install curl (useful for healthchecks, etc.) and other essential packages
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements.txt from the builder stage
-COPY --from=builder /tmp/requirements.txt .
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app /app
 
-# Install runtime dependencies from requirements.txt
-# Using --no-cache-dir can reduce image size slightly
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application source
+COPY meals_service/meals /app/meals
 
-# Copy the rest of the application source code from the current directory (context) to /app
-# This should be one of the last layers to optimize caching
-COPY . .
+# Change ownership
+RUN chown -R appuser:appuser /app
 
-# Change ownership of the app directory to the non-root user
-RUN chown -R appuser:appuser $APP_HOME
-
-# Switch to the non-root user
+# Switch to non-root user
 USER appuser
 
-# Expose the port the app runs on (defined by Uvicorn in server.py or CMD)
-# This should match the MEALS_HTTP_PORT or default in server.py, typically 8000 for internal
+ENV PYTHONPATH=/app:/app/src
+
 EXPOSE 8004
 
-# Command to run the server
-# Uses python -m to run the server module, which is good practice
-CMD ["python", "-m", "meals.web.server"] 
+CMD ["python", "-m", "meals.web.server"]

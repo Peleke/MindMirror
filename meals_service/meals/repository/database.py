@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy.sql import text
 
 from meals.repository.models import Base
+from shared.secrets import should_auto_create_schema
 
 # Prefer full DATABASE_URL if provided; otherwise build from parts
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -42,8 +43,14 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         # Create schema if it doesn't exist
         await conn.execute(text("CREATE SCHEMA IF NOT EXISTS meals"))
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+
+        # Only auto-create schema in local/test environments
+        # In production/staging, we use Alembic migrations
+        if should_auto_create_schema():
+            print("Auto-creating schema for meals (local/test environment)")
+            await conn.run_sync(Base.metadata.create_all)
+        else:
+            print("Skipping auto-create schema for meals (production/staging - use Alembic)")
 
 
 async def close_db() -> None:

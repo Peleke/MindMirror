@@ -1,5 +1,6 @@
 import os
 from pydantic import BaseModel
+from shared.secrets import get_secret
 
 
 class MealsWebConfig(BaseModel):
@@ -13,8 +14,11 @@ class MealsWebConfig(BaseModel):
     DB_PORT: str = os.getenv("DB_PORT", "5433")  # Changed port to avoid conflict with practices
     DB_NAME: str = os.getenv("DB_NAME", "swae_meals")  # Using a different DB name
 
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL: str = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url",
+        default=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     off_user_agent: str = os.getenv("OFF_USER_AGENT", "MindMirrorMeals/1.0 (+support@mindmirror.app)")
