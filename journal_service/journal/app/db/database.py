@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy import text
 from journal.app.config import get_settings
 from journal.app.db.base import Base
+from shared.secrets import should_auto_create_schema
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -55,12 +56,17 @@ async def init_db():
         async with engine.begin() as conn:
             # Create the journal schema if it doesn't exist
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS journal"))
-            
+
             # Import models here to ensure they're registered
             from journal.app.db.models.journal import JournalEntry
-            
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
+
+            # Only auto-create schema in local/test environments
+            # In production/staging, we use Alembic migrations
+            if should_auto_create_schema():
+                logger.info("Auto-creating schema (local/test environment)")
+                await conn.run_sync(Base.metadata.create_all)
+            else:
+                logger.info("Skipping auto-create schema (production/staging - use Alembic)")
             # Ensure new columns exist for backward compatibility (safe no-op if present)
             await conn.execute(text("""
                 ALTER TABLE journal.journal_entries
