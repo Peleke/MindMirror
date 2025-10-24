@@ -2845,6 +2845,28 @@ docs = ["sphinx", "sphinx-click", "sphinx-rtd-theme"]
 tests = ["aiohttp (>=3.9.1,<4.0)", "coverage (>=6)", "fastapi (>=0.86.0)", "flask (>=2.1.1,<3.0)", "hypothesis-openapi (>=0.2,<1) ; python_version >= \"3.10\"", "pydantic (>=1.10.2)", "pytest-asyncio (>=0.18.0,<1.0)", "pytest-httpserver (>=1.0,<2.0)", "pytest-mock (>=3.7.0,<4.0)", "pytest-trio (>=0.8,<1.0)", "pytest-xdist (>=3,<4.0)", "strawberry-graphql[fastapi] (>=0.109.0)", "syrupy (>=2,<5.0)", "trustme (>=0.9.0,<1.0)"]
 
 [[package]]
+name = "shared"
+version = "0.1.0"
+description = "Shared components for MindMirror services"
+optional = false
+python-versions = ">=3.11,<4.0"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+httpx = "^0.28.1"
+packaging = "^25.0"
+pydantic = "^2.11.5"
+pyjwt = "^2.10.1"
+starlette = "^0.46.2"
+strawberry-graphql = "^0.268.1"
+
+[package.source]
+type = "directory"
+url = "../src/shared"
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 description = "Tool to Detect Surrounding Shell"
@@ -3705,4 +3727,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0.0"
-content-hash = "fd867f0c7fc65b0bcd1c00a0aded3cdafdcecb055898f1964782f55326de805d"
+content-hash = "0c6b64286c88b380e8b18e33f8e94722754d3f95d62cac7df786513459057917"

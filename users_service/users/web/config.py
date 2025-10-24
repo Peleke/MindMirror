@@ -1,4 +1,5 @@
 import os
+from shared.secrets import get_secret
 
 
 class Config:
@@ -8,9 +9,6 @@ class Config:
     DEBUG_GRAPHQL_SERVER = os.getenv("DEBUG_GRAPHQL_SERVER", "True").lower() == "true"
     DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"
 
-    # Prefer a fully-formed DATABASE_URL if provided (e.g., from Cloud Run secret)
-    _RAW_DATABASE_URL = os.getenv("DATABASE_URL", "")
-
     # Database settings (fallback components)
     DB_USER = os.getenv("DB_USER", "users_user")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "users_password")
@@ -19,11 +17,13 @@ class Config:
     DB_NAME = os.getenv("DB_NAME", "users_db")
     DB_DRIVER = os.getenv("DB_DRIVER", "asyncpg")
 
-    if _RAW_DATABASE_URL:
-        DATABASE_URL = _RAW_DATABASE_URL
-    else:
-        # Construct DATABASE_URL from individual parts for local/dev
-        DATABASE_URL = f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # Prefer a fully-formed DATABASE_URL from secret management (Cloud Run) or env var (local)
+    DATABASE_URL = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url",
+        default=f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
     # Connection pool settings
     DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))
@@ -45,4 +45,9 @@ class Config:
 
     # Supabase settings
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_KEY = get_secret(
+        "SUPABASE_KEY",
+        volume_name="supabase-service-role-key",
+        filename="supabase-service-role-key",
+        default=""
+    )

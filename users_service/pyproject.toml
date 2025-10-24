@@ -4,9 +4,14 @@ version = "0.1.0"
 description = "User coordination service for managing users, service linking, and cross-service data aggregation."
 authors = ["Peleke <kraken@peleke.33mail.com>"]
 readme = "README.md"
+packages = [
+    { include = "users" },
+    { include = "shared", from = "../src" }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0.0"
+shared = { path = "../src/shared" }
 fastapi = "^0.115.6"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 pydantic = "^2.10.6"

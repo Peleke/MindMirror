@@ -15,6 +15,7 @@ import ssl
 import uuid
 
 from users.web.config import Config
+from shared.secrets import should_auto_create_schema
 
 SCHEMA_NAME = "users"
 
@@ -77,11 +78,17 @@ async def init_db() -> None:
         await conn.commit()  # Commit schema creation
 
     # Now proceed with create_all within its own transaction
-    async with engine.begin() as conn:
-        # The service_type enum should be created here by create_all due to `create_type=True` in the model
-        # and `values_callable` ensuring correct labels.
-        await conn.run_sync(Base.metadata.create_all)
-        print(f"Database tables created/verified for schema '{SCHEMA_NAME}' using URL: {DATABASE_URL}")
+    # Only auto-create schema in local/test environments
+    # In production/staging, we use Alembic migrations
+    if should_auto_create_schema():
+        print(f"Auto-creating schema for {SCHEMA_NAME} (local/test environment)")
+        async with engine.begin() as conn:
+            # The service_type enum should be created here by create_all due to `create_type=True` in the model
+            # and `values_callable` ensuring correct labels.
+            await conn.run_sync(Base.metadata.create_all)
+            print(f"Database tables created/verified for schema '{SCHEMA_NAME}' using URL: {DATABASE_URL}")
+    else:
+        print(f"Skipping auto-create schema for {SCHEMA_NAME} (production/staging - use Alembic)")
 
     # Optionally, you could also re-run the ENUM type creation from the seeder here if create_all
     # proves unreliable for the ENUM across different startup scenarios, but it shouldn't be necessary
