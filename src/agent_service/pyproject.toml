@@ -44,7 +44,7 @@ pyjwt = "^2.10.1"
 # Utilities
 tenacity = "^9.1.2"
 networkx = "^3.3"
-strawberry-graphql = "^0.275.5"
+strawberry-graphql = "^0.268.1"
 langchain-ollama = "^0.3.3"
 pydantic-settings = "^2.10.1"
 shared = {path = "../shared"}
