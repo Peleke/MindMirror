@@ -5,11 +5,13 @@ description = "Manage workouts, prescribed movements, and associated set data."
 authors = ["Peleke <kraken@peleke.33mail.com>"]
 readme = "README.md"
 packages = [
-    { include = "practices" }
+    { include = "practices" },
+    { include = "shared", from = "../src" }
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0.0"
+shared = { path = "../src/shared" }
 fastapi = "^0.115.6"
 google-cloud-logging = "^3.11.3"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}

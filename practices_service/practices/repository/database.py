@@ -4,6 +4,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 
 from practices.web.config import Config  # Get DB URL from config
+from shared.secrets import should_auto_create_schema
 
 # Models will be imported by the application elsewhere, registering themselves with Base.metadata
 # Remove: from practices.repository.models import PracticeModel, PrescriptionModel, PrescribedMovementModel, SetModel
@@ -40,9 +41,16 @@ async def init_db():
             async with engine.begin() as conn:
                 # Ensure schema exists
                 await conn.execute(text('CREATE SCHEMA IF NOT EXISTS "practices"'))
-                # await conn.run_sync(Base.metadata.drop_all) # Optional: drop all tables for a clean slate
-                await conn.run_sync(Base.metadata.create_all)
-            print("Database tables created (if they didn't exist).")
+
+                # Only auto-create schema in local/test environments
+                # In production/staging, we use Alembic migrations
+                if should_auto_create_schema():
+                    print("Auto-creating schema for practices (local/test environment)")
+                    # await conn.run_sync(Base.metadata.drop_all) # Optional: drop all tables for a clean slate
+                    await conn.run_sync(Base.metadata.create_all)
+                else:
+                    print("Skipping auto-create schema for practices (production/staging - use Alembic)")
+            print("Database initialization complete.")
             return
         except Exception as e:
             if attempt < max_retries - 1:

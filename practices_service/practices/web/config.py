@@ -1,4 +1,5 @@
 import os
+from shared.secrets import get_secret
 
 
 class Config:
@@ -12,8 +13,11 @@ class Config:
     DB_PORT = os.getenv("DB_PORT", "5432")  # Default to 5432, can be overridden by tests
     DB_NAME = os.getenv("DB_NAME", "swae")
 
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL", f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url",
+        default=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "swae-aa835-test")
