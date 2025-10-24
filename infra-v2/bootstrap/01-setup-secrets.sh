@@ -156,6 +156,22 @@ if ! gcloud secrets versions list REINDEX_SECRET_KEY --limit=1 --project="$PROJE
   info "Generated random reindex secret key"
 fi
 
+# Environment Configuration
+echo ""
+info "🌍 ENVIRONMENT CONFIGURATION"
+
+create_secret "ENVIRONMENT" \
+  "Deployment environment (production/staging/local)" \
+  "Enter environment (production/staging/local) [production]"
+
+# If ENVIRONMENT secret doesn't have a value, set it to "production"
+if ! gcloud secrets versions list ENVIRONMENT --limit=1 --project="$PROJECT_ID" &>/dev/null; then
+  echo -n "production" | gcloud secrets versions add ENVIRONMENT \
+    --data-file=- \
+    --project="$PROJECT_ID"
+  info "Set ENVIRONMENT to 'production'"
+fi
+
 # Service URLs (will be populated after deployment)
 echo ""
 info "🌐 SERVICE URLS"
