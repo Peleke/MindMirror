@@ -408,8 +408,8 @@ services:
 
   meals_service:
     build:
-      context: ./meals_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: meals_service/Dockerfile
     container_name: meals_service
     env_file: ${ENV_FILE:-.env}
     # environment:
@@ -477,8 +477,8 @@ services:
 
   movements_service:
     build:
-      context: ./movements_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: movements_service/Dockerfile
       args:
         BUILD_WITH_DEV: ${MOVEMENTS_BUILD_WITH_DEV:-true}
     container_name: movements_service
@@ -548,8 +548,8 @@ services:
 
   users_service:
     build:
-      context: ./users_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: users_service/Dockerfile
     container_name: users_service
     env_file: ${ENV_FILE:-.env}
     environment:
