@@ -21,7 +21,6 @@ sqlalchemy = "^2.0.41"
 asyncpg = "^0.30.0"
 python-dotenv = "^1.1.1"
 psycopg2-binary = "^2.9.10"
-alembic-config = {path = "../src/alembic-config", develop = true}
 content-parser = {path = "../tools/content_parser", develop = true}
 habits-service = {path = "../habits_service", develop = true}
 PyYAML = "^6.0.2"
