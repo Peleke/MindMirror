@@ -9,6 +9,7 @@ from ..repository.database import get_session_factory, Base
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..repository.movements_repo import MovementsRepoPg
 from ..service.exercisedb_client import ExerciseDBClient
+from shared.secrets import should_auto_create_schema
 
 
 def get_context(request: Request):
@@ -32,9 +33,15 @@ async def lifespan(app: FastAPI):
         async with session_factory() as s:
             await s.execute(text('CREATE SCHEMA IF NOT EXISTS "movements"'))
             await s.commit()
-        # Create tables
-        async with session_factory().bind.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+
+        # Only auto-create schema in local/test environments
+        # In production/staging, we use Alembic migrations
+        if should_auto_create_schema():
+            print("Auto-creating schema for movements (local/test environment)")
+            async with session_factory().bind.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        else:
+            print("Skipping auto-create schema for movements (production/staging - use Alembic)")
     except Exception:
         pass
     yield

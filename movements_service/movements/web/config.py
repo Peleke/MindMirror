@@ -1,4 +1,5 @@
 import os
+from shared.secrets import get_secret
 
 class Config:
     SERVICE_NAME = os.getenv("SERVICE_NAME", "movements_service")
@@ -10,7 +11,11 @@ class Config:
 
     # Database
     # Prefer full DATABASE_URL; else construct from parts
-    DATABASE_URL = os.getenv("DATABASE_URL")
+    DATABASE_URL = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url"
+    )
     if not DATABASE_URL:
         DB_HOST = os.getenv("DB_HOST", "localhost")
         DB_PORT = int(os.getenv("DB_PORT", "5432"))
@@ -21,7 +26,12 @@ class Config:
 
     # External sources
     EXERCISEDB_BASE_URL = os.getenv("EXERCISEDB_BASE_URL", "https://v2.exercisedb.io")
-    EXERCISEDB_API_KEY = os.getenv("EXERCISEDB_API_KEY", "")
+    EXERCISEDB_API_KEY = get_secret(
+        "EXERCISEDB_API_KEY",
+        volume_name="exercisedb-api-key",
+        filename="exercisedb-api-key",
+        default=""
+    )
 
     # Auth
     REQUIRE_AUTH = os.getenv("REQUIRE_AUTH", "true").lower() == "true" 

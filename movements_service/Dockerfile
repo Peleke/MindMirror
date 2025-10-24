@@ -1,61 +1,53 @@
 # syntax=docker/dockerfile:1
 
-# --- Builder stage: use Poetry to export requirements ---
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim as builder
 
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DEFAULT_TIMEOUT=180 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-WORKDIR /tmp
+WORKDIR /app
 
-# Install Poetry and export plugin (pin versions, increase timeouts/retries)
-RUN python -m pip install -U pip setuptools wheel && \
-    pip install --no-cache-dir --timeout 180 --retries 5 poetry==2.2.1 poetry-plugin-export==1.9.0
+# Install poetry
+RUN pip install poetry
 
-# Copy only dependency metadata (no source code yet)
-COPY pyproject.toml /tmp/
+# Copy movements_service's pyproject (lock is optional at this stage)
+COPY movements_service/pyproject.toml ./
 
-# Allow setting a build arg to include dev deps in the export (default: false)
+# Bring in shared package at path expected by pyproject (../src/shared)
+COPY ./src/shared /src/shared
+
+# Install deps (create lock inside the image if missing)
+# Use BUILD_WITH_DEV=true at build-time to include dev dependencies
 ARG BUILD_WITH_DEV=false
+RUN poetry config virtualenvs.create false \
+    && poetry lock --no-interaction --no-ansi \
+    && if [ "$BUILD_WITH_DEV" = "true" ]; then poetry install --no-root --with dev --no-ansi; else poetry install --no-root --only main --no-ansi; fi
 
-# Generate lock file if missing and export requirements
-RUN if [ ! -f poetry.lock ]; then poetry lock; fi && \
-    if poetry group list | grep -qE '^dev(\s|$)'; then HAS_DEV=1; else HAS_DEV=0; fi && \
-    if [ "$BUILD_WITH_DEV" = "true" ] && [ "$HAS_DEV" = "1" ]; then \
-      poetry export --with dev -f requirements.txt --output requirements.txt --without-hashes; \
-    else \
-      poetry export -f requirements.txt --output requirements.txt --without-hashes; \
-    fi
+# Build shared wheel
+WORKDIR /src/shared
+RUN poetry build
 
-# --- Runtime stage ---
+WORKDIR /app
+
+# Install shared wheel
+RUN pip install /src/shared/dist/*.whl
+
+# --- Final Stage ---
 FROM python:3.12-slim
 
-ENV APP_HOME=/app \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+WORKDIR /app
 
-WORKDIR ${APP_HOME}
+RUN apt-get update && apt-get install -y curl cmake g++ build-essential libssl-dev pkg-config && rm -rf /var/lib/apt/lists/*
 
-# Install system deps required by common Python packages
-RUN apt-get update && apt-get install -y \
-    curl \
-    cmake \
-    g++ \
-    build-essential \
-    libssl-dev \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements from builder and install
-COPY --from=builder /tmp/requirements.txt ./
-RUN pip install --upgrade pip && pip install --timeout 180 --retries 5 -r requirements.txt
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app /app
 
 # Copy application source
-COPY . .
+COPY movements_service/movements /app/movements
+
+ENV PYTHONPATH=/app:/app/src
 
 EXPOSE 8005
 
-# Use the module entrypoint which reads PORT from env (default 8005)
 CMD ["python", "-m", "movements.web.server"]
