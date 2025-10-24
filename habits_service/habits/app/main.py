@@ -9,6 +9,7 @@ from habits.app.graphql.schemas.mutation import Mutation as RootMutation
 from habits.app.config import get_settings
 from sqlalchemy import text
 from habits.app.graphql.context import get_context
+from shared.secrets import should_auto_create_schema
 
 
 schema = strawberry.Schema(query=RootQuery, mutation=RootMutation)
@@ -123,7 +124,14 @@ async def ensure_schema_exists():
             schema = get_settings().database_schema
             # Ensure schema exists first (dev convenience)
             await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
-            await conn.run_sync(Base.metadata.create_all)
+
+            # Only auto-create schema in local/test environments
+            # In production/staging, we use Alembic migrations
+            if should_auto_create_schema():
+                print(f"Auto-creating schema for {schema} (local/test environment)")
+                await conn.run_sync(Base.metadata.create_all)
+            else:
+                print(f"Skipping auto-create schema for {schema} (production/staging - use Alembic)")
             # Backfill columns added post-migration until Alembic is in place
             await conn.execute(text("""
                 ALTER TABLE habits.lesson_templates

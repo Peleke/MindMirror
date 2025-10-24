@@ -3,13 +3,18 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 import os
 
+from shared.secrets import get_secret
+
 
 class Settings(BaseSettings):
     """Habits service settings (aligned with journal_service)."""
 
     # Database
-    database_url: str = os.getenv(
-        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
+    database_url: str = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url",
+        default="postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
     )
     database_schema: str = os.getenv("DATABASE_SCHEMA", "habits")
     # Connection pool tuning
@@ -20,7 +25,12 @@ class Settings(BaseSettings):
     db_pool_timeout: int = int(os.getenv("DB_POOL_TIMEOUT", "10"))
 
     # Auth
-    jwt_secret: str = os.getenv("JWT_SECRET", "your-secret-key")
+    jwt_secret: str = get_secret(
+        "JWT_SECRET",
+        volume_name="jwt-secret",
+        filename="jwt-secret",
+        default="your-secret-key"
+    )
     jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
     require_auth: bool = os.getenv("REQUIRE_AUTH", "true").lower() == "true"
 
@@ -33,11 +43,19 @@ class Settings(BaseSettings):
 
     # Supabase (kept for symmetry/future use)
     supabase_url: Optional[str] = os.getenv("SUPABASE_URL")
-    supabase_anon_key: Optional[str] = os.getenv("SUPABASE_ANON_KEY")
-    supabase_service_role_key: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    supabase_anon_key: Optional[str] = get_secret(
+        "SUPABASE_ANON_KEY",
+        volume_name="supabase-anon-key",
+        filename="supabase-anon-key"
+    )
+    supabase_service_role_key: Optional[str] = get_secret(
+        "SUPABASE_SERVICE_ROLE_KEY",
+        volume_name="supabase-service-role-key",
+        filename="supabase-service-role-key"
+    )
 
     # Environment
-    environment: str = os.getenv("ENVIRONMENT", "development")
+    environment: str = get_secret("ENVIRONMENT", default="development")
 
     # Vouchers/web integration
     vouchers_web_base_url: Optional[str] = os.getenv("VOUCHERS_WEB_BASE_URL")
