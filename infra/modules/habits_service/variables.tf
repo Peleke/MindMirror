@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "habits-service"
+}
+
 variable "project_id" { type = string }
 variable "region" { type = string }
 variable "habits_service_container_image" { type = string }

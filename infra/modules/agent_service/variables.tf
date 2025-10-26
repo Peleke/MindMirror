@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "agent-service"
+}
+
 variable "project_id" {
   description = "GCP Project ID"
   type        = string

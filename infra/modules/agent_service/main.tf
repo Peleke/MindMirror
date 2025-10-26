@@ -1,5 +1,5 @@
 resource "google_cloud_run_service" "agent_service" {
-  name     = "agent-service"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 

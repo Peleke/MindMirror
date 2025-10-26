@@ -92,6 +92,8 @@ data "google_secret_manager_secret_version" "meals_service_url" {
 
 module "journal_service" {
   source                = "./modules/journal_service"
+
+  service_name          = var.journal_service_name
   project_id            = var.project_id
   region                = var.region
   journal_service_container_image = var.journal_service_container_image
@@ -128,7 +130,8 @@ module "journal_service" {
 
 module "agent_service" {
   source  = "./modules/agent_service"
-  
+
+  service_name = var.agent_service_name
   project_id  = var.project_id
   region      = var.region
   agent_service_container_image = var.agent_service_container_image
@@ -167,7 +170,8 @@ module "agent_service" {
 
 module "gateway" {
   source  = "./modules/gateway"
-  
+
+  service_name = var.gateway_service_name
   project_id  = var.project_id
   region      = var.region
   gateway_container_image = var.gateway_container_image
@@ -190,7 +194,8 @@ module "gateway" {
 
 module "celery_worker" {
   source  = "./modules/celery-worker"
-  
+
+  service_name = var.celery_worker_service_name
   project_id  = var.project_id
   project_numerical_id = var.project_numerical_id
   region      = var.region
@@ -222,6 +227,7 @@ module "celery_worker" {
 module "habits_service" {
   source  = "./modules/habits_service"
 
+  service_name = var.habits_service_name
   project_id  = var.project_id
   region      = var.region
   habits_service_container_image = var.habits_service_container_image
@@ -242,7 +248,7 @@ module "meals_service" {
   source       = "./modules/meals"
   project_id   = var.project_id
   region       = var.region
-  service_name = "meals-service"
+  service_name = var.meals_service_name
   image        = var.meals_image
   env          = var.meals_env
   database_url = data.google_secret_manager_secret_version.database_url.secret_data
@@ -257,7 +263,7 @@ module "movements_service" {
   source       = "./modules/movements"
   project_id   = var.project_id
   region       = var.region
-  service_name = "movements-service"
+  service_name = var.movements_service_name
   image        = var.movements_image
   env          = {}
   database_url = data.google_secret_manager_secret_version.database_url.secret_data
@@ -272,13 +278,15 @@ module "practices_service" {
   source       = "./modules/practices"
   project_id   = var.project_id
   region       = var.region
-  service_name = "practices-service"
+  service_name = var.practices_service_name
   image        = var.practices_image
   env = {
     USERS_SERVICE_URL = module.users_service.service_url
   }
   database_url = data.google_secret_manager_secret_version.database_url.secret_data
   service_account_email = module.base.practices_service_sa_email
+  environment = var.environment
+  enable_health_probes = true
 }
 
 output "practices_service_url" {
@@ -289,7 +297,7 @@ module "users_service" {
   source       = "./modules/users"
   project_id   = var.project_id
   region       = var.region
-  service_name = "users-service"
+  service_name = var.users_service_name
   image        = var.users_image
   env = {
     AGENT_SERVICE_URL     = data.google_secret_manager_secret_version.agent_service_url.secret_data

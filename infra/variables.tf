@@ -27,6 +27,61 @@ variable "image_tag" {
   default     = "latest"
 }
 
+# Service names (allows parallel stack deployment with -auto suffix)
+variable "agent_service_name" {
+  description = "Agent service Cloud Run name"
+  type        = string
+  default     = "agent-service"
+}
+
+variable "journal_service_name" {
+  description = "Journal service Cloud Run name"
+  type        = string
+  default     = "journal-service"
+}
+
+variable "habits_service_name" {
+  description = "Habits service Cloud Run name"
+  type        = string
+  default     = "habits-service"
+}
+
+variable "gateway_service_name" {
+  description = "Gateway service Cloud Run name"
+  type        = string
+  default     = "gateway"
+}
+
+variable "meals_service_name" {
+  description = "Meals service Cloud Run name"
+  type        = string
+  default     = "meals-service"
+}
+
+variable "movements_service_name" {
+  description = "Movements service Cloud Run name"
+  type        = string
+  default     = "movements-service"
+}
+
+variable "practices_service_name" {
+  description = "Practices service Cloud Run name"
+  type        = string
+  default     = "practices-service"
+}
+
+variable "users_service_name" {
+  description = "Users service Cloud Run name"
+  type        = string
+  default     = "users-service"
+}
+
+variable "celery_worker_service_name" {
+  description = "Celery worker service Cloud Run name"
+  type        = string
+  default     = "celery-worker-web"
+}
+
 variable "journal_service_container_image" {
   description = "Journal service container image"
   type        = string

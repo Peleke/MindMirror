@@ -1,11 +1,12 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "meals-service"
+}
+
 variable "project_id" { type = string }
 
 variable "region" { type = string }
-
-variable "service_name" { 
-  type = string
-  default = "meals-service"
-}
 variable "image" { type = string }
 
 variable "service_account_email" { type = string }

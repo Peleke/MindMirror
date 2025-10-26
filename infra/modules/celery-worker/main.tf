@@ -171,7 +171,7 @@ resource "google_pubsub_subscription" "health_check_sub" {
 
 # Cloud Run Services
 resource "google_cloud_run_service" "celery_worker_web" {
-  name     = "celery-worker-web"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 

@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "journal-service"
+}
+
 variable "project_id" {
   type = string
 }
