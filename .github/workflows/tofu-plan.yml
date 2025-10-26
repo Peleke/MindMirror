@@ -1,0 +1,170 @@
+name: Tofu Plan
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/tofu-plan.yml'
+
+env:
+  TOFU_VERSION: "1.6.0"
+
+jobs:
+  detect-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.detect.outputs.environment }}
+      project_id: ${{ steps.detect.outputs.project_id }}
+      project_num: ${{ steps.detect.outputs.project_num }}
+      wif_provider: ${{ steps.detect.outputs.wif_provider }}
+      service_account: ${{ steps.detect.outputs.service_account }}
+    steps:
+      - name: Detect target environment from base branch
+        id: detect
+        run: |
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Base branch: $BASE_BRANCH"
+
+          if [[ "$BASE_BRANCH" == "staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "project_id=mindmirror-69" >> $GITHUB_OUTPUT
+            echo "project_num=${{ secrets.GCP_STAGING_PROJECT_NUM }}" >> $GITHUB_OUTPUT
+            echo "wif_provider=projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc" >> $GITHUB_OUTPUT
+            echo "service_account=github-actions-staging@mindmirror-69.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+          elif [[ "$BASE_BRANCH" == "main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "project_id=mindmirror-prod" >> $GITHUB_OUTPUT
+            echo "project_num=${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}" >> $GITHUB_OUTPUT
+            echo "wif_provider=projects/${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc" >> $GITHUB_OUTPUT
+            echo "service_account=github-actions-production@mindmirror-prod.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Unknown base branch: $BASE_BRANCH"
+            echo "PRs must target 'staging' or 'main' branch"
+            exit 1
+          fi
+
+  plan:
+    needs: detect-environment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      ENVIRONMENT: ${{ needs.detect-environment.outputs.environment }}
+      GCP_PROJECT_ID: ${{ needs.detect-environment.outputs.project_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ needs.detect-environment.outputs.wif_provider }}
+          service_account: ${{ needs.detect-environment.outputs.service_account }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Tofu Init
+        working-directory: infra
+        run: |
+          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+
+      - name: Tofu Format Check
+        working-directory: infra
+        run: |
+          tofu fmt -check -recursive
+        continue-on-error: true
+
+      - name: Tofu Validate
+        working-directory: infra
+        run: |
+          tofu validate
+
+      - name: Tofu Plan
+        id: plan
+        working-directory: infra
+        run: |
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+
+          # Capture exit code
+          PLAN_EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Save plan for comment
+          echo "plan_output<<EOF" >> $GITHUB_OUTPUT
+          cat plan-output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          exit $PLAN_EXIT_CODE
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const output = `## 🏗️ Tofu Plan - \`${{ env.ENVIRONMENT }}\`
+
+            **Environment**: ${{ env.ENVIRONMENT }}
+            **Project**: ${{ env.GCP_PROJECT_ID }}
+            **Status**: ${{ steps.plan.outputs.exit_code == '0' && '✅ Success' || '❌ Failed' }}
+
+            <details>
+            <summary>📋 Show Plan Output</summary>
+
+            \`\`\`terraform
+            ${{ steps.plan.outputs.plan_output }}
+            \`\`\`
+
+            </details>
+
+            ---
+
+            **Next Steps**:
+            ${steps.plan.outputs.exit_code == '0' ?
+              (env.ENVIRONMENT === 'staging' ?
+                '✅ Merge this PR to auto-deploy to staging' :
+                '⚠️ Merge this PR to trigger production deployment (requires manual approval)') :
+              '❌ Fix errors before merging'}
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🏗️ Tofu Plan')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: output
+              });
+            }
+
+      - name: Plan Status Check
+        if: steps.plan.outputs.exit_code != '0'
+        run: |
+          echo "❌ Tofu plan failed"
+          exit 1
