@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - staging
+      - 006-gitops-leggo  # TEMPORARY: for testing build fixes
 
 env:
   GCP_PROJECT_ID: mindmirror-69  # Staging project
