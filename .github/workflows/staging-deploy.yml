@@ -69,6 +69,8 @@ jobs:
           # Skip frontend apps (manual deploy for now)
           - service: web_app
           - service: mobile_app
+          # Skip deprecated celery worker
+          - service: celery_worker
     steps:
       - uses: actions/checkout@v4
 
