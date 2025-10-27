@@ -1,0 +1,2 @@
+[functions.send_drip_emails]
+verify_jwt = false

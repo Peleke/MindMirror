@@ -6,22 +6,28 @@ import { View, ViewProps } from 'react-native';
 import { config } from './config';
 
 export type ModeType = 'light' | 'dark' | 'system';
+export type ThemeVariantId = keyof typeof config['variants'] | undefined;
 
 export function GluestackUIProvider({
   mode = 'light',
+  themeId,
   ...props
 }: {
   mode?: ModeType;
+  themeId?: ThemeVariantId;
   children?: React.ReactNode;
   style?: ViewProps['style'];
 }) {
   const { colorScheme } = useColorScheme();
-
+  const baseStyle = config[colorScheme!];
+  const variantStyle = themeId ? config.variants?.[themeId] : undefined;
   return (
     <View
+      key={String(themeId || '')}
       className="flex-1 h-full w-full"
       style={[
-        config[colorScheme!],
+        baseStyle,
+        variantStyle,
         props.style,
       ]}
     >

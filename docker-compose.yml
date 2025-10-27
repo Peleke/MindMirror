@@ -4,15 +4,21 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: web
     env_file: ${ENV_FILE:-.env}
     environment:
+      - NODE_ENV=development
       - NEXT_PUBLIC_GATEWAY_URL=http://gateway:4000/graphql
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - NEXT_PUBLIC_APP_MODE=${NEXT_PUBLIC_APP_MODE:-demo}
       - NEXT_PUBLIC_INSIGHT_TIMEOUT=${NEXT_PUBLIC_INSIGHT_TIMEOUT:-240000}
+    volumes:
+      # Mount entire web directory for hot reload, excluding build artifacts
+      - ./web:/app:delegated
+      - /app/node_modules
+      - /app/.next
     networks:
       - mindmirror-network
     depends_on:
@@ -25,6 +31,32 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  mobile:
+    build:
+      context: ./mindmirror-mobile
+      dockerfile: Dockerfile
+    container_name: mindmirror-mobile
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+    volumes:
+      # Mount source for hot reload, excluding build artifacts
+      - ./mindmirror-mobile:/app:delegated
+      - /app/node_modules
+      - /app/.expo
+    networks:
+      - mindmirror-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "8081:8081"    # Metro bundler
+      - "19000:19000"  # Expo DevTools
+      - "19001:19001"  # Expo DevTools (secure)
+      - "19002:19002"  # Expo DevTools (secure)
+    stdin_open: true
+    tty: true
 
   # --- Backend Services ---
   agent_service:
@@ -70,28 +102,30 @@ services:
   journal_service:
     build:
       context: .
-      dockerfile: src/journal_service/Dockerfile
+      dockerfile: journal_service/Dockerfile
     container_name: journal_service
     env_file: ${ENV_FILE:-.env}
     environment:
-      # Override DATABASE_URL to use local Postgres for development
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach
       # GCS Configuration - Only set emulator host if USE_GCS_EMULATOR is true
       - STORAGE_EMULATOR_HOST=${STORAGE_EMULATOR_HOST:-}
       - TRADITION_DISCOVERY_MODE=${TRADITION_DISCOVERY_MODE:-}
+      # Users service URL for role fetching
+      - USERS_SERVICE_URL=http://users_service:8000
+      # Note: DATABASE_URL and ENVIRONMENT now come from env_file to support ENV_FILE switching
     volumes:
-      - ./src/journal_service:/app/journal_service
+      - ./journal_service/journal:/app/journal
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: uvicorn journal_service.journal_service.main:app --host 0.0.0.0 --port 8001 --reload
+    command: uvicorn journal.main:app --host 0.0.0.0 --port 8001 --reload
     networks:
       - mindmirror-network
     depends_on:
       - postgres
       - redis
       - gcs-emulator
+      - users_service
     ports:
       - "8001:8001" # Expose for direct access during dev
     healthcheck:
@@ -100,7 +134,58 @@ services:
       timeout: 20s
       retries: 10
       start_period: 5s
-      
+
+  habits_service:
+    build:
+      context: .
+      dockerfile: habits_service/Dockerfile
+      args:
+        BUILD_WITH_DEV: ${HABITS_BUILD_WITH_DEV:-true}
+    container_name: habits_service
+    env_file: ${ENV_FILE:-.env}
+    # environment:
+      # Note: DATABASE_URL and ENVIRONMENT come from env_file (ENV_FILE switching)
+    volumes:
+      - ./habits_service/habits:/app/habits
+    command: uvicorn habits.app.main:app --host 0.0.0.0 --port 8003 --reload
+    networks:
+      - mindmirror-network
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+
+  cli:
+    build:
+      context: .
+      dockerfile: cli/Dockerfile
+    container_name: mindmirror_cli
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_SCHEMA=${DATABASE_SCHEMA:-habits}
+    networks:
+      - mindmirror-network
+    depends_on:
+      - postgres
+      - habits_service
+    volumes:
+      - ./data:/workspace/data:ro
+    command: ["mindmirror", "--help"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+
   # --- Workers ---
   celery-worker-web:
     build:
@@ -130,7 +215,7 @@ services:
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: ["./start-web.sh"]
+    command: ["./start.sh"]
     networks:
       - mindmirror-network
     depends_on:
@@ -175,7 +260,7 @@ services:
       - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
-    command: ["./start-worker.sh"]
+    command: ["./start.sh"]
     networks:
       - mindmirror-network
     depends_on:
@@ -220,6 +305,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: postgres
+    env_file: ${ENV_FILE:-.env}
     ports:
       - "5432:5432"
     environment:
@@ -246,9 +332,6 @@ services:
       - mindmirror-network
     volumes:
       - qdrant_data:/qdrant/storage
-    # The official qdrant image is distroless and has no shell,
-    # so we can't use a command-based healthcheck.
-    # We rely on service_started condition.
 
   redis:
     image: redis:7-alpine
@@ -262,12 +345,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  
+
   mesh-compose:
     build:
       context: ./mesh
       dockerfile: Dockerfile.mesh-compose
-    command: ["bash", "-c", "npx mesh-compose -o build/supergraph.graphql"]
+    command: ["bash", "-c", "npx mesh-compose -c mesh.config.dynamic.ts -o build/supergraph.graphql"]
+    environment:
+      - JOURNAL_SERVICE_URL=http://journal_service:8001
+      - AGENT_SERVICE_URL=http://agent_service:8000
+      - HABITS_SERVICE_URL=http://habits_service:8003
+      - MEALS_SERVICE_URL=http://meals_service:8004
+      - MOVEMENTS_SERVICE_URL=http://movements_service:8005
+      - PRACTICES_SERVICE_URL=http://practices_service:8000
+      - USERS_SERVICE_URL=http://users_service:8000
+      - VOUCHERS_WEB_BASE_URL=${VOUCHERS_WEB_BASE_URL:-http://web:3001}
     volumes:
       - ./mesh/build:/app/build
     networks:
@@ -276,6 +368,16 @@ services:
       journal_service:
         condition: service_healthy
       agent_service:
+        condition: service_healthy
+      habits_service:
+        condition: service_healthy
+      meals_service:
+        condition: service_healthy
+      movements_service:
+        condition: service_healthy
+      practices_service:
+        condition: service_healthy
+      users_service:
         condition: service_healthy
 
   gateway:
@@ -304,12 +406,181 @@ services:
       retries: 20
       start_period: 5s
 
+  meals_service:
+    build:
+      context: .
+      dockerfile: meals_service/Dockerfile
+    container_name: meals_service
+    env_file: ${ENV_FILE:-.env}
+    # environment:
+      # Preferred single URL (service supports DATABASE_URL first)
+      # - OFF_SEARCHALICIOUS_ENABLED=${OFF_SEARCHALICIOUS_ENABLED:-true}
+    #   - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    #   # Generic DB_* used by current implementation
+    #   - DB_HOST=postgres
+    #   - DB_PORT=5432
+    #   - DB_USER=${POSTGRES_USER}
+    #   - DB_PASSWORD=${POSTGRES_PASSWORD}
+    #   - DB_NAME=${POSTGRES_DB}
+    networks:
+      - mindmirror-network
+    depends_on:
+      - postgres
+    ports:
+      - "8004:8004"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  movements_postgres:
+    image: postgres:15-alpine
+    container_name: movements_postgres
+    env_file: ${ENV_FILE:-.env}
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_USER=${MOVEMENTS_DB_USER:-movements_user}
+      - POSTGRES_PASSWORD=${MOVEMENTS_DB_PASSWORD:-movements_password}
+      - POSTGRES_DB=${MOVEMENTS_DB_NAME:-swae_movements}
+    volumes:
+      - movements_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  practices_postgres:
+    image: postgres:15-alpine
+    container_name: practices_postgres
+    env_file: ${ENV_FILE:-.env}
+    ports:
+      - "5436:5432"
+    environment:
+      - POSTGRES_USER=${PRACTICES_DB_USER:-practices_user}
+      - POSTGRES_PASSWORD=${PRACTICES_DB_PASSWORD:-practices_password}
+      - POSTGRES_DB=${PRACTICES_DB_NAME:-swae_practices}
+    volumes:
+      - practices_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  movements_service:
+    build:
+      context: .
+      dockerfile: movements_service/Dockerfile
+      args:
+        BUILD_WITH_DEV: ${MOVEMENTS_BUILD_WITH_DEV:-true}
+    container_name: movements_service
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${MOVEMENTS_DB_USER:-movements_user}:${MOVEMENTS_DB_PASSWORD:-movements_password}@movements_postgres:5432/${MOVEMENTS_DB_NAME:-swae_movements}
+      - PORT=8005
+      - EXERCISEDB_BASE_URL=${EXERCISEDB_BASE_URL:-https://v2.exercisedb.io}
+      - EXERCISEDB_API_KEY=${EXERCISEDB_API_KEY:-}
+    networks:
+      - mindmirror-network
+    depends_on:
+      movements_postgres:
+        condition: service_healthy
+    ports:
+      - "8005:8005"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  practices_service:
+    build:
+      context: .
+      dockerfile: practices_service/Dockerfile
+    container_name: practices_service
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      # - DATABASE_URL=postgresql+asyncpg://${PRACTICES_DB_USER:-practices_user}:${PRACTICES_DB_PASSWORD:-practices_password}@practices_postgres:5432/${PRACTICES_DB_NAME:-swae_practices}
+      - USERS_SERVICE_URL=http://users_service:8000/graphql
+      - HABITS_SERVICE_URL=http://habits_service:8003
+    networks:
+      - mindmirror-network
+    depends_on:
+      practices_postgres:
+        condition: service_healthy
+    ports:
+      - "8006:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  users_postgres:
+    image: postgres:15-alpine
+    container_name: users_postgres
+    env_file: ${ENV_FILE:-.env}
+    ports:
+      - "5437:5432"
+    environment:
+      - POSTGRES_USER=${USERS_DB_USER:-users_user}
+      - POSTGRES_PASSWORD=${USERS_DB_PASSWORD:-users_password}
+      - POSTGRES_DB=${USERS_DB_NAME:-swae_users}
+    volumes:
+      - users_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mindmirror-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  users_service:
+    build:
+      context: .
+      dockerfile: users_service/Dockerfile
+    container_name: users_service
+    env_file: ${ENV_FILE:-.env}
+    environment:
+      - DB_HOST=users_postgres
+      - DB_PORT=5432
+      - DB_USER=${USERS_DB_USER:-users_user}
+      - DB_PASSWORD=${USERS_DB_PASSWORD:-users_password}
+      - DB_NAME=${USERS_DB_NAME:-swae_users}
+    networks:
+      - mindmirror-network
+    depends_on:
+      users_postgres:
+        condition: service_healthy
+    ports:
+      - "8007:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
 volumes:
   postgres_data:
   qdrant_data:
-  gcs_emulator_data:  # Renamed for clarity
+  gcs_emulator_data:
   prompts_data:
     driver: local
+  movements_postgres_data:
+  practices_postgres_data:
+  users_postgres_data:
 
 networks:
   mindmirror-network:

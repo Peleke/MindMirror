@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "fmt": { "useTabs": false, "indentWidth": 2 },
+  "tasks": {}
+}

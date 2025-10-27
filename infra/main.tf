@@ -65,6 +65,16 @@ data "google_secret_manager_secret_version" "journal_service_url" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "habits_service_url" {
+  secret  = "HABITS_SERVICE_URL"
+  project = var.project_id
+}
+
+data "google_secret_manager_secret_version" "vouchers_web_base_url" {
+  secret  = "VOUCHERS_WEB_BASE_URL"
+  project = var.project_id
+}
+
 data "google_secret_manager_secret_version" "celery_worker_url" {
   secret  = "CELERY_WORKER_URL"
   project = var.project_id
@@ -75,8 +85,15 @@ data "google_secret_manager_secret_version" "reindex_secret_key" {
   project = var.project_id
 }
 
+data "google_secret_manager_secret_version" "meals_service_url" {
+  secret  = "MEALS_SERVICE_URL"
+  project = var.project_id
+}
+
 module "journal_service" {
   source                = "./modules/journal_service"
+
+  service_name          = var.journal_service_name
   project_id            = var.project_id
   region                = var.region
   journal_service_container_image = var.journal_service_container_image
@@ -105,6 +122,7 @@ module "journal_service" {
   # Service URLs (from secrets)
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
   celery_worker_url     = data.google_secret_manager_secret_version.celery_worker_url.secret_data
+  users_service_url     = module.users_service.service_url
   
   # Security (from secrets)
   reindex_secret_key    = data.google_secret_manager_secret_version.reindex_secret_key.secret_data
@@ -112,7 +130,8 @@ module "journal_service" {
 
 module "agent_service" {
   source  = "./modules/agent_service"
-  
+
+  service_name = var.agent_service_name
   project_id  = var.project_id
   region      = var.region
   agent_service_container_image = var.agent_service_container_image
@@ -151,7 +170,8 @@ module "agent_service" {
 
 module "gateway" {
   source  = "./modules/gateway"
-  
+
+  service_name = var.gateway_service_name
   project_id  = var.project_id
   region      = var.region
   gateway_container_image = var.gateway_container_image
@@ -163,6 +183,9 @@ module "gateway" {
   # Service URLs (from secrets)
   agent_service_url     = data.google_secret_manager_secret_version.agent_service_url.secret_data
   journal_service_url   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+  habits_service_url    = data.google_secret_manager_secret_version.habits_service_url.secret_data
+  meals_service_url     = data.google_secret_manager_secret_version.meals_service_url.secret_data
+  vouchers_web_base_url = data.google_secret_manager_secret_version.vouchers_web_base_url.secret_data
   
   # Environment
   environment           = var.environment
@@ -171,7 +194,8 @@ module "gateway" {
 
 module "celery_worker" {
   source  = "./modules/celery-worker"
-  
+
+  service_name = var.celery_worker_service_name
   project_id  = var.project_id
   project_numerical_id = var.project_numerical_id
   region      = var.region
@@ -198,4 +222,99 @@ module "celery_worker" {
   # Environment
   environment           = var.environment
   debug                 = var.debug
+}
+
+module "habits_service" {
+  source  = "./modules/habits_service"
+
+  service_name = var.habits_service_name
+  project_id  = var.project_id
+  region      = var.region
+  habits_service_container_image = var.habits_service_container_image
+  service_account_email = module.base.journal_service_sa_email
+
+  # Logging and environment
+  log_level   = var.log_level
+  environment = var.environment
+
+  database_url                 = data.google_secret_manager_secret_version.database_url.secret_data
+  vouchers_web_base_url        = data.google_secret_manager_secret_version.vouchers_web_base_url.secret_data
+  uye_program_template_id      = var.uye_program_template_id
+  mindmirror_program_template_id = var.mindmirror_program_template_id
+  daily_journaling_program_template_id = var.daily_journaling_program_template_id
+}
+
+module "meals_service" {
+  source       = "./modules/meals"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = var.meals_service_name
+  image        = var.meals_image
+  env          = var.meals_env
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.meals_service_email
+}
+
+output "meals_service_url" {
+  value = module.meals_service.service_url
+}
+
+module "movements_service" {
+  source       = "./modules/movements"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = var.movements_service_name
+  image        = var.movements_image
+  env          = {}
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.movements_service_sa_email
+}
+
+output "movements_service_url" {
+  value = module.movements_service.service_url
+}
+
+module "practices_service" {
+  source       = "./modules/practices"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = var.practices_service_name
+  image        = var.practices_image
+  env = {
+    USERS_SERVICE_URL = module.users_service.service_url
+  }
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.practices_service_sa_email
+  environment = var.environment
+  enable_health_probes = true
+}
+
+output "practices_service_url" {
+  value = module.practices_service.service_url
+}
+
+module "users_service" {
+  source       = "./modules/users"
+  project_id   = var.project_id
+  region       = var.region
+  service_name = var.users_service_name
+  image        = var.users_image
+  env = {
+    AGENT_SERVICE_URL     = data.google_secret_manager_secret_version.agent_service_url.secret_data
+    JOURNAL_SERVICE_URL   = data.google_secret_manager_secret_version.journal_service_url.secret_data
+    HABITS_SERVICE_URL    = data.google_secret_manager_secret_version.habits_service_url.secret_data
+    MEALS_SERVICE_URL     = data.google_secret_manager_secret_version.meals_service_url.secret_data
+    MOVEMENTS_SERVICE_URL = module.movements_service.service_url
+    DB_POOL_SIZE          = "10"
+    DB_MAX_OVERFLOW       = "20"
+    DB_POOL_TIMEOUT       = "10"
+    DB_POOL_RECYCLE       = "1800"
+    DB_POOL_PRE_PING      = "true"
+  }
+  database_url = data.google_secret_manager_secret_version.database_url.secret_data
+  service_account_email = module.base.users_service_sa_email
+}
+
+output "users_service_url" {
+  value = module.users_service.service_url
 }

@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "journal-service"
+}
+
 variable "project_id" {
   type = string
 }
@@ -88,5 +94,10 @@ variable "celery_worker_url" {
 
 variable "reindex_secret_key" {
   description = "Reindex secret key for celery worker authentication"
+  type        = string
+}
+
+variable "users_service_url" {
+  description = "Users service base URL"
   type        = string
 }

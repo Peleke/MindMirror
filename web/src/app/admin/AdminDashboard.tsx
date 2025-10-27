@@ -253,18 +253,41 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   </p>
                 </button>
 
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 cursor-not-allowed">
+                <a href="/admin/email" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 block transition-colors">
                   <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="text-sm font-medium text-gray-500">
+                    <Mail className="h-5 w-5 text-purple-500 mr-3" />
+                    <span className="text-sm font-medium text-gray-900">
+                      View Campaigns
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    See campaigns and subscriber positions
+                  </p>
+                </a>
+
+                <a href="/admin/analytics" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 block transition-colors">
+                  <div className="flex items-center">
+                    <BarChart3 className="h-5 w-5 text-purple-500 mr-3" />
+                    <span className="text-sm font-medium text-gray-900">
                       Email Analytics
                     </span>
-                    <Clock className="h-3 w-3 ml-2 text-amber-500" />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Coming Soon - Track engagement metrics
+                  <p className="text-xs text-gray-500 mt-1">
+                    View engagement metrics
                   </p>
-                </div>
+                </a>
+
+                <a href="/admin/vouchers" className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 block transition-colors">
+                  <div className="flex items-center">
+                    <Mail className="h-5 w-5 text-purple-500 mr-3" />
+                    <span className="text-sm font-medium text-gray-900">
+                      Mint Voucher (test)
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Generate a voucher and email it to a tester
+                  </p>
+                </a>
 
                 <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 cursor-not-allowed">
                   <div className="flex items-center">

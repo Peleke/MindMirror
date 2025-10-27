@@ -1,0 +1,200 @@
+import { gql, useMutation, useQuery } from '@apollo/client'
+
+// Queries
+export const MY_PENDING_COACHING_REQUESTS = gql`
+  query MyPendingCoachingRequests {
+    myPendingCoachingRequests {
+      id_
+      coachUserId
+      clientUserId
+      status
+      requestedBy
+      createdAt
+      modifiedAt
+      coach {
+        id_
+        supabaseId
+        email
+        firstName
+        lastName
+        createdAt
+        modifiedAt
+      }
+    }
+  }
+`
+
+export const MY_CLIENTS = gql`
+  query MyClients {
+    myClients {
+      id_
+      supabaseId
+      createdAt
+      modifiedAt
+    }
+  }
+`
+
+export const MY_COACHES = gql`
+  query MyCoaches {
+    myCoaches {
+      id_
+      supabaseId
+      createdAt
+      modifiedAt
+    }
+  }
+`
+
+export const IS_COACH_FOR_CLIENT = gql`
+  query IsCoachForClient($clientId: ID!) {
+    isCoachForClient(clientId: $clientId)
+  }
+`
+
+export const USER_BY_ID = gql`
+  query UserById($id: ID!) {
+    userById(id: $id) {
+      id_
+      supabaseId
+      createdAt
+      modifiedAt
+      roles {
+        id_
+        role
+        domain
+        createdAt
+      }
+    }
+  }
+`
+
+export const QUERY_TODAYS_SCHEDULABLES = gql`
+  query TodaysSchedulables($userId: ID!, $date: Date) {
+    schedulablesForUserOnDate(userId: $userId, eventDate: $date) {
+      id_
+      title
+      description
+      serviceId
+      isComplete
+      scheduledTime
+      estimatedDuration
+    }
+  }
+`
+
+export const SEARCH_USERS = gql`
+  query SearchUsers($query: String!) {
+    searchUsers(query: $query) {
+      id_
+      supabaseId
+      email
+      firstName
+      lastName
+      createdAt
+      modifiedAt
+    }
+  }
+`
+
+// Mutations
+export const REQUEST_COACHING = gql`
+  mutation RequestCoaching($clientEmail: String!) {
+    requestCoaching(clientEmail: $clientEmail)
+  }
+`
+
+export const REQUEST_COACHING_BY_USER_ID = gql`
+  mutation RequestCoachingByUserId($clientUserId: ID!) {
+    requestCoachingByUserId(clientUserId: $clientUserId)
+  }
+`
+
+export const ACCEPT_COACHING = gql`
+  mutation AcceptCoaching($coachUserId: ID!) {
+    acceptCoaching(coachUserId: $coachUserId)
+  }
+`
+
+export const REJECT_COACHING = gql`
+  mutation RejectCoaching($coachUserId: ID!) {
+    rejectCoaching(coachUserId: $coachUserId)
+  }
+`
+
+export const ASSIGN_ROLE = gql`
+  mutation AssignRole($userId: ID!, $role: String!, $domain: String!) {
+    assignRoleToUser(userId: $userId, role: $role, domain: $domain)
+  }
+`
+
+// Hooks
+export const useMyPendingCoachingRequests = () => {
+  return useQuery(MY_PENDING_COACHING_REQUESTS, {
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useMyClients = () => {
+  return useQuery(MY_CLIENTS, {
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useMyCoaches = () => {
+  return useQuery(MY_COACHES, {
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useRequestCoaching = () => {
+  return useMutation(REQUEST_COACHING)
+}
+
+export const useRequestCoachingByUserId = () => {
+  return useMutation(REQUEST_COACHING_BY_USER_ID)
+}
+
+export const useAcceptCoaching = () => {
+  return useMutation(ACCEPT_COACHING)
+}
+
+export const useRejectCoaching = () => {
+  return useMutation(REJECT_COACHING)
+}
+
+export const useUserById = (id: string) => {
+  return useQuery(USER_BY_ID, {
+    variables: { id },
+    skip: !id,
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useIsCoachForClient = (clientId: string) => {
+  return useQuery(IS_COACH_FOR_CLIENT, {
+    variables: { clientId },
+    skip: !clientId,
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useTodaysSchedulables = (params: { userId: string; date?: string }, skip = false) => {
+  return useQuery(QUERY_TODAYS_SCHEDULABLES, {
+    variables: { userId: params.userId, date: params.date },
+    skip: skip || !params.userId,
+    fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useAssignRole = () => {
+  return useMutation(ASSIGN_ROLE)
+}
+
+export const useSearchUsers = (query: string) => {
+  return useQuery(SEARCH_USERS, {
+    variables: { query },
+    skip: !query || query.length < 2,
+    fetchPolicy: 'cache-and-network',
+  })
+} 

@@ -1,29 +1,49 @@
-import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client'
+import { ApolloClient, InMemoryCache, createHttpLink, from, ApolloLink } from '@apollo/client'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { Session } from '@supabase/supabase-js'
 import Constants from 'expo-constants'
+import { createMockLink, createDevGuardLink } from './mockLink'
+import { supabase } from '@/services/supabase/client'
 
 // Environment detection
 const isDevelopment = __DEV__
 
-// Gateway URL based on environment
-const GATEWAY_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || (isDevelopment 
-  ? 'http://localhost:4000/graphql' // Local development fallback
-  : 'http://localhost:4000/graphql') // Production fallback (update with actual URL)
+// More robust gateway URL loading
+const RAW_GATEWAY_URL = process.env.EXPO_PUBLIC_GATEWAY_URL || Constants.expoConfig?.extra?.gatewayUrl
+
+if (!RAW_GATEWAY_URL) {
+  console.error("CRITICAL: Gateway URL is not configured. Check .env or app.json.")
+}
+
+// Normalize to ensure exactly one /graphql suffix, without duplicating it
+const normalizeGatewayUrl = (url?: string | null) => {
+  if (!url) return null
+  const trimmed = url.replace(/\/+$/, '')
+  return trimmed.endsWith('/graphql') ? trimmed : `${trimmed}/graphql`
+}
+
+const finalGatewayUrl = normalizeGatewayUrl(RAW_GATEWAY_URL) || 'http://localhost:4000/graphql'
 
 // HTTP Link for GraphQL endpoint
-const httpLink = createHttpLink({
-  uri: GATEWAY_URL,
-})
+const httpLink = createHttpLink({ uri: finalGatewayUrl, credentials: 'omit' })
 
 // Auth link to add JWT token and user ID headers
-const authLink = setContext((_, { headers, session }) => {
-  // Get session from context or use provided session
-  const currentSession = session as Session | null
+const authLink = setContext(async (_, { headers, session }) => {
+  // Get session from context, provided session, or dynamically from Supabase
+  let currentSession = session as Session | null
+  
+  if (!currentSession) {
+    try {
+      const { data: { session: supabaseSession } } = await supabase.auth.getSession()
+      currentSession = supabaseSession
+    } catch (error) {
+      console.warn('Apollo Client: Failed to get session from Supabase:', error)
+    }
+  }
 
   if (!currentSession?.access_token) {
-    console.warn('Apollo Client: No session or access token available')
+    // Don't attach empty headers; just pass through. Callers should skip queries until session exists.
     return { headers }
   }
 
@@ -97,27 +117,41 @@ export const apolloClient = new ApolloClient({
 
 // Helper function to create client with session context
 export function createApolloClientWithSession(session: Session | null) {
+  const mockEnabled = (((process.env.EXPO_PUBLIC_MOCK_TASKS as string) || (Constants.expoConfig?.extra as any)?.mockTasks) || '')
+    .toString()
+    .toLowerCase() === 'true'
+
+  const headerLink = setContext((_, { headers }) => {
+    const nextHeaders: Record<string, string> = {
+      ...(headers as Record<string, string>),
+      'Content-Type': 'application/json',
+    }
+    if (session?.access_token) {
+      nextHeaders['Authorization'] = `Bearer ${session.access_token}`
+    }
+    if (session?.user?.id) {
+      nextHeaders['x-internal-id'] = session.user.id
+    }
+    return { headers: nextHeaders }
+  })
+
+  const linkChain: ApolloLink[] = [errorLink, headerLink]
+  if (mockEnabled) {
+    linkChain.push(createDevGuardLink())
+    linkChain.push(createMockLink())
+  }
+  linkChain.push(httpLink)
+
   return new ApolloClient({
-    link: from([
-      errorLink, 
-      setContext((_, { headers }) => ({
-        headers: {
-          ...headers,
-          'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
-          'x-internal-id': session?.user?.id || '',
-          'Content-Type': 'application/json',
-        }
-      })),
-      httpLink
-    ]),
+    link: from(linkChain),
     cache: apolloClient.cache,
-    defaultOptions: apolloClient.defaultOptions
+    defaultOptions: apolloClient.defaultOptions,
   })
 }
 
 // Environment info for debugging
 export const apolloConfig = {
-  gatewayUrl: GATEWAY_URL,
+  gatewayUrl: finalGatewayUrl,
   isDevelopment,
   environment: isDevelopment ? 'development' : 'production'
 } 

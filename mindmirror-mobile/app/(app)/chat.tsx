@@ -1,15 +1,7 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Box } from "@/components/ui/box"
 import { Button } from "@/components/ui/button"
 import { HStack } from "@/components/ui/hstack"
-import {
-  Icon, MenuIcon,
-} from "@/components/ui/icon"
+import { Icon } from "@/components/ui/icon"
 import { Input, InputField } from "@/components/ui/input"
 import { Pressable } from "@/components/ui/pressable"
 import { SafeAreaView } from "@/components/ui/safe-area-view"
@@ -18,11 +10,12 @@ import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
 import { LIST_TRADITIONS, ASK_QUERY } from '@/services/api/queries'
 import { useQuery, useLazyQuery } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
-import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Send } from "lucide-react-native"
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
+import { AppBar } from '@/components/common/AppBar'
 
 interface Message {
   id: string
@@ -31,51 +24,15 @@ interface Message {
   timestamp: Date
 }
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer()
-  }
 
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">AI Chat</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
-
+// NOTE: This route is currently disabled in the drawer. Keeping implementation for later re-enable.
 export default function ChatScreen() {
+  const router = useRouter();
+  const { initialMessage } = useLocalSearchParams<{ initialMessage?: string }>();
+
   const [selectedTradition, setSelectedTradition] = useState('canon-default')
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: `Hello! I'm your AI companion, here to chat with you about your journey, goals, and anything on your mind. I'm drawing from the ${selectedTradition} tradition to provide thoughtful guidance. What would you like to explore today?`,
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const messagesEndRef = useRef<ScrollView>(null)
 
@@ -86,30 +43,83 @@ export default function ChatScreen() {
 
   const traditions = traditionsData?.listTraditions || []
 
-  // Use lazy query for AI chat
-  const [askQuery, { loading, error }] = useLazyQuery(ASK_QUERY, {
-    onCompleted: (data) => {
-      if (data?.ask) {
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          text: data.ask,
-          isUser: false,
-          timestamp: new Date(),
-        }
-        setMessages(prev => [...prev, newMessage])
-      }
-    },
-    onError: (error) => {
-      console.error('Chat error:', error)
-      const errorMessage: Message = {
+  const onQueryCompleted = useCallback((data: any) => {
+    if (data?.ask) {
+      const newMessage: Message = {
         id: Date.now().toString(),
-        text: "I'm sorry, I encountered an error. Please try again.",
+        text: data.ask,
         isUser: false,
         timestamp: new Date(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages(prev => [...prev, newMessage])
     }
-  })
+  }, []);
+
+  const onQueryError = useCallback((error: any) => {
+    console.error('Chat error:', error)
+    const errorMessage: Message = {
+      id: Date.now().toString(),
+      text: "I'm sorry, I encountered an error. Please try again.",
+      isUser: false,
+      timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, errorMessage])
+  }, []);
+
+  // Use lazy query for AI chat
+  const [askQuery, { loading, error }] = useLazyQuery(ASK_QUERY, {
+    onCompleted: onQueryCompleted,
+    onError: onQueryError,
+  });
+
+  // This effect runs when the screen comes into focus.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const setupChat = () => {
+        // If a new initial message is passed, reset the chat.
+        if (initialMessage) {
+          const userMessage: Message = {
+            id: `journal-entry-${Date.now()}`,
+            text: initialMessage,
+            isUser: true,
+            timestamp: new Date(),
+          };
+          setMessages([userMessage]); // Reset with the new message
+          
+          const queryWithHistory = `CONVERSATION HISTORY:\nuser: ${initialMessage}\n\nCURRENT QUERY: ${initialMessage}`;
+          askQuery({
+            variables: {
+              query: queryWithHistory,
+              tradition: selectedTradition,
+              includeJournalContext: true,
+            },
+          });
+        } 
+        // If there's no initial message and the chat is empty, show a greeting.
+        else if (messages.length === 0) {
+          setMessages([
+            {
+              id: '1',
+              text: `Hello! I'm your AI companion, here to chat with you about your journey, goals, and anything on your mind. I'm drawing from the canon-default tradition to provide thoughtful guidance. What would you like to explore today?`,
+              isUser: false,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      };
+
+      if (isActive) {
+        setupChat();
+      }
+
+      return () => {
+        isActive = false;
+      };
+    }, [initialMessage, askQuery, selectedTradition])
+  );
+
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -135,11 +145,11 @@ export default function ChatScreen() {
     setMessages(updatedMessages)
     setInputText('')
 
-    // Construct the query with conversation history (similar to web app)
+    // Construct the query with conversation history
     const conversationHistory = updatedMessages.slice(-6).map(m => `${m.isUser ? 'user' : 'assistant'}: ${m.text}`).join('\n')
     const queryWithHistory = `CONVERSATION HISTORY:\n${conversationHistory}\n\nCURRENT QUERY: ${userMessageContent}`
 
-    // Send to AI
+    // Send to AI, including journal context for all subsequent messages as well
     try {
       console.log('ChatScreen: selectedTradition =', selectedTradition)
       console.log('ChatScreen: About to call askQuery with variables:', {
@@ -151,6 +161,7 @@ export default function ChatScreen() {
         variables: {
           query: queryWithHistory,
           tradition: selectedTradition,
+          includeJournalContext: true, // Continue using journal context for the conversation
         }
       })
     } catch (err) {
@@ -162,7 +173,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Chat" />
         
         {/* Tradition Selector */}
         {traditions.length > 0 && (

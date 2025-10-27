@@ -1,10 +1,11 @@
 resource "google_cloud_run_service" "agent_service" {
-  name     = "agent-service"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.agent_service_container_image
 
@@ -163,6 +164,13 @@ resource "google_cloud_run_service" "agent_service" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

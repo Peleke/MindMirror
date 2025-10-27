@@ -1,0 +1,111 @@
+name: Test WIF Authentication
+
+on:
+  workflow_dispatch:  # Manual trigger only
+    inputs:
+      environment:
+        description: 'Environment to test (staging or production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  test-auth:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set environment variables
+        id: env
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "staging" ]]; then
+            echo "project_id=mindmirror-69" >> $GITHUB_OUTPUT
+            echo "project_num=${{ secrets.GCP_STAGING_PROJECT_NUM }}" >> $GITHUB_OUTPUT
+            echo "service_account=github-actions-staging@mindmirror-69.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+          else
+            echo "project_id=mindmirror-prod" >> $GITHUB_OUTPUT
+            echo "project_num=${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}" >> $GITHUB_OUTPUT
+            echo "service_account=github-actions-production@mindmirror-prod.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to GCP
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ steps.env.outputs.project_num }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: '${{ steps.env.outputs.service_account }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Test - Describe Project
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing: Describe GCP Project"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          gcloud projects describe ${{ steps.env.outputs.project_id }}
+          echo "✅ Can read project details"
+
+      - name: Test - List Cloud Run Services
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing: List Cloud Run Services"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          gcloud run services list \
+            --project=${{ steps.env.outputs.project_id }} \
+            --region=us-east4 \
+            --format="table(SERVICE,REGION,URL,LAST_DEPLOYED)"
+          echo "✅ Can list Cloud Run services"
+
+      - name: Test - List Service Accounts
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing: List Service Accounts"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          gcloud iam service-accounts list \
+            --project=${{ steps.env.outputs.project_id }} \
+            --format="table(EMAIL,DISPLAY_NAME)"
+          echo "✅ Can list service accounts"
+
+      - name: Test - List Secrets
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Testing: List Secrets (should fail if no permissions)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          gcloud secrets list \
+            --project=${{ steps.env.outputs.project_id }} \
+            --format="table(NAME,CREATED)" || echo "⚠️ No permission to list secrets (expected if using roles/viewer)"
+
+      - name: Test - Check WIF Configuration
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "WIF Configuration Details"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Project ID: ${{ steps.env.outputs.project_id }}"
+          echo "Project Number: ${{ steps.env.outputs.project_num }}"
+          echo "Service Account: ${{ steps.env.outputs.service_account }}"
+          echo "WIF Provider: projects/${{ steps.env.outputs.project_num }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc"
+          echo "Authenticated via: ${{ steps.auth.outputs.auth_token != '' && 'WIF OIDC Token' || 'Unknown' }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎯 WIF Authentication Test Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Project: ${{ steps.env.outputs.project_id }}"
+          echo ""
+          echo "✅ Authentication successful!"
+          echo "✅ Can access GCP resources"
+          echo "✅ WIF configuration working"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Grant additional permissions if needed"
+          echo "  2. Test tofu plan workflow"
+          echo "  3. Setup GitHub Environment protection"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

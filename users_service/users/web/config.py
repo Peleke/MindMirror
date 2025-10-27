@@ -1,0 +1,53 @@
+import os
+from shared.secrets import get_secret
+
+
+class Config:
+    """Configuration settings for the users service."""
+
+    API_VERSION = "0.1.0"
+    DEBUG_GRAPHQL_SERVER = os.getenv("DEBUG_GRAPHQL_SERVER", "True").lower() == "true"
+    DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"
+
+    # Database settings (fallback components)
+    DB_USER = os.getenv("DB_USER", "users_user")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "users_password")
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", "5433")  # Default for local dev; Docker may override to 5432
+    DB_NAME = os.getenv("DB_NAME", "users_db")
+    DB_DRIVER = os.getenv("DB_DRIVER", "asyncpg")
+
+    # Prefer a fully-formed DATABASE_URL from secret management (Cloud Run) or env var (local)
+    DATABASE_URL = get_secret(
+        "DATABASE_URL",
+        volume_name="database-url",
+        filename="database-url",
+        default=f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+    # Connection pool settings
+    DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))
+    DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "30"))
+    DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "10"))
+    DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+    DB_POOL_PRE_PING = os.getenv("DB_POOL_PRE_PING", "True").lower() == "true"
+
+    # Service URLs for cross-service communication
+    PRACTICES_SERVICE_URL = os.getenv("PRACTICES_SERVICE_URL", "http://practices:8000/graphql")
+    MEALS_SERVICE_URL = os.getenv("MEALS_SERVICE_URL", "http://meals:8000/graphql")
+    JOURNAL_SERVICE_URL = os.getenv("JOURNAL_SERVICE_URL", "http://journal:8000/graphql")
+    MOVEMENTS_SERVICE_URL = os.getenv("MOVEMENTS_SERVICE_URL", "http://movements:8000/graphql")
+    AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://agent:8000/graphql")
+    # FITNESS_SEVICE_URL superseded by MOVEMENTS_SERVICE_URL
+    FITNESS_SERVICE_URL = os.getenv("FITNESS_SERVICE_URL", "http://movements:8000/graphql")
+    # SHADOW_BOXING_SERVICE_URL does not yet exist
+    SHADOW_BOXING_SERVICE_URL = os.getenv("SHADOW_BOXING_SERVICE_URL", "http://boxing:8000/graphql")
+
+    # Supabase settings
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY = get_secret(
+        "SUPABASE_KEY",
+        volume_name="supabase-service-role-key",
+        filename="supabase-service-role-key",
+        default=""
+    )

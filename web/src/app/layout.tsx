@@ -25,9 +25,13 @@ export const metadata: Metadata = {
     title: "MindMirror - The Journal That Thinks With You",
     description: "Self-aware journaling companion powered by advanced AI",
   },
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
 };
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
 
 export default function RootLayout({
   children,

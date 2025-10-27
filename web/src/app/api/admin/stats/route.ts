@@ -1,57 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../../../lib/supabase/server'
-import { isUserAdmin } from '../../../../../lib/supabase/admin'
-import { getSubscriberStats, getOverallEmailStats } from '../../../../../lib/supabase/subscribers'
+import { NextResponse } from 'next/server'
+import { createServiceRoleClient } from '../../../../../lib/supabase/server'
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+// Single, consolidated stats handler (service-role, server-only)
+export async function GET() {
+  const supabase = createServiceRoleClient()
 
-    // Check if user is admin
-    const isAdmin = await isUserAdmin(user.id)
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+  const [subs, events] = await Promise.all([
+    supabase
+      .schema('waitlist')
+      .from('subscribers')
+      .select('id,status,subscribed_at'),
+    supabase
+      .schema('waitlist')
+      .from('email_events')
+      .select('id')
+  ])
 
-    // Fetch statistics
-    const [subscriberStats, emailStats] = await Promise.all([
-      getSubscriberStats(),
-      getOverallEmailStats()
-    ])
+  if (subs.error) return NextResponse.json({ error: subs.error.message }, { status: 500 })
+  if (events.error) return NextResponse.json({ error: events.error.message }, { status: 500 })
 
-    if (subscriberStats.error) {
-      console.error('Error fetching subscriber stats:', subscriberStats.error)
-    }
+  const total = subs.data?.length || 0
+  const active = subs.data?.filter(s => s.status === 'active').length || 0
+  const recentCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const recentSignups = subs.data?.filter(s => new Date(s.subscribed_at).getTime() >= recentCutoff).length || 0
+  const totalSent = events.data?.length || 0
 
-    if (emailStats.error) {
-      console.error('Error fetching email stats:', emailStats.error)
-    }
-
-    return NextResponse.json({
-      subscribers: {
-        total: subscriberStats.total,
-        active: subscriberStats.active,
-        recentSignups: subscriberStats.recentSignups
-      },
-      emails: {
-        totalSent: emailStats.totalEmails,
-        deliveryRate: emailStats.deliveryRate,
-        openRate: emailStats.openRate,
-        clickRate: emailStats.clickRate
-      }
-    })
-
-  } catch (error) {
-    console.error('Admin stats error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-} 
+  return NextResponse.json({
+    subscribers: { total, active, recentSignups },
+    emails: { totalSent, deliveryRate: 0, openRate: 0, clickRate: 0 },
+  })
+}

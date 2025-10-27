@@ -12,6 +12,9 @@ engine = create_async_engine(
     settings.database_url,
     echo=False,  # Set to True for SQL logging in development
     future=True,
+    connect_args={
+        "statement_cache_size": 0,
+    },
 )
 
 # Create session factory

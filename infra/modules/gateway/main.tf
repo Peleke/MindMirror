@@ -1,10 +1,11 @@
 resource "google_cloud_run_service" "gateway" {
-  name     = "gateway"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
   template {
     spec {
+      container_concurrency = 20
       containers {
         image = var.gateway_container_image
 
@@ -34,6 +35,21 @@ resource "google_cloud_run_service" "gateway" {
           value = var.journal_service_url
         }
 
+        env {
+          name  = "HABITS_SERVICE_URL"
+          value = var.habits_service_url
+        }
+
+        env {
+          name  = "MEALS_SERVICE_URL"
+          value = var.meals_service_url
+        }
+
+        env {
+          name  = "VOUCHERS_WEB_BASE_URL"
+          value = var.vouchers_web_base_url
+        }
+
         # Environment
         env {
           name  = "ENVIRONMENT"
@@ -53,6 +69,13 @@ resource "google_cloud_run_service" "gateway" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+  autogenerate_revision_name = true
+
+  metadata {
+    annotations = {
+      "autoscaling.knative.dev/minScale"     = "1"
+    }
   }
 }
 

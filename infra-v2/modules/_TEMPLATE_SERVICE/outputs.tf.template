@@ -1,0 +1,11 @@
+# TODO: Replace SERVICE_NAME with your service name
+
+output "service_url" {
+  description = "SERVICE_NAME service URL"
+  value       = module.SERVICE_NAME_service.service_url
+}
+
+output "service_name" {
+  description = "SERVICE_NAME service name"
+  value       = module.SERVICE_NAME_service.service_name
+}

@@ -1,0 +1,102 @@
+# SERVICE_NAME Service - Cloud Run v2
+# TODO: Replace SERVICE_NAME with your service name (e.g., Agent, Journal, etc.)
+# TODO: Update description below
+
+# Description: [What this service does]
+# Dependencies: [Other services this depends on]
+# Critical: [Yes/No - should it have min_instances=1?]
+
+module "SERVICE_NAME_service" {
+  source = "../cloud-run-v2"
+
+  project_id            = var.project_id
+  region                = var.region
+  service_name          = "SERVICE_NAME-service"  # TODO: lowercase-with-dashes
+  image                 = var.image
+  service_account_email = var.service_account_email
+
+  # Scaling
+  min_instances = var.min_instances
+  max_instances = var.max_instances
+
+  # ========================================
+  # SECRET VOLUMES
+  # ========================================
+  # Secrets are mounted as files at: /secrets/<volume-name>/<filename>
+  # App code reads: open("/secrets/database-url/database-url").read()
+  #
+  # To add a secret:
+  # 1. Add to this list
+  # 2. Add corresponding variable (see variables.tf)
+  # 3. Pass from parent module (see ../main.tf)
+  # 4. Update app code to read from file
+  #
+  secret_volumes = [
+    # Example: Database URL
+    {
+      volume_name = "database-url"
+      secret_name = var.database_url_secret  # Name in Secret Manager
+      filename    = "database-url"           # Filename in mounted volume
+    },
+    # TODO: Add more secrets as needed
+    # {
+    #   volume_name = "openai-api-key"
+    #   secret_name = var.openai_api_key_secret
+    #   filename    = "openai-api-key"
+    # },
+  ]
+
+  # ========================================
+  # ENVIRONMENT VARIABLES (Non-Secret)
+  # ========================================
+  # Only use for non-sensitive configuration!
+  # For secrets, use secret_volumes above.
+  #
+  env_vars = [
+    {
+      name  = "ENVIRONMENT"
+      value = var.environment
+    },
+    {
+      name  = "LOG_LEVEL"
+      value = var.log_level
+    },
+    {
+      name  = "DEBUG"
+      value = tostring(var.debug)
+    },
+    {
+      name  = "PORT"
+      value = "8000"
+    },
+    # TODO: Add service-specific config
+    # {
+    #   name  = "SOME_SERVICE_URL"
+    #   value = var.some_service_url
+    # },
+  ]
+
+  # ========================================
+  # NETWORKING
+  # ========================================
+  port                  = 8000  # TODO: Change if different
+  ingress               = "INGRESS_TRAFFIC_ALL"  # MVP: Public, change to INTERNAL_ONLY after VPC
+  allow_unauthenticated = true
+
+  # ========================================
+  # HEALTH CHECKS
+  # ========================================
+  health_check_path = "/health"  # TODO: Verify this matches your service
+
+  # Adjust if service has slow startup
+  startup_probe_initial_delay    = 10
+  startup_probe_timeout          = 3
+  startup_probe_period           = 10
+  startup_probe_failure_threshold = 3
+
+  # ========================================
+  # RESOURCES
+  # ========================================
+  cpu_limit    = "1000m"  # 1 vCPU (adjust if needed)
+  memory_limit = "512Mi"  # 512 MB (adjust if needed)
+}

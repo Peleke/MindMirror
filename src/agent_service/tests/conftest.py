@@ -1,6 +1,14 @@
+import sys
+import os
+
+# Add the root 'src' directory to the Python path to resolve sibling package imports.
+# This makes the test runner's environment behave like the Docker/installed environment,
+# allowing absolute imports like `from agent_service.app...` and `from shared.auth...`
+# to work correctly. This must be the first piece of code to run.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import asyncio
 import logging
-import os
 import time
 from typing import AsyncGenerator
 from uuid import UUID

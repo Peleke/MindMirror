@@ -54,6 +54,22 @@ resource "google_project_iam_member" "agent_sa_secret_access" {
   member  = "serviceAccount:${google_service_account.agent_service.email}"
 }
 
+resource "google_service_account" "meals_service" {
+  account_id   = "meals-service"
+  display_name = "Service Account for Meals Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "meals_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.meals_service.email}"
+}
+
+output "meals_service_email" {
+  value = google_service_account.meals_service.email
+}
+
 # Existing secrets — just referencing
 data "google_secret_manager_secret" "reindex" {
   secret_id = "REINDEX_SECRET_KEY"
@@ -108,4 +124,41 @@ data "google_secret_manager_secret" "supabase_url" {
 data "google_secret_manager_secret" "supabase_service_role_key" {
   secret_id = "SUPABASE_SERVICE_ROLE_KEY"
   project   = var.project_id
+}
+
+# Service accounts for additional services
+resource "google_service_account" "movements_service" {
+  account_id   = "movements-service"
+  display_name = "Service Account for Movements Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "movements_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.movements_service.email}"
+}
+
+resource "google_service_account" "practices_service" {
+  account_id   = "practices-service"
+  display_name = "Service Account for Practices Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "practices_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.practices_service.email}"
+}
+
+resource "google_service_account" "users_service" {
+  account_id   = "users-service"
+  display_name = "Service Account for Users Service"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "users_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.users_service.email}"
 }
