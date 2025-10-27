@@ -186,10 +186,15 @@ jobs:
           else
             git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }} [skip ci]"
 
-            # Push to the current branch (staging or feature branch for testing)
+            # Only push to staging branch (skip for feature branches during testing)
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-            git push origin "$BRANCH_NAME"
-            echo "✅ Pushed tfvars update to $BRANCH_NAME"
+            if [[ "$BRANCH_NAME" == "staging" ]]; then
+              git push origin staging
+              echo "✅ Pushed tfvars update to staging"
+            else
+              echo "ℹ️  Skipping push on feature branch ($BRANCH_NAME)"
+              echo "ℹ️  tfvars generated and committed locally, will be pushed when merged to staging"
+            fi
           fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
