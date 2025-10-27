@@ -173,6 +173,8 @@ jobs:
           echo "📝 Generated infra/staging.auto.tfvars"
 
       - name: Commit and push tfvars
+        env:
+          GITHUB_REF: ${{ github.ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -183,8 +185,11 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }} [skip ci]"
-            git push origin staging
-            echo "✅ Pushed tfvars update"
+
+            # Push to the current branch (staging or feature branch for testing)
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            git push origin "$BRANCH_NAME"
+            echo "✅ Pushed tfvars update to $BRANCH_NAME"
           fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
