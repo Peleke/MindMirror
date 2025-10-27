@@ -31,12 +31,22 @@ jobs:
             echo "project_num=${{ secrets.GCP_STAGING_PROJECT_NUM }}" >> $GITHUB_OUTPUT
             echo "wif_provider=projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc" >> $GITHUB_OUTPUT
             echo "service_account=github-actions-staging@mindmirror-69.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+
+            echo "✅ Detected staging environment"
+            echo "   Project: mindmirror-69"
+            echo "   Project Num: ${{ secrets.GCP_STAGING_PROJECT_NUM }}"
+
           elif [[ "$BASE_BRANCH" == "main" ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "project_id=mindmirror-prod" >> $GITHUB_OUTPUT
             echo "project_num=${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}" >> $GITHUB_OUTPUT
             echo "wif_provider=projects/${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc" >> $GITHUB_OUTPUT
             echo "service_account=github-actions-production@mindmirror-prod.iam.gserviceaccount.com" >> $GITHUB_OUTPUT
+
+            echo "✅ Detected production environment"
+            echo "   Project: mindmirror-prod"
+            echo "   Project Num: ${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}"
+
           else
             echo "❌ Unknown base branch: $BASE_BRANCH"
             echo "PRs must target 'staging' or 'main' branch"
@@ -64,7 +74,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ needs.detect-environment.outputs.wif_provider }}
+          workload_identity_provider: 'projects/${{ needs.detect-environment.outputs.project_num }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
           service_account: ${{ needs.detect-environment.outputs.service_account }}
 
       - name: Set up Cloud SDK
@@ -108,17 +118,22 @@ jobs:
         if: always()
         with:
           script: |
-            const output = `## 🏗️ Tofu Plan - \`${{ env.ENVIRONMENT }}\`
+            const planOutput = `${{ steps.plan.outputs.plan_output || 'Plan did not run - check workflow logs' }}`;
+            const exitCode = '${{ steps.plan.outputs.exit_code || 'unknown' }}';
+            const environment = '${{ env.ENVIRONMENT }}';
+            const projectId = '${{ env.GCP_PROJECT_ID }}';
 
-            **Environment**: ${{ env.ENVIRONMENT }}
-            **Project**: ${{ env.GCP_PROJECT_ID }}
-            **Status**: ${{ steps.plan.outputs.exit_code == '0' && '✅ Success' || '❌ Failed' }}
+            const output = `## 🏗️ Tofu Plan - \`${environment}\`
+
+            **Environment**: ${environment}
+            **Project**: ${projectId}
+            **Status**: ${exitCode === '0' ? '✅ Success' : '❌ Failed'}
 
             <details>
             <summary>📋 Show Plan Output</summary>
 
             \`\`\`terraform
-            ${{ steps.plan.outputs.plan_output }}
+            ${planOutput}
             \`\`\`
 
             </details>
@@ -126,8 +141,8 @@ jobs:
             ---
 
             **Next Steps**:
-            ${steps.plan.outputs.exit_code == '0' ?
-              (env.ENVIRONMENT === 'staging' ?
+            ${exitCode === '0' ?
+              (environment === 'staging' ?
                 '✅ Merge this PR to auto-deploy to staging' :
                 '⚠️ Merge this PR to trigger production deployment (requires manual approval)') :
               '❌ Fix errors before merging'}
