@@ -98,7 +98,7 @@ jobs:
               IMAGE_NAME="agent_service"
               ;;
             journal_service)
-              DOCKERFILE="src/journal_service/Dockerfile"
+              DOCKERFILE="journal_service/Dockerfile"
               IMAGE_NAME="journal_service"
               ;;
             habits_service)
@@ -128,6 +128,7 @@ jobs:
             mesh_gateway)
               DOCKERFILE="mesh/Dockerfile"
               IMAGE_NAME="mesh"
+              BUILD_CONTEXT="mesh"
               ;;
             *)
               echo "❌ Unknown service: $SERVICE"
@@ -137,8 +138,11 @@ jobs:
 
           IMAGE="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${IMAGE_NAME}:${VERSION_TAG}"
 
+          # Use service-specific build context if defined, otherwise use repo root
+          BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
+
           echo "🏗️  Building $IMAGE"
-          docker build -t "$IMAGE" -f "$DOCKERFILE" .
+          docker build -t "$IMAGE" -f "$DOCKERFILE" "$BUILD_CONTEXT"
 
           echo "📤 Pushing $IMAGE"
           docker push "$IMAGE"
