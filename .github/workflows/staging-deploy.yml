@@ -186,7 +186,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }} [skip ci]"
+            git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }}"
 
             # Push to current branch
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
