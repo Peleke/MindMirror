@@ -155,6 +155,9 @@ jobs:
   create-deploy-pr:
     needs: [detect-changes, build-and-push]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push deployment branch and create PR
+      pull-requests: write  # Required to create pull request
     steps:
       - uses: actions/checkout@v4
         with:
