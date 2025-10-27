@@ -74,7 +74,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/${{ needs.detect-environment.outputs.project_num }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          workload_identity_provider: ${{ needs.detect-environment.outputs.environment == 'staging' && format('projects/{0}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc', secrets.GCP_STAGING_PROJECT_NUM) || format('projects/{0}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc', secrets.GCP_PRODUCTION_PROJECT_NUM) }}
           service_account: ${{ needs.detect-environment.outputs.service_account }}
 
       - name: Set up Cloud SDK
