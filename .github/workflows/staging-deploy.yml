@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - staging
+    paths-ignore:
+      - 'infra/**/*.tfvars'  # Don't trigger on tfvars-only changes (prevents loop)
 
 env:
   GCP_PROJECT_ID: mindmirror-69  # Staging project
@@ -183,7 +185,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }} [skip ci]"
+            git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }}"
             git push origin staging
             echo "✅ Pushed tfvars update"
           fi
