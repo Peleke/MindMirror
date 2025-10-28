@@ -12,17 +12,17 @@ VERSION_TAG="$2"  # e.g., v1.2.0-abc1234
 # Configuration per environment
 case "$ENVIRONMENT" in
     staging)
-        PROJECT_ID="mindmirror-staging"
-        PROJECT_NUM_ID="TBD"  # Update with actual staging project number
-        REGISTRY="us-east4-docker.pkg.dev/mindmirror-staging/mindmirror"
+        PROJECT_ID="mindmirror-69"
+        PROJECT_NUM_ID="3858903851"
+        REGISTRY="us-east4-docker.pkg.dev/mindmirror-69/mindmirror"
         ENV_NAME="staging"
         LOG_LEVEL="DEBUG"
         DEBUG="true"
         ;;
     production)
-        PROJECT_ID="mindmirror-69"
-        PROJECT_NUM_ID="3858903851"
-        REGISTRY="us-east4-docker.pkg.dev/mindmirror-69/mindmirror"
+        PROJECT_ID="mindmirror-prod"
+        PROJECT_NUM_ID="435339726777"
+        REGISTRY="us-east4-docker.pkg.dev/mindmirror-prod/mindmirror"
         ENV_NAME="production"
         LOG_LEVEL="INFO"
         DEBUG="false"
