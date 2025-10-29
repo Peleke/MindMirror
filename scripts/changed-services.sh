@@ -89,8 +89,8 @@ while IFS= read -r file; do
             services_map[web_app]=1
             ;;
 
-        # CI/CD changes (don't trigger service builds)
-        .github/*|scripts/*|docs/*)
+        # Infrastructure/CI/CD changes (don't trigger service builds)
+        infra/*|infra-v2/*|.github/*|scripts/*|docs/*|*.md|VERSION|CLAUDE.md|.bmad-core/*|.serena/*|.cursor/*|.claude/*|.terrateam/*|tools/*|plans/*|data/*|env.*|*.lock|.gitignore)
             # Skip - these don't require service rebuilds
             ;;
 
