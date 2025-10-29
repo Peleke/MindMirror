@@ -60,6 +60,28 @@ gcs_bucket_name      = "traditions-${PROJECT_ID}"
 environment = "${ENV_NAME}"
 log_level   = "${LOG_LEVEL}"
 debug       = "${DEBUG}"
+EOF
+
+# Add service name overrides per environment
+if [ "$ENVIRONMENT" = "staging" ]; then
+cat <<EOF
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Service Names (Environment-Specific)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+agent_service_name         = "agent-service-staging"
+journal_service_name       = "journal-service-staging"
+habits_service_name        = "habits-service-staging"
+gateway_service_name       = "gateway-staging"
+meals_service_name         = "meals-service-staging"
+movements_service_name     = "movements-service-staging"
+practices_service_name     = "practices-service-staging"
+users_service_name         = "users-service-staging"
+celery_worker_service_name = "celery-worker-staging"
+EOF
+fi
+
+cat <<EOF
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Container Images (Auto-Updated)
