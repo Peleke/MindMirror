@@ -46,6 +46,7 @@ step "2/4: Granting IAM roles to service account"
 REQUIRED_ROLES=(
   "roles/run.admin"
   "roles/iam.serviceAccountUser"
+  "roles/iam.serviceAccountAdmin"
   "roles/storage.admin"
   "roles/secretmanager.admin"
   "roles/artifactregistry.admin"
