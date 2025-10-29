@@ -2,8 +2,8 @@
 
 **Date**: 2025-10-29
 **Branch**: `staging`
-**Last Commit**: `b3ff5d6` - "fix(infra): deprecate celery-worker module and add missing base outputs"
-**Status**: 🚀 Module dependencies fixed, ready for deployment
+**Last Commit**: `f577df6` - "fix(infra): comment out celery_worker_url output"
+**Status**: 🚀 All infrastructure errors fixed, deployment in progress
 
 ---
 
@@ -58,20 +58,22 @@
    - Maintains full branch comparison for safety
 
 9. **Fixed Module Dependencies** 🎯
-   - **Problem**: Celery worker module had data sources trying to look up service accounts before they were created (chicken-and-egg problem)
+   - **Problem 1**: Celery worker module had data sources trying to look up service accounts before they were created (chicken-and-egg problem)
+   - **Problem 2**: Duplicate output definitions in base/main.tf and base/outputs.tf
+   - **Problem 3**: Root outputs.tf still referenced deprecated celery_worker module
    - **Fix**:
-     - Deprecated celery_worker module (not currently in use)
-     - Added missing base module outputs for all service accounts
-     - Added traditions_bucket_name output to base module
-   - **Result**: Terraform plan now succeeds without data source errors
+     - Deprecated celery_worker module (not currently in use) in infra/main.tf
+     - Removed duplicate outputs from base/main.tf (kept in base/outputs.tf)
+     - Commented out celery_worker_url output in infra/outputs.tf
+   - **Result**: Tofu init and plan now succeed without errors
 
 ### 🔄 In Progress
 
-**Deploy to Staging** (Latest)
-- Status: Waiting for workflow to trigger
-- Commit: `b3ff5d6`
-- Expected: Deploy to Staging → Tofu Apply - Staging
-- All fixes included: environment isolation, module dependencies, IAM permissions
+**Deploy to Staging** (Run #18916021438)
+- Status: Building images for all services
+- Commit: `f577df6`
+- Expected: Deploy to Staging → (manual trigger) → Tofu Apply - Staging
+- All fixes included: environment isolation, module dependencies, IAM permissions, output references
 
 ### 📦 Latest Build
 
@@ -222,7 +224,9 @@ gh workflow run tofu-apply-staging.yml --ref staging
 - `scripts/changed-services.sh` - Added comprehensive skip patterns for infra/docs/config
 - `infra/staging.auto.tfvars` - Regenerated with correct project
 - `infra/main.tf` - Passed environment variable to base module, deprecated celery_worker
-- `infra/base/main.tf` - Added environment suffixes and missing outputs
+- `infra/outputs.tf` - Commented out celery_worker_url output
+- `infra/base/main.tf` - Added environment suffixes, removed duplicate outputs
+- `infra/base/outputs.tf` - Contains all base module outputs (already existed)
 - `infra/modules/celery-worker/main.tf` - Added environment suffixes (now deprecated)
 - `infra/modules/gateway/main.tf` - Added environment suffix to service account
 
