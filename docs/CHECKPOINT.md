@@ -1,9 +1,9 @@
 # GitOps Deployment Checkpoint
 
-**Date**: 2025-10-28
+**Date**: 2025-10-29
 **Branch**: `staging`
-**Last Commit**: `a0133d0` - "fix(infra): correct GCP project IDs for staging and production"
-**Status**: ✅ Ready for manual approval and deployment
+**Last Commit**: `0c7015f` - "fix(infra): pass environment variable to base module"
+**Status**: 🚀 Environment isolation implemented, deployment in progress
 
 ---
 
@@ -34,13 +34,36 @@
      - Production: `mindmirror-69` → `mindmirror-prod` (project #435339726777)
    - **Result**: Regenerated `infra/staging.auto.tfvars` with correct configuration
 
+6. **Implemented Environment Isolation** 🎯
+   - **Problem**: Resources had no environment suffix → naming conflicts (409 errors)
+   - **Fix**:
+     - Added `environment` variable to all modules
+     - Added `-${var.environment}` suffix to all resources:
+       - GCS bucket: `traditions-{project}-{env}`
+       - Service accounts: `{service}-{env}`
+       - Pub/Sub topics: `{topic}-{env}`
+     - Updated data sources to reference new naming
+   - **Result**: Staging and production can coexist in same GCP project
+
+7. **Fixed IAM Permissions** 🎯
+   - **Problem**: GitHub Actions SA couldn't create service accounts (403 errors)
+   - **Fix**:
+     - Granted `roles/iam.serviceAccountAdmin` to `github-actions-staging` SA
+     - Updated `infra-v2/bootstrap/06-bootstrap-wif.sh` for future deployments
+   - **Result**: Terraform can now create service accounts
+
+8. **Improved CI Change Detection**
+   - Added comprehensive skip patterns for non-service files
+   - Eliminated "Unknown file pattern" warnings for infra/docs/config changes
+   - Maintains full branch comparison for safety
+
 ### 🔄 In Progress
 
-**Tofu Apply - Staging Workflow**
-- Status: `waiting` for manual approval
-- URL: https://github.com/Peleke/MindMirror/actions/runs/18860234790
-- Environment: GitHub `staging` environment requires manual approval
-- Action Required: Navigate to URL and click "Review deployments" → "Approve and deploy"
+**Deploy to Staging** (Run #18915265035)
+- Status: Building images for changed services
+- Commit: `0c7015f`
+- Expected: Will auto-trigger Tofu Apply after completion
+- All environment isolation fixes are included
 
 ### 📦 Latest Build
 
