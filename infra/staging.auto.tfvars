@@ -20,6 +20,19 @@ log_level   = "DEBUG"
 debug       = "true"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Service Names (Environment-Specific)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+agent_service_name         = "agent-service-staging"
+journal_service_name       = "journal-service-staging"
+habits_service_name        = "habits-service-staging"
+gateway_service_name       = "gateway-staging"
+meals_service_name         = "meals-service-staging"
+movements_service_name     = "movements-service-staging"
+practices_service_name     = "practices-service-staging"
+users_service_name         = "users-service-staging"
+celery_worker_service_name = "celery-worker-staging"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Container Images (Auto-Updated)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 journal_service_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/journal_service:v-4bd66b4"

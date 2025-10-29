@@ -68,6 +68,10 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/artifactregistry.reader"
 
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/resourcemanager.projectIamAdmin"
+
 echo "== Creating Workload Identity Pool $WIF_POOL =="
 if ! gcloud iam workload-identity-pools describe $WIF_POOL --location="global" >/dev/null 2>&1; then
   gcloud iam workload-identity-pools create $WIF_POOL \
