@@ -4,6 +4,12 @@ resource "google_cloud_run_service" "habits_service" {
   project  = var.project_id
 
   template {
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale" = "1"
+      }
+    }
+
     spec {
       container_concurrency = 20
       containers {
@@ -72,12 +78,6 @@ resource "google_cloud_run_service" "habits_service" {
     latest_revision = true
   }
   autogenerate_revision_name = true
-
-  metadata {
-    annotations = {
-      "autoscaling.knative.dev/minScale"     = "1"
-    }
-  }
 }
 
 resource "google_cloud_run_service_iam_member" "public_access" {

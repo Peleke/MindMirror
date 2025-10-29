@@ -4,6 +4,12 @@ resource "google_cloud_run_service" "gateway" {
   project  = var.project_id
 
   template {
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale" = "1"
+      }
+    }
+
     spec {
       container_concurrency = 20
       containers {
@@ -71,12 +77,6 @@ resource "google_cloud_run_service" "gateway" {
     latest_revision = true
   }
   autogenerate_revision_name = true
-
-  metadata {
-    annotations = {
-      "autoscaling.knative.dev/minScale"     = "1"
-    }
-  }
 }
 
 # Allow unauthenticated access to the Cloud Run service
