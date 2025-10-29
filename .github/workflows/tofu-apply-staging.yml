@@ -18,10 +18,6 @@ jobs:
     # Only run if Deploy to Staging succeeded (or if manually triggered)
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    # Add manual approval for staging during testing phase
-    environment:
-      name: staging
-      url: https://console.cloud.google.com/run?project=mindmirror-69
     permissions:
       contents: read
       id-token: write
