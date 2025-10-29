@@ -2,8 +2,8 @@
 
 **Date**: 2025-10-29
 **Branch**: `staging`
-**Last Commit**: `0c7015f` - "fix(infra): pass environment variable to base module"
-**Status**: 🚀 Environment isolation implemented, deployment in progress
+**Last Commit**: `b3ff5d6` - "fix(infra): deprecate celery-worker module and add missing base outputs"
+**Status**: 🚀 Module dependencies fixed, ready for deployment
 
 ---
 
@@ -57,13 +57,21 @@
    - Eliminated "Unknown file pattern" warnings for infra/docs/config changes
    - Maintains full branch comparison for safety
 
+9. **Fixed Module Dependencies** 🎯
+   - **Problem**: Celery worker module had data sources trying to look up service accounts before they were created (chicken-and-egg problem)
+   - **Fix**:
+     - Deprecated celery_worker module (not currently in use)
+     - Added missing base module outputs for all service accounts
+     - Added traditions_bucket_name output to base module
+   - **Result**: Terraform plan now succeeds without data source errors
+
 ### 🔄 In Progress
 
-**Deploy to Staging** (Run #18915265035)
-- Status: Building images for changed services
-- Commit: `0c7015f`
-- Expected: Will auto-trigger Tofu Apply after completion
-- All environment isolation fixes are included
+**Deploy to Staging** (Latest)
+- Status: Waiting for workflow to trigger
+- Commit: `b3ff5d6`
+- Expected: Deploy to Staging → Tofu Apply - Staging
+- All fixes included: environment isolation, module dependencies, IAM permissions
 
 ### 📦 Latest Build
 
@@ -211,11 +219,17 @@ gh workflow run tofu-apply-staging.yml --ref staging
 - `.github/workflows/tofu-apply-staging.yml` - Workflow chaining implementation
 - `.github/workflows/tofu-apply-production.yml` - Workflow chaining implementation
 - `scripts/generate-tfvars.sh` - **CRITICAL: Fixed project IDs**
+- `scripts/changed-services.sh` - Added comprehensive skip patterns for infra/docs/config
 - `infra/staging.auto.tfvars` - Regenerated with correct project
+- `infra/main.tf` - Passed environment variable to base module, deprecated celery_worker
+- `infra/base/main.tf` - Added environment suffixes and missing outputs
+- `infra/modules/celery-worker/main.tf` - Added environment suffixes (now deprecated)
+- `infra/modules/gateway/main.tf` - Added environment suffix to service account
 
 ### Configuration Files
 - `infra/staging.backend.hcl` - Backend state configuration
 - `infra/production.backend.hcl` - Backend state configuration
+- `infra-v2/bootstrap/06-bootstrap-wif.sh` - Added iam.serviceAccountAdmin role
 
 ---
 
