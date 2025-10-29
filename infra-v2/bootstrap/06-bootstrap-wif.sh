@@ -52,6 +52,7 @@ REQUIRED_ROLES=(
   "roles/artifactregistry.admin"
   "roles/compute.networkAdmin"
   "roles/pubsub.admin"
+  "roles/resourcemanager.projectIamAdmin"
 )
 
 for role in "${REQUIRED_ROLES[@]}"; do
