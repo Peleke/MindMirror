@@ -10,7 +10,7 @@
 project_id           = "mindmirror-69"
 project_numerical_id = "3858903851"
 region               = "us-east4"
-gcs_bucket_name      = "traditions-mindmirror-69"
+gcs_bucket_name      = "traditions-mindmirror-69-staging"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Environment Configuration

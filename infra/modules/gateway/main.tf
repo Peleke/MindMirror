@@ -90,8 +90,8 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 
 # Service account for gateway
 resource "google_service_account" "gateway" {
-  account_id   = "gateway"
-  display_name = "Service Account for Gateway"
+  account_id   = "gateway-${var.environment}"
+  display_name = "Service Account for Gateway (${var.environment})"
   project      = var.project_id
 }
 
