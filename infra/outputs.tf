@@ -18,10 +18,11 @@ output "gateway_url" {
   value       = module.gateway.gateway_url
 }
 
-output "celery_worker_url" {
-  description = "Celery worker service URL"
-  value       = module.celery_worker.celery_worker_url
-}
+# Deprecated: celery_worker module not in use
+# output "celery_worker_url" {
+#   description = "Celery worker service URL"
+#   value       = module.celery_worker.celery_worker_url
+# }
 
 output "habits_service_url" {
   description = "Habits service URL"
