@@ -1,7 +1,8 @@
 module "base" {
-  source     = "./base"
-  project_id = var.project_id
-  region     = var.region
+  source      = "./base"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
 }
 
 # Data sources for secrets
