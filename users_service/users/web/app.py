@@ -94,6 +94,23 @@ async def health_check():
     return {"status": "healthy", "service": "users", "version": API_VERSION}
 
 
+@app.get("/sdl", include_in_schema=False, tags=["internal"])
+async def get_schema_sdl():
+    """
+    Public SDL endpoint for schema composition.
+    Returns GraphQL schema in SDL format.
+    Used by mesh-compose to build supergraph.
+
+    Note: Exposes schema structure only, not data.
+    Data queries still require JWT authentication.
+    """
+    from fastapi.responses import Response
+    return Response(
+        content=str(schema_with_extensions),
+        media_type="text/plain"
+    )
+
+
 @app.get("/")
 async def root():
     return {"message": "Users service is running. Visit /graphql for the API."}

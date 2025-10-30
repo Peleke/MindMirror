@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import String, DateTime, Boolean, text, Integer, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -50,6 +50,9 @@ class MovementModel(Base):
 
     source: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     external_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Flexible metadata storage for coach videos, import details, etc.
+    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True, name="metadata")
 
     is_public: Mapped[bool] = mapped_column(Boolean, default=True)
     user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)

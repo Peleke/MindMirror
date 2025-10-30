@@ -21,23 +21,41 @@ help:
 	@echo "  make down       - Stop all services"
 	@echo ""
 
-# Local Development (Docker Compose with local databases)
+# Local Development (Docker Compose with local databases + real Supabase auth)
 local:
 	@echo "🚀 Starting MindMirror in LOCAL mode..."
-	@echo "   - PostgreSQL: Local Docker container"
-	@echo "   - Qdrant: Local Docker container"
-	@echo "   - Redis: Local Docker container"
-	@echo "   - GCS: Local emulator"
-	ENV_FILE=env.local docker-compose up --build
+	@echo "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "   📦 Databases: Local Docker containers"
+	@echo "      - PostgreSQL: postgres:5432"
+	@echo "      - Qdrant: qdrant:6333"
+	@echo "      - Redis: redis:6379"
+	@echo "      - GCS: gcs-emulator:4443"
+	@echo ""
+	@echo "   🔐 Authentication: LIVE Supabase"
+	@echo "      - Gateway JWT validation enabled"
+	@echo "      - Web/Mobile Supabase auth enabled"
+	@echo ""
+	@echo "   🌐 Service URLs: Local Docker networking"
+	@echo "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	ENV_FILE=.env.local docker-compose up -d --build
 
-# Staging Environment (Live databases, local services)
+# Staging Environment (Live external services + local Redis)
 staging:
 	@echo "🚀 Starting MindMirror in STAGING mode..."
-	@echo "   - PostgreSQL: Live Supabase"
-	@echo "   - Qdrant: Live Qdrant Cloud"
-	@echo "   - Redis: Local Docker container"
-	@echo "   - GCS: Live GCS bucket"
-	ENV_FILE=env.staging docker-compose up --build
+	@echo "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "   📦 Databases: Live External Services"
+	@echo "      - PostgreSQL: Supabase (live)"
+	@echo "      - Qdrant: Qdrant Cloud (live)"
+	@echo "      - Redis: Local Docker container"
+	@echo "      - GCS: Configurable (emulator or live)"
+	@echo ""
+	@echo "   🔐 Authentication: LIVE Supabase"
+	@echo "      - Gateway JWT validation enabled"
+	@echo "      - Web/Mobile Supabase auth enabled"
+	@echo ""
+	@echo "   🌐 Service URLs: Local Docker → will point to staging URLs"
+	@echo "   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	ENV_FILE=.env.staging docker-compose up -d --build
 
 # Production Environment (Live everything)
 production:
