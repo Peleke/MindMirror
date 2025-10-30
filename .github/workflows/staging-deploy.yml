@@ -73,6 +73,13 @@ jobs:
           - service: mobile_app
           # Skip deprecated celery worker
           - service: celery_worker
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Gateway excluded from this workflow (two-phase deployment)
+          # Gateway requires service URLs which don't exist until after
+          # Terraform deployment completes. Gateway is built and deployed
+          # separately via gateway-deploy.yml workflow.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          - service: mesh_gateway
     steps:
       - uses: actions/checkout@v4
 
@@ -172,8 +179,9 @@ jobs:
           VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
         run: |
           chmod +x scripts/generate-tfvars.sh
+          # Generate tfvars for services only (gateway deployed separately)
           ./scripts/generate-tfvars.sh staging "$VERSION_TAG" > infra/staging.auto.tfvars
-          echo "📝 Generated infra/staging.auto.tfvars"
+          echo "📝 Generated infra/staging.auto.tfvars (services only, gateway excluded)"
 
       - name: Commit and push tfvars
         run: |
