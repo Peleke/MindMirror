@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # scripts/generate-tfvars.sh
 # Generates auto.tfvars files for Terrateam deployments
-# Usage: ./scripts/generate-tfvars.sh <environment> <version_tag>
+# Usage: ./scripts/generate-tfvars.sh <environment> <version_tag> [--gateway-only]
 # Example: ./scripts/generate-tfvars.sh staging v1.2.0-abc1234
+# Example: ./scripts/generate-tfvars.sh staging v1.2.0-abc1234 --gateway-only
 
 set -euo pipefail
 
 ENVIRONMENT="$1"  # staging or production
 VERSION_TAG="$2"  # e.g., v1.2.0-abc1234
+GATEWAY_ONLY="${3:-}"  # optional: --gateway-only flag
 
 # Configuration per environment
 case "$ENVIRONMENT" in
@@ -86,6 +88,17 @@ cat <<EOF
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Container Images (Auto-Updated)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+
+# Check if gateway-only mode
+if [ "${GATEWAY_ONLY}" = "--gateway-only" ]; then
+cat <<EOF
+# Gateway-only update
+gateway_container_image         = "${REGISTRY}/mesh:${VERSION_TAG}"
+EOF
+else
+cat <<EOF
+# Full service deployment
 journal_service_container_image = "${REGISTRY}/journal_service:${VERSION_TAG}"
 agent_service_container_image   = "${REGISTRY}/agent_service:${VERSION_TAG}"
 gateway_container_image         = "${REGISTRY}/mesh:${VERSION_TAG}"
@@ -95,6 +108,10 @@ meals_image                     = "${REGISTRY}/meals_service:${VERSION_TAG}"
 users_image                     = "${REGISTRY}/users_service:${VERSION_TAG}"
 movements_image                 = "${REGISTRY}/movements_service:${VERSION_TAG}"
 practices_image                 = "${REGISTRY}/practices_service:${VERSION_TAG}"
+EOF
+fi
+
+cat <<EOF
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Static Configuration

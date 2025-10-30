@@ -56,7 +56,24 @@ def create_app() -> FastAPI:
             "service": "journal-service",
             "version": "0.1.0"
         }
-    
+
+    # SDL endpoint for schema composition (mesh-compose)
+    @app.get("/sdl", include_in_schema=False, tags=["internal"])
+    async def get_schema_sdl():
+        """
+        Public SDL endpoint for schema composition.
+        Returns GraphQL schema in SDL format.
+        Used by mesh-compose to build supergraph.
+
+        Note: Exposes schema structure only, not data.
+        Data queries still require JWT authentication.
+        """
+        from fastapi.responses import Response
+        return Response(
+            content=str(schema),
+            media_type="text/plain"
+        )
+
     # Register GraphQL
     graphql_app = GraphQLRouter(
         schema,
@@ -64,7 +81,7 @@ def create_app() -> FastAPI:
         context_getter=get_context
     )
     app.include_router(graphql_app, prefix="/graphql", tags=["graphql"])
-    
+
     return app
 
 
