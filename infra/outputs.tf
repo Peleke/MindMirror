@@ -28,3 +28,23 @@ output "habits_service_url" {
   description = "Habits service URL"
   value       = module.habits_service.habits_service_url
 }
+
+output "meals_service_url" {
+  description = "Meals service URL"
+  value       = module.meals_service.service_url
+}
+
+output "movements_service_url" {
+  description = "Movements service URL"
+  value       = module.movements_service.service_url
+}
+
+output "practices_service_url" {
+  description = "Practices service URL"
+  value       = module.practices_service.service_url
+}
+
+output "users_service_url" {
+  description = "Users service URL"
+  value       = module.users_service.service_url
+}
