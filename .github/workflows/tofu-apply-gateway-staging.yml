@@ -1,8 +1,8 @@
-name: Tofu Apply - Staging
+name: Tofu Apply - Gateway (Staging)
 
 on:
   workflow_run:
-    workflows: ["Deploy to Staging"]
+    workflows: ["Deploy Gateway to Staging"]
     types: [completed]
     branches: [staging]
   workflow_dispatch:  # Allows manual trigger via GitHub UI
@@ -14,8 +14,8 @@ env:
   ENVIRONMENT: "staging"
 
 jobs:
-  apply:
-    # Only run if Deploy to Staging succeeded (or if manually triggered)
+  apply-gateway:
+    # Only run if Deploy Gateway to Staging succeeded (or if manually triggered)
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
@@ -46,23 +46,34 @@ jobs:
         run: |
           tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
 
-      - name: Tofu Plan
+      - name: Tofu Plan (Gateway Only)
         id: plan
         working-directory: infra
         run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 Planning Gateway Deployment"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
           tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
 
           # Count changes
           CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
 
-      - name: Tofu Apply
+          echo ""
+          echo "📋 Plan summary: $CHANGES"
+
+      - name: Tofu Apply (Gateway Only - Auto-Approved)
         id: apply
         working-directory: infra
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 Applying to Staging"
+          echo "🚀 Deploying Gateway to Staging"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "ℹ️  Auto-approved for staging environment"
+          echo ""
 
           tofu apply -auto-approve plan.tfplan 2>&1 | tee apply-output.txt
 
@@ -70,39 +81,86 @@ jobs:
           echo "exit_code=$APPLY_EXIT_CODE" >> $GITHUB_OUTPUT
 
           if [ $APPLY_EXIT_CODE -eq 0 ]; then
-            echo "✅ Apply successful"
+            echo ""
+            echo "✅ Gateway deployed successfully"
           else
-            echo "❌ Apply failed"
+            echo ""
+            echo "❌ Gateway deployment failed"
           fi
 
           exit $APPLY_EXIT_CODE
 
-      - name: Verify Deployment
+      - name: Verify Gateway Deployment
         if: steps.apply.outputs.exit_code == '0'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🔍 Verifying Staging Deployment"
+          echo "🔍 Verifying Gateway Deployment"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
 
-          # List Cloud Run services
-          gcloud run services list \
+          # Get gateway service details
+          gcloud run services describe gateway-staging \
             --project=${{ env.GCP_PROJECT_ID }} \
             --region=${{ env.GCP_REGION }} \
-            --format="table(SERVICE,REGION,URL,LAST_DEPLOYED)"
+            --format="table(status.url,status.traffic,metadata.labels)" || true
+
+          echo ""
+          echo "🔗 Gateway URL:"
+          gcloud run services describe gateway-staging \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="value(status.url)"
+
+      - name: Test Gateway Health
+        if: steps.apply.outputs.exit_code == '0'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🏥 Testing Gateway Health"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          GATEWAY_URL=$(gcloud run services describe gateway-staging \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="value(status.url)")
+
+          echo "Testing: ${GATEWAY_URL}/healthcheck"
+
+          # Test health endpoint (retry up to 3 times with 10s delay)
+          for i in {1..3}; do
+            if curl -f -s "${GATEWAY_URL}/healthcheck" | jq '.'; then
+              echo ""
+              echo "✅ Gateway is healthy"
+              exit 0
+            else
+              echo "⏳ Attempt $i/3 failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+
+          echo "⚠️  Gateway health check failed after 3 attempts"
+          echo "   (Gateway may still be starting up)"
 
       - name: Deployment Summary
         if: always()
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📦 Staging Deployment Summary"
+          echo "📦 Gateway Deployment Summary"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "Environment: ${{ env.ENVIRONMENT }}"
           echo "Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "Service: gateway-staging"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.ref_name }}"
           echo ""
           echo "Plan: ${{ steps.plan.outputs.changes }}"
           echo "Apply: ${{ steps.apply.outputs.exit_code == '0' && '✅ Success' || '❌ Failed' }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 Two-Phase Deployment Complete!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Phase 1: ✅ Services deployed with service URLs saved"
+          echo "Phase 2: ✅ Gateway rebuilt and deployed with URLs"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       - name: Notify on Failure
@@ -110,7 +168,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const message = `## ❌ Staging Deployment Failed
+            const message = `## ❌ Gateway Deployment Failed (Staging)
 
             **Commit**: ${context.sha.substring(0, 7)}
             **Branch**: ${context.ref}
@@ -122,76 +180,7 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '❌ Staging deployment failed',
+              title: '❌ Gateway deployment failed (staging)',
               body: message,
-              labels: ['deployment', 'staging', 'failure']
+              labels: ['deployment', 'staging', 'gateway', 'failure']
             });
-
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Extract service URLs and save to Secret Manager
-  # This enables gateway rebuild with correct service URLs
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  extract-service-urls:
-    needs: apply
-    runs-on: ubuntu-latest
-    if: ${{ needs.apply.result == 'success' }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_version: ${{ env.TOFU_VERSION }}
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: 'projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
-          service_account: 'github-actions-staging@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Tofu Init
-        working-directory: infra
-        run: |
-          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
-
-      - name: Extract service URLs from Terraform outputs
-        id: extract
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📡 Extracting Service URLs"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-          chmod +x scripts/extract-service-urls.sh
-          ./scripts/extract-service-urls.sh staging infra > service-urls.json
-
-          echo "✅ Service URLs extracted to service-urls.json"
-          cat service-urls.json | jq '.'
-
-      - name: Save service URLs to Secret Manager
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🔐 Saving URLs to Secret Manager"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-          chmod +x scripts/save-urls-to-secrets.sh
-          ./scripts/save-urls-to-secrets.sh staging service-urls.json
-
-          echo "✅ Service URLs saved to Secret Manager"
-
-      - name: Trigger gateway deployment
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 Triggering Gateway Deployment"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Service URLs now available in Secret Manager:"
-          echo "  projects/${{ env.GCP_PROJECT_ID }}/secrets/service-urls-staging"
-          echo ""
-          echo "Gateway deployment will be triggered automatically"
-          echo "via gateway-deploy.yml workflow"
