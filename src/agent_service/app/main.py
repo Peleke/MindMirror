@@ -88,6 +88,25 @@ def create_app() -> FastAPI:
         """Health check endpoint."""
         return {"status": "healthy", "service": "agent-service", "version": "1.0.0"}
 
+    # SDL endpoint for schema composition (mesh-compose)
+    @app.get("/sdl", include_in_schema=False, tags=["internal"])
+    async def get_schema_sdl():
+        """
+        Public SDL endpoint for schema composition.
+        Returns GraphQL schema in SDL format.
+        Used by mesh-compose to build supergraph.
+
+        Note: Exposes schema structure only, not data.
+        Data queries still require JWT authentication.
+        """
+        from fastapi.responses import Response
+        from agent_service.app.api.graphql_router import schema
+
+        return Response(
+            content=str(schema),
+            media_type="text/plain"
+        )
+
     logger.info("FastAPI application configured successfully")
     return app
 

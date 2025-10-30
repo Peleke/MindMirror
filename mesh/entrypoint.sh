@@ -26,6 +26,7 @@ echo "VOUCHERS_WEB_BASE_URL: ${VOUCHERS_WEB_BASE_URL}"
 
 # Generate the dynamic mesh config file.
 # It uses the environment variables passed to the container, with sensible defaults for local development.
+# NOTE: Uses /sdl endpoint for schema introspection (no auth required) while /graphql requires JWT
 echo "import { defineConfig, loadGraphQLHTTPSubgraph } from '@graphql-mesh/compose-cli'
 
 export const composeConfig = defineConfig({
@@ -33,36 +34,43 @@ export const composeConfig = defineConfig({
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Journal', {
         endpoint: '${JOURNAL_SERVICE_URL:-http://journal_service:8001}/graphql',
+        schemaEndpoint: '${JOURNAL_SERVICE_URL:-http://journal_service:8001}/sdl',
       }),
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Agent', {
         endpoint: '${AGENT_SERVICE_URL:-http://agent_service:8000}/graphql',
+        schemaEndpoint: '${AGENT_SERVICE_URL:-http://agent_service:8000}/sdl',
       })
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Habits', {
         endpoint: '${HABITS_SERVICE_URL:-http://habits_service:8003}/graphql',
+        schemaEndpoint: '${HABITS_SERVICE_URL:-http://habits_service:8003}/sdl',
       })
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Meals', {
         endpoint: '${MEALS_SERVICE_URL:-http://meals_service:8004}/graphql',
+        schemaEndpoint: '${MEALS_SERVICE_URL:-http://meals_service:8004}/sdl',
       })
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Movements', {
         endpoint: '${MOVEMENTS_SERVICE_URL:-http://movements_service:8005}/graphql',
+        schemaEndpoint: '${MOVEMENTS_SERVICE_URL:-http://movements_service:8005}/sdl',
       })
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Practices', {
         endpoint: '${PRACTICES_SERVICE_URL:-http://practices_service:8000}/graphql',
+        schemaEndpoint: '${PRACTICES_SERVICE_URL:-http://practices_service:8000}/sdl',
       })
     },
     {
       sourceHandler: loadGraphQLHTTPSubgraph('Users', {
         endpoint: '${USERS_SERVICE_URL:-http://users_service:8000}/graphql',
+        schemaEndpoint: '${USERS_SERVICE_URL:-http://users_service:8000}/sdl',
       })
     },
   ]

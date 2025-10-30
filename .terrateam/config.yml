@@ -1,0 +1,103 @@
+# Terrateam Configuration
+# Manages OpenTofu deployments for staging and production
+
+version: 1
+
+# Global settings
+automerge: false
+
+# Workspaces configuration
+workspaces:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # STAGING - Auto-apply on push to staging branch
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - name: staging
+    path: infra
+    terraform_version: 1.6.0  # Using OpenTofu 1.6.0 (compatible with Terraform)
+
+    # Auto-apply staging changes (no manual approval)
+    auto_apply: true
+
+    # Apply requirements (empty = truly automatic)
+    apply_requirements: []
+
+    # Plan arguments - use staging.auto.tfvars
+    plan_args:
+      - -var-file=staging.auto.tfvars
+
+    # Apply arguments - use staging.auto.tfvars
+    apply_args:
+      - -var-file=staging.auto.tfvars
+
+    # Only trigger on staging branch
+    when:
+      branch:
+        - staging
+
+    # Tag plan comments for clarity
+    tags:
+      - staging
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # PRODUCTION - Manual approval required
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - name: production
+    path: infra
+    terraform_version: 1.6.0
+
+    # Manual approval required for production
+    auto_apply: false
+
+    # Require approval before apply
+    apply_requirements:
+      - approved  # Must comment "terrateam apply" to approve
+
+    # Plan arguments - use production.auto.tfvars
+    plan_args:
+      - -var-file=production.auto.tfvars
+
+    # Apply arguments - use production.auto.tfvars
+    apply_args:
+      - -var-file=production.auto.tfvars
+
+    # Only trigger on main branch or PRs to main
+    when:
+      branch:
+        - main
+
+    # Tag plan comments for clarity
+    tags:
+      - production
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Custom Workflows (Optional)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Hooks for pre/post operations
+hooks:
+  # Pre-plan: Validate tfvars exist
+  pre_plan:
+    - type: run
+      command: |
+        if [ "$TERRATEAM_WORKSPACE" = "staging" ]; then
+          test -f infra/staging.auto.tfvars || { echo "Error: staging.auto.tfvars not found"; exit 1; }
+        fi
+        if [ "$TERRATEAM_WORKSPACE" = "production" ]; then
+          test -f infra/production.auto.tfvars || { echo "Error: production.auto.tfvars not found"; exit 1; }
+        fi
+
+  # Post-apply: Verify deployment
+  post_apply:
+    - type: run
+      command: |
+        echo "✅ Deployment complete for $TERRATEAM_WORKSPACE"
+        echo "View services: gcloud run services list --project=$TF_VAR_project_id"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Access Control (Optional)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Restrict who can trigger applies
+# apply_requirements:
+#   - approved_by: ["username1", "username2"]  # Specific users
+#   - approved_by_teams: ["team-devops"]       # GitHub teams
