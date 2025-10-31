@@ -96,7 +96,8 @@ variable "agent_service_container_image" {
 variable "gateway_container_image" {
   description = "Gateway container image"
   type        = string
-  default     = "gcr.io/mindmirror-69/gateway:latest"
+  # Use last known working gateway image (will be updated by gateway-only deployment)
+  default     = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:033479cc422bf71841f2876a00d02a6add9970f0"
 }
 
 variable "habits_service_container_image" {
