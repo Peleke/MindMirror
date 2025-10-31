@@ -22,7 +22,7 @@ step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 # Configuration
 PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
 REGION="${REGION:-us-central1}"
-STATE_BUCKET="${STATE_BUCKET:-swae-tofu-state}"
+STATE_BUCKET="${STATE_BUCKET:-mindmirror-tofu-state}"
 ARTIFACT_REGISTRY="${ARTIFACT_REGISTRY:-swae}"
 
 # Validate project is set
