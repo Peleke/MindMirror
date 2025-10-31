@@ -44,7 +44,7 @@ jobs:
       - name: Tofu Init
         working-directory: infra
         run: |
-          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+          tofu init
 
       - name: Tofu Plan
         id: plan
@@ -158,7 +158,7 @@ jobs:
       - name: Tofu Init
         working-directory: infra
         run: |
-          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+          tofu init
 
       - name: Extract service URLs from Terraform outputs
         id: extract
