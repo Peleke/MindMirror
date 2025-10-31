@@ -2,7 +2,7 @@ name: Deploy Gateway to Production
 
 on:
   workflow_run:
-    workflows: ["Deploy to Production"]
+    workflows: ["Tofu Apply - Production"]
     types: [completed]
     branches: [main]
   workflow_dispatch:  # Allows manual trigger
@@ -23,7 +23,7 @@ jobs:
   # Build and push gateway with service URLs
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   build-gateway:
-    # Only run if Deploy to Production succeeded (or if manually triggered)
+    # Only run if Tofu Apply - Production succeeded (or if manually triggered)
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
