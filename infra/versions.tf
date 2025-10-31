@@ -6,9 +6,5 @@ terraform {
       version = "~> 5.0"
     }
   }
-  backend "gcs" {
-    bucket  = "mindmirror-tofu-state"
-    prefix  = "envs/default"
-  }
 }
 
