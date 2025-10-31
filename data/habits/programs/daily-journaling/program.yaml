@@ -1,0 +1,12 @@
+slug: daily-journaling
+title: Daily Journaling
+subtitle: "A daily journaling practice to help you reflect, plan, and grow."
+description: Build a consistent journaling practice every day.
+version: 1
+contentType: program
+sequence:
+  - stepSlug: daily-journal
+    title: Daily Journaling
+    durationDays: 3650  # ~10 years
+    habitTemplateSlug: daily-journaling
+    # No lessons for baseline journaling

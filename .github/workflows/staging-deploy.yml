@@ -28,6 +28,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch main branch for comparison
+        run: |
+          git fetch origin main:main
+
       - name: Generate version tag
         id: version
         run: |

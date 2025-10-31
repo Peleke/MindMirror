@@ -1,15 +1,8 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from '@/components/ui/avatar'
 import { Box } from '@/components/ui/box'
 import { Button, ButtonText } from '@/components/ui/button'
 import { Heading } from '@/components/ui/heading'
 import { HStack } from '@/components/ui/hstack'
-import { ChevronLeftIcon, Icon } from '@/components/ui/icon'
-import { Pressable } from '@/components/ui/pressable'
+import { Icon } from '@/components/ui/icon'
 import { SafeAreaView } from '@/components/ui/safe-area-view'
 import { ScrollView } from '@/components/ui/scroll-view'
 import { Text } from '@/components/ui/text'
@@ -18,51 +11,21 @@ import { VStack } from '@/components/ui/vstack'
 import { CREATE_FREEFORM_JOURNAL_ENTRY } from '@/services/api/mutations'
 import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
 import { useMutation } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { Alert } from 'react-native'
+import { AppBar } from '@/components/common/AppBar'
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleBackPress = () => {
-    router.back()
-  }
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleBackPress}>
-          <Icon as={ChevronLeftIcon} />
-        </Pressable>
-        <Text className="text-xl">Freeform Writing</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: 'https://i.pravatar.cc/300' }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
 
 export default function FreeformJournalScreen() {
   const [content, setContent] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
+  const params = useLocalSearchParams<{ placeholder?: string; habitTemplateId?: string }>()
+  const placeholder = (params.placeholder && String(params.placeholder)) || 'Write whatever comes to mind...'
+  const habitTemplateId = params.habitTemplateId ? String(params.habitTemplateId) : undefined
 
 
 
@@ -88,7 +51,7 @@ export default function FreeformJournalScreen() {
       setSubmitError(null);
       await createEntry({
         variables: {
-          input: { content: content.trim() }
+          input: { content: content.trim(), habitTemplateId }
         }
       });
     } catch (err: any) {
@@ -99,7 +62,7 @@ export default function FreeformJournalScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Freeform Journal" showBackButton />
         
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -148,7 +111,7 @@ export default function FreeformJournalScreen() {
                   </Text>
                   <Textarea className="bg-white dark:bg-gray-100 flex-1">
                     <TextareaInput
-                      placeholder="Write whatever comes to mind..."
+                      placeholder={placeholder}
                       value={content}
                       onChangeText={setContent}
                       numberOfLines={12}

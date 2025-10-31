@@ -1,10 +1,6 @@
-variable "project_id" {
+variable "project_id" {}
+variable "region" {}
+variable "environment" {
   type        = string
-  description = "GCP project ID"
+  description = "Environment name (staging, production)"
 }
-
-variable "region" {
-  type        = string
-  description = "GCP region"
-}
-

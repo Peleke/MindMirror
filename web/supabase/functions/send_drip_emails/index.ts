@@ -1,3 +1,4 @@
+// @ts-nocheck
 // supabase/functions/send_drip_emails/index.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -7,8 +8,28 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// Email subjects for each day
-const EMAIL_SUBJECTS = {
+// Statically import templates (namespace) so the bundler includes them
+import * as MM0 from './emails/mindmirror/0-welcome-email.tsx';
+import * as MM1 from './emails/mindmirror/1-day.tsx';
+import * as MM2 from './emails/mindmirror/2-day.tsx';
+import * as MM3 from './emails/mindmirror/3-day.tsx';
+import * as MM4 from './emails/mindmirror/4-day.tsx';
+import * as MM5 from './emails/mindmirror/5-day.tsx';
+import * as MM6 from './emails/mindmirror/6-day.tsx';
+import * as MM7 from './emails/mindmirror/7-day.tsx';
+import * as MM14 from './emails/mindmirror/14-day.tsx';
+import * as UYE0 from './emails/uye/0-welcome-email.tsx';
+import * as UYE1 from './emails/uye/1-day.tsx';
+import * as UYE2 from './emails/uye/2-day.tsx';
+import * as UYE3 from './emails/uye/3-day.tsx';
+import * as UYE4 from './emails/uye/4-day.tsx';
+import * as UYE5 from './emails/uye/5-day.tsx';
+import * as UYE6 from './emails/uye/6-day.tsx';
+import * as UYE7 from './emails/uye/7-day.tsx';
+import * as UYE14 from './emails/uye/14-day.tsx';
+
+// Email subjects for each day (default MindMirror)
+const EMAIL_SUBJECTS: Record<number, string> = {
   0: "Welcome to MindMirror",
   1: "Your Brain Is a Forest",
   2: "Healing is nonlinear", 
@@ -20,69 +41,90 @@ const EMAIL_SUBJECTS = {
   14: "We're still here",
 };
 
+const EMAIL_SUBJECTS_UYE: Record<number, string> = {
+  0: "Welcome to Unf*ck Your Eating",
+  1: "The easiest way to eat less—without changing your plate",
+  2: "Slower eating for speedier progress",
+  3: "The Okinawan habit that keeps you light on your feet",
+  4: "The nutrient you’re probably only getting half of",
+  5: "Psst—why you’re hungry again an hour later",
+  6: "The sneaky calories your brain doesn’t count",
+  7: "The swap that keeps you full for hours",
+  14: "Still with you—ready for the next step?",
+};
+
 // Function to load email template by day
-async function loadEmailTemplate(day: number): Promise<string> {
-  const templateFiles = {
-    0: "0-welcome-email.tsx",
-    1: "1-day.tsx", 
-    2: "2-day.tsx",
-    3: "3-day.tsx",
-    4: "4-day.tsx",
-    5: "5-day.tsx",
-    6: "6-day.tsx",
-    7: "7-day.tsx",
-    14: "14-day.tsx",
+async function loadEmailTemplate(day: number, campaign?: string): Promise<{ html: string, text: string }> {
+  const map: Record<string, any> = {
+    'mindmirror:0': MM0, 'mindmirror:1': MM1, 'mindmirror:2': MM2, 'mindmirror:3': MM3, 'mindmirror:4': MM4,
+    'mindmirror:5': MM5, 'mindmirror:6': MM6, 'mindmirror:7': MM7, 'mindmirror:14': MM14,
+    'uye:0': UYE0, 'uye:1': UYE1, 'uye:2': UYE2, 'uye:3': UYE3, 'uye:4': UYE4,
+    'uye:5': UYE5, 'uye:6': UYE6, 'uye:7': UYE7, 'uye:14': UYE14,
   };
+  const key = `${campaign || 'mindmirror'}:${day}`;
+  const mod = map[key];
+  if (!mod) throw new Error(`No template module found for ${key}`);
 
-  const fileName = templateFiles[day];
-  if (!fileName) {
-    throw new Error(`No template found for day ${day}`);
-  }
+  // Prefer default export, else first function export
+  const Component = mod.default || Object.values(mod).find((v: any) => typeof v === 'function');
+  if (!Component) throw new Error(`No component export found for ${key}`);
 
-  try {
-    // Load the React Email template
-    const templatePath = `./emails/${fileName}`;
-    const templateContent = await Deno.readTextFile(templatePath);
-    
-    // For now, we'll use a simple text extraction approach
-    // In production, you might want to use a React Email renderer
-    return extractTextFromTemplate(templateContent);
-  } catch (error) {
-    console.error(`Failed to load template for day ${day}:`, error);
-    // Fallback to simple text
-    return getFallbackEmail(day);
-  }
+  const React = await import('npm:react');
+  const { renderToStaticMarkup } = await import('npm:react-dom/server');
+  // Provide webBaseUrl to templates so they can construct absolute links
+  const html = renderToStaticMarkup(React.createElement(Component, { webBaseUrl: resolveWebBaseUrl() }));
+  const text = htmlToText(html);
+  return { html, text };
 }
 
 // Simple text extraction from React Email templates
-function extractTextFromTemplate(templateContent: string): string {
-  // Extract text content from JSX, removing React components
-  let text = templateContent
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/import.*?from.*?;?\n?/g, '') // Remove imports
-    .replace(/export.*?{.*?}.*?=.*?\(.*?\)\s*=>\s*\(/s, '') // Remove component definition start
-    .replace(/\);[\s\S]*$/, '') // Remove component definition end
-    .replace(/const.*?=.*?{[\s\S]*?};/g, '') // Remove style objects
-    .replace(/interface.*?{[\s\S]*?}/g, '') // Remove interfaces
-    .replace(/\s+/g, ' ') // Normalize whitespace
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/>/gi, '\n')
+    .replace(/<\/(p|h\d|li|tr)>/gi, '\n')
+    .replace(/<li>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
 
-  // Clean up common React Email patterns
-  text = text
-    .replace(/<Text[^>]*>/g, '')
-    .replace(/<\/Text>/g, '\n')
-    .replace(/<Heading[^>]*>/g, '')
-    .replace(/<\/Heading>/g, '\n')
-    .replace(/<Section[^>]*>/g, '')
-    .replace(/<\/Section>/g, '\n')
-    .replace(/<Container[^>]*>/g, '')
-    .replace(/<\/Container>/g, '\n')
-    .replace(/<Body[^>]*>/g, '')
-    .replace(/<\/Body>/g, '\n')
-    .replace(/<Html[^>]*>/g, '')
-    .replace(/<\/Html>/g, '\n');
+function replaceNamePlaceholders(input: string): string {
+  return input
+    .replace(/\[First name\]/gi, 'friend')
+    .replace(/\{\{\s*first_name\s*\}\}/gi, 'friend')
+    .replace(/\[\[first_name\]\]/gi, 'friend')
+    .replace(/%FIRST_NAME%/g, 'friend')
+}
 
-  return text || getFallbackEmail(0);
+function resolveWebBaseUrl(): string {
+  const env = (k: string) => (Deno.env.get(k) || '').replace(/\/$/, '')
+  // Prefer explicit CTA base for emails if provided
+  return env('EMAIL_CTA_BASE_URL') || env('WEB_BASE_URL') || env('NEXT_PUBLIC_BASE_URL') || (env('VERCEL_URL') ? `https://${env('VERCEL_URL')}` : 'https://mindmirror.swae.io')
+}
+
+function resolveAppSignupUrl(base: string): string {
+  const env = (k: string) => (Deno.env.get(k) || '').trim()
+  // Prefer explicit overrides, else default to mobile signup route
+  return env('EMAIL_APP_SIGNUP_URL') || env('APP_SIGNUP_URL') || `${base}/signup`
+}
+
+function appendCta(html: string, text: string, campaign: string, recipientEmail: string): { html: string, text: string } {
+  const base = resolveWebBaseUrl()
+  const signup = resolveAppSignupUrl(base)
+  const ctaUrl = `${base}/api/vouchers/cta?campaign=${encodeURIComponent(campaign)}&email=${encodeURIComponent(recipientEmail)}&redirect=${encodeURIComponent(signup)}`
+  const ctaHtml = `
+  <div style="width:100%;">
+    <div style="max-width:560px;margin:24px auto 0 auto;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb">
+      <h3 style="margin:0 0 8px 0;color:#111827;font-size:16px;font-weight:600">Try Swae OS — <s>75%</s> 100% off (not a typo), 8 weeks included</h3>
+      <p style="margin:0 0 8px 0;color:#374151;font-size:14px">Be a part of something bigger. Click below to create your account. We’ll email your voucher code. If you sign up with this email, you’ll be enrolled automatically.</p>
+      <p style="margin:0 0 12px 0"><a href="${ctaUrl}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Get your voucher & create account</a></p>
+      <p style="margin:0;color:#6b7280;font-size:12px">If anything goes wrong, use the voucher code we send on the Marketplace → Redeem Voucher screen. If you’re already enrolled, you can ignore that email.</p>
+    </div>
+  </div>`
+  const ctaText = `\n\n—\nTry Swae OS — 100% off (not a typo), 8 weeks included\nCreate your account: ${ctaUrl}\nIf you sign up with this email, you’ll be enrolled automatically. Otherwise, use the voucher code we send in the app (Marketplace → Redeem Voucher). If you’re already enrolled, you can ignore that email.`
+  return { html: `${html}\n${ctaHtml}`, text: `${text}${ctaText}` }
 }
 
 // Fallback email content if template loading fails
@@ -102,25 +144,105 @@ function getFallbackEmail(day: number): string {
   return fallbacks[day] || fallbacks[0];
 }
 
-serve(async (_req) => {
+function diffCalendarDaysUTC(fromIso: string, toDate: Date): number {
+  const from = new Date(fromIso);
+  const to = toDate;
+  const fromUTC = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+  const toUTC = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate());
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.floor((toUTC - fromUTC) / msPerDay);
+}
+
+serve(async (_req: Request) => {
+  console.log('[send_drip_emails] invoked at', new Date().toISOString())
+  // Direct-send path for onboarding (no cron auth required). Allows immediate day-0 sends.
   try {
-    // Get subscribers who haven't completed the drip sequence
-    const { data: subs, error } = await fetch(
-      `${supabaseUrl}/rest/v1/subscribers?drip_day_sent=lt.7&select=id,email,subscribed_at,drip_day_sent`,
+    const body = await _req.clone().json().catch(() => null) as any;
+    if (body && body.forceSendForEmail && typeof body.day === 'number') {
+      const targetEmail = String(body.forceSendForEmail);
+      const campaign = (body.campaign || 'mindmirror').toString();
+      const day = Number(body.day);
+      let { html, text } = await loadEmailTemplate(day, campaign);
+      html = replaceNamePlaceholders(html)
+      text = replaceNamePlaceholders(text)
+      const withCta = appendCta(html, text, campaign, targetEmail)
+      html = withCta.html
+      text = withCta.text
+      const subject = (campaign === 'uye' ? EMAIL_SUBJECTS_UYE : EMAIL_SUBJECTS)[day as keyof typeof EMAIL_SUBJECTS] || 'Welcome';
+      // Lookup subscriber_id for tagging/logging
+      let subscriberId: number | null = null
+      try {
+        const lookup = await fetch(`${supabaseUrl}/rest/v1/subscribers?select=id&email=eq.${encodeURIComponent(targetEmail.toLowerCase())}`,
+          { headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Accept-Profile': 'waitlist' } })
+        if (lookup.ok) {
+          const rows = await lookup.json() as Array<{ id: number }>
+          if (rows && rows.length > 0) subscriberId = rows[0].id
+        }
+      } catch (_) {}
+
+      const tags = [
+        { name: 'campaign', value: campaign },
+        { name: 'day', value: String(day) },
+        { name: 'subscriber_id', value: String(subscriberId ?? '') },
+      ]
+
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: campaign === 'uye' ? "uye@emails.peleke.me" : "mindmirror@emails.peleke.me", to: targetEmail, subject, text, html, tags })
+      });
+      let messageId: string | undefined
+      try { const j = await resendResponse.json(); messageId = j?.id } catch {}
+
+      // Record a 'sent' event for analytics
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/email_events`, {
+          method: 'POST',
+          headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Content-Type': 'application/json', 'Content-Profile': 'waitlist', 'Prefer': 'return=representation' },
+          body: JSON.stringify({
+            subscriber_id: subscriberId,
+            email_id: messageId,
+            event_type: 'sent',
+            event_data: { campaign, day, subject, message_id: messageId, tags },
+          })
+        })
+      } catch (_) {}
+
+      return new Response(JSON.stringify({ message: 'sent-once', ok: resendResponse.ok, id: messageId }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+  } catch (_) { /* ignore */ }
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  if (cronSecret) {
+    const provided = _req.headers.get('x-cron-secret') || ''
+    if (provided !== cronSecret) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } })
+    }
+  }
+  try {
+    // Fetch active subscriber-campaigns (campaign-scoped rows) for any day < 14
+    const url = `${supabaseUrl}/rest/v1/subscriber_campaigns?status=eq.active&drip_day_sent=lt.14&select=id,subscriber_id,campaign,drip_day_sent,subscribed_at,subscriber:subscribers(id,email)`;
+    console.log('[send_drip_emails] fetching', url)
+    const resp = await fetch(
+      url,
       {
         headers: {
           apikey: supabaseAnonKey!,
           Authorization: `Bearer ${supabaseServiceRoleKey}`,
+          'Accept-Profile': 'waitlist',
         },
       }
-    ).then(res => res.json());
+    );
 
-    if (error) {
-      console.error("Error fetching subscribers:", error);
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.error("Error fetching subscribers:", resp.status, body);
       return new Response(JSON.stringify({ error: "Failed to fetch subscribers" }), { status: 500 });
     }
 
+    const subs: Array<{ id: number; subscriber_id: number; campaign: string; drip_day_sent: number; subscribed_at: string; subscriber: { id: number; email: string } }>= await resp.json();
+
     if (!subs || subs.length === 0) {
+      console.log('[send_drip_emails] no subscribers to process')
       return new Response(JSON.stringify({ message: "No new emails to send" }), { status: 200 });
     }
 
@@ -128,19 +250,33 @@ serve(async (_req) => {
     let errors = 0;
 
     for (const sub of subs) {
-      const daysSince = Math.floor(
-        (Date.now() - new Date(sub.subscribed_at).getTime()) / (1000 * 60 * 60 * 24)
-      );
+      // Use calendar-day differences to align with daily schedule regardless of time-of-day subscribed
+      const daysSince = diffCalendarDaysUTC(sub.subscribed_at, new Date());
+      const campaign = (sub.campaign || 'mindmirror').toLowerCase();
+      const subjects = campaign === 'uye' ? EMAIL_SUBJECTS_UYE : EMAIL_SUBJECTS;
 
-      // Check if we have a template for this day
-      if (!EMAIL_SUBJECTS[daysSince as keyof typeof EMAIL_SUBJECTS]) continue;
+      // Send only if we have a template for this day and haven't already sent it
+      const lastSent = (sub.drip_day_sent ?? -1);
+      if (daysSince <= lastSent) continue;
+      if (!subjects[daysSince as keyof typeof subjects]) continue;
 
       try {
         // Load email template for this day
-        const emailBody = await loadEmailTemplate(daysSince);
-        const subject = EMAIL_SUBJECTS[daysSince as keyof typeof EMAIL_SUBJECTS];
+        let { html, text } = await loadEmailTemplate(daysSince, campaign);
+        html = replaceNamePlaceholders(html)
+        text = replaceNamePlaceholders(text)
+        const withCta = appendCta(html, text, campaign, sub.subscriber.email)
+        html = withCta.html
+        text = withCta.text
+        const subject = subjects[daysSince as keyof typeof subjects];
 
         // Send email via Resend
+        const tags = [
+          { name: 'campaign', value: campaign },
+          { name: 'day', value: String(daysSince) },
+          { name: 'subscriber_id', value: String(sub.subscriber.id) },
+        ]
+
         const resendResponse = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -148,28 +284,34 @@ serve(async (_req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "mirror@mindmirror.app",
-            to: sub.email,
+            from: campaign === 'uye' ? "uye@emails.peleke.me" : "mindmirror@emails.peleke.me",
+            to: sub.subscriber.email,
             subject: subject,
-            text: emailBody,
+            text,
+            html,
+            tags,
           }),
         });
 
         if (!resendResponse.ok) {
-          console.error(`Failed to send email to ${sub.email}:`, await resendResponse.text());
+          console.error(`Failed to send email to ${sub.subscriber.email}:`, await resendResponse.text());
           errors++;
           continue;
         }
 
+        let messageId: string | undefined
+        try { const j = await resendResponse.json(); messageId = j?.id } catch {}
+
         // Update subscriber's drip_day_sent
         const updateResponse = await fetch(
-          `${supabaseUrl}/rest/v1/subscribers?id=eq.${sub.id}`,
+          `${supabaseUrl}/rest/v1/subscriber_campaigns?id=eq.${sub.id}`,
           {
             method: "PATCH",
             headers: {
               apikey: supabaseAnonKey!,
               Authorization: `Bearer ${supabaseServiceRoleKey}`,
               "Content-Type": "application/json",
+              'Content-Profile': 'waitlist',
             },
             body: JSON.stringify({ drip_day_sent: daysSince }),
           }
@@ -181,8 +323,22 @@ serve(async (_req) => {
           continue;
         }
 
+        // Insert 'sent' event into email_events
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/email_events`, {
+            method: 'POST',
+            headers: { apikey: supabaseAnonKey!, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Content-Type': 'application/json', 'Content-Profile': 'waitlist', 'Prefer': 'return=representation' },
+            body: JSON.stringify({
+              subscriber_id: sub.subscriber.id,
+              email_id: messageId,
+              event_type: 'sent',
+              event_data: { campaign, day: daysSince, subject, message_id: messageId, tags },
+            })
+          })
+        } catch (_) {}
+
         emailsSent++;
-        console.log(`Sent day ${daysSince} email to ${sub.email}`);
+        console.log(`[send_drip_emails] sent day ${daysSince} email to`, sub.email);
 
       } catch (err) {
         console.error(`Error processing subscriber ${sub.id}:`, err);

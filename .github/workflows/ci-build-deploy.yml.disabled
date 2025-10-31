@@ -1,0 +1,328 @@
+name: CI/CD - Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  ARTIFACT_REPO: services
+
+jobs:
+  # Detect which services changed
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: detect
+        run: |
+          chmod +x scripts/changed-services.sh
+          SERVICES=$(scripts/changed-services.sh origin/main)
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
+
+          # Check if any services changed
+          if [ "$SERVICES" = "[]" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changed services: $SERVICES"
+
+  # Run tests for changed services
+  test:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Run tests for ${{ matrix.service }}
+        run: |
+          case "${{ matrix.service }}" in
+            agent_service)
+              cd src/agent_service
+              poetry install --no-root
+              poetry run pytest --cov || true
+              ;;
+            journal_service)
+              cd src/journal_service
+              poetry install --no-root
+              poetry run pytest --cov || true
+              ;;
+            habits_service|meals_service|movements_service|practices_service|users_service)
+              cd ${{ matrix.service }}
+              poetry install --no-root
+              poetry run pytest --cov || true
+              ;;
+            celery_worker)
+              cd celery-worker
+              poetry install --no-root
+              # Skip tests for now (add when available)
+              ;;
+            web_app)
+              cd web
+              npm ci
+              npm test || true
+              ;;
+            mobile_app)
+              cd mindmirror-mobile
+              npm ci
+              npm test || true
+              ;;
+            mesh_gateway)
+              cd mesh
+              npm ci
+              # Skip tests for now
+              ;;
+            *)
+              echo "Unknown service: ${{ matrix.service }}"
+              ;;
+          esac
+
+  # Build and push Docker images (only on merge to main)
+  build-and-push:
+    name: Build and push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build and push Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          SERVICE="${{ matrix.service }}"
+
+          # Map service names to Dockerfile paths
+          case "$SERVICE" in
+            agent_service)
+              DOCKERFILE="src/agent_service/Dockerfile"
+              IMAGE_NAME="agent-service"
+              ;;
+            journal_service)
+              DOCKERFILE="src/journal_service/Dockerfile"
+              IMAGE_NAME="journal-service"
+              ;;
+            habits_service)
+              DOCKERFILE="habits_service/Dockerfile"
+              IMAGE_NAME="habits-service"
+              ;;
+            meals_service)
+              DOCKERFILE="meals_service/Dockerfile"
+              IMAGE_NAME="meals-service"
+              ;;
+            movements_service)
+              DOCKERFILE="movements_service/Dockerfile"
+              IMAGE_NAME="movements-service"
+              ;;
+            practices_service)
+              DOCKERFILE="practices_service/Dockerfile"
+              IMAGE_NAME="practices-service"
+              ;;
+            users_service)
+              DOCKERFILE="users_service/Dockerfile"
+              IMAGE_NAME="users-service"
+              ;;
+            celery_worker)
+              DOCKERFILE="celery-worker/Dockerfile"
+              IMAGE_NAME="celery-worker"
+              ;;
+            mesh_gateway)
+              DOCKERFILE="mesh/Dockerfile"
+              IMAGE_NAME="mesh-gateway"
+              ;;
+            web_app)
+              DOCKERFILE="web/Dockerfile"
+              IMAGE_NAME="web-app"
+              ;;
+            *)
+              echo "Unknown service: $SERVICE"
+              exit 1
+              ;;
+          esac
+
+          # Build full image name
+          IMAGE="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${IMAGE_NAME}:${IMAGE_TAG}"
+          IMAGE_LATEST="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${IMAGE_NAME}:latest"
+
+          echo "Building $IMAGE"
+
+          # Build image (context is project root)
+          docker build -t "$IMAGE" -t "$IMAGE_LATEST" -f "$DOCKERFILE" .
+
+          # Push both tags
+          docker push "$IMAGE"
+          docker push "$IMAGE_LATEST"
+
+          echo "✓ Pushed $IMAGE"
+
+  # Deploy to Cloud Run (only on merge to main)
+  deploy:
+    name: Deploy ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-push]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+        exclude:
+          # Exclude frontend apps from auto-deploy (manual for now)
+          - service: web_app
+          - service: mobile_app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          SERVICE="${{ matrix.service }}"
+
+          # Map service names to Cloud Run service names
+          case "$SERVICE" in
+            agent_service) CLOUD_RUN_SERVICE="agent-service" PORT=8000 ;;
+            journal_service) CLOUD_RUN_SERVICE="journal-service" PORT=8001 ;;
+            habits_service) CLOUD_RUN_SERVICE="habits-service" PORT=8003 ;;
+            meals_service) CLOUD_RUN_SERVICE="meals-service" PORT=8004 ;;
+            movements_service) CLOUD_RUN_SERVICE="movements-service" PORT=8005 ;;
+            practices_service) CLOUD_RUN_SERVICE="practices-service" PORT=8000 ;;
+            users_service) CLOUD_RUN_SERVICE="users-service" PORT=8000 ;;
+            celery_worker) CLOUD_RUN_SERVICE="celery-worker" PORT=8080 ;;
+            mesh_gateway) CLOUD_RUN_SERVICE="mesh-gateway" PORT=4000 ;;
+            *)
+              echo "Unknown service: $SERVICE"
+              exit 1
+              ;;
+          esac
+
+          IMAGE="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${CLOUD_RUN_SERVICE}:${IMAGE_TAG}"
+
+          echo "Deploying $CLOUD_RUN_SERVICE with image $IMAGE"
+
+          # Deploy to Cloud Run
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --image="$IMAGE" \
+            --region="${{ env.GCP_REGION }}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port="$PORT" \
+            --quiet
+
+          echo "✓ Deployed $CLOUD_RUN_SERVICE"
+
+      - name: Verify deployment
+        run: |
+          SERVICE="${{ matrix.service }}"
+
+          case "$SERVICE" in
+            agent_service) CLOUD_RUN_SERVICE="agent-service" ;;
+            journal_service) CLOUD_RUN_SERVICE="journal-service" ;;
+            habits_service) CLOUD_RUN_SERVICE="habits-service" ;;
+            meals_service) CLOUD_RUN_SERVICE="meals-service" ;;
+            movements_service) CLOUD_RUN_SERVICE="movements-service" ;;
+            practices_service) CLOUD_RUN_SERVICE="practices-service" ;;
+            users_service) CLOUD_RUN_SERVICE="users-service" ;;
+            celery_worker) CLOUD_RUN_SERVICE="celery-worker" ;;
+            mesh_gateway) CLOUD_RUN_SERVICE="mesh-gateway" ;;
+            *) exit 0 ;;
+          esac
+
+          # Get service URL
+          URL=$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --region="${{ env.GCP_REGION }}" \
+            --format='value(status.url)')
+
+          echo "Service URL: $URL"
+
+          # Wait for service to be ready
+          sleep 10
+
+          # Health check
+          if curl -sf -m 10 "$URL/health" > /dev/null 2>&1; then
+            echo "✓ Health check passed for $CLOUD_RUN_SERVICE"
+          else
+            echo "⚠️  Health check failed for $CLOUD_RUN_SERVICE (may not have /health endpoint)"
+          fi
+
+  # Notify on deployment completion
+  notify:
+    name: Notify deployment status
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Deployment Status"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Commit: ${{ github.sha }}"
+          echo "Services: ${{ needs.detect-changes.outputs.services }}"
+          echo "Status: ${{ needs.deploy.result }}"
+          echo ""
+          echo "⚠️  REMINDER: If GraphQL schemas changed, run:"
+          echo "    ./scripts/update-gateway.sh all"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

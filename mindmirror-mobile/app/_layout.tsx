@@ -1,7 +1,10 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import React from "react";
+import { ThemeVariantProvider, useThemeVariant } from "@/theme/ThemeContext";
 import { AuthStateHandler } from '@/features/auth/components/AuthStateHandler';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
-import { ApolloProviderWrapper } from '@/services/api/apollo-provider';
+import { ApolloProviderWrapper, SimpleApolloProvider } from '@/services/api/apollo-provider';
+import { AutoEnrollHandler } from '@/features/auth/components/AutoEnrollHandler';
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   DarkTheme,
@@ -20,10 +23,10 @@ export {
   ErrorBoundary
 } from "expo-router";
 
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: "(auth)",
-};
+// export const unstable_settings = {
+//   // Ensure that reloading on `/modal` keeps a back button present.
+//   initialRouteName: "(auth)",
+// };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -49,25 +52,41 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <ThemeVariantProvider>
+      <RootLayoutNav />
+    </ThemeVariantProvider>
+  );
 }
 
 function RootLayoutNav() {
   const { colorScheme } = useColorScheme();
+  const { themeId } = useThemeVariant();
 
   return (
-    <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"}>
+    <GluestackUIProvider mode={(colorScheme ?? "light") as "light" | "dark"} themeId={themeId}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <ApolloProviderWrapper>
+        <SimpleApolloProvider>
+          <AuthProvider>
+            <ApolloProviderWrapper>
               <AuthStateHandler />
+              <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
               </Stack>
-          </ApolloProviderWrapper>
-        </AuthProvider>
+            </ApolloProviderWrapper>
+          </AuthProvider>
+        </SimpleApolloProvider>
       </ThemeProvider>
     </GluestackUIProvider>
+  );
+}
+
+export function RootLayoutProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeVariantProvider>
+      {children}
+    </ThemeVariantProvider>
   );
 }

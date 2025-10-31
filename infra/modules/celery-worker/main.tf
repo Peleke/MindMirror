@@ -1,52 +1,52 @@
 # Pub/Sub Topics
 resource "google_pubsub_topic" "journal_indexing" {
-  name    = "journal-indexing"
+  name    = "journal-indexing-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "journal_batch_indexing" {
-  name    = "journal-batch-indexing"
+  name    = "journal-batch-indexing-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "journal_reindex" {
-  name    = "journal-reindex"
+  name    = "journal-reindex-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "tradition_rebuild" {
-  name    = "tradition-rebuild"
+  name    = "tradition-rebuild-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "health_check" {
-  name    = "health-check"
+  name    = "health-check-${var.environment}"
   project = var.project_id
 }
 
 # Dead Letter Topics
 resource "google_pubsub_topic" "journal_indexing_dlq" {
-  name    = "journal-indexing-dlq"
+  name    = "journal-indexing-dlq-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "journal_batch_indexing_dlq" {
-  name    = "journal-batch-indexing-dlq"
+  name    = "journal-batch-indexing-dlq-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "journal_reindex_dlq" {
-  name    = "journal-reindex-dlq"
+  name    = "journal-reindex-dlq-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "tradition_rebuild_dlq" {
-  name    = "tradition-rebuild-dlq"
+  name    = "tradition-rebuild-dlq-${var.environment}"
   project = var.project_id
 }
 
 resource "google_pubsub_topic" "health_check_dlq" {
-  name    = "health-check-dlq"
+  name    = "health-check-dlq-${var.environment}"
   project = var.project_id
 }
 
@@ -171,7 +171,7 @@ resource "google_pubsub_subscription" "health_check_sub" {
 
 # Cloud Run Services
 resource "google_cloud_run_service" "celery_worker_web" {
-  name     = "celery-worker-web"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
@@ -383,19 +383,19 @@ resource "google_cloud_run_service_iam_member" "agent_service_invoker_web" {
 
 # Data sources for service accounts from base module
 data "google_service_account" "journal_service" {
-  account_id = "journal-service"
+  account_id = "journal-service-${var.environment}"
   project    = var.project_id
 }
 
 data "google_service_account" "agent_service" {
-  account_id = "agent-service"
+  account_id = "agent-service-${var.environment}"
   project    = var.project_id
 }
 
 # Service account for celery worker
 resource "google_service_account" "celery_worker" {
-  account_id   = "celery-worker"
-  display_name = "Service Account for Celery Worker"
+  account_id   = "celery-worker-${var.environment}"
+  display_name = "Service Account for Celery Worker (${var.environment})"
   project      = var.project_id
 }
 

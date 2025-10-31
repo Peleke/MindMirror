@@ -20,14 +20,9 @@ COPY celery-worker/pyproject.toml celery-worker/poetry.lock* ./
 # Install dependencies (excluding dev dependencies)
 RUN poetry install --without dev
 
-# Copy and build the shared package
+# Copy and install the shared package directly with pip to avoid using the Poetry CLI
 COPY src/shared /app/shared
-WORKDIR /app/shared
-RUN poetry build
-
-# Go back to app directory and install the shared wheel
-WORKDIR /app
-RUN pip install ./shared/dist/*.whl
+RUN pip install /app/shared
 
 # Copy application code
 RUN find /app -name '*.pyc' -delete || true

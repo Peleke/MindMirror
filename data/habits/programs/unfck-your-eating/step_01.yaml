@@ -1,0 +1,66 @@
+daily_plan:
+  - day_index: 0
+    habit_variant_text: "Slow one bite at a time"
+    journal_prompt_text: "What changed when you slowed a single bite down?"
+  - day_index: 1
+    habit_variant_text: "The 30-Chew Challenge"
+    journal_prompt_text: "Did chewing more change how the food tasted? What did you notice?"
+  - day_index: 2
+    habit_variant_text: "Fork down, hands off"
+    journal_prompt_text: "How did putting your fork down between bites affect your pace—or your anxiety?"
+  - day_index: 3
+    habit_variant_text: "Set a meal timer (15-20 min)"
+    journal_prompt_text: "What surprised you about eating for 20 minutes instead of your usual pace?"
+  - day_index: 4
+    habit_variant_text: "Smaller bites, slower pace"
+    journal_prompt_text: "Did smaller bites feel weird? Did they make the food more satisfying?"
+  - day_index: 5
+    habit_variant_text: "Mid-meal check-in (1-10)"
+    journal_prompt_text: "What did your fullness check-in reveal? Did you stop sooner than usual—or go past the point of fullness?"
+  - day_index: 6
+    habit_variant_text: "Long, silent meal"
+    journal_prompt_text: "What did the silent meal bring up—boredom, peace, cravings, insight?"
+
+lesson_segments:
+  eat-slowly:
+    # Day 0: Introduction & Evidence (+ append Citations)
+    - day_index: 0
+      title: "Why slowing down works"
+      subtitle: "Introduction & Evidence"
+      extract:
+        type: heading
+        match: "### **Evidence**"
+        extra:
+          - type: heading
+            match: "**Citations**"
+
+    # Day 2: Interlude (anything between Evidence and Pushback) — none explicit here, so skip
+
+    # Day 3: Pushback
+    - day_index: 3
+      title: "Pushback"
+      extract:
+        type: heading
+        match: "### **Pushback**"
+
+    # Day 4: Action Items table — include section
+    - day_index: 4
+      title: "Action Items"
+      extract:
+        type: heading
+        match: "### **Action Items: Ways to Practice This Habit**"
+
+    # Day 5: Accountability
+    - day_index: 5
+      title: "Accountability"
+      extract:
+        type: heading
+        match: "### **Accountability: Reflect, Record, Repeat**"
+
+    # Day 6: Final Note
+    - day_index: 6
+      title: "Final Note"
+      extract:
+        type: heading
+        match: "### **Final Note**"
+

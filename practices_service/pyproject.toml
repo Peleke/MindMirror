@@ -1,0 +1,115 @@
+[tool.poetry]
+name = "practices"
+version = "0.1.0"
+description = "Manage workouts, prescribed movements, and associated set data."
+authors = ["Peleke <kraken@peleke.33mail.com>"]
+readme = "README.md"
+packages = [
+    { include = "practices" },
+    { include = "shared", from = "../src" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0.0"
+shared = { path = "../src/shared" }
+fastapi = "^0.115.6"
+google-cloud-logging = "^3.11.3"
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+pydantic = "^2.10.6"
+aiohttp = "^3.11.11"
+python-multipart = "^0.0.20"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.40"}
+asyncpg = "^0.30.0"
+alembic = "^1.15.1"
+python-dotenv = "^1.0.1"
+docker = "^7.1.0"
+google-cloud-storage = "^3.1.0"
+httpx = "^0.28.1"
+strawberry-graphql = {extras = ["opentelemetry"], version = "^0.268.1"}
+typer = "^0.15.3"
+opentelemetry-sdk = "^1.33.0"
+opentelemetry-instrumentation-fastapi = "^0.54b0"
+prometheus-fastapi-instrumentator = "^7.1.0"
+loguru = "^0.7.3"
+opentelemetry-exporter-otlp-proto-grpc = "^1.33.0"
+pyjwt = "^2.8.0"
+python-jose = {extras = ["cryptography"], version = "^3.5.0"}
+psycopg2-binary = "^2.9.11"
+
+[tool.poetry.scripts]
+start = "practices.web.server:start"
+install-hooks = "scripts.install_hooks:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest-asyncio = "^0.26.0"
+pytest-cov = "^4.1.0"
+pytest = "^8.0.0"
+black = "^24.1.1"
+flake8 = "^7.0.0"
+flake8-bugbear = "^24.1.1"
+flake8-comprehensions = "^3.14.0"
+flake8-simplify = "^0.21.0"
+mypy = "^1.8.0"
+isort = "^6.0.1"
+httpx = "^0.28.1"
+pre-commit = "^4.2.0"
+docker = "^7.1.0"
+schemathesis = "^3.26.1"
+flake8-pyproject = "^1.2.3"
+
+[tool.tox]
+legacy_tox_ini = "tox.ini"
+
+[tool.isort]
+profile = "black"
+skip = ["node_modules", ".git", "__pycache__", "*.ipynb", ".tox"]
+
+[tool.black]
+line-length = 120
+exclude = '''
+/(
+    node_modules|
+    \.git|
+    __pycache__|
+    .*\.ipynb|
+    .tox
+)/
+'''
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--cov=practices --cov-report=term-missing"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503"]
+exclude = [".tox", "*.egg", "build", "data", ".venv", "tests"]
+per-file-ignores = [
+    "__init__.py:F401",
+    "practices/repository/models/Set.py:F821",
+    "practices/repository/models/PrescribedMovement.py:F821",
+]
+extend-immutable-calls = ["File", "fastapi.File", "Depends", "fastapi.Depends", "fastapi.params.Depends"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+files = "practices"
+exclude = ["tests/"]

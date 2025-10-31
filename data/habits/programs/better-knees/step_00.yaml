@@ -1,0 +1,13 @@
+daily_plan:
+  - day_index: 0
+    habit_variant_text: null  # No habit for welcome day
+    journal_prompt_text: "How are you feeling about starting this knee strengthening program? What are your main goals?"
+
+lesson_segments:
+  welcome-better-knees:
+    - day_index: 0
+      title: "Welcome to Better Knees"
+      subtitle: "Getting started with your program"
+      extract:
+        type: heading
+        match: "*"  # Show full lesson

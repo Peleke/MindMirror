@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "gateway"
+}
+
 variable "project_id" {
   type = string
 }
@@ -28,6 +34,21 @@ variable "agent_service_url" {
 
 variable "journal_service_url" {
   description = "Journal service URL"
+  type        = string
+}
+
+variable "habits_service_url" {
+  description = "Habits service URL"
+  type        = string
+}
+
+variable "meals_service_url" {
+  description = "Meals service URL"
+  type        = string
+}
+
+variable "vouchers_web_base_url" {
+  description = "Base URL of the web app exposing vouchers REST endpoints"
   type        = string
 }
 

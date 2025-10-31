@@ -1,12 +1,12 @@
 {
-      "expo": {
-      "name": "MindMirror",
-      "slug": "mindmirror-mobile",
-      "version": "1.0.0",
-      "orientation": "portrait",
-      "icon": "./assets/images/icon.png",
-      "userInterfaceStyle": "light",
-      "scheme": "mindmirror",
+  "expo": {
+    "name": "MindMirror",
+    "slug": "mindmirror-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "mindmirror",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -16,19 +16,25 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pelekes.mindmirror-mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "output": "static"
     },
     "extra": {
       "gatewayUrl": "http://localhost:4000/graphql",
+      "mockTasks": false,
       "supabaseUrl": "your-supabase-url",
       "supabaseAnonKey": "your-supabase-anon-key"
     },
@@ -40,7 +46,17 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": false
+        }
+      ],
+      "expo-router",
+      "expo-video"
     ]
   }
 }

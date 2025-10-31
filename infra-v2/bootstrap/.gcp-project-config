@@ -1,0 +1,6 @@
+# MindMirror Production - GCP Configuration
+# Generated: Tue Oct 21 13:10:18 EDT 2025
+
+export GCP_PROJECT_ID="mindmirror-prod"
+export GCP_REGION="us-east4"
+export GCP_BILLING_ACCOUNT="018079-2212F8-CCC5B2"

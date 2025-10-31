@@ -47,7 +47,7 @@ export const gatewayConfig = defineConfig({
   /** Header propagation configuration. */
   propagateHeaders: {
     fromClientToSubgraphs({ request, subgraphName }) {
-      // Propagate authentication headers to all subgraphs (Journal and Agent)
+      // Propagate authentication headers to all subgraphs (Journal, Agent, Habits)
       const headers: Record<string, string> = {};
       
       // Always propagate the x-internal-id header if present
@@ -60,6 +60,11 @@ export const gatewayConfig = defineConfig({
       const authorization = request.headers.get('authorization');
       if (authorization) {
         headers['authorization'] = authorization;
+      }
+      // Pass cookies for web flows if present (autoenroll also supports bearer)
+      const cookie = request.headers.get('cookie');
+      if (cookie) {
+        headers['cookie'] = cookie;
       }
       
       console.log(`🔍 Gateway: Propagating headers to ${subgraphName}:`, headers);

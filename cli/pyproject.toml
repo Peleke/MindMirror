@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "mindmirror_cli", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11,<4.0.0"
+python = "^3.11,<3.13.0"
 typer = "^0.16.0"
 langchain = "^0.3.26"
 langchain-ollama = "^0.3.3"
@@ -21,7 +21,9 @@ sqlalchemy = "^2.0.41"
 asyncpg = "^0.30.0"
 python-dotenv = "^1.1.1"
 psycopg2-binary = "^2.9.10"
-alembic-config = {path = "../src/alembic-config", develop = true}
+content-parser = {path = "../tools/content_parser", develop = true}
+habits-service = {path = "../habits_service", develop = true}
+PyYAML = "^6.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"

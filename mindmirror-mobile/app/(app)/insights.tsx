@@ -1,15 +1,8 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Box } from "@/components/ui/box"
 import { Button, ButtonText } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
 import { HStack } from "@/components/ui/hstack"
-import { Icon, MenuIcon } from "@/components/ui/icon"
-import { Pressable } from "@/components/ui/pressable"
+import { Icon } from "@/components/ui/icon"
 import { SafeAreaView } from "@/components/ui/safe-area-view"
 import { ScrollView } from "@/components/ui/scroll-view"
 import { Text } from "@/components/ui/text"
@@ -17,10 +10,10 @@ import { VStack } from "@/components/ui/vstack"
 import { SUMMARIZE_JOURNALS_QUERY } from '../../src/services/api/queries'
 import { GENERATE_REVIEW } from '../../src/services/api/mutations'
 import { useQuery, useMutation, useLazyQuery } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { BarChart3, Lightbulb, Star, TrendingUp, Trophy } from "lucide-react-native"
 import { useState } from 'react'
+import { AppBar } from '@/components/common/AppBar'
 
 interface PerformanceReview {
   keySuccess: string
@@ -28,40 +21,7 @@ interface PerformanceReview {
   journalPrompt: string
 }
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer()
-  }
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">Insights</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
 
 export default function InsightsScreen() {
   const [selectedTradition, setSelectedTradition] = useState('canon-default')
@@ -117,7 +77,7 @@ export default function InsightsScreen() {
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Insights" />
         
         <ScrollView
           showsVerticalScrollIndicator={false}

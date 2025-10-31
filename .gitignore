@@ -1,6 +1,26 @@
 **/*/__pycache__
 __pycache__
-.env
+.env*
 **/*/node_modules
 env.staging
 env.production
+plans/
+**/*/.swp
+**/*/.swo
+
+# Terraform/Tofu state files (NEVER commit these - contain secrets!)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+*.tfplan.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc

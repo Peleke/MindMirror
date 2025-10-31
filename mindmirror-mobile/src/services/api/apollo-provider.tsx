@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import { ApolloProvider } from '@apollo/client'
-import { createApolloClientWithSession } from './client'
+import { createApolloClientWithSession, apolloClient } from './client'
 import { useAuth } from '@/features/auth/context/AuthContext'
 
 interface ApolloProviderWrapperProps {
@@ -17,6 +17,16 @@ export function ApolloProviderWrapper({ children }: ApolloProviderWrapperProps) 
 
   return (
     <ApolloProvider client={client}>
+      {children}
+    </ApolloProvider>
+  )
+}
+
+// Simple Apollo provider that doesn't depend on auth context
+// This allows AuthProvider to use Apollo hooks without circular dependency
+export function SimpleApolloProvider({ children }: ApolloProviderWrapperProps) {
+  return (
+    <ApolloProvider client={apolloClient}>
       {children}
     </ApolloProvider>
   )

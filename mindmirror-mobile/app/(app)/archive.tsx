@@ -1,25 +1,22 @@
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from "@/components/ui/avatar"
 import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
 import { HStack } from "@/components/ui/hstack"
-import { ChevronRightIcon, Icon, MenuIcon } from "@/components/ui/icon"
+import { ChevronRightIcon, Icon } from "@/components/ui/icon"
 import { Input, InputField } from "@/components/ui/input"
 import { Pressable } from "@/components/ui/pressable"
 import { SafeAreaView } from "@/components/ui/safe-area-view"
 import { ScrollView } from "@/components/ui/scroll-view"
 import { Text } from "@/components/ui/text"
 import { VStack } from "@/components/ui/vstack"
-import { GET_JOURNAL_ENTRIES } from '@/services/api/queries'
+import { GET_JOURNAL_ENTRIES, GET_JOURNAL_ENTRIES_COUNT } from '@/services/api/queries'
 import { useQuery } from '@apollo/client'
-import { useNavigation } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { Heart, Lightbulb, PenTool } from "lucide-react-native"
 import { useState, useMemo } from 'react'
+import { AppBar } from '@/components/common/AppBar'
+import { Pagination } from '@/components/ui/Pagination'
+import { ActivityIndicator } from 'react-native'
+import GlobalFab from '@/components/common/GlobalFab'
 
 type JournalType = 'all' | 'gratitude' | 'reflection' | 'freeform'
 
@@ -68,46 +65,22 @@ const typeOptions: { value: JournalType; label: string }[] = [
   { value: 'freeform', label: 'Freeform' },
 ]
 
-function AppBar() {
-  const router = useRouter()
-  const navigation = useNavigation()
 
-  const handleMenuPress = () => {
-    (navigation as any).openDrawer()
-  }
-
-  const handleProfilePress = () => {
-    router.push('/(app)/profile')
-  }
-
-  return (
-    <HStack
-      className="py-6 px-4 border-b border-border-300 bg-background-0 items-center justify-between"
-      space="md"
-    >
-      <HStack className="items-center" space="sm">
-        <Pressable onPress={handleMenuPress}>
-          <Icon as={MenuIcon} />
-        </Pressable>
-        <Text className="text-xl">Archive</Text>
-      </HStack>
-      
-      <Pressable onPress={handleProfilePress}>
-        <Avatar className="h-9 w-9">
-          <AvatarFallbackText>U</AvatarFallbackText>
-          <AvatarImage source={{ uri: "https://i.pravatar.cc/300" }} />
-          <AvatarBadge />
-        </Avatar>
-      </Pressable>
-    </HStack>
-  )
-}
 
 export default function ArchiveScreen() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<JournalType>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const entriesPerPage = 10
+  const offset = (currentPage - 1) * entriesPerPage
 
   const { data, loading, error, refetch } = useQuery(GET_JOURNAL_ENTRIES, {
+    variables: { limit: entriesPerPage, offset },
+    errorPolicy: 'all',
+  })
+
+  const { data: countData } = useQuery(GET_JOURNAL_ENTRIES_COUNT, {
     errorPolicy: 'all',
   })
 
@@ -125,12 +98,12 @@ export default function ArchiveScreen() {
     
     let entries: JournalEntry[] = [...data.journalEntries]
     
-    // Filter by type
+    // Filter by entry type (client-side for current page)
     if (selectedType !== 'all') {
       entries = entries.filter(entry => getEntryType(entry) === selectedType)
     }
     
-    // Search in content
+    // Search in content (client-side for current page)
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase()
       entries = entries.filter(entry => {
@@ -144,7 +117,8 @@ export default function ArchiveScreen() {
       })
     }
     
-    return entries.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    // Entries are already sorted by backend (created_at desc)
+    return entries
   }, [data?.journalEntries, selectedType, searchQuery])
 
   const formatDate = (dateString: string) => {
@@ -223,15 +197,36 @@ export default function ArchiveScreen() {
     }
   }
 
+  const handleEntryPress = (entry: JournalEntry) => {
+    const entryType = entry.__typename.replace('JournalEntry', '').toLowerCase();
+    router.push(`/journal/detail/${entryType}/${entry.id}`);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset to page 1 when filters change
+  const handleTypeFilter = (type: JournalType) => {
+    setSelectedType(type);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setCurrentPage(1);
+  };
+
+  const totalEntries = countData?.journalEntriesCount || 0;
+  const totalPages = Math.ceil(totalEntries / entriesPerPage);
+
   return (
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
-        <AppBar />
+        <AppBar title="Archive" />
         
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          className="flex-1"
-        >
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+          <VStack className="w-full max-w-screen-md mx-auto">
           {/* Search Section */}
           <VStack className="px-6 py-6" space="md">
             <VStack space="xs">
@@ -248,7 +243,7 @@ export default function ArchiveScreen() {
               <InputField
                 placeholder="Search journal entries..."
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={handleSearchChange}
               />
             </Input>
 
@@ -261,7 +256,7 @@ export default function ArchiveScreen() {
               {typeOptions.map((option) => (
                 <Pressable
                   key={option.value}
-                  onPress={() => setSelectedType(option.value)}
+                  onPress={() => handleTypeFilter(option.value)}
                   className={`px-4 py-2 rounded-full mr-3 border ${
                     selectedType === option.value
                       ? 'bg-primary-600 border-primary-600'
@@ -284,19 +279,9 @@ export default function ArchiveScreen() {
           <Box className="h-px bg-border-200 dark:bg-border-700 mx-6" />
 
           {/* Loading State */}
-          {loading && (
-            <VStack className="px-6 py-6" space="md">
-              <VStack className="items-center justify-center py-12" space="md">
-                <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
-                <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
-                  Loading journal entries...
-                </Text>
-              </VStack>
-            </VStack>
-          )}
-
-          {/* Error State */}
-          {error && (
+          {loading && !data ? (
+            <ActivityIndicator size="large" className="mt-10" />
+          ) : error ? (
             <VStack className="px-6 py-6" space="md">
               <VStack className="items-center justify-center py-12" space="md">
                 <Icon as={PenTool} size="xl" className="text-red-500" />
@@ -310,29 +295,19 @@ export default function ArchiveScreen() {
                 </VStack>
               </VStack>
             </VStack>
-          )}
-
-          {/* Journal Entries */}
-          {!loading && !error && (
-          <VStack className="px-6 py-6" space="md">
-            {filteredEntries.length === 0 ? (
-              <VStack className="items-center justify-center py-12" space="md">
-                <Icon as={PenTool} size="xl" className="text-typography-400 dark:text-gray-500" />
-                <VStack className="items-center" space="xs">
-                  <Text className="text-lg font-semibold text-typography-900 dark:text-white">
-                    No entries found
-                  </Text>
-                  <Text className="text-base text-typography-600 dark:text-gray-200 text-center">
-                      {searchQuery || selectedType !== 'all'
-                        ? "Try adjusting your search or filter criteria"
-                        : "You haven't written any journal entries yet. Start today!"
-                      }
-                  </Text>
-                </VStack>
-              </VStack>
-            ) : (
-              filteredEntries.map((entry) => (
-                <Pressable key={entry.id} className="mb-4">
+          ) : (
+            <VStack space="md" className="px-6 pb-20">
+              {filteredEntries.length === 0 ? (
+                <Text className="text-center text-typography-500 dark:text-gray-400 mt-8">
+                  No journal entries found.
+                </Text>
+              ) : (
+                filteredEntries.map((entry) => (
+                <Pressable 
+                  key={entry.id} 
+                  className="mb-4"
+                  onPress={() => handleEntryPress(entry)}
+                >
                   <Box 
                       className={`p-6 min-h-[120px] rounded-lg ${getTypeColor(entry)} border border-border-200 dark:border-border-700`}
                   >
@@ -376,9 +351,19 @@ export default function ArchiveScreen() {
               ))
             )}
           </VStack>
-          )}
-        </ScrollView>
-      </VStack>
-    </SafeAreaView>
-  )
-} 
+                      )}
+          </VStack>
+          </ScrollView>
+          
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            loading={loading}
+          />
+        </VStack>
+        <GlobalFab />
+      </SafeAreaView>
+    )
+  } 

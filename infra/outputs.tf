@@ -18,7 +18,33 @@ output "gateway_url" {
   value       = module.gateway.gateway_url
 }
 
-output "celery_worker_url" {
-  description = "Celery worker service URL"
-  value       = module.celery_worker.celery_worker_url
+# Deprecated: celery_worker module not in use
+# output "celery_worker_url" {
+#   description = "Celery worker service URL"
+#   value       = module.celery_worker.celery_worker_url
+# }
+
+output "habits_service_url" {
+  description = "Habits service URL"
+  value       = module.habits_service.habits_service_url
+}
+
+output "meals_service_url" {
+  description = "Meals service URL"
+  value       = module.meals_service.service_url
+}
+
+output "movements_service_url" {
+  description = "Movements service URL"
+  value       = module.movements_service.service_url
+}
+
+output "practices_service_url" {
+  description = "Practices service URL"
+  value       = module.practices_service.service_url
+}
+
+output "users_service_url" {
+  description = "Users service URL"
+  value       = module.users_service.service_url
 }

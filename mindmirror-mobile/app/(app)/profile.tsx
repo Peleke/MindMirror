@@ -58,7 +58,9 @@ import { VStack } from "@/components/ui/vstack";
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { UPDATE_USER_METADATA } from '../../src/services/api/mutations';
 import { LIST_TRADITIONS } from '../../src/services/api/queries';
+import { useUserById, useAssignRole } from '@/services/api/users';
 import { useMutation, useQuery } from '@apollo/client';
+import { gql as gqlP } from '@apollo/client';
 import { cn } from "@gluestack-ui/nativewind-utils/cn";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigation } from '@react-navigation/native';
@@ -67,19 +69,22 @@ import React, { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard, Platform } from "react-native";
 import { z } from "zod";
+import { getAvatarUrlSync } from '@/utils/avatar';
+import { getUserDisplayName } from '@/utils/user';
+import { ROLES, DOMAINS, isCoachInPractices } from '@/constants/roles';
 
 // Placeholder icons - you can replace these with actual icons
-const ProfileIcon = () => <Icon as={SettingsIcon} />;
-const SubscriptionIcon = () => <Icon as={SettingsIcon} />;
-const DownloadIcon = () => <Icon as={SettingsIcon} />;
-const FaqIcon = () => <Icon as={SettingsIcon} />;
-const NewsBlogIcon = () => <Icon as={SettingsIcon} />;
-const HomeIcon = () => <Icon as={SettingsIcon} />;
-const GlobeIcon = () => <Icon as={SettingsIcon} />;
-const InboxIcon = () => <Icon as={SettingsIcon} />;
-const HeartIcon = () => <Icon as={SettingsIcon} />;
-const CameraSparklesIcon = () => <Icon as={SettingsIcon} />;
-const EditPhotoIcon = () => <Icon as={EditIcon} />;
+const ProfileIcon = SettingsIcon;
+const SubscriptionIcon = SettingsIcon;
+const DownloadIcon = SettingsIcon;
+const FaqIcon = SettingsIcon;
+const NewsBlogIcon = SettingsIcon;
+const HomeIcon = SettingsIcon;
+const GlobeIcon = SettingsIcon;
+const InboxIcon = SettingsIcon;
+const HeartIcon = SettingsIcon;
+const CameraSparklesIcon = SettingsIcon;
+const EditPhotoIcon = EditIcon;
 
 type Icons = {
   iconName: LucideIcon | typeof Icon;
@@ -421,6 +426,50 @@ const MainContent = () => {
   const [selectedTradition, setSelectedTradition] = useState('canon-default');
   const { user, signOut } = useAuth();
   const toast = useToast();
+  const userId = user?.id || ''
+  
+  // Get user details to check for coach role
+  const { data: userData, refetch: refetchUser } = useUserById(userId)
+  const [assignRole] = useAssignRole()
+  
+  const isCoach = isCoachInPractices(userData?.userById?.roles || [])
+
+  // Meals goals GQL
+  const USER_GOALS = gqlP`
+    query ProfileUserGoals($userId: String!) {
+      userGoals(userId: $userId) {
+        dailyCalorieGoal
+        dailyWaterGoal
+      }
+    }
+  `
+  const UPDATE_GOALS = gqlP`
+    mutation UpdateUserGoals($userId: String!, $input: UserGoalsUpdateInput!) {
+      updateUserGoals(userId: $userId, input: $input) { id_ }
+    }
+  `
+  const UPSERT_GOALS = gqlP`
+    mutation UpsertUserGoals($userId: String!, $input: UserGoalsCreateInput!) {
+      upsertUserGoals(userId: $userId, input: $input) { id_ }
+    }
+  `
+  const { data: goalsData, refetch: refetchGoals } = useQuery(USER_GOALS, { skip: !userId, variables: { userId } })
+  const [updateGoals, { loading: goalsSaving }] = useMutation(UPDATE_GOALS, {
+    onCompleted: async () => { await refetchGoals(); toast.show({ title: 'Saved', description: 'Meals goals updated.' }) },
+    onError: (e) => toast.show({ title: 'Error', description: e.message, action: 'error' })
+  })
+  const [upsertGoals] = useMutation(UPSERT_GOALS, {
+    onCompleted: async () => { await refetchGoals(); toast.show({ title: 'Saved', description: 'Meals goals created.' }) },
+    onError: (e) => toast.show({ title: 'Error', description: e.message, action: 'error' })
+  })
+  const [calGoal, setCalGoal] = useState<string>('')
+  const [waterOz, setWaterOz] = useState<string>('')
+  React.useEffect(() => {
+    const cal = goalsData?.userGoals?.dailyCalorieGoal ?? 2000
+    const waterMl = goalsData?.userGoals?.dailyWaterGoal ?? 2000
+    setCalGoal(String(Math.round(cal)))
+    setWaterOz(String(Math.round(waterMl / 29.5735)))
+  }, [goalsData])
   
   const {
     control,
@@ -478,6 +527,29 @@ const MainContent = () => {
     });
   };
 
+  const handleBecomeCoach = async () => {
+    try {
+      await assignRole({
+        variables: {
+          userId: userId,
+          role: ROLES.COACH,
+          domain: DOMAINS.PRACTICES
+        }
+      });
+      await refetchUser();
+      toast.show({
+        title: "Success",
+        description: "You are now a coach! You can now manage clients and assign programs.",
+      });
+    } catch (error: any) {
+      toast.show({
+        title: "Error",
+        description: error.message || "Failed to upgrade to coach. Please try again.",
+        action: "error",
+      });
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -519,18 +591,18 @@ const MainContent = () => {
             <VStack space="md" className="items-center">
               <Avatar size="2xl" className="bg-primary-600">
                 <AvatarFallbackText>
-                  {user?.user_metadata?.full_name || user?.email || "User"}
+                  {getUserDisplayName(user)}
                 </AvatarFallbackText>
                 <AvatarImage
                   alt="Profile Image"
                   height={"100%"}
                   width={"100%"}
-                  source={{ uri: "https://i.pravatar.cc/300" }}
+                  source={{ uri: getAvatarUrlSync(user?.email) }}
                 />
               </Avatar>
               <VStack className="gap-1 w-full items-center">
                 <Text size="2xl" className="font-roboto text-white dark:text-gray-800">
-                  {user?.user_metadata?.full_name || user?.email || "User"}
+                  {getUserDisplayName(user)}
                 </Text>
                 <Text className="font-roboto text-sm text-white dark:text-gray-600 opacity-80">
                   United States
@@ -606,6 +678,57 @@ const MainContent = () => {
                 </Text>
               )}
             </VStack>
+
+            {/* Meals settings */}
+            <VStack space="sm" className="mt-6">
+              <Heading size="md">Meals</Heading>
+              <Text className="text-xs text-typography-500 dark:text-gray-400">Personalize your nutrition goals.</Text>
+              <HStack className="items-center justify-between mt-2">
+                <FormControl className="w-[47%]">
+                  <FormControlLabel className="mb-2">
+                    <FormControlLabelText>Daily calories (kcal)</FormControlLabelText>
+                  </FormControlLabel>
+                  <Input>
+                    <InputField value={calGoal} onChangeText={setCalGoal} keyboardType="numeric" placeholder="e.g., 2000" />
+                  </Input>
+                </FormControl>
+                <FormControl className="w-[47%]">
+                  <FormControlLabel className="mb-2">
+                    <FormControlLabelText>Daily water (oz)</FormControlLabelText>
+                  </FormControlLabel>
+                  <Input>
+                    <InputField value={waterOz} onChangeText={setWaterOz} keyboardType="numeric" placeholder="e.g., 64" />
+                  </Input>
+                </FormControl>
+              </HStack>
+              <HStack className="justify-end mt-3">
+                <Button disabled={goalsSaving || !userId} onPress={async () => {
+                  const cal = parseFloat(calGoal)
+                  const oz = parseFloat(waterOz)
+                  const calVal = isFinite(cal) ? cal : 2000
+                  const mlVal = isFinite(oz) ? oz * 29.5735 : 2000
+                  if (goalsData?.userGoals) {
+                    await updateGoals({ variables: { userId, input: { dailyCalorieGoal: calVal, dailyWaterGoal: mlVal } } })
+                  } else {
+                    await upsertGoals({ variables: { userId, input: { userId, dailyCalorieGoal: calVal, dailyWaterGoal: mlVal } } })
+                  }
+                }}>
+                  <ButtonText>{goalsSaving ? 'Saving…' : 'Save Meals Settings'}</ButtonText>
+                </Button>
+              </HStack>
+            </VStack>
+            
+            {/* Coach Escalation Button */}
+            {!isCoach && (
+              <Button
+                variant="outline"
+                action="primary"
+                onPress={handleBecomeCoach}
+                className="gap-3 border-blue-500"
+              >
+                <ButtonText className="text-blue-600">Become Coach</ButtonText>
+              </Button>
+            )}
             
             <Button
               variant="outline"
@@ -739,7 +862,7 @@ const ModalComponent = ({
               alt="Profile Image"
               height={"100%"}
               width={"100%"}
-              source={{ uri: "https://i.pravatar.cc/300" }}
+              source={{ uri: getAvatarUrlSync(user?.email) }}
             />
             <AvatarBadge />
           </Avatar>

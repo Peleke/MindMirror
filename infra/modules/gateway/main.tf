@@ -1,10 +1,17 @@
 resource "google_cloud_run_service" "gateway" {
-  name     = "gateway"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
   template {
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale" = "1"
+      }
+    }
+
     spec {
+      container_concurrency = 20
       containers {
         image = var.gateway_container_image
 
@@ -34,6 +41,21 @@ resource "google_cloud_run_service" "gateway" {
           value = var.journal_service_url
         }
 
+        env {
+          name  = "HABITS_SERVICE_URL"
+          value = var.habits_service_url
+        }
+
+        env {
+          name  = "MEALS_SERVICE_URL"
+          value = var.meals_service_url
+        }
+
+        env {
+          name  = "VOUCHERS_WEB_BASE_URL"
+          value = var.vouchers_web_base_url
+        }
+
         # Environment
         env {
           name  = "ENVIRONMENT"
@@ -54,6 +76,7 @@ resource "google_cloud_run_service" "gateway" {
     percent         = 100
     latest_revision = true
   }
+  autogenerate_revision_name = true
 }
 
 # Allow unauthenticated access to the Cloud Run service
@@ -67,8 +90,8 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 
 # Service account for gateway
 resource "google_service_account" "gateway" {
-  account_id   = "gateway"
-  display_name = "Service Account for Gateway"
+  account_id   = "gateway-${var.environment}"
+  display_name = "Service Account for Gateway (${var.environment})"
   project      = var.project_id
 }
 

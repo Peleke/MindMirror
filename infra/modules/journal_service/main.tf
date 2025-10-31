@@ -1,10 +1,17 @@
 resource "google_cloud_run_service" "journal_service" {
-  name     = "journal-service"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
   template {
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale" = "1"
+      }
+    }
+
     spec {
+      container_concurrency = 20
       containers {
         image = var.journal_service_container_image
 
@@ -117,6 +124,12 @@ resource "google_cloud_run_service" "journal_service" {
           name  = "REINDEX_SECRET_KEY"
           value = var.reindex_secret_key
         }
+
+        # Users Service URL for shared auth/clients
+        env {
+          name  = "USERS_SERVICE_URL"
+          value = var.users_service_url
+        }
       }
 
 
@@ -128,6 +141,7 @@ resource "google_cloud_run_service" "journal_service" {
     percent         = 100
     latest_revision = true
   }
+  autogenerate_revision_name = true
 }
 
 # Allow unauthenticated access to the Cloud Run service

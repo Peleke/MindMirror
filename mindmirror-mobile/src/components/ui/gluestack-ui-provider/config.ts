@@ -153,6 +153,20 @@ export const config = {
     '--color-indicator-primary': '55 55 55',
     '--color-indicator-info': '83 153 236',
     '--color-indicator-error': '185 28 28',
+
+    /* Border (alias of outline for default light) */
+    '--color-border-0': '253 254 254',
+    '--color-border-50': '243 243 243',
+    '--color-border-100': '230 230 230',
+    '--color-border-200': '221 220 219',
+    '--color-border-300': '211 211 211',
+    '--color-border-400': '165 163 163',
+    '--color-border-500': '140 141 141',
+    '--color-border-600': '115 116 116',
+    '--color-border-700': '83 82 82',
+    '--color-border-800': '65 65 65',
+    '--color-border-900': '39 38 36',
+    '--color-border-950': '26 23 23',
   }),
   dark: vars({
     '--color-primary-0': '166 166 166',
@@ -305,5 +319,131 @@ export const config = {
     '--color-indicator-primary': '247 247 247',
     '--color-indicator-info': '161 199 245',
     '--color-indicator-error': '232 70 69',
+
+    /* Border (alias of outline for default dark) */
+    '--color-border-0': '26 23 23',
+    '--color-border-50': '39 38 36',
+    '--color-border-100': '65 65 65',
+    '--color-border-200': '83 82 82',
+    '--color-border-300': '115 116 116',
+    '--color-border-400': '140 141 141',
+    '--color-border-500': '165 163 163',
+    '--color-border-600': '211 211 211',
+    '--color-border-700': '221 220 219',
+    '--color-border-800': '230 230 230',
+    '--color-border-900': '243 243 243',
+    '--color-border-950': '253 254 254',
   }),
+  variants: {
+    classic: vars({
+      /* Primary remapped to Tailwind Indigo for pre-polish look */
+      '--color-primary-50': '238 242 255',
+      '--color-primary-100': '224 231 255',
+      '--color-primary-200': '199 210 254',
+      '--color-primary-300': '165 180 252',
+      '--color-primary-400': '129 140 248',
+      '--color-primary-500': '99 102 241',
+      '--color-primary-600': '79 70 229',
+      '--color-primary-700': '67 56 202',
+      '--color-primary-800': '55 48 163',
+      '--color-primary-900': '49 46 129',
+      '--color-primary-950': '30 27 75',
+    }),
+    autumnHarvest: vars({
+      /* Background */
+      '--color-background-0': '237 224 212', /* #ede0d4 */
+      '--color-background-50': '230 204 178', /* #e6ccb2 */
+      '--color-background-100': '240 221 197',
+      '--color-background-200': '246 230 207',
+
+      /* Typography */
+      '--color-typography-900': '127 85 57',   /* #7f5539 */
+      '--color-typography-800': '140 94 62',
+      '--color-typography-700': '156 102 68',  /* #9c6644 */
+
+      /* Primary (brand accent) around #b08968 */
+      '--color-primary-50': '253 246 240',
+      '--color-primary-100': '249 238 230',
+      '--color-primary-200': '242 225 213',
+      '--color-primary-300': '233 210 192',
+      '--color-primary-400': '214 182 157',
+      '--color-primary-500': '176 137 104', /* #b08968 */
+      '--color-primary-600': '153 117 89',
+      '--color-primary-700': '127 94 70',
+      '--color-primary-800': '101 75 56',
+      '--color-primary-900': '79 57 40',
+      '--color-primary-950': '52 37 26',
+
+      /* Border tuned to brand neutrals */
+      '--color-border-200': '214 182 157',
+      '--color-border-300': '200 166 142',
+      '--color-border-700': '127 94 70',
+    }),
+    brightGreens: vars({
+      /* Bright Greens palette: [#132a13,#31572c,#4f772d,#90a955,#ecf39e] */
+      /* Background (lightest) */
+      '--color-background-0': '236 243 158', /* #ecf39e */
+      '--color-background-50': '223 236 138',
+      '--color-background-100': '209 229 123',
+      '--color-background-200': '190 217 110',
+      '--color-background-300': '169 204 95',
+      '--color-background-700': '121 163 66',
+
+      /* Typography (very dark green) */
+      '--color-typography-900': '19 42 19',   /* #132a13 */
+      '--color-typography-800': '30 64 30',
+      '--color-typography-700': '49 87 44',   /* #31572c */
+      '--color-typography-600': '79 119 45',  /* #4f772d */
+
+      /* Primary (leafy accents) spanning #4f772d and #90a955 */
+      '--color-primary-50': '232 245 193',
+      '--color-primary-100': '221 240 173',
+      '--color-primary-200': '198 229 140',
+      '--color-primary-300': '165 209 109',
+      '--color-primary-400': '144 169 85',   /* #90a955 slightly darkened for contrast */
+      '--color-primary-500': '79 119 45',    /* #4f772d */
+      '--color-primary-600': '60 96 36',
+      '--color-primary-700': '49 87 44',     /* #31572c */
+      '--color-primary-800': '30 64 30',
+      '--color-primary-900': '19 42 19',     /* #132a13 */
+      '--color-primary-950': '12 28 12',
+
+      /* Border tuned to greens */
+      '--color-border-200': '198 229 140',
+      '--color-border-300': '165 209 109',
+      '--color-border-700': '49 87 44',
+    }),
+    freshGreens: vars({
+      /* Fresh Greens palette: [#d8f3dc,#b7e4c7,#95d5b2,#74c69d,#52b788,#40916c,#2d6a4f,#1b4332,#081c15] */
+      /* Background */
+      '--color-background-0': '216 243 220', /* #d8f3dc */
+      '--color-background-50': '183 228 199', /* #b7e4c7 */
+      '--color-background-100': '149 213 178', /* #95d5b2 */
+      '--color-background-200': '116 198 157', /* #74c69d */
+      '--color-background-300': '82 183 136',  /* #52b788 */
+      '--color-background-700': '64 145 108',  /* #40916c */
+
+      /* Typography */
+      '--color-typography-900': '8 28 21',     /* #081c15 */
+      '--color-typography-800': '27 67 50',    /* #1b4332 */
+      '--color-typography-700': '45 106 79',   /* #2d6a4f */
+
+      /* Primary */
+      '--color-primary-50': '216 243 220',     /* #d8f3dc */
+      '--color-primary-100': '183 228 199',    /* #b7e4c7 */
+      '--color-primary-200': '149 213 178',    /* #95d5b2 */
+      '--color-primary-300': '116 198 157',    /* #74c69d */
+      '--color-primary-400': '82 183 136',     /* #52b788 */
+      '--color-primary-500': '64 145 108',     /* #40916c */
+      '--color-primary-600': '45 106 79',      /* #2d6a4f */
+      '--color-primary-700': '27 67 50',       /* #1b4332 */
+      '--color-primary-800': '19 52 39',
+      '--color-primary-900': '8 28 21',        /* #081c15 */
+
+      /* Border */
+      '--color-border-200': '183 228 199',
+      '--color-border-300': '149 213 178',
+      '--color-border-700': '27 67 50',
+    }),
+  },
 };

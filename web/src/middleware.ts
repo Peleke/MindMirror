@@ -18,7 +18,16 @@ export function middleware(request: NextRequest) {
     '/api/subscribe', // Allow subscribe API for landing page
     // Add any other static assets you need
     '/images',
-    '/icons'
+    '/icons',
+    // Admin routes (allow UI and API)
+    '/admin',
+    '/api/admin',
+    // Resend webhook
+    '/api/resend',
+    // Voucher + redeem flows
+    '/redeem',
+    '/api/vouchers',
+    '/api/stripe/webhook'
   ]
 
   // Special handling for root path - redirect to landing

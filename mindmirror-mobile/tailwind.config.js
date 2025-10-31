@@ -146,6 +146,20 @@ module.exports = {
           900: 'rgb(var(--color-outline-900)/<alpha-value>)',
           950: 'rgb(var(--color-outline-950)/<alpha-value>)',
         },
+        border: {
+          0: 'rgb(var(--color-border-0)/<alpha-value>)',
+          50: 'rgb(var(--color-border-50)/<alpha-value>)',
+          100: 'rgb(var(--color-border-100)/<alpha-value>)',
+          200: 'rgb(var(--color-border-200)/<alpha-value>)',
+          300: 'rgb(var(--color-border-300)/<alpha-value>)',
+          400: 'rgb(var(--color-border-400)/<alpha-value>)',
+          500: 'rgb(var(--color-border-500)/<alpha-value>)',
+          600: 'rgb(var(--color-border-600)/<alpha-value>)',
+          700: 'rgb(var(--color-border-700)/<alpha-value>)',
+          800: 'rgb(var(--color-border-800)/<alpha-value>)',
+          900: 'rgb(var(--color-border-900)/<alpha-value>)',
+          950: 'rgb(var(--color-border-950)/<alpha-value>)',
+        },
         background: {
           0: 'rgb(var(--color-background-0)/<alpha-value>)',
           50: 'rgb(var(--color-background-50)/<alpha-value>)',
@@ -195,6 +209,7 @@ module.exports = {
         'soft-2': '0px 0px 20px rgba(38, 38, 38, 0.2)',
         'soft-3': '0px 0px 30px rgba(38, 38, 38, 0.1)',
         'soft-4': '0px 0px 40px rgba(38, 38, 38, 0.1)',
+        'brand': '0px 7px 29px 0px rgba(127, 85, 57, 0.2)'
       },
     },
   },

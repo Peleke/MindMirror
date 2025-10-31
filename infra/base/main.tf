@@ -4,7 +4,7 @@ provider "google" {
 }
 
 resource "google_storage_bucket" "traditions" {
-  name     = "traditions-${var.project_id}"
+  name     = "traditions-${var.project_id}-${var.environment}"
   location = var.region
   project  = var.project_id
 
@@ -13,8 +13,8 @@ resource "google_storage_bucket" "traditions" {
 }
 
 resource "google_service_account" "journal_service" {
-  account_id   = "journal-service"
-  display_name = "Service Account for Journal Service"
+  account_id   = "journal-service-${var.environment}"
+  display_name = "Service Account for Journal Service (${var.environment})"
   project      = var.project_id
 }
 
@@ -31,8 +31,8 @@ resource "google_project_iam_member" "journal_sa_secret_access" {
 }
 
 resource "google_service_account" "agent_service" {
-  account_id   = "agent-service"
-  display_name = "Service Account for Agent Service"
+  account_id   = "agent-service-${var.environment}"
+  display_name = "Service Account for Agent Service (${var.environment})"
   project      = var.project_id
 }
 
@@ -52,6 +52,22 @@ resource "google_project_iam_member" "agent_sa_secret_access" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.agent_service.email}"
+}
+
+resource "google_service_account" "meals_service" {
+  account_id   = "meals-service-${var.environment}"
+  display_name = "Service Account for Meals Service (${var.environment})"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "meals_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.meals_service.email}"
+}
+
+output "meals_service_email" {
+  value = google_service_account.meals_service.email
 }
 
 # Existing secrets — just referencing
@@ -108,4 +124,41 @@ data "google_secret_manager_secret" "supabase_url" {
 data "google_secret_manager_secret" "supabase_service_role_key" {
   secret_id = "SUPABASE_SERVICE_ROLE_KEY"
   project   = var.project_id
+}
+
+# Service accounts for additional services
+resource "google_service_account" "movements_service" {
+  account_id   = "movements-service-${var.environment}"
+  display_name = "Service Account for Movements Service (${var.environment})"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "movements_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.movements_service.email}"
+}
+
+resource "google_service_account" "practices_service" {
+  account_id   = "practices-service-${var.environment}"
+  display_name = "Service Account for Practices Service (${var.environment})"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "practices_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.practices_service.email}"
+}
+
+resource "google_service_account" "users_service" {
+  account_id   = "users-service-${var.environment}"
+  display_name = "Service Account for Users Service (${var.environment})"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "users_sa_secret_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.users_service.email}"
 }

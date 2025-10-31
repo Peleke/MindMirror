@@ -1,3 +1,9 @@
+variable "service_name" {
+  description = "Cloud Run service name"
+  type        = string
+  default     = "celery-worker-web"
+}
+
 variable "project_id" {
   type = string
 }

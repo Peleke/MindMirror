@@ -15,8 +15,8 @@ export const JOURNAL_ENTRY_EXISTS_TODAY = gql`
 `
 
 export const GET_JOURNAL_ENTRIES = gql`
-  query GetJournalEntries {
-    journalEntries {
+  query GetJournalEntries($limit: Int, $offset: Int) {
+    journalEntries(limit: $limit, offset: $offset) {
       __typename
       ... on GratitudeJournalEntry {
         id
@@ -47,6 +47,13 @@ export const GET_JOURNAL_ENTRIES = gql`
   }
 `
 
+// Journal entries count query for pagination
+export const GET_JOURNAL_ENTRIES_COUNT = gql`
+  query GetJournalEntriesCount {
+    journalEntriesCount
+  }
+`
+
 // Chat-related query
 export const ASK_QUERY = gql`
   query Ask($query: String!, $tradition: String!) {
@@ -70,6 +77,36 @@ export const SUMMARIZE_JOURNALS_QUERY = gql`
     summarizeJournals {
       summary
       generatedAt
+    }
+  }
+`
+
+// Individual journal entry queries for detail pages
+export const GET_JOURNAL_ENTRY = gql`
+  query GetJournalEntry($entryId: UUID!) {
+    journalEntry(entryId: $entryId) {
+      __typename
+      id
+      createdAt
+      ... on FreeformJournalEntry {
+        content: payload
+      }
+      ... on GratitudeJournalEntry {
+        payload {
+          gratefulFor
+          excitedAbout
+          focus
+          affirmation
+          mood
+        }
+      }
+      ... on ReflectionJournalEntry {
+        payload {
+          wins
+          improvements
+          mood
+        }
+      }
     }
   }
 `

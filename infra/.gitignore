@@ -2,3 +2,4 @@ default.tfvars
 .terraform
 *.binary
 *.plan
+.terraform.lock.hcl
