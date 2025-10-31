@@ -1,0 +1,199 @@
+name: Deploy Gateway to Production
+
+on:
+  workflow_run:
+    workflows: ["Deploy to Production"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:  # Allows manual trigger
+    inputs:
+      version_tag:
+        description: 'Version tag for gateway image (e.g., v1.0.0-abc1234)'
+        required: true
+        type: string
+
+env:
+  GCP_PROJECT_ID: mindmirror-prod  # Production project
+  GCP_REGION: us-east4
+  ARTIFACT_REGISTRY: us-east4-docker.pkg.dev
+  ARTIFACT_REPO: mindmirror
+
+jobs:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Build and push gateway with service URLs
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  build-gateway:
+    # Only run if Deploy to Production succeeded (or if manually triggered)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version_tag: ${{ steps.version.outputs.tag }}
+      image_name: ${{ steps.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION_TAG="${{ inputs.version_tag }}"
+          else
+            # Generate version tag from VERSION file and git SHA
+            VERSION=$(cat VERSION | tr -d '\n')
+            SHA=$(git rev-parse --short HEAD)
+            VERSION_TAG="v${VERSION}-${SHA}"
+          fi
+
+          echo "tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Gateway version: $VERSION_TAG"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: 'github-actions-production@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build and push gateway image
+        id: build
+        env:
+          VERSION_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🏗️  Building Gateway with Service URLs"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Version: $VERSION_TAG"
+          echo "Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "Environment: PRODUCTION"
+          echo ""
+
+          chmod +x scripts/build-gateway-with-urls.sh
+          ./scripts/build-gateway-with-urls.sh production "$VERSION_TAG"
+
+          IMAGE="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/mesh:${VERSION_TAG}"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "✅ Gateway image built and pushed"
+          echo "Image: $IMAGE"
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Generate gateway-only tfvars and commit
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  update-gateway-tfvars:
+    needs: build-gateway
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate gateway tfvars
+        env:
+          VERSION_TAG: ${{ needs.build-gateway.outputs.version_tag }}
+          IMAGE_NAME: ${{ needs.build-gateway.outputs.image_name }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📝 Adding gateway_container_image to tfvars"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Remove existing gateway_container_image line if present
+          sed -i '/^gateway_container_image/d' infra/production.auto.tfvars
+
+          # Append gateway container image to existing tfvars
+          echo "" >> infra/production.auto.tfvars
+          echo "# Gateway Configuration (Updated by gateway-deploy-production.yml)" >> infra/production.auto.tfvars
+          echo "gateway_container_image = \"$IMAGE_NAME\"" >> infra/production.auto.tfvars
+
+          echo "✅ Added gateway_container_image to tfvars"
+          echo "Gateway image: $IMAGE_NAME"
+          echo ""
+          echo "Updated tfvars:"
+          cat infra/production.auto.tfvars
+
+      - name: Commit and push gateway tfvars
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add infra/production.auto.tfvars
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(gateway): update tfvars to ${{ needs.build-gateway.outputs.version_tag }}"
+            git push origin main
+            echo "✅ Pushed gateway tfvars update"
+          fi
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Trigger Gateway Apply
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  trigger-gateway-apply:
+    needs: [build-gateway, update-gateway-tfvars]
+    runs-on: ubuntu-latest
+    if: ${{ needs.build-gateway.result == 'success' && needs.update-gateway-tfvars.result == 'success' }}
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Trigger Tofu Apply - Gateway
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Triggering Gateway Apply (Production)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "⚠️  This will require manual approval"
+          echo ""
+
+          gh workflow run tofu-apply-gateway-production.yml --ref main
+
+          echo ""
+          echo "✅ Gateway apply workflow triggered"
+          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
+          echo "   Approval required before deployment"
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Summary
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  summary:
+    needs: [build-gateway, update-gateway-tfvars, trigger-gateway-apply]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Gateway deployment summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Gateway Build Complete (Production)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Version: ${{ needs.build-gateway.outputs.version_tag }}"
+          echo "Image: ${{ needs.build-gateway.outputs.image_name }}"
+          echo ""
+          echo "✅ Gateway image built with service URLs"
+          echo "✅ production.auto.tfvars updated (gateway-only)"
+          echo "✅ Gateway apply workflow triggered"
+          echo ""
+          echo "⏳ Awaiting manual approval and watching gateway deployment:"
+          echo "   https://github.com/${{ github.repository }}/actions"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

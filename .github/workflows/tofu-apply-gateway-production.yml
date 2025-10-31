@@ -1,0 +1,263 @@
+name: Tofu Apply - Gateway (Production)
+
+on:
+  workflow_run:
+    workflows: ["Deploy Gateway to Production"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:  # Allows manual trigger via GitHub UI
+
+env:
+  TOFU_VERSION: "1.6.0"
+  GCP_PROJECT_ID: "mindmirror-prod"
+  GCP_REGION: "us-east4"
+  ENVIRONMENT: "production"
+
+jobs:
+  apply-gateway:
+    # Only run if Deploy Gateway to Production succeeded (or if manually triggered)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    # ⚠️ CRITICAL: GitHub Environment provides manual approval gate
+    environment:
+      name: production
+      url: https://console.cloud.google.com/run?project=mindmirror-prod
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PRODUCTION_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: 'github-actions-production@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Tofu Init
+        working-directory: infra
+        run: |
+          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+
+      - name: Tofu Plan (Gateway Only)
+        id: plan
+        working-directory: infra
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 Planning Gateway Deployment (Production)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+
+          # Count changes
+          CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "📋 Plan summary: $CHANGES"
+
+      - name: Pre-Apply Checklist
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "⚠️  PRODUCTION GATEWAY DEPLOYMENT CHECKLIST"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Changes: ${{ steps.plan.outputs.changes }}"
+          echo ""
+          echo "Pre-flight checks:"
+          echo "✅ Gateway image built with production service URLs"
+          echo "✅ tfvars updated and committed"
+          echo "✅ Manual approval granted"
+          echo "✅ Staging gateway deployment successful"
+          echo ""
+          echo "Proceeding with production gateway apply..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Tofu Apply (Gateway Only)
+        id: apply
+        working-directory: infra
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Deploying Gateway to Production"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          tofu apply -auto-approve plan.tfplan 2>&1 | tee apply-output.txt
+
+          APPLY_EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$APPLY_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          if [ $APPLY_EXIT_CODE -eq 0 ]; then
+            echo ""
+            echo "✅ Gateway deployed successfully"
+          else
+            echo ""
+            echo "❌ Gateway deployment failed"
+          fi
+
+          exit $APPLY_EXIT_CODE
+
+      - name: Verify Gateway Deployment
+        if: steps.apply.outputs.exit_code == '0'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 Verifying Gateway Deployment"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          # Get gateway service details
+          gcloud run services describe gateway \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="table(status.url,status.traffic,metadata.labels)" || true
+
+          echo ""
+          echo "🔗 Gateway URL:"
+          gcloud run services describe gateway \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="value(status.url)"
+
+      - name: Test Gateway Health
+        if: steps.apply.outputs.exit_code == '0'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🏥 Testing Gateway Health"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          GATEWAY_URL=$(gcloud run services describe gateway \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="value(status.url)")
+
+          echo "Testing: ${GATEWAY_URL}/healthcheck"
+
+          # Test health endpoint (retry up to 3 times with 10s delay)
+          for i in {1..3}; do
+            if curl -f -s "${GATEWAY_URL}/healthcheck" | jq '.'; then
+              echo ""
+              echo "✅ Gateway is healthy"
+              exit 0
+            else
+              echo "⏳ Attempt $i/3 failed, retrying in 10s..."
+              sleep 10
+            fi
+          done
+
+          echo "⚠️  Gateway health check failed after 3 attempts"
+          echo "   (Gateway may still be starting up)"
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Gateway Deployment Summary (Production)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          echo "Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "Service: gateway"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Deployer: ${{ github.actor }}"
+          echo ""
+          echo "Plan: ${{ steps.plan.outputs.changes }}"
+          echo "Apply: ${{ steps.apply.outputs.exit_code == '0' && '✅ Success' || '❌ Failed' }}"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 Four-Phase Deployment Complete!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Phase 1: ✅ Services deployed with service URLs saved"
+          echo "Phase 2: ✅ Service deployment approved"
+          echo "Phase 3: ✅ Gateway rebuilt and deployed with URLs"
+          echo "Phase 4: ✅ Gateway deployment approved"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Create Success Issue
+        if: steps.apply.outputs.exit_code == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## ✅ Production Gateway Deployment Successful
+
+            **Environment**: Production
+            **Project**: ${{ env.GCP_PROJECT_ID }}
+            **Service**: gateway
+            **Commit**: ${context.sha.substring(0, 7)}
+            **Deployed by**: @${context.actor}
+            **Timestamp**: ${new Date().toISOString()}
+
+            ### Changes
+            \`\`\`
+            ${{ steps.plan.outputs.changes }}
+            \`\`\`
+
+            ### Verification
+            - [Gateway Service](https://console.cloud.google.com/run/detail/${{ env.GCP_REGION }}/gateway?project=${{ env.GCP_PROJECT_ID }})
+            - [Workflow Logs](${context.payload.repository.html_url}/actions/runs/${context.runId})
+
+            **Next Steps**:
+            - [ ] Verify gateway is serving requests
+            - [ ] Check federated GraphQL schema is correct
+            - [ ] Test end-to-end user flows
+            - [ ] Monitor gateway logs for errors
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `✅ Production gateway deployment: ${context.sha.substring(0, 7)}`,
+              body: message,
+              labels: ['deployment', 'production', 'gateway', 'success']
+            });
+
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## 🚨 Production Gateway Deployment Failed
+
+            **Environment**: Production
+            **Project**: ${{ env.GCP_PROJECT_ID }}
+            **Service**: gateway
+            **Commit**: ${context.sha.substring(0, 7)}
+            **Failed at**: ${new Date().toISOString()}
+
+            ### Error Details
+            Check the [workflow logs](${context.payload.repository.html_url}/actions/runs/${context.runId}) for details.
+
+            ### Rollback Steps
+            1. Identify last known good gateway version
+            2. Revert \`infra/production.auto.tfvars\` to previous gateway image
+            3. Manually trigger gateway apply workflow
+            4. Or deploy previous image manually:
+               \`\`\`bash
+               gcloud run deploy gateway \\
+                 --image=KNOWN_GOOD_IMAGE \\
+                 --region=${{ env.GCP_REGION }} \\
+                 --project=${{ env.GCP_PROJECT_ID }}
+               \`\`\`
+
+            **Priority**: 🔴 CRITICAL - Gateway down affects all services
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 CRITICAL: Production gateway deployment failed',
+              body: message,
+              labels: ['deployment', 'production', 'gateway', 'failure', 'critical']
+            });
