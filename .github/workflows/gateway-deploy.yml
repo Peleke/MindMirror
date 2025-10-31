@@ -98,22 +98,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: staging
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate gateway tfvars
         env:
           VERSION_TAG: ${{ needs.build-gateway.outputs.version_tag }}
+          IMAGE_NAME: ${{ needs.build-gateway.outputs.image_name }}
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "📝 Generating Gateway tfvars"
+          echo "📝 Adding gateway_container_image to tfvars"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-          chmod +x scripts/generate-tfvars.sh
-          ./scripts/generate-tfvars.sh staging "$VERSION_TAG" --gateway-only > infra/staging.auto.tfvars
+          # Remove existing gateway_container_image line if present
+          sed -i '/^gateway_container_image/d' infra/staging.auto.tfvars
 
-          echo "✅ Generated gateway-only tfvars"
-          cat infra/staging.auto.tfvars
+          # Append gateway container image to existing tfvars
+          echo "" >> infra/staging.auto.tfvars
+          echo "# Gateway Configuration (Updated by gateway-deploy.yml)" >> infra/staging.auto.tfvars
+          echo "gateway_container_image = \"$IMAGE_NAME\"" >> infra/staging.auto.tfvars
+
+          echo "✅ Added gateway_container_image to tfvars"
+          echo "Gateway image: $IMAGE_NAME"
 
       - name: Commit and push gateway tfvars
         run: |
