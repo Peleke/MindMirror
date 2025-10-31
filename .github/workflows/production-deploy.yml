@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'infra/**/*.tfvars'  # Don't trigger on tfvars-only changes (prevents loop)
 
 env:
   GCP_PROJECT_ID: mindmirror-prod  # Production GCP project
@@ -35,11 +37,15 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "📦 Version tag: $TAG"
 
+      - name: Fetch staging branch for comparison
+        run: |
+          git fetch origin staging:staging
+
       - name: Detect changed services
         id: detect
         run: |
           chmod +x scripts/changed-services.sh
-          SERVICES=$(scripts/changed-services.sh origin/main^)
+          SERVICES=$(scripts/changed-services.sh origin/staging)
           echo "services=$SERVICES" >> $GITHUB_OUTPUT
 
           if [ "$SERVICES" = "[]" ]; then
@@ -71,6 +77,13 @@ jobs:
           - service: mobile_app
           # Skip deprecated celery worker
           - service: celery_worker
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Gateway excluded from this workflow (two-phase deployment)
+          # Gateway requires service URLs which don't exist until after
+          # Terraform deployment completes. Gateway is built and deployed
+          # separately via gateway-deploy-production.yml workflow.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          - service: mesh_gateway
     steps:
       - uses: actions/checkout@v4
 
