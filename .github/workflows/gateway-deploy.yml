@@ -148,8 +148,13 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.build-gateway.result == 'success' && needs.update-gateway-tfvars.result == 'success' }}
     permissions:
+      contents: read
       actions: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
       - name: Trigger Tofu Apply - Gateway
         env:
           GH_TOKEN: ${{ github.token }}
