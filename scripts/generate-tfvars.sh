@@ -98,10 +98,9 @@ gateway_container_image         = "${REGISTRY}/mesh:${VERSION_TAG}"
 EOF
 else
 cat <<EOF
-# Full service deployment
+# Full service deployment (gateway excluded - deployed separately)
 journal_service_container_image = "${REGISTRY}/journal_service:${VERSION_TAG}"
 agent_service_container_image   = "${REGISTRY}/agent_service:${VERSION_TAG}"
-gateway_container_image         = "${REGISTRY}/mesh:${VERSION_TAG}"
 celery_worker_container_image   = "${REGISTRY}/celery-worker:${VERSION_TAG}"
 habits_service_container_image  = "${REGISTRY}/habits_service:${VERSION_TAG}"
 meals_image                     = "${REGISTRY}/meals_service:${VERSION_TAG}"
