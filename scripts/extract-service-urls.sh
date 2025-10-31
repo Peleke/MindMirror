@@ -9,18 +9,19 @@ set -euo pipefail
 ENVIRONMENT="${1:-staging}"
 WORKING_DIR="${2:-infra}"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📡 Extracting Service URLs from Terraform"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Environment: ${ENVIRONMENT}"
-echo "Working Directory: ${WORKING_DIR}"
-echo ""
+# Send diagnostic output to stderr so only JSON goes to stdout
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+echo "📡 Extracting Service URLs from Terraform" >&2
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+echo "Environment: ${ENVIRONMENT}" >&2
+echo "Working Directory: ${WORKING_DIR}" >&2
+echo "" >&2
 
 # Navigate to infra directory
 cd "${WORKING_DIR}"
 
 # Extract service URLs using Terraform output
-echo "🔍 Running: tofu output -json"
+echo "🔍 Running: tofu output -json" >&2
 OUTPUTS=$(tofu output -json)
 
 # Parse each service URL
@@ -32,25 +33,25 @@ MOVEMENTS_URL=$(echo "${OUTPUTS}" | jq -r '.movements_service_url.value // empty
 PRACTICES_URL=$(echo "${OUTPUTS}" | jq -r '.practices_service_url.value // empty')
 USERS_URL=$(echo "${OUTPUTS}" | jq -r '.users_service_url.value // empty')
 
-echo "📋 Extracted URLs:"
-echo "  - Journal: ${JOURNAL_URL:-<not found>}"
-echo "  - Agent: ${AGENT_URL:-<not found>}"
-echo "  - Habits: ${HABITS_URL:-<not found>}"
-echo "  - Meals: ${MEALS_URL:-<not found>}"
-echo "  - Movements: ${MOVEMENTS_URL:-<not found>}"
-echo "  - Practices: ${PRACTICES_URL:-<not found>}"
-echo "  - Users: ${USERS_URL:-<not found>}"
-echo ""
+echo "📋 Extracted URLs:" >&2
+echo "  - Journal: ${JOURNAL_URL:-<not found>}" >&2
+echo "  - Agent: ${AGENT_URL:-<not found>}" >&2
+echo "  - Habits: ${HABITS_URL:-<not found>}" >&2
+echo "  - Meals: ${MEALS_URL:-<not found>}" >&2
+echo "  - Movements: ${MOVEMENTS_URL:-<not found>}" >&2
+echo "  - Practices: ${PRACTICES_URL:-<not found>}" >&2
+echo "  - Users: ${USERS_URL:-<not found>}" >&2
+echo "" >&2
 
 # Validate that we have at least some URLs
 if [ -z "${JOURNAL_URL}" ] && [ -z "${AGENT_URL}" ]; then
-    echo "❌ ERROR: No service URLs found in Terraform outputs"
-    echo "This usually means Terraform apply hasn't run yet or outputs are not configured"
+    echo "❌ ERROR: No service URLs found in Terraform outputs" >&2
+    echo "This usually means Terraform apply hasn't run yet or outputs are not configured" >&2
     exit 1
 fi
 
-# Generate JSON payload for Secret Manager
-echo "📝 Generating JSON payload..."
+# Generate JSON payload for Secret Manager (only this goes to stdout)
+echo "📝 Generating JSON payload..." >&2
 cat <<EOF
 {
   "journal_service_url": "${JOURNAL_URL}",
@@ -63,5 +64,5 @@ cat <<EOF
 }
 EOF
 
-echo ""
-echo "✅ Service URLs extracted successfully"
+echo "" >&2
+echo "✅ Service URLs extracted successfully" >&2
