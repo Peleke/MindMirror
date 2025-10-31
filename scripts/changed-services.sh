@@ -12,8 +12,13 @@ BASE="${1:-origin/main}"
 # Fetch base branch for comparison (suppress errors if already fetched)
 git fetch origin main --depth=1 2>/dev/null || true
 
-# Get list of changed files
-CHANGED_FILES=$(git diff --name-only "$BASE"...HEAD)
+# Get list of changed files (fallback to rebuild all if no merge base)
+if ! CHANGED_FILES=$(git diff --name-only "$BASE"...HEAD 2>&1); then
+    >&2 echo "Warning: No merge base with $BASE (branches diverged)"
+    >&2 echo "Falling back to rebuild all services"
+    # Set CHANGED_FILES to trigger all service rebuilds
+    CHANGED_FILES="docker-compose.yml"
+fi
 
 # Track which services changed (use associative array for deduplication)
 declare -A services_map
