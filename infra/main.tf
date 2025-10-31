@@ -257,9 +257,7 @@ module "meals_service" {
   service_account_email = module.base.meals_service_email
 }
 
-output "meals_service_url" {
-  value = module.meals_service.service_url
-}
+# meals_service_url output moved to outputs.tf
 
 module "movements_service" {
   source       = "./modules/movements"
@@ -272,9 +270,7 @@ module "movements_service" {
   service_account_email = module.base.movements_service_sa_email
 }
 
-output "movements_service_url" {
-  value = module.movements_service.service_url
-}
+# movements_service_url output moved to outputs.tf
 
 module "practices_service" {
   source       = "./modules/practices"
@@ -291,9 +287,7 @@ module "practices_service" {
   enable_health_probes = true
 }
 
-output "practices_service_url" {
-  value = module.practices_service.service_url
-}
+# practices_service_url output moved to outputs.tf
 
 module "users_service" {
   source       = "./modules/users"
@@ -317,6 +311,4 @@ module "users_service" {
   service_account_email = module.base.users_service_sa_email
 }
 
-output "users_service_url" {
-  value = module.users_service.service_url
-}
+# users_service_url output moved to outputs.tf
