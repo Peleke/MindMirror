@@ -25,6 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: staging
           fetch-depth: 0
 
       - name: Setup OpenTofu
@@ -51,10 +52,13 @@ jobs:
         working-directory: infra
         run: |
           tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+          PLAN_EXIT_CODE=${PIPESTATUS[0]}
 
           # Count changes
           CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+
+          exit $PLAN_EXIT_CODE
 
       - name: Tofu Apply
         id: apply
@@ -140,6 +144,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: staging
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v1
