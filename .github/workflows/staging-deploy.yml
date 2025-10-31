@@ -1,0 +1,222 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths-ignore:
+      - 'infra/**/*.tfvars'  # Don't trigger on tfvars-only changes (prevents loop)
+
+env:
+  GCP_PROJECT_ID: mindmirror-69  # Staging project
+  GCP_REGION: us-east4
+  ARTIFACT_REGISTRY: us-east4-docker.pkg.dev
+  ARTIFACT_REPO: mindmirror
+
+jobs:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Detect which services changed
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+      version_tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '\n')
+          SHA=$(git rev-parse --short HEAD)
+          TAG="v${VERSION}-${SHA}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Version tag: $TAG"
+
+      - name: Detect changed services
+        id: detect
+        run: |
+          chmod +x scripts/changed-services.sh
+          SERVICES=$(scripts/changed-services.sh origin/main)
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
+
+          if [ "$SERVICES" = "[]" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No service changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changed services: $SERVICES"
+          fi
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Build and push Docker images
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  build-and-push:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+        exclude:
+          # Skip frontend apps (manual deploy for now)
+          - service: web_app
+          - service: mobile_app
+          # Skip deprecated celery worker
+          - service: celery_worker
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          # Gateway excluded from this workflow (two-phase deployment)
+          # Gateway requires service URLs which don't exist until after
+          # Terraform deployment completes. Gateway is built and deployed
+          # separately via gateway-deploy.yml workflow.
+          # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          - service: mesh_gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: 'github-actions-staging@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build and push image
+        env:
+          VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
+        run: |
+          SERVICE="${{ matrix.service }}"
+
+          # Map service to Dockerfile and image name
+          case "$SERVICE" in
+            agent_service)
+              DOCKERFILE="src/agent_service/Dockerfile"
+              IMAGE_NAME="agent_service"
+              ;;
+            journal_service)
+              DOCKERFILE="journal_service/Dockerfile"
+              IMAGE_NAME="journal_service"
+              ;;
+            habits_service)
+              DOCKERFILE="habits_service/Dockerfile"
+              IMAGE_NAME="habits_service"
+              ;;
+            meals_service)
+              DOCKERFILE="meals_service/Dockerfile"
+              IMAGE_NAME="meals_service"
+              ;;
+            movements_service)
+              DOCKERFILE="movements_service/Dockerfile"
+              IMAGE_NAME="movements_service"
+              ;;
+            practices_service)
+              DOCKERFILE="practices_service/Dockerfile"
+              IMAGE_NAME="practices_service"
+              ;;
+            users_service)
+              DOCKERFILE="users_service/Dockerfile"
+              IMAGE_NAME="users_service"
+              ;;
+            celery_worker)
+              DOCKERFILE="celery-worker/Dockerfile"
+              IMAGE_NAME="celery-worker"
+              ;;
+            mesh_gateway)
+              DOCKERFILE="mesh/Dockerfile"
+              IMAGE_NAME="mesh"
+              BUILD_CONTEXT="mesh"
+              ;;
+            *)
+              echo "❌ Unknown service: $SERVICE"
+              exit 1
+              ;;
+          esac
+
+          IMAGE="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${IMAGE_NAME}:${VERSION_TAG}"
+
+          # Use service-specific build context if defined, otherwise use repo root
+          BUILD_CONTEXT="${BUILD_CONTEXT:-.}"
+
+          echo "🏗️  Building $IMAGE"
+          docker build -t "$IMAGE" -f "$DOCKERFILE" "$BUILD_CONTEXT"
+
+          echo "📤 Pushing $IMAGE"
+          docker push "$IMAGE"
+
+          echo "✅ Pushed $IMAGE"
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Generate tfvars and commit back
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  update-tfvars:
+    needs: [detect-changes, build-and-push]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push tfvars back to repo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate staging.auto.tfvars
+        env:
+          VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
+        run: |
+          chmod +x scripts/generate-tfvars.sh
+          # Generate tfvars for services only (gateway deployed separately)
+          ./scripts/generate-tfvars.sh staging "$VERSION_TAG" > infra/staging.auto.tfvars
+          echo "📝 Generated infra/staging.auto.tfvars (services only, gateway excluded)"
+
+      - name: Commit and push tfvars
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add infra/staging.auto.tfvars
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(staging): update tfvars to ${{ needs.detect-changes.outputs.version_tag }}"
+            git push origin staging
+            echo "✅ Pushed tfvars update"
+          fi
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Summary
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  summary:
+    needs: [detect-changes, update-tfvars]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Staging Deployment"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Version: ${{ needs.detect-changes.outputs.version_tag }}"
+          echo "Services: ${{ needs.detect-changes.outputs.services }}"
+          echo ""
+          echo "✅ Images built and pushed"
+          echo "✅ staging.auto.tfvars updated"
+          echo ""
+          echo "⏳ Terrateam will auto-deploy in ~1-2 minutes"
+          echo "   Watch: https://github.com/${{ github.repository }}/actions"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -1,0 +1,216 @@
+name: Tofu Apply - Staging
+
+on:
+  workflow_run:
+    workflows: ["Deploy to Staging"]
+    types: [completed]
+    branches: [staging]
+  workflow_dispatch: 
+
+env:
+  TOFU_VERSION: "1.6.0"
+  GCP_PROJECT_ID: "mindmirror-69"
+  GCP_REGION: "us-east4"
+  ENVIRONMENT: "staging"
+
+jobs:
+  apply:
+    # Only run if Deploy to Staging succeeded (or if manually triggered)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: 'github-actions-staging@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Tofu Init
+        working-directory: infra
+        run: |
+          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+
+      - name: Tofu Plan
+        id: plan
+        working-directory: infra
+        run: |
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+
+          # Count changes
+          CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+
+      - name: Tofu Apply
+        id: apply
+        working-directory: infra
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Applying to Staging"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          tofu apply -auto-approve plan.tfplan 2>&1 | tee apply-output.txt
+
+          APPLY_EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$APPLY_EXIT_CODE" >> $GITHUB_OUTPUT
+
+          if [ $APPLY_EXIT_CODE -eq 0 ]; then
+            echo "✅ Apply successful"
+          else
+            echo "❌ Apply failed"
+          fi
+
+          exit $APPLY_EXIT_CODE
+
+      - name: Verify Deployment
+        if: steps.apply.outputs.exit_code == '0'
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 Verifying Staging Deployment"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # List Cloud Run services
+          gcloud run services list \
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --region=${{ env.GCP_REGION }} \
+            --format="table(SERVICE,REGION,URL,LAST_DEPLOYED)"
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Staging Deployment Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          echo "Project: ${{ env.GCP_PROJECT_ID }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo ""
+          echo "Plan: ${{ steps.plan.outputs.changes }}"
+          echo "Apply: ${{ steps.apply.outputs.exit_code == '0' && '✅ Success' || '❌ Failed' }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## ❌ Staging Deployment Failed
+
+            **Commit**: ${context.sha.substring(0, 7)}
+            **Branch**: ${context.ref}
+            **Workflow**: [View logs](${context.payload.repository.html_url}/actions/runs/${context.runId})
+
+            Check the workflow logs for details.`;
+
+            // Create issue on failure
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '❌ Staging deployment failed',
+              body: message,
+              labels: ['deployment', 'staging', 'failure']
+            });
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Extract service URLs and save to Secret Manager
+  # This enables gateway rebuild with correct service URLs
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  extract-service-urls:
+    needs: apply
+    runs-on: ubuntu-latest
+    if: ${{ needs.apply.result == 'success' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_STAGING_PROJECT_NUM }}/locations/global/workloadIdentityPools/github-pool/providers/github-oidc'
+          service_account: 'github-actions-staging@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Tofu Init
+        working-directory: infra
+        run: |
+          tofu init -backend-config=${{ env.ENVIRONMENT }}.backend.hcl
+
+      - name: Extract service URLs from Terraform outputs
+        id: extract
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📡 Extracting Service URLs"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          chmod +x scripts/extract-service-urls.sh
+          ./scripts/extract-service-urls.sh staging infra > service-urls.json
+
+          echo "✅ Service URLs extracted to service-urls.json"
+          cat service-urls.json | jq '.'
+
+      - name: Save service URLs to Secret Manager
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔐 Saving URLs to Secret Manager"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          chmod +x scripts/save-urls-to-secrets.sh
+          ./scripts/save-urls-to-secrets.sh staging service-urls.json
+
+          echo "✅ Service URLs saved to Secret Manager"
+
+      - name: Trigger gateway deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Triggering Gateway Deployment"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Service URLs now available in Secret Manager:"
+          echo "  projects/${{ env.GCP_PROJECT_ID }}/secrets/service-urls-staging"
+          echo ""
+
+          # Generate version tag (same logic as gateway-deploy.yml)
+          VERSION=$(cat VERSION | tr -d '\n')
+          SHA=$(git rev-parse --short HEAD)
+          VERSION_TAG="v${VERSION}-${SHA}"
+
+          echo "Gateway version tag: $VERSION_TAG"
+          echo ""
+
+          # Trigger gateway-deploy workflow with required version_tag input
+          echo "Triggering gateway-deploy.yml workflow..."
+          gh workflow run gateway-deploy.yml \
+            --ref staging \
+            --field version_tag="$VERSION_TAG"
+
+          echo ""
+          echo "✅ Gateway deployment workflow triggered"
+          echo "   Version: $VERSION_TAG"
+          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
