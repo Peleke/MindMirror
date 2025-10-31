@@ -5,7 +5,7 @@ on:
     workflows: ["Deploy to Staging"]
     types: [completed]
     branches: [staging]
-  workflow_dispatch:  # Allows manual trigger via GitHub UI
+  workflow_dispatch: 
 
 env:
   TOFU_VERSION: "1.6.0"
