@@ -1,40 +1,130 @@
-# Swae Production Bootstrap
+# MindMirror Bootstrap Scripts
 
-**Purpose:** Scripts to bootstrap a production GCP environment from scratch.
+**Purpose:** Scripts to bootstrap production and staging GCP environments from scratch.
 
 ---
 
 ## 🎯 Quick Start
 
-Run these scripts in order:
-
+### Production Environment
 ```bash
-# 1. Create GCP project (15 mins)
+# Run the orchestrator (sets up everything)
+./bootstrap-production.sh
+
+# This runs:
+# 1. 07-bootstrap-cicd-infra.sh (Artifact Registry, State Bucket)
+# 2. 06-bootstrap-wif.sh (Service Account, WIF)
+```
+
+### Staging Environment
+```bash
+# Run the orchestrator (sets up everything)
+./bootstrap-staging.sh
+
+# This runs:
+# 1. 07-bootstrap-cicd-infra.sh (Artifact Registry, State Bucket)
+# 2. 06-bootstrap-wif.sh (Service Account, WIF)
+```
+
+### Manual Setup (if needed)
+```bash
+# 1. Create GCP project (15 mins) - OPTIONAL
 ./00-create-gcp-project.sh
 
-# 2. Bootstrap GCP infrastructure (15 mins)
-./05-bootstrap-gcp.sh
-
-# 3. Create secrets (15 mins)
+# 2. Create secrets (15 mins) - FOR FULL SETUP
 ./01-setup-secrets.sh
 
-# 4. Create Supabase project (30 mins)
+# 3. Create Supabase project (30 mins) - FOR FULL SETUP
 ./02-setup-supabase.sh
 
-# 5. Run database migrations (15 mins)
+# 4. Run database migrations (15 mins) - FOR FULL SETUP
 ./03-run-migrations.sh
 
-# 6. Apply RLS policies (10 mins)
+# 5. Apply RLS policies (10 mins) - FOR FULL SETUP
 ./04-apply-rls-policies.sh
 ```
 
-**Total time:** ~2 hours
+**CI/CD Setup Time:** ~5 minutes (using orchestrators)
+**Full Setup Time:** ~2 hours (including database/secrets)
 
 ---
 
 ## 📋 Scripts
 
-### **00-create-gcp-project.sh**
+### **bootstrap-production.sh** (RECOMMENDED)
+Orchestrator that runs all required scripts for production CI/CD setup.
+
+**What it does:**
+1. Runs `07-bootstrap-cicd-infra.sh production`
+2. Runs `06-bootstrap-wif.sh production`
+
+**Prerequisites:**
+- `gcloud` CLI authenticated
+- Production project exists (`mindmirror-prod`)
+
+**What it creates:**
+- GCS state bucket: `mindmirror-tofu-state`
+- Artifact Registry: `us-east4-docker.pkg.dev/mindmirror-prod/mindmirror`
+- Service account: `github-actions-production@mindmirror-prod.iam.gserviceaccount.com`
+- WIF pool and provider for GitHub Actions
+
+---
+
+### **bootstrap-staging.sh** (RECOMMENDED)
+Orchestrator that runs all required scripts for staging CI/CD setup.
+
+**What it does:**
+1. Runs `07-bootstrap-cicd-infra.sh staging`
+2. Runs `06-bootstrap-wif.sh staging`
+
+**Prerequisites:**
+- `gcloud` CLI authenticated
+- Staging project exists (`mindmirror-69`)
+
+**What it creates:**
+- GCS state bucket: `mindmirror-tofu-state-staging`
+- Artifact Registry: `us-east4-docker.pkg.dev/mindmirror-69/mindmirror`
+- Service account: `github-actions-staging@mindmirror-69.iam.gserviceaccount.com`
+- WIF pool and provider for GitHub Actions
+
+---
+
+### **07-bootstrap-cicd-infra.sh**
+Creates CI/CD infrastructure (state bucket and artifact registry).
+
+**Usage:**
+```bash
+./07-bootstrap-cicd-infra.sh [staging|production]
+```
+
+**What it creates:**
+- GCS bucket with versioning for Terraform state
+- Artifact Registry for Docker images
+- Enables required GCP APIs
+
+**Environment-aware:** Automatically configures bucket names and regions based on environment.
+
+---
+
+### **06-bootstrap-wif.sh**
+Sets up Workload Identity Federation for GitHub Actions.
+
+**Usage:**
+```bash
+./06-bootstrap-wif.sh [staging|production]
+```
+
+**What it creates:**
+- Service account with proper roles
+- WIF pool: `github-pool`
+- WIF provider: `github-oidc`
+- IAM bindings for GitHub Actions authentication
+
+**Environment-aware:** Creates staging or production service accounts automatically.
+
+---
+
+### **00-create-gcp-project.sh** (LEGACY)
 Creates new GCP project and links billing.
 
 **Environment variables:**
@@ -47,18 +137,11 @@ Creates new GCP project and links billing.
 
 ---
 
-### **05-bootstrap-gcp.sh**
+### **05-bootstrap-gcp.sh** (LEGACY - use orchestrators instead)
 Enables GCP APIs, creates state bucket, service accounts, Artifact Registry.
 
-**Prerequisites:**
-- GCP project created (script 00)
-- `gcloud` CLI authenticated
-
-**What it creates:**
-- GCS bucket: `swae-tofu-state`
-- Artifact Registry: `swae` (Docker images)
-- Service account for OpenTofu deployments
-- Workload Identity Federation for GitHub Actions
+**Note:** This script is superseded by `07-bootstrap-cicd-infra.sh` and `06-bootstrap-wif.sh`.
+Use the orchestrators (`bootstrap-production.sh` or `bootstrap-staging.sh`) instead.
 
 ---
 

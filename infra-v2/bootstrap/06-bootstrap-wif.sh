@@ -96,12 +96,12 @@ step "3/4: Creating Workload Identity Pool and Provider"
 
 if gcloud iam workload-identity-pools describe "github-pool" \
   --location="global" \
-  --project="${PRODUCTION_PROJECT}" &>/dev/null; then
+  --project="${PROJECT_ID}" &>/dev/null; then
   warn "Workload identity pool 'github-pool' already exists"
 else
   info "Creating workload identity pool: github-pool"
   gcloud iam workload-identity-pools create "github-pool" \
-    --project="${PRODUCTION_PROJECT}" \
+    --project="${PROJECT_ID}" \
     --location="global" \
     --display-name="GitHub Actions Pool"
   info "✅ Pool created"
@@ -110,12 +110,12 @@ fi
 if gcloud iam workload-identity-pools providers describe "github-oidc" \
   --workload-identity-pool="github-pool" \
   --location="global" \
-  --project="${PRODUCTION_PROJECT}" &>/dev/null; then
+  --project="${PROJECT_ID}" &>/dev/null; then
   warn "OIDC provider 'github-oidc' already exists"
 else
   info "Creating GitHub OIDC provider: github-oidc"
   gcloud iam workload-identity-pools providers create-oidc "github-oidc" \
-    --project="${PRODUCTION_PROJECT}" \
+    --project="${PROJECT_ID}" \
     --location="global" \
     --workload-identity-pool="github-pool" \
     --display-name="GitHub OIDC Provider" \
@@ -130,9 +130,9 @@ step "4/4: Binding service account to Workload Identity Pool"
 
 info "Granting workloadIdentityUser role to GitHub Actions"
 gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
-  --project="${PRODUCTION_PROJECT}" \
+  --project="${PROJECT_ID}" \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/${PRODUCTION_PROJECT_NUM}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_REPO}" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUM}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${GITHUB_REPO}" \
   &>/dev/null || warn "Binding may already exist"
 
 info "✅ Service account bound to WIF pool"
@@ -151,6 +151,10 @@ echo "  • GitHub Repo: $GITHUB_REPO"
 echo ""
 info "Next steps:"
 echo "  1. Add these secrets to your GitHub repository:"
-echo "     - GCP_PRODUCTION_PROJECT_NUM: $PRODUCTION_PROJECT_NUM"
-echo "  2. Test WIF authentication with production workflows"
+if [[ "$ENVIRONMENT" == "production" ]]; then
+  echo "     - GCP_PRODUCTION_PROJECT_NUM: $PROJECT_NUM"
+else
+  echo "     - GCP_STAGING_PROJECT_NUM: $PROJECT_NUM"
+fi
+echo "  2. Test WIF authentication with $ENVIRONMENT workflows"
 echo ""
