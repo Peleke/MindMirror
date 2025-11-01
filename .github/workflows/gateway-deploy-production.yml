@@ -1,15 +1,12 @@
 name: Deploy Gateway to Production
 
 on:
-  workflow_run:
-    workflows: ["Tofu Apply - Production"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:  # Allows manual trigger
+  # Only manual trigger - called explicitly by tofu-apply-production after successful apply
+  workflow_dispatch:
     inputs:
       version_tag:
         description: 'Version tag for gateway image (e.g., v1.0.0-abc1234)'
-        required: true
+        required: false
         type: string
 
 env:
@@ -23,8 +20,6 @@ jobs:
   # Build and push gateway with service URLs
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   build-gateway:
-    # Only run if Tofu Apply - Production succeeded (or if manually triggered)
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -142,15 +137,43 @@ jobs:
           fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Gateway Apply auto-triggers via workflow_run
-  # No manual trigger needed - it will auto-start and wait for approval
+  # Trigger Gateway Apply
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  trigger-gateway-apply:
+    needs: [build-gateway, update-gateway-tfvars]
+    runs-on: ubuntu-latest
+    if: ${{ needs.build-gateway.result == 'success' && needs.update-gateway-tfvars.result == 'success' }}
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Trigger Tofu Apply - Gateway
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Triggering Gateway Apply (Production)"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "⚠️  This will require manual approval"
+          echo ""
+
+          gh workflow run tofu-apply-gateway-production.yml --ref main
+
+          echo ""
+          echo "✅ Gateway apply workflow triggered"
+          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
+          echo "   Approval required before deployment"
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # Summary
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   summary:
-    needs: [build-gateway, update-gateway-tfvars]
+    needs: [build-gateway, update-gateway-tfvars, trigger-gateway-apply]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -164,9 +187,8 @@ jobs:
           echo ""
           echo "✅ Gateway image built with service URLs"
           echo "✅ production.auto.tfvars updated (gateway-only)"
-          echo "✅ Gateway apply workflow will auto-trigger"
+          echo "✅ Gateway apply workflow triggered"
           echo ""
-          echo "⏳ Next: Gateway apply will pause for manual approval"
-          echo "   Monitor and approve at:"
+          echo "⏳ Awaiting manual approval and watching gateway deployment:"
           echo "   https://github.com/${{ github.repository }}/actions"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

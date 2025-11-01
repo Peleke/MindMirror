@@ -1,11 +1,8 @@
 name: Tofu Apply - Gateway (Production)
 
 on:
-  workflow_run:
-    workflows: ["Deploy Gateway to Production"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:  # Keep manual trigger as backup option
+  # Only manual trigger - called explicitly by gateway-deploy-production after successful build
+  workflow_dispatch:
 
 env:
   TOFU_VERSION: "1.6.0"
@@ -15,8 +12,6 @@ env:
 
 jobs:
   apply-gateway:
-    # Only run if Deploy Gateway to Production succeeded (or if manually triggered)
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     # ⚠️ CRITICAL: GitHub Environment provides manual approval gate before apply
     environment:
