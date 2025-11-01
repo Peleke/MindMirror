@@ -142,43 +142,15 @@ jobs:
           fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Trigger Gateway Apply
+  # Gateway Apply auto-triggers via workflow_run
+  # No manual trigger needed - it will auto-start and wait for approval
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  trigger-gateway-apply:
-    needs: [build-gateway, update-gateway-tfvars]
-    runs-on: ubuntu-latest
-    if: ${{ needs.build-gateway.result == 'success' && needs.update-gateway-tfvars.result == 'success' }}
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Trigger Tofu Apply - Gateway
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 Triggering Gateway Apply (Production)"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "⚠️  This will require manual approval"
-          echo ""
-
-          gh workflow run tofu-apply-gateway-production.yml --ref main
-
-          echo ""
-          echo "✅ Gateway apply workflow triggered"
-          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
-          echo "   Approval required before deployment"
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # Summary
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   summary:
-    needs: [build-gateway, update-gateway-tfvars, trigger-gateway-apply]
+    needs: [build-gateway, update-gateway-tfvars]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -192,8 +164,9 @@ jobs:
           echo ""
           echo "✅ Gateway image built with service URLs"
           echo "✅ production.auto.tfvars updated (gateway-only)"
-          echo "✅ Gateway apply workflow triggered"
+          echo "✅ Gateway apply workflow will auto-trigger"
           echo ""
-          echo "⏳ Awaiting manual approval and watching gateway deployment:"
+          echo "⏳ Next: Gateway apply will pause for manual approval"
+          echo "   Monitor and approve at:"
           echo "   https://github.com/${{ github.repository }}/actions"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

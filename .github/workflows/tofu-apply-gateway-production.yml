@@ -1,13 +1,11 @@
 name: Tofu Apply - Gateway (Production)
 
 on:
-  # Only trigger manually - no automatic triggers
-  workflow_dispatch:
-    inputs:
-      confirm_deployment:
-        description: 'Type "DEPLOY" to confirm gateway deployment'
-        required: true
-        type: string
+  workflow_run:
+    workflows: ["Deploy Gateway to Production"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:  # Keep manual trigger as backup option
 
 env:
   TOFU_VERSION: "1.6.0"
@@ -16,22 +14,11 @@ env:
   ENVIRONMENT: "production"
 
 jobs:
-  # Validation gate - ensures user confirmed deployment
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate confirmation
-        run: |
-          if [[ "${{ github.event.inputs.confirm_deployment }}" != "DEPLOY" ]]; then
-            echo "❌ Gateway deployment not confirmed. You must type 'DEPLOY' to proceed."
-            exit 1
-          fi
-          echo "✅ Gateway deployment confirmed"
-
   apply-gateway:
-    needs: validate
+    # Only run if Deploy Gateway to Production succeeded (or if manually triggered)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    # ⚠️ CRITICAL: GitHub Environment provides manual approval gate
+    # ⚠️ CRITICAL: GitHub Environment provides manual approval gate before apply
     environment:
       name: production
       url: https://console.cloud.google.com/run?project=mindmirror-prod
