@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Tofu Apply - Production"]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       version_tag:

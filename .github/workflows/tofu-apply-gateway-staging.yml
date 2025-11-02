@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Deploy Gateway to Staging"]
     types: [completed]
-    branches: [staging]
   workflow_dispatch:  # Allows manual trigger via GitHub UI
 
 env:
