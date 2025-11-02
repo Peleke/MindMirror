@@ -65,4 +65,6 @@ meals_env = {
 }
 
 # Gateway Configuration (Preserved from previous deployment)
-gateway_container_image = "us-east4-docker.pkg.dev/mindmirror-prod/mindmirror/mesh:v1.0.0-067ed84"
+
+# Gateway Configuration (Updated by gateway-deploy-production.yml)
+gateway_container_image = "us-east4-docker.pkg.dev/mindmirror-prod/mindmirror/mesh:v1.0.0-93d9aaf"
