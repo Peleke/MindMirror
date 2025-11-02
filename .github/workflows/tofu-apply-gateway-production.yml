@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     # ⚠️ CRITICAL: GitHub Environment provides manual approval gate before apply
     environment:
-      name: production
+      name: Production
       url: https://console.cloud.google.com/run?project=mindmirror-prod
     permissions:
       contents: read

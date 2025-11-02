@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     # Use GitHub Environments for manual approval before apply
     environment:
-      name: production
+      name: Production
       url: https://console.cloud.google.com/run?project=mindmirror-prod
     permissions:
       contents: read
