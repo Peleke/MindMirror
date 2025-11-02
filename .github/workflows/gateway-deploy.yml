@@ -136,6 +136,12 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore(gateway): update tfvars to ${{ needs.build-gateway.outputs.version_tag }}"
+
+            # Pull with rebase in case staging moved forward during build
+            echo "📥 Pulling latest changes from staging..."
+            git pull --rebase origin staging
+
+            # Push the rebased commit
             git push origin staging
             echo "✅ Pushed gateway tfvars update"
           fi

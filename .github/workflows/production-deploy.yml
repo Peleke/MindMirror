@@ -211,6 +211,12 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore(production): update tfvars to ${{ needs.detect-changes.outputs.version_tag }}"
+
+            # Pull with rebase in case main moved forward during build
+            echo "📥 Pulling latest changes from main..."
+            git pull --rebase origin main
+
+            # Push the rebased commit
             git push origin main
             echo "✅ Pushed tfvars update"
           fi
