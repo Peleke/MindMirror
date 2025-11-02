@@ -81,6 +81,22 @@ practices_service_name     = "practices-service-staging"
 users_service_name         = "users-service-staging"
 celery_worker_service_name = "celery-worker-staging"
 EOF
+else
+cat <<EOF
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Service Names (Environment-Specific)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+agent_service_name         = "agent-service"
+journal_service_name       = "journal-service"
+habits_service_name        = "habits-service"
+gateway_service_name       = "gateway"
+meals_service_name         = "meals-service"
+movements_service_name     = "movements-service"
+practices_service_name     = "practices-service"
+users_service_name         = "users-service"
+celery_worker_service_name = "celery-worker"
+EOF
 fi
 
 cat <<EOF
