@@ -184,9 +184,21 @@ jobs:
           VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
         run: |
           chmod +x scripts/generate-tfvars.sh
+
+          # Preserve existing gateway_container_image if present
+          EXISTING_GATEWAY=$(grep "^gateway_container_image" infra/production.auto.tfvars || echo "")
+
           # Generate tfvars for services only (gateway deployed separately)
           ./scripts/generate-tfvars.sh production "$VERSION_TAG" > infra/production.auto.tfvars
-          echo "📝 Generated infra/production.auto.tfvars (services only, gateway excluded)"
+
+          # Re-add gateway image if it existed
+          if [ -n "$EXISTING_GATEWAY" ]; then
+            echo "" >> infra/production.auto.tfvars
+            echo "# Gateway Configuration (Preserved from previous deployment)" >> infra/production.auto.tfvars
+            echo "$EXISTING_GATEWAY" >> infra/production.auto.tfvars
+          fi
+
+          echo "📝 Generated infra/production.auto.tfvars (services only, gateway preserved)"
 
       - name: Commit and push tfvars
         run: |
