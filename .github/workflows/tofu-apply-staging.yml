@@ -190,33 +190,5 @@ jobs:
 
           echo "✅ Service URLs saved to Secret Manager"
 
-      - name: Trigger gateway deployment
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 Triggering Gateway Deployment"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-          echo "Service URLs now available in Secret Manager:"
-          echo "  projects/${{ env.GCP_PROJECT_ID }}/secrets/service-urls-staging"
-          echo ""
-
-          # Generate version tag (same logic as gateway-deploy.yml)
-          VERSION=$(cat VERSION | tr -d '\n')
-          SHA=$(git rev-parse --short HEAD)
-          VERSION_TAG="v${VERSION}-${SHA}"
-
-          echo "Gateway version tag: $VERSION_TAG"
-          echo ""
-
-          # Trigger gateway-deploy workflow with required version_tag input
-          echo "Triggering gateway-deploy.yml workflow..."
-          gh workflow run gateway-deploy.yml \
-            --ref staging \
-            --field version_tag="$VERSION_TAG"
-
-          echo ""
-          echo "✅ Gateway deployment workflow triggered"
-          echo "   Version: $VERSION_TAG"
-          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
+      # Note: Gateway deployment auto-triggers via workflow_run when this completes
+      # See gateway-deploy.yml for automatic trigger configuration
