@@ -32,6 +32,9 @@ users_image                     = "us-east4-docker.pkg.dev/mindmirror-prod/mindm
 movements_image                 = "us-east4-docker.pkg.dev/mindmirror-prod/mindmirror/movements_service:v1.0.0-770c291"
 practices_image                 = "us-east4-docker.pkg.dev/mindmirror-prod/mindmirror/practices_service:v1.0.0-770c291"
 
+# Gateway Configuration (Bootstrap - copied from staging)
+gateway_container_image = "us-east4-docker.pkg.dev/mindmirror-prod/mindmirror/mesh:v1.0.0-7e72f33"
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Static Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
