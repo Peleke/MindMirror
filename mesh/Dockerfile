@@ -8,6 +8,9 @@ RUN yarn install --frozen-lockfile
 
 COPY . .
 
+# Remove any existing build directory from local development
+RUN rm -rf build/
+
 # Accept service URLs as build arguments (passed by build-gateway-with-urls.sh)
 ARG JOURNAL_SERVICE_URL
 ARG AGENT_SERVICE_URL
