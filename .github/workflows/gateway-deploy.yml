@@ -141,40 +141,17 @@ jobs:
           fi
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Trigger Gateway Apply
+  # Gateway Apply (Auto-triggered via workflow_run)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  trigger-gateway-apply:
-    needs: [build-gateway, update-gateway-tfvars]
-    runs-on: ubuntu-latest
-    if: ${{ needs.build-gateway.result == 'success' && needs.update-gateway-tfvars.result == 'success' }}
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: staging
-
-      - name: Trigger Tofu Apply - Gateway
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🚀 Triggering Gateway Apply"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo ""
-
-          gh workflow run tofu-apply-gateway-staging.yml --ref staging
-
-          echo ""
-          echo "✅ Gateway apply workflow triggered"
-          echo "   Monitor at: https://github.com/${{ github.repository }}/actions"
+  # Note: tofu-apply-gateway-staging.yml has a workflow_run trigger that
+  # automatically starts when this workflow completes successfully.
+  # No manual trigger needed here to avoid duplicate runs.
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # Summary
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   summary:
-    needs: [build-gateway, update-gateway-tfvars, trigger-gateway-apply]
+    needs: [build-gateway, update-gateway-tfvars]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -188,7 +165,7 @@ jobs:
           echo ""
           echo "✅ Gateway image built with service URLs"
           echo "✅ staging.auto.tfvars updated (gateway-only)"
-          echo "✅ Gateway apply workflow triggered"
+          echo "✅ Gateway apply will auto-trigger via workflow_run"
           echo ""
           echo "⏳ Watch gateway deployment:"
           echo "   https://github.com/${{ github.repository }}/actions"
