@@ -28,6 +28,28 @@ def _slugify(name: str) -> str:
     return slug
 
 
+def _is_valid_url(value: Optional[str]) -> bool:
+    """Check if value is a valid URL (not placeholder text)."""
+    if not value or not isinstance(value, str):
+        return False
+    value = value.strip()
+    # Must start with http:// or https://
+    return value.startswith('http://') or value.startswith('https://')
+
+
+def _clean_value(value: Optional[str]) -> Optional[str]:
+    """Clean CSV value: strip whitespace, convert empty/None-like strings to None."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value
+    value = value.strip()
+    # Treat empty strings, 'None', 'null', etc. as None
+    if value in ('', 'None', 'none', 'NULL', 'null', 'N/A', 'n/a'):
+        return None
+    return value
+
+
 async def import_movements_csv(
     session,
     csv_path: str,
@@ -71,40 +93,46 @@ async def import_movements_csv(
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
 
-            # Map CSV columns to model fields
+            # Get and validate video URLs (filter out placeholder text like "Video Demonstration")
+            short_video = _clean_value(row.get('Short YouTube Demonstration'))
+            long_video = _clean_value(row.get('In-Depth YouTube Explanation'))
+            short_video_url = short_video if _is_valid_url(short_video) else None
+            long_video_url = long_video if _is_valid_url(long_video) else None
+
+            # Map CSV columns to model fields (clean all values)
             movement_data = {
                 'name': name,
                 'slug': slug,
-                'difficulty': row.get('Difficulty Level'),
-                'body_region': row.get('Body Region'),
-                'target_muscle_group': row.get('Target Muscle Group'),
-                'prime_mover_muscle': row.get('Prime Mover Muscle'),
-                'posture': row.get('Posture'),
-                'arm_mode': row.get('Single or Double Arm'),
-                'arm_pattern': row.get('Continuous or Alternating Arms'),
-                'grip': row.get('Grip'),
-                'load_position': row.get('Load Position (Ending)'),
-                'leg_pattern': row.get('Continuous or Alternating Legs'),
-                'foot_elevation': row.get('Foot Elevation'),
-                'combo_type': row.get('Combination Exercises'),
-                'mechanics': row.get('Mechanics'),
-                'laterality': row.get('Laterality'),
-                'primary_classification': row.get('Primary Exercise Classification'),
-                'force_type': row.get('Force Type'),
-                'short_video_url': row.get('Short YouTube Demonstration'),
-                'long_video_url': row.get('In-Depth YouTube Explanation'),
+                'difficulty': _clean_value(row.get('Difficulty Level')),
+                'body_region': _clean_value(row.get('Body Region')),
+                'target_muscle_group': _clean_value(row.get('Target Muscle Group')),
+                'prime_mover_muscle': _clean_value(row.get('Prime Mover Muscle')),
+                'posture': _clean_value(row.get('Posture')),
+                'arm_mode': _clean_value(row.get('Single or Double Arm')),
+                'arm_pattern': _clean_value(row.get('Continuous or Alternating Arms')),
+                'grip': _clean_value(row.get('Grip')),
+                'load_position': _clean_value(row.get('Load Position (Ending)')),
+                'leg_pattern': _clean_value(row.get('Continuous or Alternating Legs')),
+                'foot_elevation': _clean_value(row.get('Foot Elevation')),
+                'combo_type': _clean_value(row.get('Combination Exercises')),
+                'mechanics': _clean_value(row.get('Mechanics')),
+                'laterality': _clean_value(row.get('Laterality')),
+                'primary_classification': _clean_value(row.get('Primary Exercise Classification')),
+                'force_type': _clean_value(row.get('Force Type')),
+                'short_video_url': short_video_url,
+                'long_video_url': long_video_url,
                 'source': 'exercisedb_csv',
                 'metadata_': {
-                    'secondary_muscle': row.get('Secondary Muscle'),
-                    'tertiary_muscle': row.get('Tertiary Muscle'),
-                    'primary_equipment': row.get('Primary Equipment'),
-                    'secondary_equipment': row.get('Secondary Equipment'),
-                    'movement_pattern_1': row.get('Movement Pattern #1'),
-                    'movement_pattern_2': row.get('Movement Pattern #2'),
-                    'movement_pattern_3': row.get('Movement Pattern #3'),
-                    'plane_of_motion_1': row.get('Plane Of Motion #1'),
-                    'plane_of_motion_2': row.get('Plane Of Motion #2'),
-                    'plane_of_motion_3': row.get('Plane Of Motion #3'),
+                    'secondary_muscle': _clean_value(row.get('Secondary Muscle')),
+                    'tertiary_muscle': _clean_value(row.get('Tertiary Muscle')),
+                    'primary_equipment': _clean_value(row.get('Primary Equipment')),
+                    'secondary_equipment': _clean_value(row.get('Secondary Equipment')),
+                    'movement_pattern_1': _clean_value(row.get('Movement Pattern #1')),
+                    'movement_pattern_2': _clean_value(row.get('Movement Pattern #2')),
+                    'movement_pattern_3': _clean_value(row.get('Movement Pattern #3')),
+                    'plane_of_motion_1': _clean_value(row.get('Plane Of Motion #1')),
+                    'plane_of_motion_2': _clean_value(row.get('Plane Of Motion #2')),
+                    'plane_of_motion_3': _clean_value(row.get('Plane Of Motion #3')),
                 }
             }
 

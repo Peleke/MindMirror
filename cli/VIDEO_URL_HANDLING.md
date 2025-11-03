@@ -215,9 +215,9 @@ function ExerciseCard({ movement }) {
 
 ## Implementation Status
 
-✅ **FIXED**: PN importer now uses Jen as PRIMARY (movements_service/movements/service/pn_csv_importer.py:125-126)
-✅ **FIXED**: ExerciseDB importer now imports video URLs (standalone_movements_import.py:91-92)
-✅ **FIXED**: Standalone PN script supports Jen-only mode (standalone_pn_import.py)
+✅ **FIXED**: PN importer now uses Jen as PRIMARY (cli/pn_csv_importer.py:136-137)
+✅ **FIXED**: ExerciseDB importer now imports video URLs (cli/standalone_movements_import.py:91-92)
+✅ **FIXED**: Standalone PN script supports Jen-only mode (cli/standalone_pn_import.py)
 ✅ **VERIFIED**: Both importers write to same schema (`movements.movements`)
 
 ## Quick Reference
