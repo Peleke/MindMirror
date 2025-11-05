@@ -179,33 +179,33 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate production.auto.tfvars
+      - name: Generate production.tfvars
         env:
           VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
         run: |
           chmod +x scripts/generate-tfvars.sh
 
           # Preserve existing gateway_container_image if present
-          EXISTING_GATEWAY=$(grep "^gateway_container_image" infra/production.auto.tfvars || echo "")
+          EXISTING_GATEWAY=$(grep "^gateway_container_image" infra/production.tfvars || echo "")
 
           # Generate tfvars for services only (gateway deployed separately)
-          ./scripts/generate-tfvars.sh production "$VERSION_TAG" > infra/production.auto.tfvars
+          ./scripts/generate-tfvars.sh production "$VERSION_TAG" > infra/production.tfvars
 
           # Re-add gateway image if it existed
           if [ -n "$EXISTING_GATEWAY" ]; then
-            echo "" >> infra/production.auto.tfvars
-            echo "# Gateway Configuration (Preserved from previous deployment)" >> infra/production.auto.tfvars
-            echo "$EXISTING_GATEWAY" >> infra/production.auto.tfvars
+            echo "" >> infra/production.tfvars
+            echo "# Gateway Configuration (Preserved from previous deployment)" >> infra/production.tfvars
+            echo "$EXISTING_GATEWAY" >> infra/production.tfvars
           fi
 
-          echo "📝 Generated infra/production.auto.tfvars (services only, gateway preserved)"
+          echo "📝 Generated infra/production.tfvars (services only, gateway preserved)"
 
       - name: Commit and push tfvars
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add infra/production.auto.tfvars
+          git add infra/production.tfvars
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -238,7 +238,7 @@ jobs:
           echo "Services: ${{ needs.detect-changes.outputs.services }}"
           echo ""
           echo "✅ Images built and pushed to production registry"
-          echo "✅ production.auto.tfvars updated in main branch"
+          echo "✅ production.tfvars updated in main branch"
           echo ""
           echo "📋 Next Steps (MANUAL DEPLOYMENT REQUIRED):"
           echo "   1. Go to Actions: https://github.com/${{ github.repository }}/actions"

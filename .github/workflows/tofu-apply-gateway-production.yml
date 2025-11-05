@@ -59,7 +59,7 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
 
-          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
 
           # Count changes
           CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
@@ -241,7 +241,7 @@ jobs:
 
             ### Rollback Steps
             1. Identify last known good gateway version
-            2. Revert \`infra/production.auto.tfvars\` to previous gateway image
+            2. Revert \`infra/production.tfvars\` to previous gateway image
             3. Manually trigger gateway apply workflow
             4. Or deploy previous image manually:
                \`\`\`bash

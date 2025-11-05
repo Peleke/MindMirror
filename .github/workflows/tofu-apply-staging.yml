@@ -51,7 +51,7 @@ jobs:
         id: plan
         working-directory: infra
         run: |
-          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
           PLAN_EXIT_CODE=${PIPESTATUS[0]}
 
           # Count changes

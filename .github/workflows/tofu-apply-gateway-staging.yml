@@ -55,7 +55,7 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
 
-          tofu plan -var-file=${{ env.ENVIRONMENT }}.auto.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
+          tofu plan -var-file=${{ env.ENVIRONMENT }}.tfvars -out=plan.tfplan -no-color 2>&1 | tee plan-output.txt
 
           # Count changes
           CHANGES=$(grep -E "Plan:|No changes" plan-output.txt || echo "Unknown")
