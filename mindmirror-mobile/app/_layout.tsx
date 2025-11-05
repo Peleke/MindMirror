@@ -24,7 +24,7 @@ export {
 } from "expo-router";
 
 export const unstable_settings = {
-  // Start on landing page instead of auth
+  // Start on landing page at root
   initialRouteName: "index",
 };
 
@@ -69,7 +69,8 @@ function RootLayoutNav() {
         <SimpleApolloProvider>
           <AuthProvider>
             <ApolloProviderWrapper>
-              <AuthStateHandler />
+              {/* Temporarily disable auth redirects to show landing page */}
+              {/* <AuthStateHandler /> */}
               <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />
