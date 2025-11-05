@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, Modal, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brain, NotebookPen, Dumbbell, Soup, Activity, Moon, BarChart3, CheckCircle2, Sparkles } from 'lucide-react-native';
+import {
+  Brain, NotebookPen, Dumbbell, Soup, Activity, Moon, BarChart3,
+  CheckCircle2, Sparkles, X, Palette, Leaf, Shield, Focus, Layers3,
+  HeartHandshake, CreditCard, XCircle, Check
+} from 'lucide-react-native';
+import { LandingThemeProvider, useLandingTheme } from '@/src/contexts/LandingThemeContext';
 
-export default function LandingPage() {
+function LandingContent() {
   const router = useRouter();
+  const { theme, toggleTheme, isWarm } = useLandingTheme();
   const [animatedPhrase, setAnimatedPhrase] = useState('Move Forward');
+  const [showStripeModal, setShowStripeModal] = useState(false);
 
   const phrases = [
     'Move Forward',
@@ -27,32 +34,110 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Theme-aware color classes
+  const primaryColor = isWarm ? 'warm-crimson-600' : 'cool-blue-600';
+  const primaryBg = isWarm ? 'bg-warm-crimson-600' : 'bg-cool-blue-600';
+  const primaryText = isWarm ? 'text-warm-crimson-600' : 'text-cool-blue-600';
+  const secondaryColor = isWarm ? 'warm-gold-500' : 'cool-indigo-500';
+  const bgColor = isWarm ? 'bg-warm-sepia-50' : 'bg-cool-slate-50';
+  const bgAlt = isWarm ? 'bg-warm-sepia-100' : 'bg-cool-slate-100';
+  const textColor = isWarm ? 'text-warm-sepia-900' : 'text-cool-slate-900';
+  const borderColor = isWarm ? 'border-warm-sepia-200' : 'border-cool-slate-200';
+
   const features = [
-    { icon: NotebookPen, label: 'Journal', gradient: 'bg-gradient-to-br from-blue-500 to-blue-600' },
-    { icon: Dumbbell, label: 'Movement', gradient: 'bg-gradient-to-br from-green-500 to-green-600' },
-    { icon: Soup, label: 'Meals', gradient: 'bg-gradient-to-br from-orange-500 to-orange-600' },
-    { icon: Activity, label: 'Habits', gradient: 'bg-gradient-to-br from-purple-500 to-purple-600' },
-    { icon: Moon, label: 'Reflection', gradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600' },
-    { icon: BarChart3, label: 'Analytics', gradient: 'bg-gradient-to-br from-pink-500 to-pink-600' }
+    { icon: NotebookPen, label: 'Journal', gradient: isWarm ? 'from-warm-crimson-500 to-warm-crimson-600' : 'from-cool-blue-500 to-cool-blue-600' },
+    { icon: Dumbbell, label: 'Movement', gradient: 'from-green-500 to-green-600' },
+    { icon: Soup, label: 'Meals', gradient: isWarm ? 'from-warm-gold-500 to-warm-gold-600' : 'from-orange-500 to-orange-600' },
+    { icon: Activity, label: 'Habits', gradient: 'from-purple-500 to-purple-600' },
+    { icon: Moon, label: 'Reflection', gradient: isWarm ? 'from-warm-crimson-400 to-warm-gold-500' : 'from-cool-indigo-500 to-cool-indigo-600' },
+    { icon: BarChart3, label: 'Analytics', gradient: 'from-pink-500 to-pink-600' }
+  ];
+
+  const featureSections = [
+    {
+      title: 'Habits & Programs',
+      bullets: [
+        'Weekly habit focus with simple, loving guardrails',
+        'Guided lessons you can read on a walk',
+        'Streaks and adherence rings that whisper, not yell'
+      ],
+      visualization: 'stats',
+      stats: [
+        { label: 'Current Streak', value: '14', icon: Activity, gradient: 'from-green-500 to-emerald-600' },
+        { label: 'Weekly Focus', value: '98%', icon: Focus, gradient: isWarm ? 'from-warm-crimson-500 to-warm-gold-500' : 'from-cool-blue-500 to-cool-indigo-500' },
+        { label: 'Total Habits', value: '8', icon: Layers3, gradient: 'from-purple-500 to-violet-600' },
+        { label: 'This Week', value: '6/7', icon: CheckCircle2, gradient: 'from-cyan-500 to-teal-600' }
+      ]
+    },
+    {
+      title: 'Journaling & Insights',
+      bullets: [
+        'Structured prompts when you want them, freeform when you don't',
+        'Patterns surface gently—next steps offered, not forced',
+        'Privacy-forward by default'
+      ],
+      visualization: 'cards',
+      cards: [
+        { title: 'Morning Gratitude', description: 'What are you grateful for today?' },
+        { title: 'Evening Reflection', description: 'What went well? What could improve?' },
+        { title: 'Freeform Notes', description: 'Your thoughts, your way' }
+      ]
+    },
+    {
+      title: 'Meals (early)',
+      bullets: [
+        'Quick, flexible logging—no spreadsheets required',
+        'A living library of meals you actually eat',
+        'Future: optional estimates via computer vision'
+      ],
+      visualization: 'list',
+      items: [
+        { label: 'Breakfast', detail: 'Oatmeal with berries & almonds', time: '8:30 AM' },
+        { label: 'Lunch', detail: 'Grilled chicken salad', time: '12:45 PM' },
+        { label: 'Dinner', detail: 'Salmon with roasted veggies', time: '7:00 PM' }
+      ]
+    },
+    {
+      title: 'Movement (next)',
+      bullets: [
+        'Programs with progressions and kind regressions',
+        'Smart substitutions when equipment or time changes',
+        'Built on a movement graph for real-world flexibility'
+      ],
+      visualization: 'progress',
+      exercises: [
+        { name: 'Push-ups', sets: '3x12', progress: 0.8 },
+        { name: 'Squats', sets: '3x15', progress: 0.6 },
+        { name: 'Plank', sets: '3x45s', progress: 0.9 }
+      ]
+    }
   ];
 
   return (
-    <ScrollView className="flex-1 bg-white">
+    <ScrollView className={`flex-1 ${isWarm ? 'bg-warm-sepia-50' : 'bg-white'}`}>
       {/* Header */}
-      <View className="px-4 py-4 border-b border-gray-200 bg-white/90">
+      <View className={`px-4 py-4 border-b ${borderColor} ${isWarm ? 'bg-warm-sepia-50/90' : 'bg-white/90'}`}>
         <View className="flex-row items-center justify-between max-w-7xl mx-auto">
           <View className="flex-row items-center">
-            <View className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-900 to-gray-600 items-center justify-center">
+            <View className={`w-10 h-10 rounded-lg ${isWarm ? 'bg-gradient-to-br from-warm-crimson-600 to-warm-gold-500' : 'bg-gradient-to-br from-gray-900 to-gray-600'} items-center justify-center`}>
               <Brain size={20} color="#fff" />
             </View>
-            <Text className="ml-3 text-xl font-semibold">Swae OS</Text>
+            <Text className={`ml-3 text-xl font-semibold ${textColor}`}>Swae OS</Text>
           </View>
-          <Pressable
-            onPress={() => router.push('/auth/login')}
-            className="px-4 py-2 bg-gray-900 rounded-lg active:opacity-70"
-          >
-            <Text className="text-white font-medium">Get started</Text>
-          </Pressable>
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={toggleTheme}
+              className={`p-2 rounded-lg ${isWarm ? 'bg-warm-sepia-200' : 'bg-gray-100'} active:opacity-70`}
+            >
+              <Palette size={20} color={isWarm ? '#dc2626' : '#2563eb'} />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/auth/login')}
+              className={`px-4 py-2 ${primaryBg} rounded-lg active:opacity-70`}
+            >
+              <Text className="text-white font-medium">Get started</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -60,31 +145,31 @@ export default function LandingPage() {
       <View className="px-4 pt-16 pb-12">
         <View className="max-w-6xl mx-auto">
           <View className="mb-12">
-            <Text className="text-5xl md:text-6xl font-bold leading-tight mb-6">
+            <Text className={`text-5xl md:text-6xl font-bold leading-tight mb-6 ${textColor}`}>
               {animatedPhrase}
             </Text>
-            <Text className="text-4xl md:text-5xl font-normal opacity-80">
+            <Text className={`text-4xl md:text-5xl font-normal opacity-80 ${textColor}`}>
               with Swae
             </Text>
-            <Text className="text-xl mt-8 mb-10 opacity-80">
+            <Text className={`text-xl mt-8 mb-10 opacity-80 ${textColor}`}>
               Swae gently coordinates daily habits, journaling, movement, and meals into a rhythm you can trust for less tech and more nourishment.
             </Text>
             <Pressable
-              onPress={() => router.push('/auth/signup')}
-              className="bg-gray-900 px-8 py-4 rounded-xl self-start active:opacity-70"
+              onPress={() => setShowStripeModal(true)}
+              className={`${primaryBg} px-8 py-4 rounded-xl self-start active:opacity-70`}
             >
               <Text className="text-white text-lg font-semibold">Join early access</Text>
             </Pressable>
           </View>
 
           {/* Feature Grid Mockup */}
-          <View className="grid grid-cols-3 gap-4 p-8 bg-gray-50 rounded-3xl border border-gray-200">
+          <View className={`grid grid-cols-3 gap-4 p-8 ${bgAlt} rounded-3xl border ${borderColor}`}>
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <Pressable
                   key={feature.label}
-                  className={`${feature.gradient} rounded-2xl p-6 items-center justify-center active:scale-95 transition-transform`}
+                  className={`bg-gradient-to-br ${feature.gradient} rounded-2xl p-6 items-center justify-center active:scale-95 transition-transform`}
                   style={{ aspectRatio: 1 }}
                 >
                   <Icon size={32} color="#fff" className="mb-3" />
@@ -101,36 +186,37 @@ export default function LandingPage() {
       {/* Conversational Section */}
       <View className="px-4 py-20">
         <View className="max-w-3xl mx-auto">
-          <Text className="text-4xl font-bold mb-6">
+          <Text className={`text-4xl font-bold mb-6 ${textColor}`}>
             Swae: Your Life, Not Your Checklist
           </Text>
-          <Text className="text-lg opacity-85 mb-4">
+          <Text className={`text-lg opacity-85 mb-4 ${textColor}`}>
             You don't need another app telling you to do more—you need a system that moves with you.
           </Text>
-          <Text className="text-lg opacity-85 mb-4">
+          <Text className={`text-lg opacity-85 mb-4 ${textColor}`}>
             Swae meets you where you are, weaving habits, journaling, meals, and movement into a rhythm that fits your life. Progress isn't punishment; it's momentum made effortless, guided by insight, not shame.
           </Text>
-          <Text className="text-lg opacity-85">
+          <Text className={`text-lg opacity-85 ${textColor}`}>
             Start with one habit, one prompt, or one reflection. Swae handles the rest—stacking small wins into lasting change.
           </Text>
         </View>
       </View>
 
       {/* Old Way vs New Way Comparison */}
-      <View className="px-4 py-24 bg-gray-50">
+      <View className={`px-4 py-24 ${bgAlt}`}>
         <View className="max-w-6xl mx-auto">
-          <Text className="text-4xl font-bold text-center mb-4">
+          <Text className={`text-4xl font-bold text-center mb-4 ${textColor}`}>
             The Old Way vs. The Swae Way
           </Text>
-          <Text className="text-xl text-center mb-12 opacity-80">
+          <Text className={`text-xl text-center mb-12 opacity-80 ${textColor}`}>
             Most wellness tools assume you'll bend your life to fit their program. We do the opposite.
           </Text>
 
           <View className="flex-row gap-8">
             {/* Old Way */}
-            <View className="flex-1 rounded-2xl border-2 border-red-200 bg-white p-6">
+            <View className={`flex-1 rounded-2xl border-2 border-red-200 ${isWarm ? 'bg-white' : 'bg-white'} p-6`}>
               <View className="flex-row items-center gap-2 bg-red-100 px-3 py-1 rounded-full self-start mb-6">
-                <Text className="text-red-800 text-sm">The fragmented way</Text>
+                <XCircle size={16} color="#991b1b" />
+                <Text className="text-red-800 text-sm font-medium">The fragmented way</Text>
               </View>
               <View className="space-y-4">
                 {[
@@ -140,8 +226,8 @@ export default function LandingPage() {
                   'Short sprints, long burnouts, Monday restarts',
                   'Data you can't feel, progress you can't trust'
                 ].map((item, i) => (
-                  <View key={i} className="flex-row items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <CheckCircle2 size={20} color="#ef4444" className="mt-0.5" />
+                  <View key={i} className={`flex-row items-start gap-3 p-3 ${bgColor} rounded-lg`}>
+                    <XCircle size={20} color="#ef4444" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm">{item}</Text>
                   </View>
                 ))}
@@ -149,9 +235,10 @@ export default function LandingPage() {
             </View>
 
             {/* New Way */}
-            <View className="flex-1 rounded-2xl border-2 border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 p-6">
-              <View className="flex-row items-center gap-2 bg-green-100 px-3 py-1 rounded-full self-start mb-6">
-                <Text className="text-green-800 text-sm">The Swae way</Text>
+            <View className={`flex-1 rounded-2xl border-2 ${isWarm ? 'border-warm-gold-500 bg-gradient-to-br from-warm-gold-50 to-warm-crimson-50' : 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'} p-6`}>
+              <View className={`flex-row items-center gap-2 ${isWarm ? 'bg-warm-gold-100' : 'bg-green-100'} px-3 py-1 rounded-full self-start mb-6`}>
+                <Check size={16} color={isWarm ? '#92400e' : '#166534'} />
+                <Text className={`${isWarm ? 'text-warm-gold-800' : 'text-green-800'} text-sm font-medium`}>The Swae way</Text>
               </View>
               <View className="space-y-4">
                 {[
@@ -162,7 +249,7 @@ export default function LandingPage() {
                   'Human signals + smart data you can actually feel'
                 ].map((item, i) => (
                   <View key={i} className="flex-row items-start gap-3 p-3 bg-white rounded-lg">
-                    <CheckCircle2 size={20} color="#22c55e" className="mt-0.5" />
+                    <Check size={20} color="#22c55e" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm font-medium">{item}</Text>
                   </View>
                 ))}
@@ -172,41 +259,198 @@ export default function LandingPage() {
         </View>
       </View>
 
-      {/* CTA Section */}
+      {/* Feature Sections */}
       <View className="px-4 py-24">
-        <View className="max-w-4xl mx-auto text-center">
-          <Text className="text-5xl font-bold mb-6">
+        <View className="max-w-6xl mx-auto space-y-20">
+          {featureSections.map((section, sectionIndex) => (
+            <View key={section.title} className={`${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-10 items-center`}>
+              <View className="flex-1">
+                <Text className={`text-2xl font-bold mb-4 ${textColor}`}>{section.title}</Text>
+                <View className="space-y-3">
+                  {section.bullets.map((bullet, i) => (
+                    <View key={i} className="flex-row items-start gap-3">
+                      <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} className="mt-0.5" />
+                      <Text className={`flex-1 text-base ${textColor}`}>{bullet}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Visualization */}
+              <View className="flex-1">
+                {section.visualization === 'stats' && (
+                  <View className="grid grid-cols-2 gap-4">
+                    {section.stats?.map((stat, i) => {
+                      const StatIcon = stat.icon;
+                      return (
+                        <View key={i} className={`bg-gradient-to-br ${stat.gradient} rounded-xl p-6 active:scale-95 transition-transform`}>
+                          <StatIcon size={32} color="#fff" className="mb-2" />
+                          <Text className="text-3xl font-bold text-white">{stat.value}</Text>
+                          <Text className="text-sm text-white opacity-90">{stat.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {section.visualization === 'cards' && (
+                  <View className="space-y-4">
+                    {section.cards?.map((card, i) => (
+                      <View key={i} className={`p-4 rounded-xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'}`}>
+                        <Text className={`font-semibold mb-2 ${textColor}`}>{card.title}</Text>
+                        <Text className={`text-sm opacity-80 ${textColor}`}>{card.description}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {section.visualization === 'list' && (
+                  <View className={`rounded-2xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'} overflow-hidden`}>
+                    {section.items?.map((item, i) => (
+                      <View key={i} className={`p-4 ${i !== section.items!.length - 1 ? `border-b ${borderColor}` : ''}`}>
+                        <Text className={`font-semibold ${textColor}`}>{item.label}</Text>
+                        <Text className={`text-sm opacity-80 ${textColor}`}>{item.detail}</Text>
+                        <Text className="text-xs opacity-60 mt-1">{item.time}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {section.visualization === 'progress' && (
+                  <View className="space-y-4">
+                    {section.exercises?.map((exercise, i) => (
+                      <View key={i}>
+                        <View className="flex-row justify-between mb-2">
+                          <Text className={`font-medium ${textColor}`}>{exercise.name}</Text>
+                          <Text className={`text-sm opacity-70 ${textColor}`}>{exercise.sets}</Text>
+                        </View>
+                        <View className={`h-2 ${bgAlt} rounded-full overflow-hidden`}>
+                          <View
+                            className={`h-full ${primaryBg}`}
+                            style={{ width: `${exercise.progress * 100}%` }}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* CTA Section */}
+      <View className={`px-4 py-24 ${bgAlt}`}>
+        <View className="max-w-4xl mx-auto items-center">
+          <Text className={`text-5xl font-bold mb-6 text-center ${textColor}`}>
             Get early access to Swae OS
           </Text>
-          <Text className="text-xl mb-10 opacity-85">
+          <Text className={`text-xl mb-10 opacity-85 text-center ${textColor}`}>
             Start gentle. We'll invite you as features roll out—first habits and journaling, then meals and movement.
           </Text>
           <Pressable
-            onPress={() => router.push('/auth/signup')}
-            className="bg-gray-900 px-8 py-4 rounded-xl self-center active:opacity-70"
+            onPress={() => setShowStripeModal(true)}
+            className={`${primaryBg} px-8 py-4 rounded-xl active:opacity-70`}
           >
             <Text className="text-white text-lg font-semibold">Join early access</Text>
           </Pressable>
-          <Text className="text-sm mt-4 opacity-70">
+          <Text className={`text-sm mt-4 opacity-70 ${textColor}`}>
             No spam. Just steady, human-first progress notes and early-access invites.
           </Text>
         </View>
       </View>
 
       {/* Footer */}
-      <View className="border-t border-gray-200 py-12 px-4">
+      <View className={`border-t ${borderColor} py-12 px-4`}>
         <View className="max-w-7xl mx-auto flex-row justify-between items-center">
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-900 to-gray-600 items-center justify-center">
+            <View className={`w-8 h-8 rounded-lg ${isWarm ? 'bg-gradient-to-br from-warm-crimson-600 to-warm-gold-500' : 'bg-gradient-to-br from-gray-900 to-gray-600'} items-center justify-center`}>
               <Brain size={16} color="#fff" />
             </View>
-            <Text className="ml-3 text-xl font-semibold">Swae OS</Text>
+            <Text className={`ml-3 text-xl font-semibold ${textColor}`}>Swae OS</Text>
           </View>
-          <Text className="text-sm opacity-80">
+          <Text className={`text-sm opacity-80 ${textColor}`}>
             © {new Date().getFullYear()} Swae. All rights reserved.
           </Text>
         </View>
       </View>
+
+      {/* Stripe Checkout Modal */}
+      <Modal
+        visible={showStripeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStripeModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 items-center justify-center p-4"
+          onPress={() => setShowStripeModal(false)}
+        >
+          <Pressable
+            className={`w-full max-w-md ${isWarm ? 'bg-warm-sepia-50' : 'bg-white'} rounded-2xl overflow-hidden`}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View className={`p-6 border-b ${borderColor}`}>
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className={`text-2xl font-bold ${textColor}`}>Early Access Pass</Text>
+                <Pressable onPress={() => setShowStripeModal(false)} className="p-2">
+                  <X size={24} color={isWarm ? '#2a221b' : '#0f172a'} />
+                </Pressable>
+              </View>
+              <Text className={`text-sm opacity-80 ${textColor}`}>
+                Get instant access to Swae OS with all features. Limited time 100% discount applied.
+              </Text>
+            </View>
+
+            <View className="p-6">
+              <View className="flex-row items-end gap-3 mb-6">
+                <Text className={`text-4xl font-bold ${textColor}`}>$0</Text>
+                <Text className="text-xl line-through opacity-50">$49</Text>
+                <Text className={`font-semibold ${primaryText}`}>100% OFF</Text>
+              </View>
+
+              <View className="space-y-3 mb-6">
+                <View className="flex-row items-center gap-2">
+                  <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} />
+                  <Text className={textColor}>Instant access to habit system</Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} />
+                  <Text className={textColor}>Journaling with AI insights</Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} />
+                  <Text className={textColor}>Early access to movement & meals</Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  setShowStripeModal(false);
+                  router.push('/auth/signup');
+                }}
+                className={`${primaryBg} px-6 py-4 rounded-xl flex-row items-center justify-center gap-2 active:opacity-70`}
+              >
+                <CreditCard size={20} color="#fff" />
+                <Text className="text-white text-lg font-semibold">Claim Your Free Access</Text>
+              </Pressable>
+
+              <Text className={`text-xs text-center mt-4 opacity-60 ${textColor}`}>
+                No payment required. Sign up and start immediately.
+              </Text>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <LandingThemeProvider>
+      <LandingContent />
+    </LandingThemeProvider>
   );
 }
