@@ -23,10 +23,10 @@ export {
   ErrorBoundary
 } from "expo-router";
 
-// export const unstable_settings = {
-//   // Ensure that reloading on `/modal` keeps a back button present.
-//   initialRouteName: "(auth)",
-// };
+export const unstable_settings = {
+  // Start on landing page instead of auth
+  initialRouteName: "index",
+};
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -72,6 +72,7 @@ function RootLayoutNav() {
               <AuthStateHandler />
               <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
               </Stack>
