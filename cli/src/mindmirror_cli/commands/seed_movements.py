@@ -14,6 +14,8 @@ from mindmirror_cli.core.utils import (
     set_environment,
     get_current_environment,
     is_live_environment,
+    is_production_environment,
+    get_database_url,
 )
 
 console = Console()
@@ -23,19 +25,26 @@ app = typer.Typer(name="seed-movements", help="Seed movements into DB from CSV",
 async def _execute(from_csv: str, database_url: Optional[str], schema: str, env: Optional[str]):
     if env:
         set_environment(env)
-        console.print(f"[blue]Using environment: {get_current_environment()}[/blue]")
+        console.print(f"[blue]Environment: {get_current_environment()}[/blue]")
+
+    # Production safety check
+    if is_production_environment():
+        confirm = typer.confirm(
+            f"⚠️  You are seeding PRODUCTION movements from {from_csv}. Continue?",
+            default=False
+        )
+        if not confirm:
+            console.print("[yellow]Cancelled[/yellow]")
+            raise typer.Exit(0)
 
     if not database_url:
-        if is_live_environment():
-            supabase_db_url = os.getenv("SUPABASE_DATABASE_URL")
-            if not supabase_db_url:
-                console.print("[red]SUPABASE_DATABASE_URL must be set when using --env live, or provide --db-url explicitly[/red]")
-                raise typer.Exit(1)
-            database_url = supabase_db_url
-        else:
-            database_url = "postgresql+asyncpg://movements_user:movements_password@movements_postgres:5432/swae_movements"
+        try:
+            database_url = get_database_url('movements')
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
 
-    console.print(f"[cyan]DB:[/cyan] {database_url.split('@')[-1]}")
+    console.print(f"[cyan]Target DB:[/cyan] {database_url.split('@')[-1]}")
 
     engine = create_async_engine(
         database_url,
@@ -69,7 +78,7 @@ def main(
     from_csv: Optional[str] = typer.Option(None, "--from-csv", help="Path to CSV file"),
     database_url: Optional[str] = typer.Option(None, "--db-url", help="Full DATABASE_URL to use (overrides env)"),
     schema: str = typer.Option("movements", "--schema", help="DB schema name to use"),
-    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, staging, production)"),
 ):
     """If called without subcommand, run the seeding directly using provided options."""
     if from_csv:
@@ -81,7 +90,7 @@ def run(
     from_csv: str = typer.Option(..., "--from-csv", help="Path to CSV file"),
     database_url: Optional[str] = typer.Option(None, "--db-url", help="Full DATABASE_URL to use (overrides env)"),
     schema: str = typer.Option("movements", "--schema", help="DB schema name to use"),
-    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, staging, production)"),
 ):
     """Seed movements from a CSV file into the configured database."""
     asyncio.run(_execute(from_csv, database_url, schema, env)) 

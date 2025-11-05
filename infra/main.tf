@@ -178,6 +178,7 @@ module "gateway" {
   gateway_container_image = var.gateway_container_image
   
   # Supabase configuration (from secrets)
+  supabase_url          = data.google_secret_manager_secret_version.supabase_url.secret_data
   supabase_anon_key     = data.google_secret_manager_secret_version.supabase_anon_key.secret_data
   supabase_jwt_secret   = data.google_secret_manager_secret_version.supabase_jwt_secret.secret_data
   

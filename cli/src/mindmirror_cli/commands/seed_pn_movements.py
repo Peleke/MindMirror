@@ -15,6 +15,8 @@ from mindmirror_cli.core.utils import (
     set_environment,
     get_current_environment,
     is_live_environment,
+    is_production_environment,
+    get_database_url,
 )
 
 console = Console()
@@ -32,25 +34,27 @@ async def _execute(
     """Execute the PN movements seeding."""
     if env:
         set_environment(env)
-        console.print(f"[blue]Using environment: {get_current_environment()}[/blue]")
+        console.print(f"[blue]Environment: {get_current_environment()}[/blue]")
+
+    # Production safety check
+    if is_production_environment():
+        confirm = typer.confirm(
+            "⚠️  You are seeding PRODUCTION Precision Nutrition movements. Continue?",
+            default=False
+        )
+        if not confirm:
+            console.print("[yellow]Cancelled[/yellow]")
+            raise typer.Exit(0)
 
     # Determine database URL
     if not database_url:
-        if is_live_environment():
-            # For staging/production, use SUPABASE_DATABASE_URL or movements-specific URL
-            supabase_db_url = os.getenv("SUPABASE_DATABASE_URL") or os.getenv("MOVEMENTS_DATABASE_URL")
-            if not supabase_db_url:
-                console.print(
-                    "[red]SUPABASE_DATABASE_URL or MOVEMENTS_DATABASE_URL must be set "
-                    "when using live environments, or provide --db-url explicitly[/red]"
-                )
-                raise typer.Exit(1)
-            database_url = supabase_db_url
-        else:
-            # Local Docker default
-            database_url = "postgresql+asyncpg://movements_user:movements_password@movements_postgres:5432/swae_movements"
+        try:
+            database_url = get_database_url('movements')
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
 
-    console.print(f"[cyan]DB:[/cyan] {database_url.split('@')[-1]}")
+    console.print(f"[cyan]Target DB:[/cyan] {database_url.split('@')[-1]}")
     console.print(f"[cyan]Jen CSV:[/cyan] {jen_csv}")
     console.print(f"[cyan]Craig CSV:[/cyan] {craig_csv}")
     console.print(f"[cyan]Update existing:[/cyan] {update_existing}")
@@ -67,7 +71,13 @@ async def _execute(
 
     # Import the PN importer
     from movements.repository.database import Base  # type: ignore
-    from movements.service.pn_csv_importer import import_pn_movements_csv  # type: ignore
+
+    # Add cli directory to path and import from there
+    import sys
+    from pathlib import Path
+    cli_dir = Path(__file__).parent.parent.parent.parent
+    sys.path.insert(0, str(cli_dir))
+    from pn_csv_importer import import_pn_movements_csv  # type: ignore
 
     # Ensure schema and tables exist
     async with engine.begin() as conn:
