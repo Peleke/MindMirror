@@ -21,6 +21,11 @@ resource "google_cloud_run_service" "gateway" {
 
         # Supabase Configuration
         env {
+          name  = "SUPABASE_URL"
+          value = var.supabase_url
+        }
+
+        env {
           name  = "SUPABASE_ANON_KEY"
           value = var.supabase_anon_key
         }
