@@ -178,21 +178,21 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate staging.auto.tfvars
+      - name: Generate staging.tfvars
         env:
           VERSION_TAG: ${{ needs.detect-changes.outputs.version_tag }}
         run: |
           chmod +x scripts/generate-tfvars.sh
           # Generate tfvars for services only (gateway deployed separately)
-          ./scripts/generate-tfvars.sh staging "$VERSION_TAG" > infra/staging.auto.tfvars
-          echo "📝 Generated infra/staging.auto.tfvars (services only, gateway excluded)"
+          ./scripts/generate-tfvars.sh staging "$VERSION_TAG" > infra/staging.tfvars
+          echo "📝 Generated infra/staging.tfvars (services only, gateway excluded)"
 
       - name: Commit and push tfvars
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add infra/staging.auto.tfvars
+          git add infra/staging.tfvars
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -219,7 +219,7 @@ jobs:
           echo "Services: ${{ needs.detect-changes.outputs.services }}"
           echo ""
           echo "✅ Images built and pushed"
-          echo "✅ staging.auto.tfvars updated"
+          echo "✅ staging.tfvars updated"
           echo ""
           echo "⏳ Terrateam will auto-deploy in ~1-2 minutes"
           echo "   Watch: https://github.com/${{ github.repository }}/actions"

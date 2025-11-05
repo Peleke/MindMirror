@@ -112,25 +112,25 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
           # Remove existing gateway_container_image line if present
-          sed -i '/^gateway_container_image/d' infra/production.auto.tfvars
+          sed -i '/^gateway_container_image/d' infra/production.tfvars
 
           # Append gateway container image to existing tfvars
-          echo "" >> infra/production.auto.tfvars
-          echo "# Gateway Configuration (Updated by gateway-deploy-production.yml)" >> infra/production.auto.tfvars
-          echo "gateway_container_image = \"$IMAGE_NAME\"" >> infra/production.auto.tfvars
+          echo "" >> infra/production.tfvars
+          echo "# Gateway Configuration (Updated by gateway-deploy-production.yml)" >> infra/production.tfvars
+          echo "gateway_container_image = \"$IMAGE_NAME\"" >> infra/production.tfvars
 
           echo "✅ Added gateway_container_image to tfvars"
           echo "Gateway image: $IMAGE_NAME"
           echo ""
           echo "Updated tfvars:"
-          cat infra/production.auto.tfvars
+          cat infra/production.tfvars
 
       - name: Commit and push gateway tfvars
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add infra/production.auto.tfvars
+          git add infra/production.tfvars
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
@@ -170,7 +170,7 @@ jobs:
           echo "Image: ${{ needs.build-gateway.outputs.image_name }}"
           echo ""
           echo "✅ Gateway image built with service URLs"
-          echo "✅ production.auto.tfvars updated (gateway-only)"
+          echo "✅ production.tfvars updated (gateway-only)"
           echo "✅ Gateway apply will auto-trigger via workflow_run"
           echo "⚠️  Manual approval required before production deployment"
           echo ""
