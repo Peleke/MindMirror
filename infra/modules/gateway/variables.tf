@@ -22,6 +22,11 @@ variable "supabase_anon_key" {
   type        = string
 }
 
+variable "supabase_url" {
+  description = "Supabase project URL"
+  type        = string
+}
+
 variable "supabase_jwt_secret" {
   description = "Supabase JWT secret"
   type        = string

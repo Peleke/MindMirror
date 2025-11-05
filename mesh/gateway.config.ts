@@ -26,7 +26,7 @@ export const gatewayConfig = defineConfig({
       payload: true,
       token: false,
       extensionsFieldName: 'jwt',
-    },  
+    },
     tokenLookupLocations: [
       extractFromHeader({ name: 'authorization', prefix: 'Bearer' }),
     ],
@@ -34,7 +34,7 @@ export const gatewayConfig = defineConfig({
       createInlineSigningKeyProvider(process.env.SUPABASE_JWT_SECRET as string),
     ],
     tokenVerification: {
-      issuer: ['https://gaitofyakycvpwqfoevq.supabase.co/auth/v1'],
+      issuer: [`${process.env.SUPABASE_URL}/auth/v1`],
       audience: ['authenticated'],
       algorithms: ['HS256'],  // Supabase uses HS256
     },

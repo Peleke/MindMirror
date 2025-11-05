@@ -22,13 +22,13 @@ from sqlalchemy.pool import NullPool
 
 from content_parser.parser import parse_markdown
 
-from habits_service.habits_service.app.db.models import Base
-from habits_service.habits_service.app.db.repositories.write import (
+from habits.app.db.models import Base
+from habits.app.db.repositories.write import (
     LessonTemplateRepository,
     ProgramTemplateRepository,
     HabitTemplateRepository,
 )
-from habits_service.habits_service.app.db.repositories.write_structural import (
+from habits.app.db.repositories.write_structural import (
     ProgramStepTemplateRepository,
     LessonSegmentRepository,
     StepDailyPlanRepository,
@@ -38,6 +38,8 @@ from mindmirror_cli.core.utils import (
     set_environment,
     get_current_environment,
     is_live_environment,
+    is_production_environment,
+    get_database_url,
 )
 
 console = Console()
@@ -56,30 +58,35 @@ def run(
     program_dir: str = typer.Argument("/workspace/data/habits/programs/unfck-your-eating", help="Program directory"),
     database_url: Optional[str] = typer.Option(None, "--db-url", envvar="DATABASE_URL"),
     schema: Optional[str] = typer.Option("habits", "--schema", envvar="DATABASE_SCHEMA"),
-    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, live)"),
+    env: Optional[str] = typer.Option(None, "--env", "-e", help="Environment (local, staging, production)"),
 ):
     """Seed the specified program into the current DB."""
 
     async def _run():
-        # Set CLI environment if provided (mirrors Qdrant commands behavior)
+        # Set CLI environment if provided
         if env:
             set_environment(env)
-            console.print(f"[blue]Using environment: {get_current_environment()}[/blue]")
+            console.print(f"[blue]Environment: {get_current_environment()}[/blue]")
+
+        # Production safety check
+        if is_production_environment():
+            confirm = typer.confirm(
+                "⚠️  You are seeding PRODUCTION habits/programs. Continue?",
+                default=False
+            )
+            if not confirm:
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
 
         nonlocal database_url
         if not database_url:
-            if is_live_environment():
-                # Prefer explicit SUPABASE_DATABASE_URL for live
-                supabase_db_url = os.getenv("SUPABASE_DATABASE_URL")
-                if not supabase_db_url:
-                    console.print(
-                        "[red]SUPABASE_DATABASE_URL must be set when using --env live, or provide --db-url explicitly[/red]"
-                    )
-                    raise typer.Exit(1)
-                database_url = supabase_db_url
-            else:
-                # fall back to compose default for local
-                database_url = "postgresql+asyncpg://postgres:postgres@postgres:5432/cyborg_coach"
+            try:
+                database_url = get_database_url('main')
+            except ValueError as e:
+                console.print(f"[red]{e}[/red]")
+                raise typer.Exit(1)
+
+        console.print(f"[cyan]Target DB:[/cyan] {database_url.split('@')[-1]}")
 
         engine = create_async_engine(
             database_url,

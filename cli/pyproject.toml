@@ -23,6 +23,7 @@ python-dotenv = "^1.1.1"
 psycopg2-binary = "^2.9.10"
 content-parser = {path = "../tools/content_parser", develop = true}
 habits-service = {path = "../habits_service", develop = true}
+shared = {path = "../src/shared", develop = true}
 PyYAML = "^6.0.2"
 
 [tool.poetry.group.dev.dependencies]
