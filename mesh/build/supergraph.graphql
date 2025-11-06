@@ -263,6 +263,7 @@ type Query @join__type(graph: AGENT)  @join__type(graph: HABITS)  @join__type(gr
   users: [UserTypeGQL!]! @join__field(graph: USERS) 
   userById(id: ID!) : UserTypeGQL @join__field(graph: USERS) 
   userBySupabaseId(supabaseId: String!) : UserTypeGQL @join__field(graph: USERS) 
+  exchangeSupabaseIdForInternalId(supabaseId: String!) : String! @join__field(graph: USERS) 
   services: [ServiceTypeGQLType!]! @join__field(graph: USERS) 
   serviceById(id: UUID!) : ServiceTypeGQLType @join__field(graph: USERS) 
   serviceByName(name: ServiceTypeGQL!) : ServiceTypeGQLType @join__field(graph: USERS) 
