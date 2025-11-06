@@ -176,7 +176,7 @@ function LandingContent() {
               <Palette size={20} color={isWarm ? '#dc2626' : '#2563eb'} />
             </Pressable>
             <Pressable
-              onPress={() => router.push('/auth/login')}
+              onPress={() => router.push('/signup')}
               className={`px-4 py-2 ${primaryBg} rounded-lg active:opacity-70`}
             >
               <Text className="text-white font-medium">Get started</Text>
@@ -519,7 +519,7 @@ function LandingContent() {
               <Pressable
                 onPress={() => {
                   setShowStripeModal(false);
-                  router.push('/auth/signup');
+                  router.push('/signup');
                 }}
                 className={`${primaryBg} px-6 py-4 rounded-xl flex-row items-center justify-center gap-2 active:opacity-70`}
               >
