@@ -55,6 +55,12 @@ export const IS_COACH_FOR_CLIENT = gql`
   }
 `
 
+export const EXCHANGE_SUPABASE_ID_FOR_INTERNAL_ID = gql`
+  query ExchangeSupabaseIdForInternalId($supabaseId: String!) {
+    exchangeSupabaseIdForInternalId(supabaseId: $supabaseId)
+  }
+`
+
 export const USER_BY_ID = gql`
   query UserById($id: ID!) {
     userById(id: $id) {
@@ -156,6 +162,14 @@ export const useMyClients = () => {
 export const useMyCoaches = () => {
   return useQuery(MY_COACHES, {
     fetchPolicy: 'cache-and-network',
+  })
+}
+
+export const useExchangeSupabaseIdForInternalId = (supabaseId: string) => {
+  return useQuery(EXCHANGE_SUPABASE_ID_FOR_INTERNAL_ID, {
+    variables: { supabaseId },
+    fetchPolicy: 'network-only', // Always fetch fresh from server
+    skip: !supabaseId, // Don't run if no supabaseId
   })
 }
 

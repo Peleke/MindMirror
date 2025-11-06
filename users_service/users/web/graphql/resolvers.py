@@ -923,8 +923,8 @@ class Mutation:
         current_user = await get_current_user_from_info(info)
 
         # Authorization check: users can only assign roles to themselves
-        # userId from mobile app is the Supabase ID (string), not the database UUID
-        if current_user.supabase_id != str(userId):
+        # userId from mobile app is now the internal UUID (after exchange)
+        if str(current_user.id_) != str(userId):
             raise Exception("Unauthorized: You can only assign roles to yourself")
 
         uow = await get_uow_from_info(info)
