@@ -18,7 +18,8 @@ import { HStack } from "@/components/ui/hstack";
 import {
   CheckIcon,
   EyeIcon,
-  EyeOffIcon
+  EyeOffIcon,
+  InfoIcon
 } from "@/components/ui/icon";
 import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
 import { LinkText } from "@/components/ui/link";
@@ -29,7 +30,7 @@ import { VStack } from "@/components/ui/vstack";
 import { auth } from "@/services/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { AlertTriangle } from "lucide-react-native";
+import { AlertTriangle, Info } from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Keyboard } from "react-native";
@@ -110,12 +111,17 @@ const SignUpWithLeftBackground = () => {
           render: ({ id }) => {
             return (
               <Toast nativeID={id} action="success">
-                <ToastTitle>Account created successfully!</ToastTitle>
+                <ToastTitle>Account created! Please check your email to confirm your account.</ToastTitle>
               </Toast>
             );
           },
         });
         reset();
+
+        // Navigate to login after showing toast
+        setTimeout(() => {
+          router.push('/(auth)/login');
+        }, 2500);
       }
     } catch (error) {
       toast.show({
@@ -325,6 +331,19 @@ const SignUpWithLeftBackground = () => {
             )}
           />
         </VStack>
+
+        {/* Email Confirmation Notice */}
+        <HStack className="w-full my-4 p-3 bg-info-50 rounded-lg border border-info-200" space="sm">
+          <Info size={20} color="#0284c7" />
+          <VStack className="flex-1">
+            <Text size="sm" className="text-info-700 font-medium">
+              Email confirmation required
+            </Text>
+            <Text size="sm" className="text-info-600">
+              After signing up, please check your email for a confirmation link to activate your account.
+            </Text>
+          </VStack>
+        </HStack>
 
         <VStack className="w-full my-7" space="lg">
           <Button className="w-full" onPress={handleSubmit(onSubmit)} isDisabled={loading}>
