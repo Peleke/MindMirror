@@ -92,7 +92,7 @@ const SignUpWithLeftBackground = () => {
     setLoading(true);
     try {
       const { data: authData, error } = await auth.signUp(data.email, data.password);
-      
+
       if (error) {
         toast.show({
           placement: "bottom right",
@@ -104,18 +104,35 @@ const SignUpWithLeftBackground = () => {
             );
           },
         });
+      } else if (authData?.user?.identities && authData.user.identities.length === 0) {
+        // User already exists - Supabase returns empty identities array
+        toast.show({
+          placement: "bottom right",
+          render: ({ id }) => {
+            return (
+              <Toast nativeID={id} action="error">
+                <ToastTitle>Email already in use. Please login instead.</ToastTitle>
+              </Toast>
+            );
+          },
+        });
       } else {
         toast.show({
           placement: "bottom right",
           render: ({ id }) => {
             return (
               <Toast nativeID={id} action="success">
-                <ToastTitle>Account created successfully!</ToastTitle>
+                <ToastTitle>Account created! Please check your email to confirm your account before logging in.</ToastTitle>
               </Toast>
             );
           },
         });
         reset();
+
+        // Wait 5 seconds, then redirect to login
+        setTimeout(() => {
+          router.push('/(auth)/login');
+        }, 5000);
       }
     } catch (error) {
       toast.show({
