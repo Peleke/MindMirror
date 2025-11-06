@@ -903,6 +903,12 @@ class Mutation:
     @strawberry.mutation
     async def assignRoleToUser(self, info: Info, userId: strawberry.ID, role: str, domain: str) -> bool:
         """Assigns a role to a user in a specific domain."""
+        current_user = await get_current_user_from_info(info)
+
+        # Authorization check: users can only assign roles to themselves
+        if str(current_user.id_) != str(userId):
+            raise Exception("Unauthorized: You can only assign roles to yourself")
+
         uow = await get_uow_from_info(info)
         repo = UserRepository(session=uow.session)
         
