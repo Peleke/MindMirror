@@ -173,6 +173,23 @@ class Query:
         return to_domain_user(user_model) if user_model else None
 
     @strawberry.field
+    async def exchangeSupabaseIdForInternalId(self, info: Info, supabaseId: str) -> str:
+        """
+        Exchanges a Supabase ID for the internal database UUID.
+        Creates the user if they don't exist yet (with default 'client' role in 'practices' domain).
+        This should be called on login to get the internal ID for subsequent requests.
+        """
+        uow = await get_uow_from_info(info)
+        repo = UserRepository(session=uow.session)
+
+        # Get or create user - automatically assigns 'client' role if new user
+        user_model = await repo.get_or_create_user(supabase_id=supabaseId)
+        await uow.commit()
+
+        # Return the internal UUID as a string
+        return str(user_model.id_)
+
+    @strawberry.field
     async def services(self, info: Info) -> List[ServiceTypeGQL_Type]:
         uow = await get_uow_from_info(info)
         repo = ServiceRepository(session=uow.session)
@@ -906,7 +923,8 @@ class Mutation:
         current_user = await get_current_user_from_info(info)
 
         # Authorization check: users can only assign roles to themselves
-        if str(current_user.id_) != str(userId):
+        # userId from mobile app is the Supabase ID (string), not the database UUID
+        if current_user.supabase_id != str(userId):
             raise Exception("Unauthorized: You can only assign roles to yourself")
 
         uow = await get_uow_from_info(info)
