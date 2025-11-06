@@ -94,7 +94,6 @@ services:
     volumes:
       - ./src/agent_service:/app/agent_service
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
-      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
     command: uvicorn agent_service.app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -104,15 +103,14 @@ services:
       - postgres
       - qdrant
       - redis
-      - gcs-emulator
     ports:
       - "8000:8000" # Expose for direct access during dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 1s
-      timeout: 20s
-      retries: 10
-      start_period: 5s
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
 
   journal_service:
     build:
@@ -130,7 +128,6 @@ services:
     volumes:
       - ./journal_service/journal:/app/journal
       - ./local_gcs_bucket:/app/local_gcs_bucket:ro  # Read-only local files
-      - gcs_emulator_data:/app/gcs_data              # GCS emulator storage
       # Mount local Google Cloud credentials for real GCS access
       - ~/.config/gcloud:/root/.config/gcloud:ro
     command: uvicorn journal.main:app --host 0.0.0.0 --port 8001 --reload
@@ -139,16 +136,15 @@ services:
     depends_on:
       - postgres
       - redis
-      - gcs-emulator
       - users_service
     ports:
       - "8001:8001" # Expose for direct access during dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 1s
-      timeout: 20s
-      retries: 10
-      start_period: 5s
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
 
   habits_service:
     build:
@@ -172,10 +168,10 @@ services:
       - "8003:8003"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 1s
-      timeout: 20s
-      retries: 10
-      start_period: 5s
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
 
   cli:
     build:
@@ -196,50 +192,6 @@ services:
     volumes:
       - ./data:/workspace/data:ro
     command: ["mindmirror", "--help"]
-
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 💩 DEPRECATED CELERY WORKER SERVICES - REMOVED 2025-10-29 💩
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #
-  # These services were deprecated because:
-  # 1. Slow AF build times (added ~2+ minutes to CI/CD)
-  # 2. Nobody uses them anymore (replaced by better architecture)
-  # 3. They were a maintenance nightmare (complex deps, brittle)
-  # 4. Taking up precious disk space and mental bandwidth
-  #
-  # RIP celery-worker, celery-worker-web, celery_flower
-  # You sucked, you're gone, and nobody misses you.
-  #
-  # If you need background job processing, use:
-  # - Cloud Tasks (GCP)
-  # - Cloud Run Jobs (GCP)
-  # - Literally anything else
-  #
-  # Removed services:
-  # - celery-worker-web (container_name: celery-worker-web, port 8002)
-  # - celery-worker (container_name: celery-worker)
-  # - celery_flower (container_name: celery_flower, port 5555)
-  #
-  # Graveyard: See git history if you're feeling nostalgic
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  # --- GCS Emulator (Development Only) ---
-  gcs-emulator:
-    image: fsouza/fake-gcs-server:latest
-    container_name: gcs-emulator
-    ports:
-      - "4443:4443"
-    volumes:
-      - ./local_gcs_bucket:/data:ro  # Preload local files into emulator
-    command: ["-scheme", "http", "-port", "4443"]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - mindmirror-network
 
   # --- Databases & Infrastructure ---
   postgres:
@@ -323,7 +275,7 @@ services:
   gateway:
     build:
       context: ./mesh
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     ports:
       - "4000:4000"
     environment:
@@ -341,10 +293,10 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/healthcheck"]
-      interval: 2s
+      interval: 5s
       timeout: 10s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
   meals_service:
     build:
@@ -370,10 +322,10 @@ services:
       - "8004:8004"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
-      interval: 2s
+      interval: 5s
       timeout: 10s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
   movements_postgres:
     image: postgres:15-alpine
@@ -437,10 +389,10 @@ services:
       - "8005:8005"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
-      interval: 2s
+      interval: 5s
       timeout: 10s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
   practices_service:
     build:
@@ -461,10 +413,10 @@ services:
       - "8006:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 2s
+      interval: 5s
       timeout: 10s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
   users_postgres:
     image: postgres:15-alpine
@@ -507,15 +459,14 @@ services:
       - "8007:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 2s
+      interval: 5s
       timeout: 10s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 
 volumes:
   postgres_data:
   qdrant_data:
-  gcs_emulator_data:
   prompts_data:
     driver: local
   movements_postgres_data:
