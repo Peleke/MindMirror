@@ -69,8 +69,8 @@ function RootLayoutNav() {
         <SimpleApolloProvider>
           <AuthProvider>
             <ApolloProviderWrapper>
-              {/* Temporarily disable auth redirects to show landing page */}
-              {/* <AuthStateHandler /> */}
+              {/* Auth redirects enabled - landing page is public, app routes require auth */}
+              <AuthStateHandler />
               <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" options={{ headerShown: false }} />

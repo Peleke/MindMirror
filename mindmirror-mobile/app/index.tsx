@@ -6,13 +6,17 @@ import {
   CheckCircle2, Sparkles, X, Palette, Leaf, Shield, Focus, Layers3,
   HeartHandshake, CreditCard, XCircle, Check
 } from 'lucide-react-native';
-import { LandingThemeProvider, useLandingTheme } from '@/src/contexts/LandingThemeContext';
+import { LandingThemeProvider, useLandingTheme } from '@/contexts/LandingThemeContext';
+import { DeviceMockup } from '@/components/DeviceMockup';
+import { FlippableFeatureCard } from '@/components/FlippableFeatureCard';
 
 function LandingContent() {
   const router = useRouter();
   const { theme, toggleTheme, isWarm } = useLandingTheme();
   const [animatedPhrase, setAnimatedPhrase] = useState('Move Forward');
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState(0);
+  const [flippedCard, setFlippedCard] = useState<string | null>(null);
 
   const phrases = [
     'Move Forward',
@@ -23,6 +27,8 @@ function LandingContent() {
     'Thrive Daily'
   ];
 
+  const mockupScreens = ['Journal', 'Habits', 'Analytics', 'Meals'];
+
   useEffect(() => {
     const interval = setInterval(() => {
       setAnimatedPhrase((current) => {
@@ -30,6 +36,14 @@ function LandingContent() {
         return phrases[(currentIndex + 1) % phrases.length];
       });
     }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentScreen((prev) => (prev + 1) % mockupScreens.length);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, []);
@@ -45,12 +59,42 @@ function LandingContent() {
   const borderColor = isWarm ? 'border-warm-sepia-200' : 'border-cool-slate-200';
 
   const features = [
-    { icon: NotebookPen, label: 'Journal', gradient: isWarm ? 'from-warm-crimson-500 to-warm-crimson-600' : 'from-cool-blue-500 to-cool-blue-600' },
-    { icon: Dumbbell, label: 'Movement', gradient: 'from-green-500 to-green-600' },
-    { icon: Soup, label: 'Meals', gradient: isWarm ? 'from-warm-gold-500 to-warm-gold-600' : 'from-orange-500 to-orange-600' },
-    { icon: Activity, label: 'Habits', gradient: 'from-purple-500 to-purple-600' },
-    { icon: Moon, label: 'Reflection', gradient: isWarm ? 'from-warm-crimson-400 to-warm-gold-500' : 'from-cool-indigo-500 to-cool-indigo-600' },
-    { icon: BarChart3, label: 'Analytics', gradient: 'from-pink-500 to-pink-600' }
+    {
+      icon: NotebookPen,
+      label: 'Journal',
+      gradient: isWarm ? 'from-warm-crimson-500 to-warm-crimson-600' : 'from-cool-blue-500 to-cool-blue-600',
+      description: 'Structured prompts for gratitude and reflection. Freeform notes when you need space. Your thoughts, organized gently.'
+    },
+    {
+      icon: Dumbbell,
+      label: 'Movement',
+      gradient: 'from-green-500 to-green-600',
+      description: 'Programs with progressions and kind regressions. Smart substitutions when equipment or time changes.'
+    },
+    {
+      icon: Soup,
+      label: 'Meals',
+      gradient: isWarm ? 'from-warm-gold-500 to-warm-gold-600' : 'from-orange-500 to-orange-600',
+      description: 'Quick, flexible logging. A living library of meals you actually eat. Optional computer vision estimates.'
+    },
+    {
+      icon: Activity,
+      label: 'Habits',
+      gradient: 'from-purple-500 to-purple-600',
+      description: 'Weekly habit focus with loving guardrails. Streaks that whisper, not yell. Real progress, not perfection.'
+    },
+    {
+      icon: Moon,
+      label: 'Reflection',
+      gradient: isWarm ? 'from-warm-crimson-400 to-warm-gold-500' : 'from-cool-indigo-500 to-cool-indigo-600',
+      description: 'Evening check-ins to surface patterns gently. Next steps offered, never forced. Privacy-forward by default.'
+    },
+    {
+      icon: BarChart3,
+      label: 'Analytics',
+      gradient: 'from-pink-500 to-pink-600',
+      description: 'Visualize your consistency and growth. Human signals + smart data you can actually feel and trust.'
+    }
   ];
 
   const featureSections = [
@@ -72,7 +116,7 @@ function LandingContent() {
     {
       title: 'Journaling & Insights',
       bullets: [
-        'Structured prompts when you want them, freeform when you don't',
+        'Structured prompts when you want them, freeform when you don\'t',
         'Patterns surface gently—next steps offered, not forced',
         'Privacy-forward by default'
       ],
@@ -84,7 +128,7 @@ function LandingContent() {
       ]
     },
     {
-      title: 'Meals (early)',
+      title: 'Meals',
       bullets: [
         'Quick, flexible logging—no spreadsheets required',
         'A living library of meals you actually eat',
@@ -98,7 +142,7 @@ function LandingContent() {
       ]
     },
     {
-      title: 'Movement (next)',
+      title: 'Movement',
       bullets: [
         'Programs with progressions and kind regressions',
         'Smart substitutions when equipment or time changes',
@@ -144,41 +188,88 @@ function LandingContent() {
       {/* Hero Section */}
       <View className="px-4 pt-16 pb-12">
         <View className="max-w-6xl mx-auto">
-          <View className="mb-12">
-            <Text className={`text-5xl md:text-6xl font-bold leading-tight mb-6 ${textColor}`}>
-              {animatedPhrase}
-            </Text>
-            <Text className={`text-4xl md:text-5xl font-normal opacity-80 ${textColor}`}>
-              with Swae
-            </Text>
-            <Text className={`text-xl mt-8 mb-10 opacity-80 ${textColor}`}>
-              Swae gently coordinates daily habits, journaling, movement, and meals into a rhythm you can trust for less tech and more nourishment.
-            </Text>
-            <Pressable
-              onPress={() => setShowStripeModal(true)}
-              className={`${primaryBg} px-8 py-4 rounded-xl self-start active:opacity-70`}
-            >
-              <Text className="text-white text-lg font-semibold">Join early access</Text>
-            </Pressable>
-          </View>
-
-          {/* Feature Grid Mockup */}
-          <View className={`grid grid-cols-3 gap-4 p-8 ${bgAlt} rounded-3xl border ${borderColor}`}>
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
+          <View className="flex-row items-center gap-12">
+            {/* Left: Text content */}
+            <View className="flex-1">
+              <View className="mb-12">
+                <Text className={`text-5xl md:text-6xl font-bold leading-tight mb-6 ${textColor}`}>
+                  {animatedPhrase}
+                </Text>
+                <Text className={`text-4xl md:text-5xl font-normal opacity-80 ${textColor}`}>
+                  with Swae
+                </Text>
+                <Text className={`text-xl mt-8 mb-10 opacity-80 ${textColor}`}>
+                  Swae gently coordinates daily habits, journaling, movement, and meals into a rhythm you can trust for less tech and more nourishment.
+                </Text>
                 <Pressable
-                  key={feature.label}
-                  className={`bg-gradient-to-br ${feature.gradient} rounded-2xl p-6 items-center justify-center active:scale-95 transition-transform`}
-                  style={{ aspectRatio: 1 }}
+                  onPress={() => setShowStripeModal(true)}
+                  className={`${primaryBg} px-8 py-4 rounded-xl self-start active:opacity-70`}
                 >
-                  <Icon size={32} color="#fff" className="mb-3" />
-                  <Text className="text-white font-medium text-sm text-center">
-                    {feature.label}
-                  </Text>
+                  <Text className="text-white text-lg font-semibold">Join early access</Text>
                 </Pressable>
-              );
-            })}
+              </View>
+            </View>
+
+            {/* Right: Device mockup */}
+            <View className="flex-1 items-center">
+              <DeviceMockup theme={isWarm ? 'warm' : 'cool'} activeScreen={currentScreen} />
+
+              {/* Screen indicators */}
+              <View className="flex-row gap-2 mt-8 justify-center">
+                {mockupScreens.map((screen, index) => (
+                  <Pressable
+                    key={screen}
+                    onPress={() => setCurrentScreen(index)}
+                    className={`rounded-full transition-all ${currentScreen === index ? 'w-8' : 'w-2'} h-2`}
+                    style={{
+                      backgroundColor: currentScreen === index
+                        ? (isWarm ? '#dc2626' : '#2563eb')
+                        : (isWarm ? '#d6d3d1' : '#cbd5e1'),
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Interactive Feature Grid */}
+      <View className="px-4 pb-20 pt-16">
+        <View className="max-w-6xl mx-auto">
+          <Text className={`text-3xl font-bold text-center mb-4 ${textColor}`}>
+            Everything You Need
+          </Text>
+          <Text className={`text-lg text-center mb-12 opacity-80 ${textColor}`}>
+            Tap any card to learn more
+          </Text>
+          <View
+            className={`p-8 ${bgAlt} rounded-3xl border ${borderColor}`}
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 16,
+            }}
+          >
+            {features.map((feature) => (
+              <View
+                key={feature.label}
+                style={{
+                  width: 'calc(33.333% - 11px)',
+                  minWidth: 150,
+                }}
+              >
+                <FlippableFeatureCard
+                  icon={feature.icon}
+                  label={feature.label}
+                  description={feature.description}
+                  gradient={feature.gradient}
+                  isWarm={isWarm}
+                  isFlipped={flippedCard === feature.label}
+                  onFlip={() => setFlippedCard(flippedCard === feature.label ? null : feature.label)}
+                />
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -224,7 +315,7 @@ function LandingContent() {
                   'Shame-first nudges, perfection or bust',
                   'Track everything or feel like you are failing',
                   'Short sprints, long burnouts, Monday restarts',
-                  'Data you can't feel, progress you can't trust'
+                  'Data you can\'t feel, progress you can\'t trust'
                 ].map((item, i) => (
                   <View key={i} className={`flex-row items-start gap-3 p-3 ${bgColor} rounded-lg`}>
                     <XCircle size={20} color="#ef4444" className="mt-0.5 flex-shrink-0" />

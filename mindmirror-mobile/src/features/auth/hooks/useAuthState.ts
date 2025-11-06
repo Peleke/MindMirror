@@ -13,7 +13,7 @@ export function useAuthState() {
     console.log("Loading:", loading)
     console.log("Segments:", segments)
     console.log("Current route:", segments.join('/'))
-    
+
     if (loading) {
       console.log("Still loading, skipping navigation")
       return;
@@ -30,7 +30,7 @@ export function useAuthState() {
     // 1. Unauthenticated users can view landing page and auth routes only
     // 2. Authenticated users should be in the app
     if (!user) {
-      // User not logged in
+      // User not logged in - allow landing page, don't redirect from root/index
       if (inAppGroup) {
         console.log('🚀 Redirecting to login (unauthenticated trying to access app)')
         router.replace('/(auth)/login')
@@ -38,9 +38,14 @@ export function useAuthState() {
         console.log('✅ Staying on public page (landing or auth)')
       }
     } else {
-      // User is logged in
-      if (inAuthGroup || onLandingPage) {
-        console.log('🚀 Redirecting to journal (authenticated on public page)')
+      // User is logged in - only redirect from landing if they're authenticated
+      // This allows unauthenticated users to stay on landing/index
+      if (inAuthGroup) {
+        console.log('🚀 Redirecting to journal (authenticated on auth page)')
+        router.replace('/(app)/journal')
+      } else if (onLandingPage) {
+        // Only redirect authenticated users away from landing
+        console.log('🚀 Redirecting to journal (authenticated on landing)')
         router.replace('/(app)/journal')
       } else {
         console.log('✅ Staying in app (already authenticated)')
