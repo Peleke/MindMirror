@@ -63,3 +63,6 @@ meals_env = {
   OFF_SEARCHALICIOUS_ENABLED = "true"
   OFF_USER_AGENT             = "MindMirrorMeals/1.0 (+support@mindmirror.app)"
 }
+
+# Gateway Configuration (Updated by gateway-deploy.yml)
+gateway_container_image = "us-east4-docker.pkg.dev/mindmirror-69/mindmirror/mesh:v1.0.0-b6ceeb2"
