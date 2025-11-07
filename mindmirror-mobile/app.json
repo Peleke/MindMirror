@@ -30,7 +30,8 @@
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
-      "output": "static"
+      "output": "static",
+      "bundler": "metro"
     },
     "extra": {
       "gatewayUrl": "http://localhost:4000/graphql",

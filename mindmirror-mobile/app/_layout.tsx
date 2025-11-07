@@ -23,10 +23,10 @@ export {
   ErrorBoundary
 } from "expo-router";
 
-// export const unstable_settings = {
-//   // Ensure that reloading on `/modal` keeps a back button present.
-//   initialRouteName: "(auth)",
-// };
+export const unstable_settings = {
+  // Start on landing page at root
+  initialRouteName: "index",
+};
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -69,9 +69,11 @@ function RootLayoutNav() {
         <SimpleApolloProvider>
           <AuthProvider>
             <ApolloProviderWrapper>
+              {/* Auth redirects enabled - landing page is public, app routes require auth */}
               <AuthStateHandler />
               <AutoEnrollHandler />
               <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
               </Stack>

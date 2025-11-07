@@ -94,32 +94,18 @@ health:
 	@echo ""
 	@echo "Service URLs:"
 	@echo "  - Web UI: http://localhost:3001"
-	@echo "  - Gateway: http://localhost:4000"
+	@echo "  - Mobile: Expo on http://localhost:8081"
+	@echo "  - Gateway: http://localhost:4000/graphql"
 	@echo "  - Agent Service: http://localhost:8000"
 	@echo "  - Journal Service: http://localhost:8001"
-	@echo "  - Celery Worker: http://localhost:8002"
-	@echo "  - Flower (Celery): http://localhost:5555"
+	@echo "  - Habits Service: http://localhost:8003"
+	@echo "  - Meals Service: http://localhost:8004"
+	@echo "  - Movements Service: http://localhost:8005"
+	@echo "  - Practices Service: http://localhost:8006"
+	@echo "  - Users Service: http://localhost:8007"
 	@echo "  - PostgreSQL: localhost:5432"
 	@echo "  - Redis: localhost:6379"
 	@echo "  - Qdrant: http://localhost:6333"
-	@echo "  - GCS Emulator: http://localhost:4443"
-
-# GCS Configuration Commands
-local-gcs-emulator:
-	@echo "🔧 Switching to LOCAL GCS emulator..."
-	@sed -i 's/USE_GCS_EMULATOR=false/USE_GCS_EMULATOR=true/' env.local
-	@sed -i 's/STORAGE_EMULATOR_HOST=.*/STORAGE_EMULATOR_HOST=gcs-emulator:4443/' env.local
-	@echo "✅ Switched to GCS emulator. Restart services with: make local"
-
-local-gcs-real:
-	@echo "🔧 Switching to REAL GCS (requires credentials)..."
-	@echo "⚠️  Make sure you have:"
-	@echo "   1. GCS service account credentials in ./credentials/"
-	@echo "   2. Updated GCS_BUCKET_NAME in env.local"
-	@echo "   3. Set GOOGLE_CLOUD_PROJECT in env.local"
-	@sed -i 's/USE_GCS_EMULATOR=true/USE_GCS_EMULATOR=false/' env.local
-	@sed -i 's/STORAGE_EMULATOR_HOST=.*/STORAGE_EMULATOR_HOST=/' env.local
-	@echo "✅ Switched to real GCS. Restart services with: make local"
 
 # CLI Commands
 cli-local:

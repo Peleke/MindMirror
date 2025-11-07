@@ -424,12 +424,12 @@ const accountData: AccountCardType[] = [
 const MainContent = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedTradition, setSelectedTradition] = useState('canon-default');
-  const { user, signOut } = useAuth();
+  const { user, internalUserId, signOut } = useAuth();
   const toast = useToast();
   const userId = user?.id || ''
-  
-  // Get user details to check for coach role
-  const { data: userData, refetch: refetchUser } = useUserById(userId)
+
+  // Get user details to check for coach role (using internal UUID)
+  const { data: userData, refetch: refetchUser } = useUserById(internalUserId || '')
   const [assignRole] = useAssignRole()
   
   const isCoach = isCoachInPractices(userData?.userById?.roles || [])
@@ -529,9 +529,10 @@ const MainContent = () => {
 
   const handleBecomeCoach = async () => {
     try {
+      // Use internal UUID for role assignment
       await assignRole({
         variables: {
-          userId: userId,
+          userId: internalUserId,
           role: ROLES.COACH,
           domain: DOMAINS.PRACTICES
         }

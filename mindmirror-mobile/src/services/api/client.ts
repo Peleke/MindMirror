@@ -32,7 +32,7 @@ const httpLink = createHttpLink({ uri: finalGatewayUrl, credentials: 'omit' })
 const authLink = setContext(async (_, { headers, session }) => {
   // Get session from context, provided session, or dynamically from Supabase
   let currentSession = session as Session | null
-  
+
   if (!currentSession) {
     try {
       const { data: { session: supabaseSession } } = await supabase.auth.getSession()
@@ -47,13 +47,22 @@ const authLink = setContext(async (_, { headers, session }) => {
     return { headers }
   }
 
+  // Get internal UUID from AsyncStorage (cached from exchange on login)
+  let internalUserId = ''
+  try {
+    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage')
+    internalUserId = await AsyncStorage.getItem('@mindmirror_internal_user_id') || ''
+  } catch (error) {
+    console.warn('Apollo Client: Failed to get internal user ID:', error)
+  }
+
   return {
     headers: {
       ...headers,
       // JWT token for authentication
       'Authorization': `Bearer ${currentSession.access_token}`,
-      // Supabase user ID for internal routing
-      'x-internal-id': currentSession.user?.id || '',
+      // Internal UUID for backend operations (exchanged from Supabase ID)
+      'x-internal-id': internalUserId,
       // Content type for GraphQL
       'Content-Type': 'application/json',
     }
@@ -121,7 +130,7 @@ export function createApolloClientWithSession(session: Session | null) {
     .toString()
     .toLowerCase() === 'true'
 
-  const headerLink = setContext((_, { headers }) => {
+  const headerLink = setContext(async (_, { headers }) => {
     const nextHeaders: Record<string, string> = {
       ...(headers as Record<string, string>),
       'Content-Type': 'application/json',
@@ -129,9 +138,18 @@ export function createApolloClientWithSession(session: Session | null) {
     if (session?.access_token) {
       nextHeaders['Authorization'] = `Bearer ${session.access_token}`
     }
-    if (session?.user?.id) {
-      nextHeaders['x-internal-id'] = session.user.id
+
+    // Get internal UUID from AsyncStorage (cached from exchange on login)
+    try {
+      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage')
+      const internalUserId = await AsyncStorage.getItem('@mindmirror_internal_user_id')
+      if (internalUserId) {
+        nextHeaders['x-internal-id'] = internalUserId
+      }
+    } catch (error) {
+      console.warn('Apollo Client: Failed to get internal user ID:', error)
     }
+
     return { headers: nextHeaders }
   })
 

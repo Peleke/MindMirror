@@ -1,5 +1,7 @@
 from typing import Annotated, AsyncGenerator, Optional
 from uuid import UUID
+import logging
+import jwt
 
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +13,8 @@ from users.repository.database import (
 )
 from users.repository.repositories import UserRepository
 from users.repository.uow import UnitOfWork
+
+logger = logging.getLogger(__name__)
 
 
 # New dependency to manage request-scoped UoW
@@ -70,6 +74,10 @@ async def get_current_user(
     FastAPI dependency that retrieves the current user from the database.
     It uses the request-scoped UoW.
     Returns None if no user header provided (anonymous).
+
+    If user doesn't exist in database but has valid JWT:
+    - Extracts profile data from JWT
+    - Creates user automatically using get_or_create pattern
     """
     if hasattr(request.state, "user"):
         return request.state.user
@@ -80,8 +88,58 @@ async def get_current_user(
 
     repo = UserRepository(uow.session)
     user_model = await repo.get_user_by_id(current_user_dep.internal_id)
+
+    # If user doesn't exist, try to create from JWT
     if not user_model:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        logger.info(f"User {current_user_dep.internal_id} not found in database, attempting auto-creation from JWT")
+
+        # Extract JWT from Authorization header
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                # Decode JWT (without signature verification for profile extraction)
+                decoded_token = jwt.decode(
+                    token,
+                    options={"verify_signature": False}  # Gateway already validated
+                )
+
+                # Extract profile data from JWT
+                supabase_id = decoded_token.get("sub")
+                user_email = decoded_token.get("email")
+                user_metadata = decoded_token.get("user_metadata", {})
+                first_name = user_metadata.get("first_name") or user_metadata.get("firstName")
+                last_name = user_metadata.get("last_name") or user_metadata.get("lastName")
+
+                if supabase_id:
+                    # Build profile data dict
+                    profile_data = {}
+                    if user_email:
+                        profile_data['email'] = user_email
+                    if first_name:
+                        profile_data['first_name'] = first_name
+                    if last_name:
+                        profile_data['last_name'] = last_name
+
+                    # Create user using repository's get_or_create method
+                    logger.info(f"Creating user with supabase_id={supabase_id}, profile={profile_data}")
+                    user_model = await repo.get_or_create_user(supabase_id, profile_data)
+                    await uow.commit()
+                    logger.info(f"Successfully created user {user_model.id_} from JWT")
+                else:
+                    logger.error("JWT missing 'sub' field, cannot create user")
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid JWT: missing user ID")
+
+            except jwt.PyJWTError as e:
+                logger.error(f"JWT decoding failed: {e}")
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid JWT token")
+            except Exception as e:
+                logger.error(f"User auto-creation failed: {e}")
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user")
+        else:
+            # No JWT to extract profile from, return 401
+            logger.error(f"User {current_user_dep.internal_id} not found and no JWT provided for auto-creation")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     domain_user = DomainUser.model_validate(user_model)
     request.state.user = domain_user
