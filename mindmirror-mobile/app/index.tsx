@@ -386,9 +386,9 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'cards' && (
-                  <View className="space-y-4">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.cards?.map((card, i) => (
-                      <View key={i} className={`p-4 rounded-xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'}`}>
+                      <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-900/20 dark:to-indigo-900/20 shadow-sm`}>
                         <Text className={`font-semibold mb-2 ${textColor}`}>{card.title}</Text>
                         <Text className={`text-sm opacity-80 ${textColor}`}>{card.description}</Text>
                       </View>
