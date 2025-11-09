@@ -17,6 +17,7 @@ import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
+import Markdown from 'react-native-markdown-display'
 
 // Import Phase 1 components
 import {
@@ -150,6 +151,7 @@ export default function WorkoutTemplateCreateScreen() {
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
 
   const [movements, setMovements] = useState<MovementDraft[]>([])
 
@@ -393,7 +395,27 @@ export default function WorkoutTemplateCreateScreen() {
             <VStack space="sm">
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">Template Details</Text>
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Title" value={title} onChangeText={setTitle} /></Input>
-              <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional, markdown)" value={description} onChangeText={setDescription} /></Input>
+
+              <Text className="text-typography-900 font-semibold dark:text-white">Description</Text>
+              {isEditingDescription || description.trim().length === 0 ? (
+                <TextInput
+                  placeholder="Click to add description (markdown supported)"
+                  value={description}
+                  onChangeText={setDescription}
+                  onFocus={() => setIsEditingDescription(true)}
+                  onBlur={() => setIsEditingDescription(false)}
+                  multiline
+                  numberOfLines={3}
+                  className="bg-background-50 dark:bg-background-100 text-typography-600 dark:text-gray-300"
+                  style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, minHeight: 84, textAlignVertical: 'top' }}
+                />
+              ) : (
+                <Pressable onPress={() => setIsEditingDescription(true)}>
+                  <Box className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ minHeight: 84 }}>
+                    <Markdown>{description}</Markdown>
+                  </Box>
+                </Pressable>
+              )}
             </VStack>
 
             {/* Summary Stats - shows workout overview */}
@@ -536,22 +558,27 @@ export default function WorkoutTemplateCreateScreen() {
       {/* Movement preview modal */}
       {previewMovementId ? (
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700">
-            <VStack space="md">
-              <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
+          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700" style={{ maxHeight: '85%' }}>
+            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 16 }}>
+              <VStack space="md">
+                <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
 
-              {/* Video/Image using robust MovementThumb */}
-              <MovementThumb
-                videoUrl={mt?.movement?.shortVideoUrl || mt?.movement?.longVideoUrl || previewDraft?.shortVideoUrl}
-                imageUrl={undefined}
-              />
+                {/* Video/Image using robust MovementThumb */}
+                <MovementThumb
+                  videoUrl={mt?.movement?.shortVideoUrl || mt?.movement?.longVideoUrl || previewDraft?.shortVideoUrl}
+                  imageUrl={undefined}
+                />
 
-              {/* Movement description from the movement object */}
-              {mt?.movement?.description ? (
-                <Text className="text-typography-700 dark:text-gray-300">{mt.movement.description}</Text>
-              ) : mt?.description ? (
-                <Text className="text-typography-700 dark:text-gray-300">{mt.description}</Text>
-              ) : null}
+                {/* Movement description from the movement object - NOW WITH MARKDOWN! */}
+                {mt?.movement?.description ? (
+                  <Box className="p-2 rounded border border-border-200 bg-background-50">
+                    <Markdown>{mt.movement.description}</Markdown>
+                  </Box>
+                ) : mt?.description ? (
+                  <Box className="p-2 rounded border border-border-200 bg-background-50">
+                    <Markdown>{mt.description}</Markdown>
+                  </Box>
+                ) : null}
 
               {(Array.isArray(mt?.sets) && mt!.sets.length > 0) ? (
                 <VStack>
@@ -577,36 +604,37 @@ export default function WorkoutTemplateCreateScreen() {
 
               <DetailsTable movement={mt?.movement} />
 
-              <HStack className="justify-end space-x-3">
-                <Button className="bg-gray-600" onPress={() => setPreviewMovementId(null)}>
-                  <ButtonText>Dismiss</ButtonText>
-                </Button>
-                <Button className="bg-primary-600" onPress={() => { 
-                  const id = previewMovementId;
-                  const prefetch = previewDraft ? encodeURIComponent(JSON.stringify({
-                    name: previewDraft.name,
-                    description: previewDraft.description,
-                    movement: undefined,
-                    sets: (previewDraft.sets || []).map((s) => ({
-                      reps: s.reps,
-                      duration: s.duration,
-                      rest_duration: s.restDuration,
-                      load_value: s.loadValue,
-                      load_unit: s.loadUnit,
-                    })),
-                    metric_value: previewDraft.metricValue,
-                    metric_unit: previewDraft.metricUnit,
-                    prescribed_sets: previewDraft.prescribedSets,
-                    rest_duration: previewDraft.restDuration,
-                    video_url: previewDraft.videoUrl,
-                  })) : ''
-                  setPreviewMovementId(null); setPreviewDraft(null);
-                  router.push(`/(app)/exercise/${id}?${prefetch ? `prefetch=${prefetch}&` : ''}returnTo=${encodeURIComponent('/workout-template-create')}`)
-                }}>
-                  <ButtonText>More info</ButtonText>
-                </Button>
-              </HStack>
-            </VStack>
+                <HStack className="justify-end space-x-3">
+                  <Button className="bg-gray-600" onPress={() => setPreviewMovementId(null)}>
+                    <ButtonText>Dismiss</ButtonText>
+                  </Button>
+                  <Button className="bg-primary-600" onPress={() => {
+                    const id = previewMovementId;
+                    const prefetch = previewDraft ? encodeURIComponent(JSON.stringify({
+                      name: previewDraft.name,
+                      description: previewDraft.description,
+                      movement: undefined,
+                      sets: (previewDraft.sets || []).map((s) => ({
+                        reps: s.reps,
+                        duration: s.duration,
+                        rest_duration: s.restDuration,
+                        load_value: s.loadValue,
+                        load_unit: s.loadUnit,
+                      })),
+                      metric_value: previewDraft.metricValue,
+                      metric_unit: previewDraft.metricUnit,
+                      prescribed_sets: previewDraft.prescribedSets,
+                      rest_duration: previewDraft.restDuration,
+                      video_url: previewDraft.videoUrl,
+                    })) : ''
+                    setPreviewMovementId(null); setPreviewDraft(null);
+                    router.push(`/(app)/exercise/${id}?${prefetch ? `prefetch=${prefetch}&` : ''}returnTo=${encodeURIComponent('/workout-template-create')}`)
+                  }}>
+                    <ButtonText>More info</ButtonText>
+                  </Button>
+                </HStack>
+              </VStack>
+            </ScrollView>
           </Box>
         </View>
       ) : null}
