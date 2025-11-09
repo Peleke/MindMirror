@@ -174,6 +174,19 @@ export default function WorkoutTemplateCreateScreen() {
     }))
   }
 
+  const updateSet = (movementId: string, setIndex: number, field: keyof SetDraft, value: string) => {
+    setMovements(movements.map(m => {
+      if (m.id !== movementId) return m
+      const updatedSet: SetDraft = {
+        ...m.sets[setIndex],
+        [field]: value ? parseFloat(value) : undefined
+      }
+      const newSets = [...m.sets]
+      newSets[setIndex] = updatedSet
+      return { ...m, sets: newSets }
+    }))
+  }
+
   // Set editing modal
   const [editingSet, setEditingSet] = useState<{ movementId: string; setIndex: number } | null>(null)
   const [editReps, setEditReps] = useState('')
@@ -374,7 +387,7 @@ export default function WorkoutTemplateCreateScreen() {
                   onBlockChange={(block) => updateMovementBlock(movement.id, block)}
                   onRemove={() => removeMovement(movement.id)}
                   onAddSet={() => addSet(movement.id)}
-                  onEditSet={(setIndex) => openSetEditor(movement.id, setIndex)}
+                  onUpdateSet={(setIndex, field, value) => updateSet(movement.id, setIndex, field, value)}
                   onRemoveSet={(setIndex) => removeSet(movement.id, setIndex)}
                   onViewDetails={() => {
                     setPreviewMovementId(movement.movementId || '');
@@ -486,9 +499,9 @@ export default function WorkoutTemplateCreateScreen() {
             <VStack space="md">
               <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
               {mt?.movement?.shortVideoUrl ? (
-                <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
-                  <WebView source={{ uri: `https://www.youtube.com/embed/${new URL(mt.movement.shortVideoUrl).searchParams.get('v')}` }} allowsInlineMediaPlayback javaScriptEnabled />
-                </Box>
+                <YouTubeEmbed url={mt.movement.shortVideoUrl} />
+              ) : previewDraft?.shortVideoUrl ? (
+                <YouTubeEmbed url={previewDraft.shortVideoUrl} />
               ) : (
                 <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
                   <Text className="text-typography-600">🎥 Video placeholder</Text>
@@ -500,7 +513,7 @@ export default function WorkoutTemplateCreateScreen() {
                 <VStack>
                   <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
                     <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
-                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Reps/Dur</Text></Box>
+                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">{mt.sets[0]?.duration ? 'Duration' : 'Reps'}</Text></Box>
                     <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
                     <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
                   </VStack>
@@ -508,7 +521,7 @@ export default function WorkoutTemplateCreateScreen() {
                     <VStack key={s.id_ || i}>
                       <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
                         <Box className="w-10"><Text className="text-typography-700">{i + 1}</Text></Box>
-                        <Box className="flex-1"><Text className="text-typography-900">{s.reps ?? s.duration ?? '—'}</Text></Box>
+                        <Box className="flex-1"><Text className="text-typography-900">{s.duration ? `${s.duration}s` : (s.reps ?? '—')}</Text></Box>
                         <Box className="flex-1"><Text className="text-typography-900">{formatLoad(s.load_value, s.load_unit)}</Text></Box>
                         <Box className="flex-1"><Text className="text-typography-900">{s.rest_duration ? `${s.rest_duration}s` : '—'}</Text></Box>
                       </VStack>

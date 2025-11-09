@@ -1,5 +1,5 @@
-import React from 'react'
-import { Image } from 'react-native'
+import React, { useState } from 'react'
+import { Image, TextInput } from 'react-native'
 import { Pressable } from '@/components/ui/pressable'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
@@ -26,13 +26,15 @@ export interface MovementCardProps {
   onBlockChange: (block: BlockType) => void
   onRemove: () => void
   onAddSet: () => void
-  onEditSet: (setIndex: number) => void
+  onEditSet?: (setIndex: number) => void // Optional - for modal-based editing
+  onUpdateSet?: (setIndex: number, field: keyof Set, value: string) => void // For inline editing
   onRemoveSet: (setIndex: number) => void
   onViewDetails?: () => void
 }
 
 /**
  * Circular video thumbnail like Hevy - clickable to open details
+ * Shows play icon placeholder (video thumbnails require external API)
  */
 function CircularThumbnail({
   videoUrl,
@@ -44,13 +46,10 @@ function CircularThumbnail({
   return (
     <Pressable onPress={onPress}>
       <Box
-        className="overflow-hidden rounded-full border-2 border-indigo-300 dark:border-indigo-700"
-        style={{ width: 48, height: 48 }}
+        className="overflow-hidden rounded-full border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900"
+        style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Image
-          source={{ uri: videoUrl }}
-          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-        />
+        <Text className="text-indigo-700 dark:text-indigo-200 text-2xl">▶</Text>
       </Box>
     </Pressable>
   )
@@ -97,6 +96,112 @@ function BlockSelector({
 }
 
 /**
+ * Editable set row - shows duration OR reps based on metricUnit
+ */
+function SetRow({
+  setNumber,
+  set,
+  metricUnit,
+  onUpdate,
+  onRemove
+}: {
+  setNumber: number
+  set: Set
+  metricUnit: 'iterative' | 'temporal'
+  onUpdate: (field: keyof Set, value: string) => void
+  onRemove: () => void
+}) {
+  // Sync local state with prop values
+  const [repsValue, setRepsValue] = useState(String(set.reps ?? ''))
+  const [durationValue, setDurationValue] = useState(String(set.duration ?? ''))
+  const [loadValue, setLoadValue] = useState(String(set.loadValue ?? ''))
+  const [restValue, setRestValue] = useState(String(set.restDuration ?? ''))
+
+  React.useEffect(() => {
+    setRepsValue(String(set.reps ?? ''))
+    setDurationValue(String(set.duration ?? ''))
+    setLoadValue(String(set.loadValue ?? ''))
+    setRestValue(String(set.restDuration ?? ''))
+  }, [set.reps, set.duration, set.loadValue, set.restDuration])
+
+  return (
+    <Box className="flex-row items-center px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
+      {/* Set number */}
+      <Box className="w-8">
+        <Text className="text-typography-700 dark:text-gray-200 text-sm">{setNumber}</Text>
+      </Box>
+
+      {/* Reps or Duration field */}
+      <Box className="flex-1 mr-1">
+        <TextInput
+          keyboardType="numeric"
+          value={metricUnit === 'temporal' ? durationValue : repsValue}
+          onChangeText={metricUnit === 'temporal' ? setDurationValue : setRepsValue}
+          onBlur={() => onUpdate(metricUnit === 'temporal' ? 'duration' : 'reps', metricUnit === 'temporal' ? durationValue : repsValue)}
+          placeholder={metricUnit === 'temporal' ? '30' : '10'}
+          style={{
+            borderWidth: 1,
+            borderColor: '#e5e7eb',
+            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+            backgroundColor: '#fff',
+            fontSize: 13
+          }}
+        />
+      </Box>
+
+      {/* Load field */}
+      <Box className="flex-1 mr-1">
+        <TextInput
+          keyboardType="numeric"
+          value={loadValue}
+          onChangeText={setLoadValue}
+          onBlur={() => onUpdate('loadValue', loadValue)}
+          placeholder="45"
+          style={{
+            borderWidth: 1,
+            borderColor: '#e5e7eb',
+            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+            backgroundColor: '#fff',
+            fontSize: 13
+          }}
+        />
+      </Box>
+
+      {/* Rest duration field */}
+      <Box className="flex-1 mr-1">
+        <TextInput
+          keyboardType="numeric"
+          value={restValue}
+          onChangeText={setRestValue}
+          onBlur={() => onUpdate('restDuration', restValue)}
+          placeholder="60"
+          style={{
+            borderWidth: 1,
+            borderColor: '#e5e7eb',
+            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+            backgroundColor: '#fff',
+            fontSize: 13
+          }}
+        />
+      </Box>
+
+      {/* Remove button */}
+      <Box className="w-10 items-center">
+        <Pressable onPress={onRemove}>
+          <Text className="text-red-700 dark:text-red-400 text-sm">✕</Text>
+        </Pressable>
+      </Box>
+    </Box>
+  )
+}
+
+/**
  * Compact movement card with thumbnail, block selector, and set editor
  */
 export function MovementCard({
@@ -109,6 +214,7 @@ export function MovementCard({
   onRemove,
   onAddSet,
   onEditSet,
+  onUpdateSet,
   onRemoveSet,
   onViewDetails,
 }: MovementCardProps) {
@@ -151,40 +257,41 @@ export function MovementCard({
           </Pressable>
         </HStack>
 
-        {/* Set summary - compact chips */}
+        {/* Set table - vertical stacked editable rows */}
         {sets.length > 0 && (
-          <HStack space="xs" className="flex-wrap">
-            {sets.map((set, index) => {
-              const repsOrDuration = metricUnit === 'temporal'
-                ? `${set.duration ?? 0}s`
-                : `${set.reps ?? 0} reps`
+          <VStack space="xs">
+            {/* Header row */}
+            <Box className="flex-row items-center px-2 py-1 bg-background-100 rounded-md">
+              <Box className="w-8"><Text className="text-typography-600 dark:text-gray-400 text-xs font-semibold">#</Text></Box>
+              <Box className="flex-1">
+                <Text className="text-typography-600 dark:text-gray-400 text-xs font-semibold">
+                  {metricUnit === 'temporal' ? 'Duration' : 'Reps'}
+                </Text>
+              </Box>
+              <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-400 text-xs font-semibold">Load</Text></Box>
+              <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-400 text-xs font-semibold">Rest (s)</Text></Box>
+              <Box className="w-10" />
+            </Box>
 
-              const load = set.loadValue
-                ? `${set.loadValue}${set.loadUnit === 'bodyweight' ? 'BW' : set.loadUnit === 'pounds' ? 'lb' : set.loadUnit === 'kilograms' ? 'kg' : ''}`
-                : 'BW'
-
-              return (
-                <Pressable
-                  key={index}
-                  onPress={() => onEditSet(index)}
-                >
-                  <Box className="px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
-                    <HStack space="xs" className="items-center">
-                      <Text className="text-typography-700 dark:text-gray-200 text-xs font-semibold">
-                        {index + 1}.
-                      </Text>
-                      <Text className="text-typography-700 dark:text-gray-200 text-xs">
-                        {repsOrDuration} × {load}
-                      </Text>
-                      <Pressable onPress={() => onRemoveSet(index)}>
-                        <Text className="text-red-700 text-xs">✕</Text>
-                      </Pressable>
-                    </HStack>
-                  </Box>
-                </Pressable>
-              )
-            })}
-          </HStack>
+            {/* Editable set rows */}
+            {sets.map((set, index) => (
+              <SetRow
+                key={index}
+                setNumber={index + 1}
+                set={set}
+                metricUnit={metricUnit}
+                onUpdate={(field, value) => {
+                  // Use inline update if available, fallback to modal
+                  if (onUpdateSet) {
+                    onUpdateSet(index, field, value)
+                  } else if (onEditSet) {
+                    onEditSet(index)
+                  }
+                }}
+                onRemove={() => onRemoveSet(index)}
+              />
+            ))}
+          </VStack>
         )}
       </VStack>
     </Box>
