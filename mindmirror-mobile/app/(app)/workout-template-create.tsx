@@ -17,6 +17,14 @@ import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
 
+// Import Phase 1 components
+import {
+  EmptyStateCard,
+  SetEditorCard,
+  SummaryStatsHeader,
+  CollapsibleBlockSection,
+} from '@/components/workout'
+
 // Reuse builder types
 type SetDraft = { position: number; reps?: number; duration?: number; loadValue?: number; loadUnit?: string; restDuration?: number }
 type MovementDraft = { name: string; position: number; metricUnit: 'iterative' | 'temporal' | 'breath' | 'other'; metricValue: number; description?: string; movementClass?: 'conditioning' | 'power' | 'strength' | 'mobility' | 'other'; prescribedSets?: number; restDuration?: number; videoUrl?: string; exerciseId?: string; movementId?: string; sets: SetDraft[] }
@@ -240,83 +248,72 @@ export default function WorkoutTemplateCreateScreen() {
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional, markdown)" value={description} onChangeText={setDescription} /></Input>
             </VStack>
 
+            {/* Summary Stats - shows workout overview */}
+            <SummaryStatsHeader
+              totalDuration={prescriptions.reduce((sum, p) =>
+                sum + p.movements.reduce((mSum, m) =>
+                  mSum + m.sets.reduce((sSum, s) =>
+                    sSum + (s.restDuration || 0) + (s.duration || 0), 0), 0), 0)}
+              totalExercises={prescriptions.reduce((sum, p) => sum + p.movements.length, 0)}
+              totalSets={prescriptions.reduce((sum, p) =>
+                sum + p.movements.reduce((mSum, m) => mSum + m.sets.length, 0), 0)}
+            />
+
             <VStack space="md" className="mt-5">
-              <Text className="text-lg font-semibold text-typography-900 dark:text-white">Blocks</Text>
               {prescriptions.map((item, index) => (
-                <Box key={`${index}`} className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
-                  <VStack space="sm">
-                    <Text className="text-base font-semibold text-typography-900 dark:text-white">{item.name}</Text>
-                    <Pressable onPress={() => { setPickerForBlock(index); setPickerOpen(true); setSearchTerm('') }} className="self-start px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-indigo-950">
+                <CollapsibleBlockSection
+                  key={`${index}`}
+                  title={item.name}
+                  blockType={item.block}
+                  exerciseCount={item.movements.length}
+                  defaultExpanded={true}
+                >
+                  <VStack space="md">
+                    <Pressable
+                      onPress={() => { setPickerForBlock(index); setPickerOpen(true); setSearchTerm('') }}
+                      className="self-start px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-indigo-950"
+                    >
                       <Text className="text-indigo-700 dark:text-indigo-200 font-semibold">＋ Add Movement</Text>
                     </Pressable>
 
                     {item.movements.length === 0 ? (
-                      <Text className="text-typography-600 dark:text-gray-300">No movements yet</Text>
+                      <EmptyStateCard
+                        variant="block"
+                        blockType={item.block}
+                        onAddMovement={() => { setPickerForBlock(index); setPickerOpen(true); setSearchTerm('') }}
+                      />
                     ) : (
-                      <VStack space="sm">
+                      <VStack space="md">
                         {item.movements.map((m, mi) => (
-                          <Box key={`${mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
-                            <VStack space="sm">
-                              <Box className="flex-row items-center justify-between">
-                                <Pressable onPress={() => { setPreviewMovementId(m.movementId || ''); setPreviewDraft(m) }}>
-                                  <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
-                                </Pressable>
-                                <Pressable onPress={() => {
-                                  setPrescriptions(prev => {
-                                    const copy = [...prev]
-                                    const p = copy[index]
-                                    if (!p) return prev
-                                    p.movements = p.movements.filter((_, i) => i !== mi).map((mv, i) => ({ ...mv, position: i + 1 }))
-                                    copy[index] = p
-                                    return copy
-                                  })
-                                }} className="px-2 py-1 rounded-md border border-red-300">
-                                  <Text className="text-red-700 font-semibold">🗑️</Text>
-                                </Pressable>
-                              </Box>
-                              {/* Movement description in template creation (plain preview) */}
-                              {m.description ? <Text className="text-typography-600 dark:text-gray-300">{m.description}</Text> : null}
-                              <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
-                              <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
-                                <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
-                              </Pressable>
-
-                              {/* Set editor table */}
-                              {m.sets.length > 0 && (
-                                <VStack space="xs">
-                                  <Box className="flex-row items-center px-2 py-1">
-                                    <Box className="w-12"><Text className="text-typography-600 dark:text-gray-300">#</Text></Box>
-                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">{m.metricUnit === 'temporal' ? 'Duration (s)' : 'Reps'}</Text></Box>
-                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">Load</Text></Box>
-                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Unit</Text></Box>
-                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Rest (s)</Text></Box>
-                                  </Box>
-                                  {m.sets.map((s, si) => (
-                                    <Box key={`${si}`} className="flex-row items-center px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
-                                      <Box className="w-12"><Text className="text-typography-700 dark:text-gray-200">{si + 1}</Text></Box>
-                                      <Box className="flex-1 mr-2">
-                                        <TextInput keyboardType="numeric" value={m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')} onChangeText={(v) => updateSetField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)} placeholder={m.metricUnit === 'temporal' ? '30' : '10'} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                      <Box className="flex-1 mr-2">
-                                        <TextInput keyboardType="numeric" value={s.loadValue != null ? String(s.loadValue) : ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadValue', v)} placeholder="45" style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                      <Box className="w-28 mr-2">
-                                        <Input><InputField placeholder="unit (lb/kg/bw)" defaultValue={s.loadUnit || ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadUnit', v)} /></Input>
-                                      </Box>
-                                      <Box className="w-28 mr-2">
-                                        <TextInput keyboardType="numeric" value={s.restDuration != null ? String(s.restDuration) : ''} onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)} placeholder="60" style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                    </Box>
-                                  ))}
-                                </VStack>
-                              )}
-                            </VStack>
-                          </Box>
+                          <SetEditorCard
+                            key={`${mi}`}
+                            movementName={m.name}
+                            sets={m.sets}
+                            metricUnit={m.metricUnit}
+                            onSetChange={(setIndex, field, value) => {
+                              updateSetField(index, mi, setIndex, field, String(value))
+                            }}
+                            onCopyLastSet={() => addSetToMovement(index, mi)}
+                            onRemoveMovement={() => {
+                              setPrescriptions(prev => {
+                                const copy = [...prev]
+                                const p = copy[index]
+                                if (!p) return prev
+                                p.movements = p.movements.filter((_, i) => i !== mi).map((mv, i) => ({ ...mv, position: i + 1 }))
+                                copy[index] = p
+                                return copy
+                              })
+                            }}
+                            onViewDetails={() => {
+                              setPreviewMovementId(m.movementId || '');
+                              setPreviewDraft(m)
+                            }}
+                          />
                         ))}
                       </VStack>
                     )}
                   </VStack>
-                </Box>
+                </CollapsibleBlockSection>
               ))}
 
               <Pressable disabled={saving || !title} onPress={onSubmit} className={`mt-2 items-center justify-center rounded-xl px-4 py-3 ${saving || !title ? 'bg-indigo-300' : 'bg-indigo-600'}`}>
