@@ -376,6 +376,10 @@ export default function WorkoutTemplateCreateScreen() {
                   onAddSet={() => addSet(movement.id)}
                   onEditSet={(setIndex) => openSetEditor(movement.id, setIndex)}
                   onRemoveSet={(setIndex) => removeSet(movement.id, setIndex)}
+                  onViewDetails={() => {
+                    setPreviewMovementId(movement.movementId || '');
+                    setPreviewDraft(movement);
+                  }}
                 />
               ))}
             </VStack>

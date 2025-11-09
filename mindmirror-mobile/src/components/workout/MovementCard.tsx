@@ -1,12 +1,10 @@
-import React, { useState } from 'react'
-import { View, Image, Modal, Pressable as RNPressable, Platform } from 'react-native'
+import React from 'react'
+import { Image } from 'react-native'
 import { Pressable } from '@/components/ui/pressable'
 import { Box } from '@/components/ui/box'
 import { Text } from '@/components/ui/text'
 import { VStack } from '@/components/ui/vstack'
 import { HStack } from '@/components/ui/hstack'
-import { useVideoPlayer, VideoView } from 'expo-video'
-import { WebView } from 'react-native-webview'
 
 type BlockType = 'warmup' | 'workout' | 'cooldown'
 
@@ -30,55 +28,31 @@ export interface MovementCardProps {
   onAddSet: () => void
   onEditSet: (setIndex: number) => void
   onRemoveSet: (setIndex: number) => void
+  onViewDetails?: () => void
 }
 
 /**
- * Renders video thumbnail or full video modal
+ * Circular video thumbnail like Hevy - clickable to open details
  */
-function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
-  const [showVideo, setShowVideo] = useState(false)
-
-  // Check if it's an mp4 for thumbnail
-  const isMp4 = /\.mp4$/i.test(videoUrl)
-
+function CircularThumbnail({
+  videoUrl,
+  onPress
+}: {
+  videoUrl: string
+  onPress: () => void
+}) {
   return (
-    <>
-      {/* Thumbnail */}
-      <Pressable onPress={() => setShowVideo(true)}>
-        <Box className="overflow-hidden rounded-lg border border-border-200" style={{ width: 60, height: 60 }}>
-          <Image
-            source={{ uri: videoUrl }}
-            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-          />
-        </Box>
-      </Pressable>
-
-      {/* Full video modal */}
-      <Modal visible={showVideo} transparent animationType="fade" onRequestClose={() => setShowVideo(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
-          <RNPressable
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-            onPress={() => setShowVideo(false)}
-          />
-          <Box className="overflow-hidden rounded-xl border border-border-200" style={{ width: '90%', height: 300 }}>
-            {isMp4 ? (
-              <VideoView
-                style={{ width: '100%', height: '100%' }}
-                player={useVideoPlayer(videoUrl, (p) => { p.loop = false })}
-                allowsFullscreen
-                allowsPictureInPicture
-              />
-            ) : (
-              // Handle YouTube/Vimeo
-              <WebView source={{ uri: videoUrl }} allowsInlineMediaPlayback javaScriptEnabled />
-            )}
-          </Box>
-          <Pressable onPress={() => setShowVideo(false)} className="mt-4 px-4 py-2 bg-white rounded-lg">
-            <Text className="font-semibold">Close</Text>
-          </Pressable>
-        </View>
-      </Modal>
-    </>
+    <Pressable onPress={onPress}>
+      <Box
+        className="overflow-hidden rounded-full border-2 border-indigo-300 dark:border-indigo-700"
+        style={{ width: 48, height: 48 }}
+      >
+        <Image
+          source={{ uri: videoUrl }}
+          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+        />
+      </Box>
+    </Pressable>
   )
 }
 
@@ -136,16 +110,19 @@ export function MovementCard({
   onAddSet,
   onEditSet,
   onRemoveSet,
+  onViewDetails,
 }: MovementCardProps) {
   return (
     <Box className="p-3 rounded-xl border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
       <VStack space="sm">
         {/* Header row: thumbnail | name | remove */}
         <HStack space="sm" className="items-center">
-          {shortVideoUrl && <VideoThumbnail videoUrl={shortVideoUrl} />}
+          {shortVideoUrl && onViewDetails && (
+            <CircularThumbnail videoUrl={shortVideoUrl} onPress={onViewDetails} />
+          )}
 
           <Text
-            className="flex-1 font-semibold text-typography-900 dark:text-white"
+            className="flex-1 font-semibold text-typography-900 dark:text-white text-base"
             numberOfLines={1}
             ellipsizeMode="tail"
           >
