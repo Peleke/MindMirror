@@ -46,7 +46,7 @@ export default function GlobalFab({ onPress, label }: { onPress?: () => void, la
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Log Water</Text>
             </RNPressable>
             <View style={{ height: 1, backgroundColor: '#e5e7eb', marginVertical: 4 }} />
-            <RNPressable onPress={() => { setShowFab(false); router.push('/(app)/workout-create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <RNPressable onPress={() => { setShowFab(false); router.push('/(app)/workout-template-create') }} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ marginRight: 8 }}>🏋️</Text>
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Create Workout</Text>
             </RNPressable>
