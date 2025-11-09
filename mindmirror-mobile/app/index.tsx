@@ -409,7 +409,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'progress' && (
-                  <View className="space-y-4">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.exercises?.map((exercise, i) => (
                       <View key={i}>
                         <View className="flex-row justify-between mb-2">
