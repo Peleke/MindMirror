@@ -303,14 +303,15 @@ function LandingContent() {
             Most wellness tools assume you'll bend your life to fit their program. We do the opposite.
           </Text>
 
-          <View className="flex-row gap-8">
+          {/* Mobile: Reduced gap, Desktop: Normal gap */}
+          <View className="flex-row gap-3 md:gap-8">
             {/* Old Way */}
-            <View className={`flex-1 rounded-2xl border-2 border-red-200 ${isWarm ? 'bg-white' : 'bg-white'} p-6`}>
-              <View className="flex-row items-center gap-2 bg-red-100 px-3 py-1 rounded-full self-start mb-6">
+            <View className={`flex-1 rounded-2xl border-2 border-red-200 ${isWarm ? 'bg-white' : 'bg-white'} p-4 md:p-6`}>
+              <View className="flex-row items-center gap-2 bg-red-100 px-3 py-1 rounded-full self-start mb-4 md:mb-6">
                 <XCircle size={16} color="#991b1b" />
                 <Text className="text-red-800 text-sm font-medium">The fragmented way</Text>
               </View>
-              <View className="space-y-4">
+              <View className="space-y-3 md:space-y-4">
                 {[
                   'Fragmented tools, endless dashboards, decision fatigue',
                   'Shame-first nudges, perfection or bust',
@@ -318,7 +319,7 @@ function LandingContent() {
                   'Short sprints, long burnouts, Monday restarts',
                   'Data you can\'t feel, progress you can\'t trust'
                 ].map((item, i) => (
-                  <View key={i} className={`flex-row items-start gap-3 p-3 ${bgColor} rounded-lg`}>
+                  <View key={i} className={`flex-row items-start gap-2 md:gap-3 p-2 md:p-3 ${bgColor} rounded-lg`}>
                     <XCircle size={20} color="#ef4444" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm">{item}</Text>
                   </View>
@@ -327,12 +328,12 @@ function LandingContent() {
             </View>
 
             {/* New Way */}
-            <View className={`flex-1 rounded-2xl border-2 ${isWarm ? 'border-warm-gold-500 bg-gradient-to-br from-warm-gold-50 to-warm-crimson-50' : 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'} p-6`}>
-              <View className={`flex-row items-center gap-2 ${isWarm ? 'bg-warm-gold-100' : 'bg-green-100'} px-3 py-1 rounded-full self-start mb-6`}>
+            <View className={`flex-1 rounded-2xl border-2 ${isWarm ? 'border-warm-gold-500 bg-gradient-to-br from-warm-gold-50 to-warm-crimson-50' : 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'} p-4 md:p-6`}>
+              <View className={`flex-row items-center gap-2 ${isWarm ? 'bg-warm-gold-100' : 'bg-green-100'} px-3 py-1 rounded-full self-start mb-4 md:mb-6`}>
                 <Check size={16} color={isWarm ? '#92400e' : '#166534'} />
                 <Text className={`${isWarm ? 'text-warm-gold-800' : 'text-green-800'} text-sm font-medium`}>The Swae way</Text>
               </View>
-              <View className="space-y-4">
+              <View className="space-y-3 md:space-y-4">
                 {[
                   'One gentle habit at a time; practical wins, steady momentum',
                   'Real life first—travel, kids, chaos welcome',
@@ -340,7 +341,7 @@ function LandingContent() {
                   'Tiny actions, stacked wins, resilient growth',
                   'Human signals + smart data you can actually feel'
                 ].map((item, i) => (
-                  <View key={i} className="flex-row items-start gap-3 p-3 bg-white rounded-lg">
+                  <View key={i} className="flex-row items-start gap-2 md:gap-3 p-2 md:p-3 bg-white rounded-lg">
                     <Check size={20} color="#22c55e" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm font-medium">{item}</Text>
                   </View>
