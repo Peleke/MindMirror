@@ -162,6 +162,7 @@ export const QUERY_MOVEMENT_TEMPLATE = gql`
       movement {
         id_
         name
+        description
         shortVideoUrl
         longVideoUrl
         difficulty

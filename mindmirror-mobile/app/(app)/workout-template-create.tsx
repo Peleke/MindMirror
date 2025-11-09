@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
+import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Image } from 'react-native'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
 import { useLazySearchMovements } from '@/services/api/movements'
@@ -16,6 +16,7 @@ import { QUERY_PRACTICE_TEMPLATES, useCreatePracticeTemplate, useMovementTemplat
 import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
+import { useVideoPlayer, VideoView } from 'expo-video'
 
 // Import Phase 1 components
 import {
@@ -37,30 +38,70 @@ type MovementDraft = {
   movementId?: string
 }
 
-function YouTubeEmbed({ url }: { url: string }) {
-  const vid = useMemo(() => {
-    try {
-      const u = new URL(url)
-      if (u.hostname.includes('youtube.com')) {
-        const v = u.searchParams.get('v')
-        if (v) return v
-        const parts = u.pathname.split('/')
-        const idx = parts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'watch')
-        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1]
-      }
-      if (u.hostname.includes('youtu.be')) {
-        return u.pathname.replace('/', '')
-      }
-    } catch {}
-    return null
-  }, [url])
-  if (!vid) return null
-  const src = `https://www.youtube.com/embed/${vid}?playsinline=1`
-  return (
-    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
-      <WebView source={{ uri: src }} allowsInlineMediaPlayback javaScriptEnabled />
-    </Box>
-  )
+/**
+ * Robust video/image thumbnail renderer - handles YouTube, Vimeo, mp4, and images
+ * Copied from workout-create.tsx pattern
+ */
+function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: string }) {
+  const isImage = typeof imageUrl === 'string' && /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(imageUrl)
+  const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+
+  if (isImage) {
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: imageUrl as string }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+      </Box>
+    )
+  }
+
+  if (isMp4) {
+    const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+      </Box>
+    )
+  }
+
+  // Handle YouTube/Vimeo embeds via WebView when a non-mp4 video URL is provided
+  if (typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
+    const url = videoUrl.trim()
+    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url)
+    const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(url)
+
+    let embedUrl = url
+    if (isYouTube) {
+      try {
+        const u = new URL(url)
+        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+      } catch {}
+    } else if (isVimeo) {
+      try {
+        if (!/player\.vimeo\.com\/video\//i.test(url)) {
+          const m = url.match(/vimeo\.com\/(\d+)/i)
+          if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
+        }
+      } catch {}
+    }
+
+    if (Platform.OS === 'web') {
+      return (
+        <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+        </Box>
+      )
+    }
+
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+      </Box>
+    )
+  }
+
+  return null
 }
 
 function formatUnit(unit?: string | null) {
@@ -498,16 +539,19 @@ export default function WorkoutTemplateCreateScreen() {
           <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700">
             <VStack space="md">
               <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
-              {mt?.movement?.shortVideoUrl ? (
-                <YouTubeEmbed url={mt.movement.shortVideoUrl} />
-              ) : previewDraft?.shortVideoUrl ? (
-                <YouTubeEmbed url={previewDraft.shortVideoUrl} />
-              ) : (
-                <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text className="text-typography-600">🎥 Video placeholder</Text>
-                </Box>
-              )}
-              {mt?.description ? <Text className="text-typography-700 dark:text-gray-300">{mt.description}</Text> : null}
+
+              {/* Video/Image using robust MovementThumb */}
+              <MovementThumb
+                videoUrl={mt?.movement?.shortVideoUrl || mt?.movement?.longVideoUrl || previewDraft?.shortVideoUrl}
+                imageUrl={undefined}
+              />
+
+              {/* Movement description from the movement object */}
+              {mt?.movement?.description ? (
+                <Text className="text-typography-700 dark:text-gray-300">{mt.movement.description}</Text>
+              ) : mt?.description ? (
+                <Text className="text-typography-700 dark:text-gray-300">{mt.description}</Text>
+              ) : null}
 
               {(Array.isArray(mt?.sets) && mt!.sets.length > 0) ? (
                 <VStack>
