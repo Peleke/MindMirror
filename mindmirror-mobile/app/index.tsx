@@ -371,7 +371,7 @@ function LandingContent() {
               {/* Visualization */}
               <View className="flex-1 w-full">
                 {section.visualization === 'stats' && (
-                  <View className="grid grid-cols-2 gap-4">
+                  <View className="grid grid-cols-2 gap-4 mt-4 md:mt-0 mb-12 md:mb-0">
                     {section.stats?.map((stat, i) => {
                       const StatIcon = stat.icon;
                       return (
@@ -386,7 +386,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'cards' && (
-                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 md:mt-0 mb-8 md:mb-0">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 md:mt-0 mb-12 md:mb-0">
                     {section.cards?.map((card, i) => (
                       <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-900/20 dark:to-indigo-900/20 shadow-sm`}>
                         <Text className={`font-semibold mb-2 ${textColor}`}>{card.title}</Text>
@@ -397,7 +397,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'list' && (
-                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 md:mt-0 mb-8 md:mb-0">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 md:mt-0 mb-12 md:mb-0">
                     {section.items?.map((item, i) => (
                       <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 shadow-sm`}>
                         <Text className={`font-semibold ${textColor}`}>{item.label}</Text>
