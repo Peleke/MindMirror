@@ -235,7 +235,7 @@ function LandingContent() {
       </View>
 
       {/* Interactive Feature Grid */}
-      <View className="px-4 pb-20 pt-16">
+      <View className="px-4 pb-20 pt-32 md:pt-16">
         <View className="max-w-6xl mx-auto">
           <Text className={`text-3xl font-bold text-center mb-4 ${textColor}`}>
             Everything You Need
@@ -353,9 +353,9 @@ function LandingContent() {
 
       {/* Feature Sections */}
       <View className="px-4 py-24">
-        <View className="max-w-6xl mx-auto space-y-16 md:space-y-20">
+        <View className="max-w-6xl mx-auto space-y-24 md:space-y-20">
           {featureSections.map((section, sectionIndex) => (
-            <View key={section.title} className={`flex-col md:${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-8 md:gap-10 items-center`}>
+            <View key={section.title} className={`flex-col md:${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-6 md:gap-10 items-start`}>
               <View className="flex-1 w-full">
                 <Text className={`text-2xl font-bold mb-4 ${textColor}`}>{section.title}</Text>
                 <View className="space-y-3">
