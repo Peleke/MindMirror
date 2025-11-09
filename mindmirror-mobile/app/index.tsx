@@ -188,10 +188,11 @@ function LandingContent() {
       {/* Hero Section */}
       <View className="px-4 pt-16 pb-12">
         <View className="max-w-6xl mx-auto">
-          <View className="flex-row items-center gap-12">
-            {/* Left: Text content */}
-            <View className="flex-1">
-              <View className="mb-12">
+          {/* Mobile: Stack with mockup below, Desktop: Side-by-side */}
+          <View className="flex-col lg:flex-row items-center gap-8 lg:gap-12">
+            {/* Text content */}
+            <View className="flex-1 w-full">
+              <View className="mb-8 lg:mb-12">
                 <Text className={`text-5xl md:text-6xl font-bold leading-tight mb-6 ${textColor}`}>
                   {animatedPhrase}
                 </Text>
@@ -210,8 +211,8 @@ function LandingContent() {
               </View>
             </View>
 
-            {/* Right: Device mockup */}
-            <View className="flex-1 items-center">
+            {/* Device mockup - positioned to peek ~33% above fold on mobile */}
+            <View className="flex-1 items-center w-full -mt-16 lg:mt-0">
               <DeviceMockup theme={isWarm ? 'warm' : 'cool'} activeScreen={currentScreen} />
 
               {/* Screen indicators */}
