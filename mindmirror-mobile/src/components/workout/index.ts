@@ -16,3 +16,6 @@ export type { SummaryStatsHeaderProps } from './SummaryStatsHeader';
 
 export { CollapsibleBlockSection } from './CollapsibleBlockSection';
 export type { CollapsibleBlockSectionProps } from './CollapsibleBlockSection';
+
+export { MovementCard } from './MovementCard';
+export type { MovementCardProps } from './MovementCard';
