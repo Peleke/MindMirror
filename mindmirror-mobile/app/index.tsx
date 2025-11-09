@@ -358,7 +358,7 @@ function LandingContent() {
             <View key={section.title} className={`flex-col md:${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-6 md:gap-10 items-start`}>
               <View className="flex-1 w-full">
                 <Text className={`text-2xl font-bold mb-4 ${textColor}`}>{section.title}</Text>
-                <View className="space-y-3">
+                <View className="space-y-3" style={{ marginBottom: 16 }}>
                   {section.bullets.map((bullet, i) => (
                     <View key={i} className="flex-row items-start gap-3">
                       <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} className="mt-0.5" />
@@ -369,9 +369,9 @@ function LandingContent() {
               </View>
 
               {/* Visualization */}
-              <View className="flex-1 w-full">
+              <View className="flex-1 w-full" style={{ marginBottom: 48 }}>
                 {section.visualization === 'stats' && (
-                  <View className="grid grid-cols-2 gap-4 mt-4 md:mt-0 mb-12 md:mb-0">
+                  <View className="grid grid-cols-2 gap-4">
                     {section.stats?.map((stat, i) => {
                       const StatIcon = stat.icon;
                       return (
@@ -386,7 +386,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'cards' && (
-                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 md:mt-0 mb-12 md:mb-0">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.cards?.map((card, i) => (
                       <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-900/20 dark:to-indigo-900/20 shadow-sm`}>
                         <Text className={`font-semibold mb-2 ${textColor}`}>{card.title}</Text>
@@ -397,7 +397,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'list' && (
-                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 md:mt-0 mb-12 md:mb-0">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.items?.map((item, i) => (
                       <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 shadow-sm`}>
                         <Text className={`font-semibold ${textColor}`}>{item.label}</Text>
