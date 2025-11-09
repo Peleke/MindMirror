@@ -102,8 +102,7 @@ function LandingContent() {
       title: 'Habits & Programs',
       bullets: [
         'Weekly habit focus with simple, loving guardrails',
-        'Guided lessons you can read on a walk',
-        'Streaks and adherence rings that whisper, not yell'
+        'Guided lessons you can read on a walk'
       ],
       visualization: 'stats',
       stats: [
@@ -354,10 +353,10 @@ function LandingContent() {
 
       {/* Feature Sections */}
       <View className="px-4 py-24">
-        <View className="max-w-6xl mx-auto space-y-20">
+        <View className="max-w-6xl mx-auto space-y-16 md:space-y-20">
           {featureSections.map((section, sectionIndex) => (
-            <View key={section.title} className={`${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-10 items-center`}>
-              <View className="flex-1">
+            <View key={section.title} className={`flex-col md:${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-8 md:gap-10 items-center`}>
+              <View className="flex-1 w-full">
                 <Text className={`text-2xl font-bold mb-4 ${textColor}`}>{section.title}</Text>
                 <View className="space-y-3">
                   {section.bullets.map((bullet, i) => (
@@ -370,7 +369,7 @@ function LandingContent() {
               </View>
 
               {/* Visualization */}
-              <View className="flex-1">
+              <View className="flex-1 w-full">
                 {section.visualization === 'stats' && (
                   <View className="grid grid-cols-2 gap-4">
                     {section.stats?.map((stat, i) => {
