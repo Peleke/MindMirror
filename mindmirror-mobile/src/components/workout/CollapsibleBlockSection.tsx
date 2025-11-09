@@ -9,13 +9,10 @@ import { Icon } from '@/components/ui/icon';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 export interface CollapsibleBlockSectionProps {
-  blockType: 'warmup' | 'workout' | 'cooldown';
+  blockType: 'warmup' | 'workout' | 'cooldown' | 'other';
   title: string;
   exerciseCount: number;
-  totalSets: number;
-  isCollapsed?: boolean;
-  onToggleCollapse: () => void;
-  onAddExercise: () => void;
+  defaultExpanded?: boolean;
   children: React.ReactNode;
   className?: string;
 }
@@ -26,18 +23,18 @@ export const CollapsibleBlockSection: React.FC<CollapsibleBlockSectionProps> = (
   blockType,
   title,
   exerciseCount,
-  totalSets,
-  isCollapsed = false,
-  onToggleCollapse,
-  onAddExercise,
+  defaultExpanded = false,
   children,
   className,
 }) => {
+  const [isCollapsed, setIsCollapsed] = React.useState(!defaultExpanded);
+
   // Accent colors per block type
   const accentColorClass = {
     warmup: 'border-l-4 border-amber-400',
     workout: 'border-l-4 border-blue-500',
     cooldown: 'border-l-4 border-green-400',
+    other: 'border-l-4 border-gray-400',
   }[blockType];
 
   return (
@@ -47,10 +44,10 @@ export const CollapsibleBlockSection: React.FC<CollapsibleBlockSectionProps> = (
     >
       {/* Collapsible Header */}
       <Pressable
-        onPress={onToggleCollapse}
+        onPress={() => setIsCollapsed(!isCollapsed)}
         className="flex-row items-center justify-between p-4 min-h-[44px]"
         accessibilityRole="button"
-        accessibilityLabel={`${title} section, ${exerciseCount} exercises, ${totalSets} sets, ${isCollapsed ? 'collapsed' : 'expanded'}`}
+        accessibilityLabel={`${title} section, ${exerciseCount} exercises, ${isCollapsed ? 'collapsed' : 'expanded'}`}
         accessibilityHint="Double tap to toggle"
       >
         <HStack space="sm" className="items-center">
@@ -63,7 +60,7 @@ export const CollapsibleBlockSection: React.FC<CollapsibleBlockSectionProps> = (
             {title}
           </Text>
           <Text className="text-sm text-typography-500 dark:text-typography-400">
-            ({exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}, {totalSets} set{totalSets !== 1 ? 's' : ''})
+            ({exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''})
           </Text>
         </HStack>
       </Pressable>
@@ -77,17 +74,6 @@ export const CollapsibleBlockSection: React.FC<CollapsibleBlockSectionProps> = (
           space="md"
         >
           {children}
-
-          {/* Add Movement Button */}
-          <Button
-            onPress={onAddExercise}
-            variant="outline"
-            action="primary"
-            size="md"
-            className="min-h-[44px]"
-          >
-            <ButtonText>+ Add Movement</ButtonText>
-          </Button>
         </AnimatedVStack>
       )}
     </VStack>

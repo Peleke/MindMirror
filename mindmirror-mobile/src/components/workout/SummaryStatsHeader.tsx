@@ -7,9 +7,9 @@ import { Icon } from '@/components/ui/icon';
 import { Clock, Dumbbell, TrendingUp } from 'lucide-react-native';
 
 export interface SummaryStatsHeaderProps {
-  exerciseCount: number;
+  totalExercises: number;
   totalSets: number;
-  estimatedDuration: number; // minutes
+  totalDuration: number; // seconds
   loading?: boolean;
   className?: string;
 }
@@ -35,9 +35,9 @@ const StatItem: React.FC<StatItemProps> = ({ icon: IconComponent, label, value }
 );
 
 export const SummaryStatsHeader: React.FC<SummaryStatsHeaderProps> = ({
-  exerciseCount,
+  totalExercises,
   totalSets,
-  estimatedDuration,
+  totalDuration,
   loading = false,
   className,
 }) => {
@@ -52,6 +52,11 @@ export const SummaryStatsHeader: React.FC<SummaryStatsHeaderProps> = ({
     );
   }
 
+  // Format duration as MM:SS
+  const minutes = Math.floor(totalDuration / 60);
+  const seconds = totalDuration % 60;
+  const durationDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
   return (
     <HStack
       className={`bg-background-100 dark:bg-background-800 p-4 rounded-lg ${className || ''}`}
@@ -61,7 +66,7 @@ export const SummaryStatsHeader: React.FC<SummaryStatsHeaderProps> = ({
       <StatItem
         icon={Clock}
         label="Est"
-        value={`${estimatedDuration}min`}
+        value={durationDisplay}
       />
 
       <Divider orientation="vertical" className="h-6" />
@@ -69,7 +74,7 @@ export const SummaryStatsHeader: React.FC<SummaryStatsHeaderProps> = ({
       {/* Exercise Count */}
       <StatItem
         icon={Dumbbell}
-        value={`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`}
+        value={`${totalExercises} exercise${totalExercises !== 1 ? 's' : ''}`}
       />
 
       <Divider orientation="vertical" className="h-6" />

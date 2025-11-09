@@ -89,8 +89,8 @@ export const SetRow: React.FC<SetRowProps> = ({
         )}
       </VStack>
 
-      {/* Load Input with Increment Buttons (35%) */}
-      <HStack className="w-[35%] items-center gap-1">
+      {/* Load Input with Increment Buttons (30%) */}
+      <HStack className="w-[30%] items-center gap-0.5">
         <Input
           variant="outline"
           size="sm"
@@ -104,14 +104,14 @@ export const SetRow: React.FC<SetRowProps> = ({
             }}
             keyboardType="numeric"
             placeholder="0"
-            className="text-center"
+            className="text-center text-sm"
             testID={`set-${setNumber}-load`}
           />
         </Input>
-        <Text className="text-xs text-typography-500 w-8">
-          {set.loadUnit || 'lb'}
+        <Text className="text-xs text-typography-500 w-7">
+          {set.loadUnit === 'bodyweight' ? 'BW' : (set.loadUnit || 'lb')}
         </Text>
-        <VStack space="xs">
+        <VStack space="xxs">
           <IncrementButton
             direction="up"
             onPress={handleIncrementLoad}
@@ -129,8 +129,8 @@ export const SetRow: React.FC<SetRowProps> = ({
         </VStack>
       </HStack>
 
-      {/* Reps/Duration Input with Increment Buttons (30%) */}
-      <HStack className="w-[30%] items-center gap-1">
+      {/* Reps/Duration Input with Increment Buttons (28%) */}
+      <HStack className="w-[28%] items-center gap-0.5">
         <Input
           variant="outline"
           size="sm"
@@ -150,11 +150,11 @@ export const SetRow: React.FC<SetRowProps> = ({
             }}
             keyboardType="numeric"
             placeholder="0"
-            className="text-center"
+            className="text-center text-sm"
             testID={`set-${setNumber}-reps`}
           />
         </Input>
-        <VStack space="xs">
+        <VStack space="xxs">
           <IncrementButton
             direction="up"
             onPress={handleIncrementReps}
@@ -174,12 +174,12 @@ export const SetRow: React.FC<SetRowProps> = ({
         </VStack>
       </HStack>
 
-      {/* Rest Duration (20%) */}
-      <HStack className="w-[20%] items-center gap-1">
-        <Text className="text-sm text-typography-700 dark:text-typography-300">
+      {/* Rest Duration (30%) */}
+      <HStack className="w-[30%] items-center gap-0.5">
+        <Text className="text-sm text-typography-700 dark:text-typography-300 flex-1 text-center">
           {set.restDuration || 60}s
         </Text>
-        <VStack space="xs">
+        <VStack space="xxs">
           <IncrementButton
             direction="up"
             onPress={handleIncrementRest}
