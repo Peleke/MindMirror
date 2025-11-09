@@ -397,9 +397,9 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'list' && (
-                  <View className={`rounded-2xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'} overflow-hidden`}>
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.items?.map((item, i) => (
-                      <View key={i} className={`p-4 ${i !== section.items!.length - 1 ? `border-b ${borderColor}` : ''}`}>
+                      <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 shadow-sm`}>
                         <Text className={`font-semibold ${textColor}`}>{item.label}</Text>
                         <Text className={`text-sm opacity-80 ${textColor}`}>{item.detail}</Text>
                         <Text className="text-xs opacity-60 mt-1">{item.time}</Text>
