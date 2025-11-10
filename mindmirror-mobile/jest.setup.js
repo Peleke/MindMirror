@@ -150,6 +150,12 @@ jest.mock('lucide-react-native', () => ({
   ChevronRightIcon: 'ChevronRightIcon',
   ChevronLeftIcon: 'ChevronLeftIcon',
   MenuIcon: 'MenuIcon',
+  // Workout timer bar icons
+  Clock: 'Clock',
+  TrendingUp: 'TrendingUp',
+  Dumbbell: 'Dumbbell',
+  Play: 'Play',
+  Pause: 'Pause',
 }))
 
 // Global test setup
