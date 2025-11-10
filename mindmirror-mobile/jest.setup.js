@@ -161,6 +161,8 @@ jest.mock('lucide-react-native', () => ({
   ChevronUp: 'ChevronUp',
   CheckCircle: 'CheckCircle',
   Circle: 'Circle',
+  // Metadata card icons
+  Calendar: 'Calendar',
 }))
 
 // Global test setup
