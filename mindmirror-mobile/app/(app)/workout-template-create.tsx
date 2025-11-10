@@ -18,6 +18,7 @@ import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import Markdown from 'react-native-markdown-display'
+import { getYouTubeThumbnail } from '@/utils/youtube'
 
 // Import Phase 1 components
 import {
@@ -41,12 +42,14 @@ type MovementDraft = {
 
 /**
  * Robust video/image thumbnail renderer - handles YouTube, Vimeo, mp4, and images
- * Copied from workout-create.tsx pattern
+ * Updated to use real YouTube thumbnails via getYouTubeThumbnail utility (STORY-001 / Issue #150)
  */
 function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: string }) {
   const isImage = typeof imageUrl === 'string' && /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(imageUrl)
   const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+  const isYouTube = typeof videoUrl === 'string' && /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(videoUrl)
 
+  // Display static image
   if (isImage) {
     return (
       <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
@@ -55,6 +58,7 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: s
     )
   }
 
+  // Display mp4 video player
   if (isMp4) {
     const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
     return (
@@ -64,20 +68,45 @@ function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: s
     )
   }
 
-  // Handle YouTube/Vimeo embeds via WebView when a non-mp4 video URL is provided
+  // Display YouTube thumbnail (real thumbnail extracted from YouTube)
+  if (isYouTube && videoUrl) {
+    const youtubeThumbnail = getYouTubeThumbnail(videoUrl)
+    const fallbackThumbnail = 'https://via.placeholder.com/800x450/6366f1/ffffff?text=Video'
+
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+        <Image
+          source={{ uri: youtubeThumbnail || fallbackThumbnail }}
+          style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+        />
+        {/* Play button overlay */}
+        <Box
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: [{ translateX: -30 }, { translateY: -30 }],
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 30, marginLeft: 4 }}>▶</Text>
+        </Box>
+      </Box>
+    )
+  }
+
+  // Handle Vimeo or other video embeds via WebView (fallback for non-YouTube videos)
   if (typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
     const url = videoUrl.trim()
-    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url)
     const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(url)
 
     let embedUrl = url
-    if (isYouTube) {
-      try {
-        const u = new URL(url)
-        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
-        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
-      } catch {}
-    } else if (isVimeo) {
+    if (isVimeo) {
       try {
         if (!/player\.vimeo\.com\/video\//i.test(url)) {
           const m = url.match(/vimeo\.com\/(\d+)/i)
