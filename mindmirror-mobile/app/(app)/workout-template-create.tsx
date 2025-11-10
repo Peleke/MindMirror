@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText } from 'react-native'
+import { Modal, Platform, KeyboardAvoidingView, FlatList, Pressable as RNPressable, View, TextInput, Text as RNText, Image } from 'react-native'
 import { useRouter } from 'expo-router'
 import dayjs from 'dayjs'
 import { useLazySearchMovements } from '@/services/api/movements'
@@ -16,36 +16,93 @@ import { QUERY_PRACTICE_TEMPLATES, useCreatePracticeTemplate, useMovementTemplat
 import { Button, ButtonText } from '@/components/ui/button'
 import { HStack } from '@/components/ui/hstack'
 import { WebView } from 'react-native-webview'
+import { useVideoPlayer, VideoView } from 'expo-video'
+import Markdown from 'react-native-markdown-display'
 
-// Reuse builder types
+// Import Phase 1 components
+import {
+  MovementCard,
+  SummaryStatsHeader,
+} from '@/components/workout'
+
+// Flat builder types - no nested prescriptions
+type BlockType = 'warmup' | 'workout' | 'cooldown'
 type SetDraft = { position: number; reps?: number; duration?: number; loadValue?: number; loadUnit?: string; restDuration?: number }
-type MovementDraft = { name: string; position: number; metricUnit: 'iterative' | 'temporal' | 'breath' | 'other'; metricValue: number; description?: string; movementClass?: 'conditioning' | 'power' | 'strength' | 'mobility' | 'other'; prescribedSets?: number; restDuration?: number; videoUrl?: string; exerciseId?: string; movementId?: string; sets: SetDraft[] }
-type PrescriptionDraft = { name: string; position: number; block: 'warmup' | 'workout' | 'cooldown' | 'other'; prescribedRounds: number; movements: MovementDraft[] }
+type MovementDraft = {
+  id: string // local React key
+  name: string
+  position: number
+  block: BlockType
+  metricUnit: 'iterative' | 'temporal'
+  sets: SetDraft[]
+  shortVideoUrl?: string
+  movementId?: string
+}
 
-function YouTubeEmbed({ url }: { url: string }) {
-  const vid = useMemo(() => {
-    try {
-      const u = new URL(url)
-      if (u.hostname.includes('youtube.com')) {
-        const v = u.searchParams.get('v')
-        if (v) return v
-        const parts = u.pathname.split('/')
-        const idx = parts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'watch')
-        if (idx >= 0 && parts[idx + 1]) return parts[idx + 1]
-      }
-      if (u.hostname.includes('youtu.be')) {
-        return u.pathname.replace('/', '')
-      }
-    } catch {}
-    return null
-  }, [url])
-  if (!vid) return null
-  const src = `https://www.youtube.com/embed/${vid}?playsinline=1`
-  return (
-    <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
-      <WebView source={{ uri: src }} allowsInlineMediaPlayback javaScriptEnabled />
-    </Box>
-  )
+/**
+ * Robust video/image thumbnail renderer - handles YouTube, Vimeo, mp4, and images
+ * Copied from workout-create.tsx pattern
+ */
+function MovementThumb({ imageUrl, videoUrl }: { imageUrl?: string; videoUrl?: string }) {
+  const isImage = typeof imageUrl === 'string' && /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(imageUrl)
+  const isMp4 = typeof videoUrl === 'string' && /\.mp4$/i.test(videoUrl)
+
+  if (isImage) {
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
+        <Image source={{ uri: imageUrl as string }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+      </Box>
+    )
+  }
+
+  if (isMp4) {
+    const player = useVideoPlayer(videoUrl as string, (p) => { p.loop = false })
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+        <VideoView style={{ width: '100%', height: '100%' }} player={player} allowsFullscreen allowsPictureInPicture />
+      </Box>
+    )
+  }
+
+  // Handle YouTube/Vimeo embeds via WebView when a non-mp4 video URL is provided
+  if (typeof videoUrl === 'string' && videoUrl.trim().length > 0) {
+    const url = videoUrl.trim()
+    const isYouTube = /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(url)
+    const isVimeo = /(?:vimeo\.com\/|player\.vimeo\.com\/video\/)/i.test(url)
+
+    let embedUrl = url
+    if (isYouTube) {
+      try {
+        const u = new URL(url)
+        const vid = u.hostname.includes('youtu.be') ? u.pathname.replace('/', '') : (u.searchParams.get('v') || '')
+        if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`
+      } catch {}
+    } else if (isVimeo) {
+      try {
+        if (!/player\.vimeo\.com\/video\//i.test(url)) {
+          const m = url.match(/vimeo\.com\/(\d+)/i)
+          if (m && m[1]) embedUrl = `https://player.vimeo.com/video/${m[1]}`
+        }
+      } catch {}
+    }
+
+    if (Platform.OS === 'web') {
+      return (
+        <Box pointerEvents="none" className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+          {/* eslint-disable-next-line react/no-unknown-property */}
+          <iframe src={embedUrl} style={{ width: '100%', height: '100%', border: '0' }} allow="autoplay; fullscreen; picture-in-picture" />
+        </Box>
+      )
+    }
+
+    return (
+      <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
+        <WebView source={{ uri: embedUrl }} allowsInlineMediaPlayback javaScriptEnabled />
+      </Box>
+    )
+  }
+
+  return null
 }
 
 function formatUnit(unit?: string | null) {
@@ -94,16 +151,12 @@ export default function WorkoutTemplateCreateScreen() {
   const apollo = useApolloClient()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
 
-  const [prescriptions, setPrescriptions] = useState<PrescriptionDraft[]>([
-    { name: 'Warmup', position: 1, block: 'warmup', prescribedRounds: 1, movements: [] },
-    { name: 'Workout', position: 2, block: 'workout', prescribedRounds: 1, movements: [] },
-    { name: 'Cooldown', position: 3, block: 'cooldown', prescribedRounds: 1, movements: [] },
-  ])
+  const [movements, setMovements] = useState<MovementDraft[]>([])
 
   // Movement search
   const [isPickerOpen, setPickerOpen] = useState(false)
-  const [pickerForBlock, setPickerForBlock] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [runSearch, { data: searchData, loading: searching }] = useLazySearchMovements()
 
@@ -116,100 +169,203 @@ export default function WorkoutTemplateCreateScreen() {
 
   const searchResults = useMemo(() => (searchData?.searchMovements || []).filter((r: any) => r?.isExternal === false), [searchData])
 
-  const addMovementToPrescription = (pIndex: number, m: any) => {
-    setPrescriptions((prev) => {
-      const copy = [...prev]
-      const p = copy[pIndex]
-      if (!p) return prev
-      const nextPos = p.movements.length + 1
-      const newMovement: MovementDraft = {
-        name: m.name,
-        position: nextPos,
-        metricUnit: 'iterative',
-        metricValue: 1,
-        movementClass: 'other',
-        prescribedSets: 3,
-        restDuration: 60,
-        videoUrl: m.shortVideoUrl ?? undefined,
-        movementId: m.id_,
-        sets: [{ position: 1, reps: 10, restDuration: 60, loadUnit: 'bodyweight' }],
-      }
-      p.movements = [...p.movements, newMovement]
-      copy[pIndex] = p
-      return copy
-    })
+  const addMovement = (m: any) => {
+    const newMovement: MovementDraft = {
+      id: `${Date.now()}-${Math.random()}`,
+      name: m.name,
+      position: movements.length + 1,
+      block: 'workout', // default
+      metricUnit: 'iterative',
+      sets: [{ position: 1, reps: 10, loadUnit: 'bodyweight', restDuration: 60 }],
+      shortVideoUrl: m.shortVideoUrl,
+      movementId: m.id_,
+    }
+    setMovements([...movements, newMovement])
   }
 
-  const addSetToMovement = (pIndex: number, mIndex: number) => {
-    setPrescriptions((prev) => {
-      const copy = [...prev]
-      const p = copy[pIndex]
-      if (!p) return prev
-      const mov = p.movements[mIndex]
-      if (!mov) return prev
-      const nextPos = mov.sets.length + 1
-      const last = mov.sets[mov.sets.length - 1]
-      const newSet: SetDraft = { position: nextPos }
-      newSet.reps = (last?.reps ?? 10)
-      if (last?.duration != null) newSet.duration = last.duration
-      if (last?.loadValue != null) newSet.loadValue = last.loadValue
-      newSet.loadUnit = last?.loadUnit ?? 'bodyweight'
-      newSet.restDuration = (last?.restDuration ?? 60)
-      mov.sets = [...mov.sets, newSet]
-      p.movements[mIndex] = mov
-      copy[pIndex] = p
-      return copy
-    })
+  const updateMovementBlock = (movementId: string, block: BlockType) => {
+    setMovements(movements.map(m => m.id === movementId ? { ...m, block } : m))
   }
 
-  const updateSetField = (pIndex: number, mIndex: number, sIndex: number, field: keyof SetDraft, value: string) => {
-    setPrescriptions((prev) => {
-      const copy = [...prev]
-      const p = copy[pIndex]
-      if (!p) return prev
-      const mov = p.movements[mIndex]
-      if (!mov) return prev
-      const set = mov.sets[sIndex]
-      if (!set) return prev
-      let patched: any = value
-      if (['reps','duration','loadValue','restDuration'].includes(field)) {
-        const num = parseFloat(value)
-        patched = Number.isFinite(num) ? num : undefined
+  const removeMovement = (movementId: string) => {
+    setMovements(movements.filter(m => m.id !== movementId))
+  }
+
+  const addSet = (movementId: string) => {
+    setMovements(movements.map(m => {
+      if (m.id !== movementId) return m
+      const lastSet = m.sets[m.sets.length - 1]
+      const newSet: SetDraft = {
+        position: m.sets.length + 1,
+        reps: lastSet?.reps ?? 10,
+        duration: lastSet?.duration,
+        loadValue: lastSet?.loadValue,
+        loadUnit: lastSet?.loadUnit ?? 'bodyweight',
+        restDuration: lastSet?.restDuration ?? 60,
       }
-      mov.sets[sIndex] = { ...set, [field]: patched }
-      p.movements[mIndex] = mov
-      copy[pIndex] = p
-      return copy
-    })
+      return { ...m, sets: [...m.sets, newSet] }
+    }))
+  }
+
+  const removeSet = (movementId: string, setIndex: number) => {
+    setMovements(movements.map(m => {
+      if (m.id !== movementId) return m
+      return {
+        ...m,
+        sets: m.sets.filter((_, i) => i !== setIndex).map((s, i) => ({ ...s, position: i + 1 }))
+      }
+    }))
+  }
+
+  const updateSet = (movementId: string, setIndex: number, field: keyof SetDraft, value: string) => {
+    setMovements(movements.map(m => {
+      if (m.id !== movementId) return m
+      const updatedSet: SetDraft = {
+        ...m.sets[setIndex],
+        [field]: value ? parseFloat(value) : undefined
+      }
+      const newSets = [...m.sets]
+      newSets[setIndex] = updatedSet
+      return { ...m, sets: newSets }
+    }))
+  }
+
+  // Set editing modal
+  const [editingSet, setEditingSet] = useState<{ movementId: string; setIndex: number } | null>(null)
+  const [editReps, setEditReps] = useState('')
+  const [editDuration, setEditDuration] = useState('')
+  const [editLoad, setEditLoad] = useState('')
+  const [editRest, setEditRest] = useState('')
+
+  const openSetEditor = (movementId: string, setIndex: number) => {
+    const movement = movements.find(m => m.id === movementId)
+    if (!movement) return
+    const set = movement.sets[setIndex]
+    if (!set) return
+
+    setEditReps(String(set.reps ?? ''))
+    setEditDuration(String(set.duration ?? ''))
+    setEditLoad(String(set.loadValue ?? ''))
+    setEditRest(String(set.restDuration ?? ''))
+    setEditingSet({ movementId, setIndex })
+  }
+
+  const saveSetEdit = () => {
+    if (!editingSet) return
+    const { movementId, setIndex } = editingSet
+
+    setMovements(movements.map(m => {
+      if (m.id !== movementId) return m
+      const updatedSet: SetDraft = {
+        ...m.sets[setIndex],
+        reps: editReps ? parseFloat(editReps) : undefined,
+        duration: editDuration ? parseFloat(editDuration) : undefined,
+        loadValue: editLoad ? parseFloat(editLoad) : undefined,
+        restDuration: editRest ? parseFloat(editRest) : undefined,
+      }
+      const newSets = [...m.sets]
+      newSets[setIndex] = updatedSet
+      return { ...m, sets: newSets }
+    }))
+
+    setEditingSet(null)
   }
 
   const [createTemplate, { loading: saving }] = useCreatePracticeTemplate()
   const onSubmit = async () => {
     if (!title) return
+
+    // Group movements by block for server
+    const warmupMovements = movements.filter(m => m.block === 'warmup')
+    const workoutMovements = movements.filter(m => m.block === 'workout')
+    const cooldownMovements = movements.filter(m => m.block === 'cooldown')
+
     const gqlInput = {
       title,
       description: description || null,
-      prescriptions: prescriptions.map((p) => ({
-        name: p.name,
-        position: p.position,
-        block: p.block,
-        description: '',
-        prescribedRounds: p.prescribedRounds,
-        movements: p.movements.map((m) => ({
-          name: m.name,
-          position: m.position,
-          metricUnit: m.metricUnit.toUpperCase(),
-          metricValue: m.metricValue,
-          description: m.description || '',
-          movementClass: (m.movementClass || 'other').toUpperCase(),
-          prescribedSets: m.prescribedSets,
-          restDuration: m.restDuration,
-          videoUrl: m.videoUrl,
-          exerciseId: m.exerciseId,
-          movementId: m.movementId,
-          sets: m.sets.map((s) => ({ position: s.position, reps: s.reps, duration: s.duration, restDuration: s.restDuration, loadValue: s.loadValue, loadUnit: s.loadUnit })),
-        })),
-      })),
+      prescriptions: [
+        {
+          name: 'Warmup',
+          position: 1,
+          block: 'warmup',
+          description: '',
+          prescribedRounds: 1,
+          movements: warmupMovements.map((m, i) => ({
+            name: m.name,
+            position: i + 1,
+            metricUnit: m.metricUnit.toUpperCase(),
+            metricValue: 1,
+            description: '',
+            movementClass: 'OTHER',
+            prescribedSets: m.sets.length,
+            restDuration: m.sets[0]?.restDuration ?? 60,
+            videoUrl: m.shortVideoUrl,
+            movementId: m.movementId,
+            sets: m.sets.map(s => ({
+              position: s.position,
+              reps: s.reps,
+              duration: s.duration,
+              loadValue: s.loadValue,
+              loadUnit: s.loadUnit,
+              restDuration: s.restDuration,
+            })),
+          })),
+        },
+        {
+          name: 'Workout',
+          position: 2,
+          block: 'workout',
+          description: '',
+          prescribedRounds: 1,
+          movements: workoutMovements.map((m, i) => ({
+            name: m.name,
+            position: i + 1,
+            metricUnit: m.metricUnit.toUpperCase(),
+            metricValue: 1,
+            description: '',
+            movementClass: 'OTHER',
+            prescribedSets: m.sets.length,
+            restDuration: m.sets[0]?.restDuration ?? 60,
+            videoUrl: m.shortVideoUrl,
+            movementId: m.movementId,
+            sets: m.sets.map(s => ({
+              position: s.position,
+              reps: s.reps,
+              duration: s.duration,
+              loadValue: s.loadValue,
+              loadUnit: s.loadUnit,
+              restDuration: s.restDuration,
+            })),
+          })),
+        },
+        {
+          name: 'Cooldown',
+          position: 3,
+          block: 'cooldown',
+          description: '',
+          prescribedRounds: 1,
+          movements: cooldownMovements.map((m, i) => ({
+            name: m.name,
+            position: i + 1,
+            metricUnit: m.metricUnit.toUpperCase(),
+            metricValue: 1,
+            description: '',
+            movementClass: 'OTHER',
+            prescribedSets: m.sets.length,
+            restDuration: m.sets[0]?.restDuration ?? 60,
+            videoUrl: m.shortVideoUrl,
+            movementId: m.movementId,
+            sets: m.sets.map(s => ({
+              position: s.position,
+              reps: s.reps,
+              duration: s.duration,
+              loadValue: s.loadValue,
+              loadUnit: s.loadUnit,
+              restDuration: s.restDuration,
+            })),
+          })),
+        },
+      ],
     }
     try {
       const res = await createTemplate({ variables: { input: gqlInput } })
@@ -220,7 +376,9 @@ export default function WorkoutTemplateCreateScreen() {
       } else {
         router.back()
       }
-    } catch {}
+    } catch (e) {
+      console.error('Failed to create template:', e)
+    }
   }
 
   const [previewMovementId, setPreviewMovementId] = useState<string | null>(null)
@@ -237,127 +395,129 @@ export default function WorkoutTemplateCreateScreen() {
             <VStack space="sm">
               <Text className="text-2xl font-bold text-typography-900 dark:text-white">Template Details</Text>
               <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Title" value={title} onChangeText={setTitle} /></Input>
-              <Input className="bg-background-50 dark:bg-background-100"><InputField placeholder="Description (optional, markdown)" value={description} onChangeText={setDescription} /></Input>
+
+              <Text className="text-typography-900 font-semibold dark:text-white">Description</Text>
+              {isEditingDescription || description.trim().length === 0 ? (
+                <TextInput
+                  placeholder="Click to add description (markdown supported)"
+                  value={description}
+                  onChangeText={setDescription}
+                  onFocus={() => setIsEditingDescription(true)}
+                  onBlur={() => setIsEditingDescription(false)}
+                  multiline
+                  numberOfLines={3}
+                  className="bg-background-50 dark:bg-background-100 text-typography-600 dark:text-gray-300"
+                  style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, minHeight: 84, textAlignVertical: 'top' }}
+                />
+              ) : (
+                <Pressable onPress={() => setIsEditingDescription(true)}>
+                  <Box className="p-3 rounded-lg border border-border-200 bg-background-50 dark:bg-background-100" style={{ minHeight: 84 }}>
+                    <Markdown>{description}</Markdown>
+                  </Box>
+                </Pressable>
+              )}
             </VStack>
 
-            <VStack space="md" className="mt-5">
-              <Text className="text-lg font-semibold text-typography-900 dark:text-white">Blocks</Text>
-              {prescriptions.map((item, index) => (
-                <Box key={`${index}`} className="p-4 rounded-xl border bg-background-50 dark:bg-background-100 border-border-200 dark:border-border-700">
-                  <VStack space="sm">
-                    <Text className="text-base font-semibold text-typography-900 dark:text-white">{item.name}</Text>
-                    <Pressable onPress={() => { setPickerForBlock(index); setPickerOpen(true); setSearchTerm('') }} className="self-start px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-indigo-950">
-                      <Text className="text-indigo-700 dark:text-indigo-200 font-semibold">＋ Add Movement</Text>
-                    </Pressable>
+            {/* Summary Stats - shows workout overview */}
+            <SummaryStatsHeader
+              totalDuration={movements.reduce((sum, m) =>
+                sum + m.sets.reduce((sSum, s) =>
+                  sSum + (s.restDuration || 0) + (s.duration || 0), 0), 0)}
+              totalExercises={movements.length}
+              totalSets={movements.reduce((sum, m) => sum + m.sets.length, 0)}
+            />
 
-                    {item.movements.length === 0 ? (
-                      <Text className="text-typography-600 dark:text-gray-300">No movements yet</Text>
-                    ) : (
-                      <VStack space="sm">
-                        {item.movements.map((m, mi) => (
-                          <Box key={`${mi}`} className="p-3 rounded-lg border bg-white dark:bg-background-0 border-border-200 dark:border-border-700">
-                            <VStack space="sm">
-                              <Box className="flex-row items-center justify-between">
-                                <Pressable onPress={() => { setPreviewMovementId(m.movementId || ''); setPreviewDraft(m) }}>
-                                  <Text className="font-semibold text-typography-900 dark:text-white">{m.name}</Text>
-                                </Pressable>
-                                <Pressable onPress={() => {
-                                  setPrescriptions(prev => {
-                                    const copy = [...prev]
-                                    const p = copy[index]
-                                    if (!p) return prev
-                                    p.movements = p.movements.filter((_, i) => i !== mi).map((mv, i) => ({ ...mv, position: i + 1 }))
-                                    copy[index] = p
-                                    return copy
-                                  })
-                                }} className="px-2 py-1 rounded-md border border-red-300">
-                                  <Text className="text-red-700 font-semibold">🗑️</Text>
-                                </Pressable>
-                              </Box>
-                              {/* Movement description in template creation (plain preview) */}
-                              {m.description ? <Text className="text-typography-600 dark:text-gray-300">{m.description}</Text> : null}
-                              <Text className="text-typography-600 dark:text-gray-300">{m.sets.length} sets</Text>
-                              <Pressable onPress={() => addSetToMovement(index, mi)} className="self-start px-3 py-1.5 rounded-md border border-border-200 dark:border-border-700">
-                                <Text className="text-typography-700 dark:text-gray-200 font-semibold">Add Set</Text>
-                              </Pressable>
+            <Box className="h-px bg-border-200 dark:bg-border-700 my-4" />
 
-                              {/* Set editor table */}
-                              {m.sets.length > 0 && (
-                                <VStack space="xs">
-                                  <Box className="flex-row items-center px-2 py-1">
-                                    <Box className="w-12"><Text className="text-typography-600 dark:text-gray-300">#</Text></Box>
-                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">{m.metricUnit === 'temporal' ? 'Duration (s)' : 'Reps'}</Text></Box>
-                                    <Box className="flex-1"><Text className="text-typography-600 dark:text-gray-300">Load</Text></Box>
-                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Unit</Text></Box>
-                                    <Box className="w-28"><Text className="text-typography-600 dark:text-gray-300">Rest (s)</Text></Box>
-                                  </Box>
-                                  {m.sets.map((s, si) => (
-                                    <Box key={`${si}`} className="flex-row items-center px-2 py-1 rounded-md border border-border-200 dark:border-border-700 bg-background-50 dark:bg-background-100">
-                                      <Box className="w-12"><Text className="text-typography-700 dark:text-gray-200">{si + 1}</Text></Box>
-                                      <Box className="flex-1 mr-2">
-                                        <TextInput keyboardType="numeric" value={m.metricUnit === 'temporal' ? (s.duration != null ? String(s.duration) : '') : (s.reps != null ? String(s.reps) : '')} onChangeText={(v) => updateSetField(index, mi, si, m.metricUnit === 'temporal' ? 'duration' : 'reps', v)} placeholder={m.metricUnit === 'temporal' ? '30' : '10'} style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                      <Box className="flex-1 mr-2">
-                                        <TextInput keyboardType="numeric" value={s.loadValue != null ? String(s.loadValue) : ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadValue', v)} placeholder="45" style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                      <Box className="w-28 mr-2">
-                                        <Input><InputField placeholder="unit (lb/kg/bw)" defaultValue={s.loadUnit || ''} onChangeText={(v) => updateSetField(index, mi, si, 'loadUnit', v)} /></Input>
-                                      </Box>
-                                      <Box className="w-28 mr-2">
-                                        <TextInput keyboardType="numeric" value={s.restDuration != null ? String(s.restDuration) : ''} onChangeText={(v) => updateSetField(index, mi, si, 'restDuration', v)} placeholder="60" style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' }} />
-                                      </Box>
-                                    </Box>
-                                  ))}
-                                </VStack>
-                              )}
-                            </VStack>
-                          </Box>
-                        ))}
-                      </VStack>
-                    )}
-                  </VStack>
-                </Box>
+            {/* Add Movement Button */}
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              className="px-4 py-3 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50 dark:bg-indigo-900"
+            >
+              <Text className="text-center text-indigo-700 dark:text-indigo-200 font-semibold">+ Add Movement</Text>
+            </Pressable>
+
+            {/* Movements List */}
+            <VStack space="md" className="mt-4">
+              {movements.map(movement => (
+                <MovementCard
+                  key={movement.id}
+                  movementName={movement.name}
+                  block={movement.block}
+                  sets={movement.sets}
+                  shortVideoUrl={movement.shortVideoUrl}
+                  metricUnit={movement.metricUnit}
+                  onBlockChange={(block) => updateMovementBlock(movement.id, block)}
+                  onRemove={() => removeMovement(movement.id)}
+                  onAddSet={() => addSet(movement.id)}
+                  onUpdateSet={(setIndex, field, value) => updateSet(movement.id, setIndex, field, value)}
+                  onRemoveSet={(setIndex) => removeSet(movement.id, setIndex)}
+                  onViewDetails={() => {
+                    setPreviewMovementId(movement.movementId || '');
+                    setPreviewDraft(movement);
+                  }}
+                />
               ))}
-
-              <Pressable disabled={saving || !title} onPress={onSubmit} className={`mt-2 items-center justify-center rounded-xl px-4 py-3 ${saving || !title ? 'bg-indigo-300' : 'bg-indigo-600'}`}>
-                <Text className="text-white font-bold">{saving ? 'Saving…' : 'Save Template'}</Text>
-              </Pressable>
             </VStack>
+
+            {/* Save Button */}
+            <Pressable disabled={saving || !title} onPress={onSubmit} className={`mt-4 items-center justify-center rounded-xl px-4 py-3 ${saving || !title ? 'bg-indigo-300' : 'bg-indigo-600'}`}>
+              <Text className="text-white font-bold">{saving ? 'Saving…' : 'Save Template'}</Text>
+            </Pressable>
           </VStack>
         </ScrollView>
 
         {/* Movement search modal */}
-        <Modal visible={isPickerOpen} transparent animationType="fade" onRequestClose={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }}>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} />
+        <Modal visible={isPickerOpen} transparent animationType="fade" onRequestClose={() => { setPickerOpen(false); setSearchTerm('') }}>
+          <View style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} onPress={() => { setPickerOpen(false); setSearchTerm('') }} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 30 }}>
-              <View style={{ width: '96%', maxHeight: '70%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
+              <View style={{ width: '96%', maxWidth: 560, maxHeight: '70%', borderRadius: 16, backgroundColor: '#fff', padding: 16 }}>
                 <RNText style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>Add Movement</RNText>
                 <View style={{ marginBottom: 12 }}>
-                  <TextInput placeholder="Search movements…" value={searchTerm} onChangeText={setSearchTerm} autoFocus style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }} />
+                  <TextInput
+                    placeholder="Search movements…"
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    autoFocus
+                    style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10 }}
+                  />
                 </View>
-                <FlatList
-                  keyboardDismissMode="on-drag"
-                  keyboardShouldPersistTaps="handled"
-                  data={searchResults}
-                  keyExtractor={(item: any, i) => item.id_ ?? `${i}`}
-                  renderItem={({ item }) => (
-                    <RNPressable onPress={() => { if (pickerForBlock != null) addMovementToPrescription(pickerForBlock, item); setPickerOpen(false); setPickerForBlock(null); }} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-                      <View>
-                        <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
-                        <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                {searching ? (
+                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                    <RNText style={{ color: '#6b7280' }}>Searching...</RNText>
+                  </View>
+                ) : (
+                  <FlatList
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                    data={searchResults}
+                    keyExtractor={(item: any, i) => item.id_ ?? `${i}`}
+                    renderItem={({ item }) => (
+                      <RNPressable
+                        onPress={() => {
+                          addMovement(item);
+                          setPickerOpen(false);
+                          setSearchTerm('');
+                        }}
+                        style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}
+                      >
+                        <View>
+                          <RNText style={{ fontWeight: '600' }}>{item.name}</RNText>
+                          <RNText style={{ color: '#6b7280' }}>{item.bodyRegion}{Array.isArray(item.equipment) && item.equipment.length ? ` • ${item.equipment.join(', ')}` : ''}</RNText>
+                        </View>
+                      </RNPressable>
+                    )}
+                    ListEmptyComponent={(
+                      <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                        <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
                       </View>
-                    </RNPressable>
-                  )}
-                  ListEmptyComponent={!searching ? (
-                    <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                      <RNText style={{ color: '#6b7280' }}>{(searchTerm||'').trim().length === 0 ? 'Type to search movements' : 'No matches found'}</RNText>
-                    </View>
-                  ) : null}
-                  style={{ maxHeight: '56%' }}
-                  contentContainerStyle={{ paddingBottom: 12 }}
-                />
-                <RNPressable onPress={() => { setPickerOpen(false); setPickerForBlock(null); setSearchTerm('') }} style={{ alignSelf: 'flex-end', marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
+                    )}
+                    style={{ maxHeight: '56%' }}
+                    contentContainerStyle={{ paddingBottom: 12 }}
+                  />
+                )}
+                <RNPressable onPress={() => { setPickerOpen(false); setSearchTerm('') }} style={{ alignSelf: 'flex-end', marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8 }}>
                   <RNText style={{ color: '#374151', fontWeight: '600' }}>Close</RNText>
                 </RNPressable>
               </View>
@@ -365,28 +525,66 @@ export default function WorkoutTemplateCreateScreen() {
           </View>
         </Modal>
 
+        {/* Set Edit Modal */}
+        <Modal visible={editingSet !== null} transparent animationType="fade" onRequestClose={() => setEditingSet(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+            <RNPressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} onPress={() => setEditingSet(null)} />
+            <Box className="w-11/12 max-w-sm bg-white dark:bg-background-100 rounded-xl p-4">
+              <Text className="text-lg font-bold mb-3">Edit Set</Text>
+              <VStack space="sm">
+                <Input className="bg-background-50">
+                  <InputField placeholder="Reps" keyboardType="numeric" value={editReps} onChangeText={setEditReps} />
+                </Input>
+                <Input className="bg-background-50">
+                  <InputField placeholder="Duration (s)" keyboardType="numeric" value={editDuration} onChangeText={setEditDuration} />
+                </Input>
+                <Input className="bg-background-50">
+                  <InputField placeholder="Load Value" keyboardType="numeric" value={editLoad} onChangeText={setEditLoad} />
+                </Input>
+                <Input className="bg-background-50">
+                  <InputField placeholder="Rest Duration (s)" keyboardType="numeric" value={editRest} onChangeText={setEditRest} />
+                </Input>
+                <Pressable onPress={saveSetEdit} className="mt-2 px-4 py-2 bg-indigo-600 rounded-lg">
+                  <Text className="text-center text-white font-bold">Save</Text>
+                </Pressable>
+                <Pressable onPress={() => setEditingSet(null)} className="px-4 py-2 border border-border-200 rounded-lg">
+                  <Text className="text-center font-semibold">Cancel</Text>
+                </Pressable>
+              </VStack>
+            </Box>
+          </View>
+        </Modal>
+
       {/* Movement preview modal */}
       {previewMovementId ? (
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700">
-            <VStack space="md">
-              <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
-              {mt?.movement?.shortVideoUrl ? (
-                <Box className="overflow-hidden rounded-xl border border-border-200" style={{ height: 200 }}>
-                  <WebView source={{ uri: `https://www.youtube.com/embed/${new URL(mt.movement.shortVideoUrl).searchParams.get('v')}` }} allowsInlineMediaPlayback javaScriptEnabled />
-                </Box>
-              ) : (
-                <Box className="overflow-hidden rounded-xl border border-border-200 bg-background-50" style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text className="text-typography-600">🎥 Video placeholder</Text>
-                </Box>
-              )}
-              {mt?.description ? <Text className="text-typography-700 dark:text-gray-300">{mt.description}</Text> : null}
+          <Box className="w-full max-w-md p-5 rounded-2xl bg-background-0 border border-border-200 dark:border-border-700" style={{ maxHeight: '85%' }}>
+            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 16 }}>
+              <VStack space="md">
+                <Text className="text-xl font-bold text-typography-900 dark:text-white">{mt?.name || 'Exercise'}</Text>
+
+                {/* Video/Image using robust MovementThumb */}
+                <MovementThumb
+                  videoUrl={mt?.movement?.shortVideoUrl || mt?.movement?.longVideoUrl || previewDraft?.shortVideoUrl}
+                  imageUrl={undefined}
+                />
+
+                {/* Movement description from the movement object - NOW WITH MARKDOWN! */}
+                {mt?.movement?.description ? (
+                  <Box className="p-2 rounded border border-border-200 bg-background-50">
+                    <Markdown>{mt.movement.description}</Markdown>
+                  </Box>
+                ) : mt?.description ? (
+                  <Box className="p-2 rounded border border-border-200 bg-background-50">
+                    <Markdown>{mt.description}</Markdown>
+                  </Box>
+                ) : null}
 
               {(Array.isArray(mt?.sets) && mt!.sets.length > 0) ? (
                 <VStack>
                   <VStack className="flex-row px-3 py-2 rounded bg-background-100 border border-border-200">
                     <Box className="w-10"><Text className="text-xs font-semibold text-typography-600">#</Text></Box>
-                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Reps/Dur</Text></Box>
+                    <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">{mt.sets[0]?.duration ? 'Duration' : 'Reps'}</Text></Box>
                     <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Load</Text></Box>
                     <Box className="flex-1"><Text className="text-xs font-semibold text-typography-600">Rest</Text></Box>
                   </VStack>
@@ -394,7 +592,7 @@ export default function WorkoutTemplateCreateScreen() {
                     <VStack key={s.id_ || i}>
                       <VStack className="flex-row items-center px-3 py-2 bg-white dark:bg-background-50">
                         <Box className="w-10"><Text className="text-typography-700">{i + 1}</Text></Box>
-                        <Box className="flex-1"><Text className="text-typography-900">{s.reps ?? s.duration ?? '—'}</Text></Box>
+                        <Box className="flex-1"><Text className="text-typography-900">{s.duration ? `${s.duration}s` : (s.reps ?? '—')}</Text></Box>
                         <Box className="flex-1"><Text className="text-typography-900">{formatLoad(s.load_value, s.load_unit)}</Text></Box>
                         <Box className="flex-1"><Text className="text-typography-900">{s.rest_duration ? `${s.rest_duration}s` : '—'}</Text></Box>
                       </VStack>
@@ -406,36 +604,37 @@ export default function WorkoutTemplateCreateScreen() {
 
               <DetailsTable movement={mt?.movement} />
 
-              <HStack className="justify-end space-x-3">
-                <Button className="bg-gray-600" onPress={() => setPreviewMovementId(null)}>
-                  <ButtonText>Dismiss</ButtonText>
-                </Button>
-                <Button className="bg-primary-600" onPress={() => { 
-                  const id = previewMovementId;
-                  const prefetch = previewDraft ? encodeURIComponent(JSON.stringify({
-                    name: previewDraft.name,
-                    description: previewDraft.description,
-                    movement: undefined,
-                    sets: (previewDraft.sets || []).map((s) => ({
-                      reps: s.reps,
-                      duration: s.duration,
-                      rest_duration: s.restDuration,
-                      load_value: s.loadValue,
-                      load_unit: s.loadUnit,
-                    })),
-                    metric_value: previewDraft.metricValue,
-                    metric_unit: previewDraft.metricUnit,
-                    prescribed_sets: previewDraft.prescribedSets,
-                    rest_duration: previewDraft.restDuration,
-                    video_url: previewDraft.videoUrl,
-                  })) : ''
-                  setPreviewMovementId(null); setPreviewDraft(null);
-                  router.push(`/(app)/exercise/${id}?${prefetch ? `prefetch=${prefetch}&` : ''}returnTo=${encodeURIComponent('/workout-template-create')}`)
-                }}>
-                  <ButtonText>More info</ButtonText>
-                </Button>
-              </HStack>
-            </VStack>
+                <HStack className="justify-end space-x-3">
+                  <Button className="bg-gray-600" onPress={() => setPreviewMovementId(null)}>
+                    <ButtonText>Dismiss</ButtonText>
+                  </Button>
+                  <Button className="bg-primary-600" onPress={() => {
+                    const id = previewMovementId;
+                    const prefetch = previewDraft ? encodeURIComponent(JSON.stringify({
+                      name: previewDraft.name,
+                      description: previewDraft.description,
+                      movement: undefined,
+                      sets: (previewDraft.sets || []).map((s) => ({
+                        reps: s.reps,
+                        duration: s.duration,
+                        rest_duration: s.restDuration,
+                        load_value: s.loadValue,
+                        load_unit: s.loadUnit,
+                      })),
+                      metric_value: previewDraft.metricValue,
+                      metric_unit: previewDraft.metricUnit,
+                      prescribed_sets: previewDraft.prescribedSets,
+                      rest_duration: previewDraft.restDuration,
+                      video_url: previewDraft.videoUrl,
+                    })) : ''
+                    setPreviewMovementId(null); setPreviewDraft(null);
+                    router.push(`/(app)/exercise/${id}?${prefetch ? `prefetch=${prefetch}&` : ''}returnTo=${encodeURIComponent('/workout-template-create')}`)
+                  }}>
+                    <ButtonText>More info</ButtonText>
+                  </Button>
+                </HStack>
+              </VStack>
+            </ScrollView>
           </Box>
         </View>
       ) : null}
