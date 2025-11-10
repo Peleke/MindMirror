@@ -19,6 +19,7 @@ import { WebView } from 'react-native-webview'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { MovementDescription } from '@/components/workouts/MovementMedia'
 import { RestTimerModal } from '@/components/workouts/RestTimerModal'
+import { WorkoutTimerBar } from '@/components/workout/WorkoutTimerBar'
 
 function YouTubeEmbed({ url }: { url: string }) {
   const vid = React.useMemo(() => {
@@ -174,6 +175,23 @@ export default function WorkoutDetailsScreen() {
     let movements = 0, sets = 0
     prescriptions.forEach((p: any) => { const ms = Array.isArray(p?.movements) ? p.movements : []; movements += ms.length; ms.forEach((m: any) => { sets += (Array.isArray(m?.sets) ? m.sets.length : 0) }) })
     return { movements, sets }
+  }, [workout])
+
+  // Calculate progress for WorkoutTimerBar
+  const progress = useMemo(() => {
+    const prescriptions: any[] = Array.isArray(workout?.prescriptions) ? workout!.prescriptions : []
+    let completed = 0, total = 0
+    prescriptions.forEach((p: any) => {
+      const movements = Array.isArray(p?.movements) ? p.movements : []
+      movements.forEach((m: any) => {
+        const sets = Array.isArray(m?.sets) ? m.sets : []
+        sets.forEach((s: any) => {
+          total++
+          if (s.complete === true) completed++
+        })
+      })
+    })
+    return total > 0 ? completed / total : 0
   }, [workout])
 
   const handleDelete = () => {
@@ -625,7 +643,14 @@ export default function WorkoutDetailsScreen() {
     <SafeAreaView className="h-full w-full">
       <VStack className="h-full w-full bg-background-0">
         <AppBar title="Workout" showBackButton onBackPress={() => { try { router.replace('/journal') } catch { router.back() } }} />
-        {/* Delete moved to bottom with confirm modal */}
+
+        {/* Sticky WorkoutTimerBar */}
+        <WorkoutTimerBar
+          elapsed={elapsed}
+          isRunning={timerActive}
+          progress={progress}
+          onToggleTimer={toggleTimer}
+        />
 
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <VStack className="w-full max-w-screen-md mx-auto">
@@ -633,16 +658,11 @@ export default function WorkoutDetailsScreen() {
             <VStack className="px-6 pt-4">
               <VStack className="flex-row items-center justify-between">
                 <Text className="text-2xl font-bold text-typography-900 dark:text-white">{workout?.title || 'Workout'}</Text>
-                <VStack className="flex-row items-center space-x-2">
-                  {enrollmentId ? (
-                    <Pressable className="px-3 py-1 rounded-full border border-border-200 bg-background-50" onPress={() => setDeferOpen(true)}>
-                      <Text className="text-typography-900 text-xs">Defer</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable className={`px-3 py-1 rounded-full border border-border-200 ${timerActive ? 'bg-green-50' : 'bg-background-50'}`} onPress={toggleTimer}>
-                    <Text className="text-typography-900 text-xs">{timerActive ? 'Pause' : (elapsed > 0 ? 'Resume' : 'Start')} workout</Text>
+                {enrollmentId ? (
+                  <Pressable className="px-3 py-1 rounded-full border border-border-200 bg-background-50" onPress={() => setDeferOpen(true)}>
+                    <Text className="text-typography-900 text-xs">Defer</Text>
                   </Pressable>
-                </VStack>
+                ) : null}
               </VStack>
               <Box className="h-2" />
               <Box className="rounded-2xl border border-border-200 bg-white dark:bg-background-100">
