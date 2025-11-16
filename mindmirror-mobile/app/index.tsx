@@ -102,8 +102,7 @@ function LandingContent() {
       title: 'Habits & Programs',
       bullets: [
         'Weekly habit focus with simple, loving guardrails',
-        'Guided lessons you can read on a walk',
-        'Streaks and adherence rings that whisper, not yell'
+        'Guided lessons you can read on a walk'
       ],
       visualization: 'stats',
       stats: [
@@ -188,10 +187,11 @@ function LandingContent() {
       {/* Hero Section */}
       <View className="px-4 pt-16 pb-12">
         <View className="max-w-6xl mx-auto">
-          <View className="flex-row items-center gap-12">
-            {/* Left: Text content */}
-            <View className="flex-1">
-              <View className="mb-12">
+          {/* Mobile: Stack with mockup below, Desktop: Side-by-side */}
+          <View className="flex-col lg:flex-row items-center gap-8 lg:gap-12">
+            {/* Text content */}
+            <View className="flex-1 w-full">
+              <View className="mb-8 lg:mb-12">
                 <Text className={`text-5xl md:text-6xl font-bold leading-tight mb-6 ${textColor}`}>
                   {animatedPhrase}
                 </Text>
@@ -210,8 +210,8 @@ function LandingContent() {
               </View>
             </View>
 
-            {/* Right: Device mockup */}
-            <View className="flex-1 items-center">
+            {/* Device mockup - positioned to peek ~33% above fold on mobile */}
+            <View className="flex-1 items-center w-full -mt-16 lg:mt-0">
               <DeviceMockup theme={isWarm ? 'warm' : 'cool'} activeScreen={currentScreen} />
 
               {/* Screen indicators */}
@@ -235,7 +235,7 @@ function LandingContent() {
       </View>
 
       {/* Interactive Feature Grid */}
-      <View className="px-4 pb-20 pt-16">
+      <View className="px-4 pb-20 pt-32 md:pt-16">
         <View className="max-w-6xl mx-auto">
           <Text className={`text-3xl font-bold text-center mb-4 ${textColor}`}>
             Everything You Need
@@ -302,14 +302,15 @@ function LandingContent() {
             Most wellness tools assume you'll bend your life to fit their program. We do the opposite.
           </Text>
 
-          <View className="flex-row gap-8">
+          {/* Mobile: Reduced gap, Desktop: Normal gap */}
+          <View className="flex-row gap-3 md:gap-8">
             {/* Old Way */}
-            <View className={`flex-1 rounded-2xl border-2 border-red-200 ${isWarm ? 'bg-white' : 'bg-white'} p-6`}>
-              <View className="flex-row items-center gap-2 bg-red-100 px-3 py-1 rounded-full self-start mb-6">
+            <View className={`flex-1 rounded-2xl border-2 border-red-200 ${isWarm ? 'bg-white' : 'bg-white'} p-4 md:p-6`}>
+              <View className="flex-row items-center gap-2 bg-red-100 px-3 py-1 rounded-full self-start mb-4 md:mb-6">
                 <XCircle size={16} color="#991b1b" />
                 <Text className="text-red-800 text-sm font-medium">The fragmented way</Text>
               </View>
-              <View className="space-y-4">
+              <View className="space-y-3 md:space-y-4">
                 {[
                   'Fragmented tools, endless dashboards, decision fatigue',
                   'Shame-first nudges, perfection or bust',
@@ -317,7 +318,7 @@ function LandingContent() {
                   'Short sprints, long burnouts, Monday restarts',
                   'Data you can\'t feel, progress you can\'t trust'
                 ].map((item, i) => (
-                  <View key={i} className={`flex-row items-start gap-3 p-3 ${bgColor} rounded-lg`}>
+                  <View key={i} className={`flex-row items-start gap-2 md:gap-3 p-2 md:p-3 ${bgColor} rounded-lg`}>
                     <XCircle size={20} color="#ef4444" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm">{item}</Text>
                   </View>
@@ -326,12 +327,12 @@ function LandingContent() {
             </View>
 
             {/* New Way */}
-            <View className={`flex-1 rounded-2xl border-2 ${isWarm ? 'border-warm-gold-500 bg-gradient-to-br from-warm-gold-50 to-warm-crimson-50' : 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'} p-6`}>
-              <View className={`flex-row items-center gap-2 ${isWarm ? 'bg-warm-gold-100' : 'bg-green-100'} px-3 py-1 rounded-full self-start mb-6`}>
+            <View className={`flex-1 rounded-2xl border-2 ${isWarm ? 'border-warm-gold-500 bg-gradient-to-br from-warm-gold-50 to-warm-crimson-50' : 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'} p-4 md:p-6`}>
+              <View className={`flex-row items-center gap-2 ${isWarm ? 'bg-warm-gold-100' : 'bg-green-100'} px-3 py-1 rounded-full self-start mb-4 md:mb-6`}>
                 <Check size={16} color={isWarm ? '#92400e' : '#166534'} />
                 <Text className={`${isWarm ? 'text-warm-gold-800' : 'text-green-800'} text-sm font-medium`}>The Swae way</Text>
               </View>
-              <View className="space-y-4">
+              <View className="space-y-3 md:space-y-4">
                 {[
                   'One gentle habit at a time; practical wins, steady momentum',
                   'Real life first—travel, kids, chaos welcome',
@@ -339,7 +340,7 @@ function LandingContent() {
                   'Tiny actions, stacked wins, resilient growth',
                   'Human signals + smart data you can actually feel'
                 ].map((item, i) => (
-                  <View key={i} className="flex-row items-start gap-3 p-3 bg-white rounded-lg">
+                  <View key={i} className="flex-row items-start gap-2 md:gap-3 p-2 md:p-3 bg-white rounded-lg">
                     <Check size={20} color="#22c55e" className="mt-0.5 flex-shrink-0" />
                     <Text className="flex-1 text-sm font-medium">{item}</Text>
                   </View>
@@ -352,12 +353,12 @@ function LandingContent() {
 
       {/* Feature Sections */}
       <View className="px-4 py-24">
-        <View className="max-w-6xl mx-auto space-y-20">
+        <View className="max-w-6xl mx-auto space-y-24 md:space-y-20">
           {featureSections.map((section, sectionIndex) => (
-            <View key={section.title} className={`${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-10 items-center`}>
-              <View className="flex-1">
+            <View key={section.title} className={`flex-col md:${sectionIndex % 2 === 1 ? 'flex-row-reverse' : 'flex-row'} gap-6 md:gap-10 items-start`}>
+              <View className="flex-1 w-full">
                 <Text className={`text-2xl font-bold mb-4 ${textColor}`}>{section.title}</Text>
-                <View className="space-y-3">
+                <View className="space-y-3" style={{ marginBottom: 16 }}>
                   {section.bullets.map((bullet, i) => (
                     <View key={i} className="flex-row items-start gap-3">
                       <CheckCircle2 size={20} color={isWarm ? '#dc2626' : '#2563eb'} className="mt-0.5" />
@@ -368,7 +369,7 @@ function LandingContent() {
               </View>
 
               {/* Visualization */}
-              <View className="flex-1">
+              <View className="flex-1 w-full" style={{ marginBottom: 48 }}>
                 {section.visualization === 'stats' && (
                   <View className="grid grid-cols-2 gap-4">
                     {section.stats?.map((stat, i) => {
@@ -385,9 +386,9 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'cards' && (
-                  <View className="space-y-4">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.cards?.map((card, i) => (
-                      <View key={i} className={`p-4 rounded-xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'}`}>
+                      <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-purple-900/20 dark:to-indigo-900/20 shadow-sm`}>
                         <Text className={`font-semibold mb-2 ${textColor}`}>{card.title}</Text>
                         <Text className={`text-sm opacity-80 ${textColor}`}>{card.description}</Text>
                       </View>
@@ -396,9 +397,9 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'list' && (
-                  <View className={`rounded-2xl border ${borderColor} ${isWarm ? 'bg-white' : 'bg-white'} overflow-hidden`}>
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.items?.map((item, i) => (
-                      <View key={i} className={`p-4 ${i !== section.items!.length - 1 ? `border-b ${borderColor}` : ''}`}>
+                      <View key={i} className={`p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 shadow-sm`}>
                         <Text className={`font-semibold ${textColor}`}>{item.label}</Text>
                         <Text className={`text-sm opacity-80 ${textColor}`}>{item.detail}</Text>
                         <Text className="text-xs opacity-60 mt-1">{item.time}</Text>
@@ -408,7 +409,7 @@ function LandingContent() {
                 )}
 
                 {section.visualization === 'progress' && (
-                  <View className="space-y-4">
+                  <View className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {section.exercises?.map((exercise, i) => (
                       <View key={i}>
                         <View className="flex-row justify-between mb-2">
